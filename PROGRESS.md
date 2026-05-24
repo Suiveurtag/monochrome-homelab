@@ -6,7 +6,7 @@ This is the living handoff file for multi-session Codex work. Keep it current, c
 
 - Date: 2026-05-24
 - Branch: main
-- Last known commit: 874a9e6
+- Last known commit: 6539363
 - Current milestone: M5a - Core Musique Hybride
 - Risk level: Medium
 
@@ -46,6 +46,8 @@ Out of scope:
 
 Changes:
 
+- Follow-up: cleaned up `js/track-model.ts` lint issues introduced by the hybrid identity helper.
+- Installed local Bun dependencies and Playwright Chromium in this environment so browser tests can run.
 - Added `js/track-model.ts` with `trackKey`, `source`, hybrid track minification, override application, and source-aware comparison helpers.
 - Added IndexedDB v12 stores: `track_catalog`, `track_metadata_overrides`, and `favorites_track_refs`.
 - Updated track favorites, history, playlists, export/import, PocketBase sync minification, API track preparation, local metadata reads, and high-value like/remove call sites to preserve or use hybrid track identity.
@@ -54,6 +56,7 @@ Changes:
 
 Why:
 
+- The hybrid helper had lint violations around unnecessary type assertions and object stringification fallback.
 - Future external/local/server-upload tracks need a stable persisted identity without breaking route/player compatibility.
 - Favorites and playlists need to support multiple sources with overlapping legacy `id` values.
 
@@ -79,6 +82,13 @@ Files touched:
 
 Verification:
 
+- `bun install` passed.
+- `bun x playwright install chromium` passed.
+- `bun run test:headless -- js/tests/track-model.test.ts js/tests/db.test.js` passed: 15 tests.
+- `bun x eslint js/track-model.ts` passed.
+- `bun run build` passed.
+- `bun run test:headless` failed on existing broader suite issues: `player.test.js` mock lacks `autoplaySettings`, API download expectations fail/time out, and browser connection closed after failures.
+- `bun run lint` failed on broad pre-existing lint debt; the only `js/track-model.ts` errors were fixed and rechecked.
 - `node --check js/db.js` passed.
 - `node --check js/accounts/pocketbase.js` passed.
 - `node --check js/api.js` passed.
@@ -94,14 +104,15 @@ Verification:
 
 Known risks:
 
-- Focused tests were added but not executed here because dependencies are unavailable.
+- Local Vite startup succeeds under Playwright, but localhost reports expected CORS failures for remote auth/API endpoints and an existing Shaka config warning for `streaming.jumpLargeGaps`.
+- Full test/lint suites still fail on broader issues outside this follow-up.
 - Many UI surfaces still pass only legacy `id` into `isFavorite`; this is intentionally supported as fallback but less precise for non-TIDAL sources.
 - Browser-local tracks still cannot serialize live `File` handles into cloud sync; local snapshots are metadata-only.
 - Normal production audio stream resolution still depends on Qobuz-by-ISRC after TIDAL metadata lookup and must remain protected.
 
 ## Next Exact Step
 
-Install project dependencies or run in an environment with them available, then execute `bun run test -- js/tests/track-model.test.ts js/tests/db.test.js` followed by `bun run test`, `bun run lint`, and `bun run build`. If tests pass, manually smoke API playback, liking/unliking, playlist add/remove, public playlists, and browser-local playback.
+Manually smoke the app through `bun run dev` rather than opening `index.html` directly. Recheck startup, liking/unliking, playlist add/remove, public playlists, and browser-local playback; if the app is still visibly broken, capture the browser console stack trace and compare it against the known localhost CORS/Shaka warnings.
 
 ## Open Questions / Blockers
 
@@ -146,6 +157,13 @@ Append new entries here.
 | 2026-05-24 | `node --check js/ui.js` | Pass | Syntax check only. |
 | 2026-05-24 | `node --check js/commandPalette.js` | Pass | Syntax check only. |
 | 2026-05-24 | `git diff --check` | Pass | Only line-ending normalization warnings. |
+| 2026-05-24 | `bun install` | Pass | Installed local dependencies from Bun lockfiles. |
+| 2026-05-24 | `bun x playwright install chromium` | Pass | Installed Playwright Chromium/headless shell for browser tests. |
+| 2026-05-24 | `bun run test:headless -- js/tests/track-model.test.ts js/tests/db.test.js` | Pass | 2 files, 15 tests passed. |
+| 2026-05-24 | `bun x eslint js/track-model.ts` | Pass | Hybrid helper lint issues fixed. |
+| 2026-05-24 | `bun run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk warnings. |
+| 2026-05-24 | `bun run test:headless` | Fail | Broader suite failures remain in `player.test.js` mock and API download tests; not specific to `track-model.ts` follow-up. |
+| 2026-05-24 | `bun run lint` | Fail | Broad existing lint debt remains; `js/track-model.ts` now passes targeted ESLint. |
 
 ## Milestone History
 

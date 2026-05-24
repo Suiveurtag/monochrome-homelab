@@ -71,6 +71,10 @@ type TrackLike = Partial<HybridTrack> & {
 const SOURCE_KINDS = new Set<TrackSourceKind>(['external', 'server-upload', 'browser-local', 'podcast', 'tracker']);
 const EXTERNAL_PROVIDERS = new Set<ExternalProvider>(['tidal', 'qobuz', 'hifi', 'unknown']);
 
+function isTrackSourceKind(value: unknown): value is TrackSourceKind {
+    return typeof value === 'string' && SOURCE_KINDS.has(value);
+}
+
 function normalizeProvider(value: unknown): ExternalProvider | undefined {
     if (typeof value !== 'string') return undefined;
     const provider = value.toLowerCase() as ExternalProvider;
@@ -85,9 +89,9 @@ function stripKnownProviderPrefix(id: string): { provider?: ExternalProvider; so
 }
 
 function normalizeSourceRef(track: TrackLike): TrackSourceRef {
-    if (track.source?.kind && SOURCE_KINDS.has(track.source.kind as TrackSourceKind) && track.source.sourceId != null) {
+    if (isTrackSourceKind(track.source?.kind) && track.source.sourceId != null) {
         const source: TrackSourceRef = {
-            kind: track.source.kind as TrackSourceKind,
+            kind: track.source.kind,
             sourceId: String(track.source.sourceId),
         };
         const provider = normalizeProvider(track.source.provider);
@@ -236,5 +240,9 @@ export function isSameTrack(a: TrackLike | string | number | null | undefined, b
         return a.id != null && b.id != null && a.id == b.id;
     }
 
-    return a != null && b != null && String(a) === String(b);
+    if ((typeof a === 'string' || typeof a === 'number') && (typeof b === 'string' || typeof b === 'number')) {
+        return String(a) === String(b);
+    }
+
+    return false;
 }
