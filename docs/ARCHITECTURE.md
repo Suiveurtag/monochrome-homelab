@@ -1,0 +1,213 @@
+# Architecture
+
+This document describes the current Monochrome architecture as a refactor map. It should stay close to source truth and call out implicit contracts that future behavior-preserving work must protect.
+
+## Overview
+
+Monochrome is a Vite app with a large static HTML shell, a mostly JS/TS frontend, Cloudflare Pages Functions, and Capacitor native shells.
+
+- `index.html` contains the main app shell, route page containers, modals, settings UI, audio/video elements, and player controls.
+- `styles.css` contains global styles and most UI styling.
+- `/js/app.js` is the browser entrypoint and bootstrap coordinator.
+- `/js/ui.js` renders most pages and dynamic UI.
+- `/js/settings.js` wires the settings screen and settings-related interactions.
+- `/functions` contains Cloudflare Pages Functions used for page/data routes.
+- `/android`, `/ios`, and `capacitor.config.ts` support native mobile builds.
+
+The current architecture is intentionally practical rather than cleanly layered. Large modules often combine rendering, event wiring, state reads, and side effects. Refactor work should reduce coupling gradually while keeping public behavior stable.
+
+## Audit Snapshot
+
+The 2026-05-24 technical audit observed these current boundaries:
+
+- The active browser auth client is Better Auth, loaded from `https://esm.sh/better-auth/client` through `js/accounts/config.js`.
+- PocketBase is the cloud data store for user sync, profiles, public playlists, theme store authorship, and listening parties.
+- Appwrite remains present in dependencies, settings UI, Vite env injection, and deployment docs, but no active frontend import of the Appwrite SDK was observed. Treat it as legacy/residual until an explicit migration decision is made.
+- Music metadata is primarily resolved through the HiFi/TIDAL stack, while production audio playback resolves stream URLs through Qobuz instances by ISRC for normal audio tracks. Dev mode and videos follow separate paths.
+- The player combines queue state, media element switching, Shaka/DASH, HLS video, replay gain, preloading, Media Session, Android foreground service integration, radio/autoplay, and Safari/iOS behavior.
+- Deployment currently combines Vite build plugins, Cloudflare Pages Functions, Docker/Nginx static serving, optional Docker PocketBase, and Capacitor native shells.
+
+## Runtime Startup Flow
+
+At runtime:
+
+1. `index.html` loads `/styles.css` and `/js/app.js`.
+2. `app.js` waits for `DOMContentLoaded`.
+3. Settings initialization waits on `modernSettings`.
+4. Persistent storage is requested best-effort through the browser storage API.
+5. Dev-only globals are attached to `window.monochrome`.
+6. Analytics, theme store, commit metadata, HiFi client, music API, player, casting, UI renderer, settings, events, router, PWA update flow, and other interactions are initialized.
+7. The router maps the current path to page rendering methods on the UI renderer.
+
+This startup sequence is behavior-sensitive. When extracting it, preserve ordering unless a test or explicit investigation proves the order is irrelevant.
+
+## Frontend Subsystems
+
+Routing:
+
+- `js/router.js` maps paths to UI renderer methods.
+- Supports routes such as `home`, `search`, `album`, `artist`, `playlist`, `userplaylist`, `folder`, `mix`, `track`, `library`, `recent`, `unreleased`, `podcasts`, `settings`, account/profile pages, and static pages.
+- Provider-prefixed IDs such as `/track/t/:id`, `/album/t/:id`, `/artist/t/:id`, and `/playlist/t/:id` are compatibility contracts.
+- Several modules outside the router still parse `window.location.pathname` directly. Route refactors must account for those call sites, not only `js/router.js`.
+
+UI rendering:
+
+- `js/ui.js` owns most page rendering, list/card rendering, fullscreen cover UI, dynamic color behavior, visualizer UI, and many page-specific interactions.
+- It relies heavily on DOM IDs/classes from `index.html`.
+- The main static DOM anchors include page containers, sidebar navigation, header search/account controls, modals, side panel, fullscreen cover, player bar, and settings controls.
+
+Application wiring:
+
+- `js/app.js` combines bootstrapping, many event listeners, modal logic, routing setup, local media folder scanning, PWA update UI, and feature initialization.
+
+Settings:
+
+- `js/settings.js` wires the settings UI and reads/writes many setting managers from `js/storage.js`.
+- Settings are broad: appearance, audio, downloads, integrations, instances, system, keyboard shortcuts, content blocking, visualizer, and equalizer behavior.
+
+Playback:
+
+- `js/player.js` owns playback state, queue, media elements, quality handling, gapless/adaptive behavior, radio/autoplay, and Media Session integration.
+- It coordinates with `js/audio-context.js`, `js/events.js`, `js/ui.js`, storage managers, and API modules.
+- Playback chooses among local files, podcasts, tracker audio, normal audio streams, and videos. It switches between the main audio element and `#video-player`.
+- Shaka handles DASH/MPD playback, HLS.js handles HLS video when needed, and Media Session state is also bridged to the Capacitor Android foreground audio service.
+
+Sidebar and panels:
+
+- Sidebar structure lives in `index.html`; collapse and section visibility/order are persisted by `sidebarSettings` and `sidebarSectionSettings` in `js/storage.js`.
+- Pinned sidebar items are stored in IndexedDB `pinned_items` and rendered by `UIRenderer.renderPinnedItems()`.
+- Queue and lyrics use `js/side-panel.js`; side panel width is persisted in `localStorage` under `side-panel-width`.
+
+Persistence:
+
+- `js/storage.js` provides localStorage-backed managers for app settings and UI preferences.
+- `js/db.js` provides IndexedDB-backed favorites, history, playlists, folders, pinned items, and settings.
+- `js/db.js` also dispatches behavior-significant events such as `favorites-changed`, `playlist-tracks-changed`, and `sync-playlist-change`.
+
+API and media:
+
+- `js/api.js`, `js/music-api.js`, and `js/HiFi.ts` handle provider access, API instance selection, caching, stream preparation, manifests, and media data shaping.
+- `js/container-classes.ts` defines track/album/playback-related classes used by the API layer.
+- `MusicAPI` is the app-facing facade. It currently routes most calls to `LosslessAPI`/TIDAL and podcast calls to `PodcastsAPI`.
+- `LosslessAPI.fetchWithRetry()` tries native `HiFiClient` routes for non-streaming requests, falls back to configured HiFi API instances, and uses configured streaming/Qobuz instances where appropriate.
+- `LosslessAPI.getStreamUrl()` resolves normal production audio through Qobuz by TIDAL ISRC. If no ISRC or Qobuz stream is available, playback reports a missing audio source.
+
+Downloads and metadata:
+
+- `js/downloads.js`, `js/download-utils.ts`, `js/metadata*.js`, `js/ffmpeg*`, `js/hls-downloader.js`, and `js/dash-downloader.ts` support downloads, transcoding/post-processing, and metadata embedding.
+
+Other feature areas:
+
+- `js/lyrics.js`: lyrics lookup, sync, panel, and fullscreen rendering.
+- `js/visualizer.js` and `js/visualizers/`: visualizer orchestration and presets.
+- `js/accounts/`: auth and sync integrations.
+- `js/listening-party.js`: listening party UI and behavior.
+- `js/*scrobbler*`, `js/lastfm.js`, `js/listenbrainz.js`, `js/librefm.js`, `js/maloja.js`: listening tracking and scrobbling integrations.
+- `js/themeStore.js`: community theme handling.
+
+## Persistence Contracts
+
+IndexedDB:
+
+- Database name: `MonochromeDB`.
+- Current version observed: `11`.
+- Stores include `favorites_tracks`, `favorites_videos`, `favorites_albums`, `favorites_artists`, `favorites_playlists`, `favorites_mixes`, `history_tracks`, `user_playlists`, `user_folders`, `settings`, and `pinned_items`.
+- Key paths are part of the contract: most favorites use `id`, favorite playlists use `uuid`, history uses `timestamp`, user playlists/folders use `id`, and pinned items use `id`.
+- Store names, key paths, indexes, and persisted item shapes must be preserved unless a milestone includes an explicit migration plan.
+- Playlist lazy migrations in `getPlaylists()` update `numberOfTracks` and image collage metadata during reads, so read paths can write.
+
+localStorage:
+
+- `js/storage.js` owns many string and JSON-backed setting keys.
+- Other files also read/write selected keys directly, including playback quality, mute state, font choice, sidebar state, and HiFi tokens.
+- Treat key names, default values, and serialized formats as compatibility contracts.
+- High-risk key groups include API instances, theme/custom theme, scrobbling credentials, playback quality/adaptive quality, queue state, sidebar collapse/order/visibility, search history, playlist sort, local media folder settings, EQ profiles, content blocking, keyboard shortcuts, auth/PocketBase overrides, and PWA update settings.
+
+PocketBase:
+
+- Default cloud data URL observed in frontend sync is `https://data.samidy.xyz`, overrideable through `window.__POCKETBASE_URL__` or `monochrome-pocketbase-url`.
+- User data is stored in collection `DB_users` keyed by legacy field `firebase_id`, which currently receives the Better Auth user id.
+- Synced JSON fields include `library`, `history`, `user_playlists`, `user_folders`, `favorite_albums`, and profile/privacy fields.
+- Public playlists live in `public_playlists` and duplicate title/cover fields for compatibility with older shapes.
+
+Browser and PWA storage:
+
+- The app requests persistent storage.
+- Service worker registration and cache cleanup/update behavior are part of user-visible PWA behavior.
+
+## External Boundaries
+
+Music APIs:
+
+- The app uses HiFi/TIDAL-related APIs, configurable HiFi worker instances, configurable Qobuz instances, TIDAL proxy wrapping, and a dev-mode API override.
+- API instance selection, failover, dev mode, proxy wrapping, caching, and stream URL shape affect search, playback, downloads, and route previews.
+- TIDAL app credentials are embedded in the HiFi client and in several Cloudflare Functions for bot metadata fallbacks.
+
+Accounts and sync:
+
+- Account flows currently rely on Better Auth for browser sessions and PocketBase for persisted user data.
+- `authManager` normalizes Better Auth users to expose `$id` for legacy sync code.
+- `syncManager` merges local IndexedDB data with cloud PocketBase data on sign-in, writes local merged data back through `db.importData(..., true)`, and dispatches refresh events.
+- Appwrite settings and env injection still exist, but Appwrite is not the active auth client observed in source.
+
+Cloudflare Pages Functions:
+
+- `functions/` contains route handlers for metadata and public pages such as tracks, albums, artists, playlists, user playlists, podcasts, unreleased pages, and static route fallbacks.
+- Many handlers fetch remote data and fall back to `env.ASSETS.fetch(...)`.
+- Bot metadata functions duplicate portions of TIDAL/PocketBase lookup logic and sometimes hardcode default remote URLs.
+
+Deployment:
+
+- `vite.config.ts` defines Vite build, PWA, SVG-use, upload, blob asset, and auth-gate plugins.
+- `vite-plugin-auth-gate.js` injects selected env-derived globals and provides preview-server auth gating when enabled.
+- Docker production builds with Bun and serves `dist/` through Nginx; Docker Compose can optionally run PocketBase via profile.
+- `nginx.conf` serves static assets directly and falls back app routes to `index.html`.
+
+Native shells:
+
+- Capacitor config sets app id, app name, web output directory, and icon/splash colors.
+- Android includes native audio-related Java code.
+- Refactors in web playback or PWA behavior should consider mobile shell impact.
+
+## Behavior Contracts
+
+Preserve these during behavior-preserving refactors:
+
+- Route paths and router fallback behavior.
+- DOM selectors used by JavaScript and CSS.
+- Browser event names and event detail shapes.
+- Settings defaults and persistence formats.
+- IndexedDB schema and localStorage keys.
+- PocketBase collection names, legacy `firebase_id` mapping, and JSON field shapes.
+- Media element setup and audio/video switching behavior.
+- Queue, shuffle, repeat, autoplay/radio, and playback quality behavior.
+- Search result normalization, TIDAL provider-prefixed IDs, Qobuz-by-ISRC stream resolution, and API fallback behavior.
+- Download output naming, metadata, lyrics inclusion, archive generation, and cancellation/progress behavior.
+- Sidebar collapse/order/visibility, pinned item rendering, queue/lyrics side panel behavior, and search history behavior.
+- PWA install/update/cache behavior.
+- Cloudflare bot metadata routes and SPA fallback behavior.
+- Mobile/iOS/Safari workarounds.
+
+## Known Refactor Hotspots
+
+High-risk large files:
+
+- `js/ui.js`
+- `js/settings.js`
+- `js/app.js`
+- `js/events.js`
+- `js/player.js`
+- `js/storage.js`
+- `js/api.js`
+- `js/db.js`
+- `js/accounts/pocketbase.js`
+- `js/accounts/auth.js`
+- Cloudflare Functions under `functions/`
+
+Likely safe direction:
+
+- First add tests around behavior contracts.
+- Clarify storage/auth/API contracts before moving code.
+- Extract small pure helpers where possible.
+- Move feature-specific UI/event wiring behind stable exported functions.
+- Keep DOM selectors and public exports stable until a documented decision changes them.
