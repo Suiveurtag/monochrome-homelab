@@ -167,6 +167,31 @@ Required checks:
 - API/search tests where practical.
 - Manual smoke checklist for search, album, artist, playlist, track pages, and stream URL resolution.
 
+### M5a - Core Musique Hybride
+
+Status: Complete
+
+Goal:
+
+- Add a stable, source-aware track identity layer for external API tracks, browser-local tracks, podcasts, tracker tracks, future server uploads, favorites, playlists, sync, and future metadata overrides.
+
+Scope:
+
+- Add `trackKey` and `source` as an additive persistence identity while preserving `track.id` for routes and playback.
+- Add IndexedDB v12 stores for track snapshots, metadata overrides, and source-aware favorite refs.
+- Preserve legacy favorites/playlists/history stores and fallback behavior.
+
+Non-goals:
+
+- No server upload implementation.
+- No metadata override editing UI.
+- No route redesign or player provider strategy change.
+
+Required checks:
+
+- Focused tests for `track-model` and `db` when dependencies are installed.
+- Existing test/lint/build checks as feasible.
+
 ### M6 - Player And Media Boundary
 
 Status: Planned

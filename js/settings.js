@@ -6795,6 +6795,9 @@ export async function initializeSettings(scrobbler, player, api, ui) {
                             'user_folders',
                             'settings',
                             'pinned_items',
+                            'track_catalog',
+                            'track_metadata_overrides',
+                            'favorites_track_refs',
                         ];
 
                         for (const storeName of stores) {

@@ -32,6 +32,9 @@ describe('MusicDatabase', () => {
         expect(openedDb.objectStoreNames.contains('favorites_tracks')).toBe(true);
         expect(openedDb.objectStoreNames.contains('history_tracks')).toBe(true);
         expect(openedDb.objectStoreNames.contains('user_playlists')).toBe(true);
+        expect(openedDb.objectStoreNames.contains('track_catalog')).toBe(true);
+        expect(openedDb.objectStoreNames.contains('track_metadata_overrides')).toBe(true);
+        expect(openedDb.objectStoreNames.contains('favorites_track_refs')).toBe(true);
     });
 
     test('toggleFavorite adds and removes items', async () => {
@@ -85,6 +88,100 @@ describe('MusicDatabase', () => {
         await db.deletePlaylist(playlist.id);
         const deleted = await db.getPlaylist(playlist.id);
         expect(deleted).toBeUndefined();
+    });
+
+    test('legacy favorites without trackKey remain readable', async () => {
+        await db.performTransaction('favorites_tracks', 'readwrite', (store) =>
+            store.put({ id: 'legacy-track', title: 'Legacy Track', addedAt: 1 })
+        );
+
+        const favorites = await db.getFavorites('track');
+
+        expect(favorites.length).toBe(1);
+        expect(favorites[0].id).toBe('legacy-track');
+        expect(await db.isFavorite('track', 'legacy-track')).toBe(true);
+    });
+
+    test('track favorites can coexist across sources with the same legacy id', async () => {
+        const external = { id: 'shared', title: 'External Track' };
+        const upload = {
+            id: 'shared',
+            title: 'Uploaded Track',
+            source: { kind: 'server-upload', sourceId: 'shared' },
+        };
+
+        expect(await db.toggleFavorite('track', external)).toBe(true);
+        expect(await db.toggleFavorite('track', upload)).toBe(true);
+
+        const favorites = await db.getFavorites('track');
+
+        expect(favorites.length).toBe(2);
+        expect(favorites.map((track) => track.trackKey).sort()).toEqual([
+            'v1:external:tidal:shared',
+            'v1:server-upload:none:shared',
+        ]);
+    });
+
+    test('playlist operations dedupe and remove tracks by trackKey', async () => {
+        const track = { id: 'shared', title: 'External Track' };
+        const upload = {
+            id: 'shared',
+            title: 'Uploaded Track',
+            source: { kind: 'server-upload', sourceId: 'shared' },
+        };
+
+        const playlist = await db.createPlaylist('Hybrid Playlist', [track]);
+        await db.addTrackToPlaylist(playlist.id, { ...track });
+        await db.addTrackToPlaylist(playlist.id, upload);
+
+        const updated = await db.getPlaylist(playlist.id);
+        expect(updated.tracks.length).toBe(2);
+
+        await db.removeTrackFromPlaylist(playlist.id, updated.tracks[1].trackKey);
+        const afterRemove = await db.getPlaylist(playlist.id);
+
+        expect(afterRemove.tracks.length).toBe(1);
+        expect(afterRemove.tracks[0].trackKey).toBe('v1:external:tidal:shared');
+    });
+
+    test('export and import preserve trackKey and source', async () => {
+        const track = {
+            id: 'upload-1',
+            title: 'Uploaded Track',
+            source: { kind: 'server-upload', sourceId: 'upload-1' },
+        };
+
+        await db.toggleFavorite('track', track);
+        const exported = await db.exportData();
+
+        expect(exported.favorites_tracks[0].trackKey).toBe('v1:server-upload:none:upload-1');
+        expect(exported.favorites_tracks[0].source).toEqual({ kind: 'server-upload', sourceId: 'upload-1' });
+        expect(exported.favorites_track_refs[0]).toEqual({
+            trackKey: 'v1:server-upload:none:upload-1',
+            addedAt: exported.favorites_track_refs[0].addedAt,
+        });
+
+        const importedDb = new MusicDatabase();
+        importedDb.dbName = `${TEST_DB_NAME}_import`;
+        const deleteReq = indexedDB.deleteDatabase(importedDb.dbName);
+        await new Promise((resolve) => {
+            deleteReq.onsuccess = resolve;
+            deleteReq.onerror = resolve;
+        });
+
+        await importedDb.importData(exported, true);
+        const importedFavorites = await importedDb.getFavorites('track');
+
+        expect(importedFavorites.length).toBe(1);
+        expect(importedFavorites[0].trackKey).toBe('v1:server-upload:none:upload-1');
+        expect(importedFavorites[0].source.kind).toBe('server-upload');
+
+        importedDb.db.close();
+        const cleanupReq = indexedDB.deleteDatabase(importedDb.dbName);
+        await new Promise((resolve) => {
+            cleanupReq.onsuccess = resolve;
+            cleanupReq.onerror = resolve;
+        });
     });
 
     test('pinned items management', async () => {

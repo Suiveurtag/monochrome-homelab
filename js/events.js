@@ -1894,7 +1894,7 @@ async function updateContextMenuLikeState(contextMenu, contextTrack) {
     const likeItem = contextMenu.querySelector('li[data-action="toggle-like"]');
     let isLiked = false;
     if (likeItem) {
-        const key = type === 'playlist' ? contextTrack.uuid : contextTrack.id;
+        const key = type === 'playlist' ? contextTrack.uuid : type === 'track' ? contextTrack : contextTrack.id;
         isLiked = await db.isFavorite(type, key);
     }
 

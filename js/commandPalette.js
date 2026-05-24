@@ -1252,7 +1252,7 @@ class CommandPalette {
         let likedCount = 0;
         await this.notify('Liking all tracks in queue...');
         for (const track of queue) {
-            const isLiked = await db.isFavorite('track', track.id);
+            const isLiked = await db.isFavorite('track', track);
             if (!isLiked) {
                 await handleTrackAction('toggle-like', track, player, ui.api, ui.lyricsManager, 'track', ui, scrobbler);
                 likedCount++;

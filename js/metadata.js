@@ -10,6 +10,7 @@ import { addMetadataWithTagLib, getMetadataWithTagLib } from './taglib.ts';
 import { LyricsManager } from './lyrics.js';
 import { Mp4Stik } from './taglib.types.ts';
 import { modernSettings } from './ModernSettings.js';
+import { withTrackIdentity } from './track-model.ts';
 
 /**
  * @typedef {import('./container-classes.ts').Track} Track
@@ -214,5 +215,9 @@ export async function readTrackMetadata(file, { filename = file?.name || 'Unknow
         }
     }
 
-    return metadata;
+    return withTrackIdentity({
+        ...metadata,
+        playback: { mode: 'browser-file', mimeType: file?.type || null },
+        source: { kind: 'browser-local', sourceId: metadata.id },
+    });
 }

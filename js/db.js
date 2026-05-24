@@ -1,7 +1,9 @@
+import { getTrackKey, isSameTrack, minifyHybridTrack, withTrackIdentity } from './track-model.ts';
+
 export class MusicDatabase {
     constructor() {
         this.dbName = 'MonochromeDB';
-        this.version = 11;
+        this.version = 12;
         this.db = null;
     }
 
@@ -73,6 +75,21 @@ export class MusicDatabase {
                     const store = db.createObjectStore('pinned_items', { keyPath: 'id' });
                     store.createIndex('pinnedAt', 'pinnedAt', { unique: false });
                 }
+                if (!db.objectStoreNames.contains('track_catalog')) {
+                    const store = db.createObjectStore('track_catalog', { keyPath: 'trackKey' });
+                    store.createIndex('source.kind', 'source.kind', { unique: false });
+                    store.createIndex('source.provider', 'source.provider', { unique: false });
+                    store.createIndex('source.sourceId', 'source.sourceId', { unique: false });
+                    store.createIndex('isrc', 'isrc', { unique: false });
+                    store.createIndex('updatedAt', 'updatedAt', { unique: false });
+                }
+                if (!db.objectStoreNames.contains('track_metadata_overrides')) {
+                    db.createObjectStore('track_metadata_overrides', { keyPath: 'trackKey' });
+                }
+                if (!db.objectStoreNames.contains('favorites_track_refs')) {
+                    const store = db.createObjectStore('favorites_track_refs', { keyPath: 'trackKey' });
+                    store.createIndex('addedAt', 'addedAt', { unique: false });
+                }
             };
         });
     }
@@ -105,10 +122,32 @@ export class MusicDatabase {
         return this.performTransaction(storeName, 'readonly', (store) => store.getAll());
     }
 
+    async _putTrackSnapshot(track) {
+        if (!track) return null;
+        const snapshot = minifyHybridTrack(track);
+        snapshot.updatedAt = snapshot.updatedAt || Date.now();
+        await this.performTransaction('track_catalog', 'readwrite', (store) => store.put(snapshot));
+        return snapshot;
+    }
+
+    async _getTrackSnapshot(trackKey) {
+        if (!trackKey) return null;
+        try {
+            return await this.performTransaction('track_catalog', 'readonly', (store) => store.get(trackKey));
+        } catch {
+            return null;
+        }
+    }
+
+    _getTrackKey(item) {
+        return getTrackKey(item);
+    }
+
     // History API
     async addToHistory(track) {
         const storeName = 'history_tracks';
         const minified = this._minifyItem(track.type || 'track', track);
+        await this._putTrackSnapshot(minified);
 
         const db = await this.open();
 
@@ -134,7 +173,7 @@ export class MusicDatabase {
                     const dedupeCursor = e2.target.result;
                     if (dedupeCursor) {
                         const trackInHistory = dedupeCursor.value;
-                        if (trackInHistory.id === track.id) {
+                        if (isSameTrack(trackInHistory, minified)) {
                             store.delete(dedupeCursor.primaryKey);
                         }
                         dedupeCursor.continue();
@@ -183,17 +222,35 @@ export class MusicDatabase {
     async toggleFavorite(type, item) {
         const plural = type === 'mix' ? 'mixes' : `${type}s`;
         const storeName = `favorites_${plural}`;
-        const key = type === 'playlist' ? item.uuid : item.id;
-        const exists = await this.isFavorite(type, key);
+        const isTrack = type === 'track';
+        const identifiedItem = isTrack ? withTrackIdentity(item) : item;
+        const key = type === 'playlist' ? item.uuid : isTrack ? this._getTrackKey(identifiedItem) : item.id;
+        const legacyKey = type === 'playlist' ? item.uuid : item.id;
+        const exists = await this.isFavorite(type, isTrack ? identifiedItem : key);
 
         if (exists) {
-            await this.performTransaction(storeName, 'readwrite', (store) => store.delete(key));
+            if (isTrack) {
+                await this.performTransaction('favorites_track_refs', 'readwrite', (store) => store.delete(key));
+                const legacyExists = await this.performTransaction(storeName, 'readonly', (store) => store.get(legacyKey));
+                if (legacyExists && !legacyExists.trackKey) {
+                    await this.performTransaction(storeName, 'readwrite', (store) => store.delete(legacyKey));
+                }
+            } else {
+                await this.performTransaction(storeName, 'readwrite', (store) => store.delete(key));
+            }
             window.dispatchEvent(new CustomEvent('favorites-changed'));
             return false; // Removed
         } else {
-            const minified = this._minifyItem(type, item);
+            const minified = this._minifyItem(type, identifiedItem);
             const entry = { ...minified, addedAt: Date.now() };
-            await this.performTransaction(storeName, 'readwrite', (store) => store.put(entry));
+            if (isTrack) {
+                await this._putTrackSnapshot(entry);
+                await this.performTransaction('favorites_track_refs', 'readwrite', (store) =>
+                    store.put({ trackKey: entry.trackKey, addedAt: entry.addedAt })
+                );
+            } else {
+                await this.performTransaction(storeName, 'readwrite', (store) => store.put(entry));
+            }
             window.dispatchEvent(new CustomEvent('favorites-changed'));
             return true; // Added
         }
@@ -203,6 +260,18 @@ export class MusicDatabase {
         const plural = type === 'mix' ? 'mixes' : `${type}s`;
         const storeName = `favorites_${plural}`;
         try {
+            if (type === 'track') {
+                const trackKey = this._getTrackKey(id);
+                if (trackKey) {
+                    const ref = await this.performTransaction('favorites_track_refs', 'readonly', (store) =>
+                        store.get(trackKey)
+                    );
+                    if (ref) return true;
+                }
+                const legacyId = typeof id === 'object' && id !== null ? id.id : id;
+                const legacy = await this.performTransaction(storeName, 'readonly', (store) => store.get(legacyId));
+                return !!legacy;
+            }
             const result = await this.performTransaction(storeName, 'readonly', (store) => store.get(id));
             return !!result;
         } catch {
@@ -220,8 +289,27 @@ export class MusicDatabase {
 
             const request = store.getAll();
 
-            request.onsuccess = () => {
-                const results = request.result;
+            request.onsuccess = async () => {
+                let results =
+                    type === 'track'
+                        ? request.result.map((track) => (track.trackKey ? track : this._minifyItem('track', track)))
+                        : request.result;
+                if (type === 'track') {
+                    const refs = await this.getAll('favorites_track_refs').catch(() => []);
+                    const snapshots = await Promise.all(
+                        refs.map(async (ref) => {
+                            const snapshot = await this._getTrackSnapshot(ref.trackKey);
+                            return snapshot ? { ...snapshot, addedAt: ref.addedAt || snapshot.addedAt || null } : null;
+                        })
+                    );
+                    const seen = new Set();
+                    results = [...snapshots.filter(Boolean), ...results].filter((track) => {
+                        const key = track.trackKey || `legacy:${track.id}`;
+                        if (seen.has(key)) return false;
+                        seen.add(key);
+                        return true;
+                    });
+                }
                 results.sort((a, b) => {
                     const aTime = a.addedAt || 0;
                     const bTime = b.addedAt || 0;
@@ -244,47 +332,7 @@ export class MusicDatabase {
         };
 
         if (normalizedType === 'track') {
-            return {
-                ...base,
-                title: item.title || null,
-                duration: item.duration || null,
-                explicit: item.explicit || false,
-                // Keep minimal artist info
-                artist: item.artist || (item.artists && item.artists.length > 0 ? item.artists[0] : null) || null,
-                artists: item.artists?.map((a) => ({ id: a.id, name: a.name || null })) || [],
-                // Keep minimal album info
-                album: item.album
-                    ? {
-                          id: item.album.id,
-                          title: item.album.title || null,
-                          cover: item.album.cover || null,
-                          releaseDate: item.album.releaseDate || null,
-                          vibrantColor: item.album.vibrantColor || null,
-                          artist: item.album.artist || null,
-                          numberOfTracks: item.album.numberOfTracks || null,
-                          mediaMetadata: item.album.mediaMetadata ? { tags: item.album.mediaMetadata.tags } : null,
-                      }
-                    : null,
-                copyright: item.copyright || null,
-                isrc: item.isrc || null,
-                trackNumber: item.trackNumber || null,
-                // Fallback date
-                streamStartDate: item.streamStartDate || null,
-                // Keep version if exists
-                version: item.version || null,
-                // Keep mix info
-                mixes: item.mixes || null,
-                isTracker: item.isTracker || (item.id && String(item.id).startsWith('tracker-')),
-                trackerInfo: item.trackerInfo || null,
-                isPodcast: item.isPodcast || (item.id && String(item.id).startsWith('podcast_')) || null,
-                enclosureUrl: item.enclosureUrl || null,
-                enclosureType: item.enclosureType || null,
-                enclosureLength: item.enclosureLength || null,
-                audioUrl: item.remoteUrl || item.audioUrl || null,
-                remoteUrl: item.remoteUrl || null,
-                audioQuality: item.audioQuality || null,
-                mediaMetadata: item.mediaMetadata ? { tags: item.mediaMetadata.tags } : null,
-            };
+            return minifyHybridTrack({ ...base, ...item });
         }
 
         if (normalizedType === 'video') {
@@ -441,6 +489,9 @@ export class MusicDatabase {
         const userFolders = await this.getFolders();
         const data = {
             favorites_tracks: tracks.map((t) => this._minifyItem('track', t)),
+            favorites_track_refs: tracks
+                .map((t) => (t.trackKey ? { trackKey: t.trackKey, addedAt: t.addedAt || null } : null))
+                .filter(Boolean),
             favorites_albums: albums.map((a) => this._minifyItem('album', a)),
             favorites_artists: artists.map((a) => this._minifyItem('artist', a)),
             favorites_playlists: playlists.map((p) => this._minifyItem('playlist', p)),
@@ -459,6 +510,7 @@ export class MusicDatabase {
         if (clear) {
             const allEmpty = [
                 data.favorites_tracks,
+                data.favorites_track_refs,
                 data.favorites_albums,
                 data.favorites_artists,
                 data.favorites_playlists,
@@ -566,7 +618,38 @@ export class MusicDatabase {
         });
 
         const results = await Promise.all([
-            importStore('favorites_tracks', data.favorites_tracks),
+            (async () => {
+                const trackItems = Array.isArray(data.favorites_tracks)
+                    ? data.favorites_tracks
+                    : Object.values(data.favorites_tracks || {});
+                const trackRefs = Array.isArray(data.favorites_track_refs)
+                    ? data.favorites_track_refs
+                    : Object.values(data.favorites_track_refs || {});
+
+                if (clear) {
+                    await importStore('track_catalog', []);
+                    await importStore('favorites_track_refs', []);
+                }
+
+                for (const track of trackItems) {
+                    if (track?.trackKey) {
+                        const snapshot = await this._putTrackSnapshot(track);
+                        if (snapshot) {
+                            await this.performTransaction('favorites_track_refs', 'readwrite', (store) =>
+                                store.put({ trackKey: snapshot.trackKey, addedAt: track.addedAt || Date.now() })
+                            );
+                        }
+                    }
+                }
+
+                for (const ref of trackRefs) {
+                    if (ref?.trackKey) {
+                        await this.performTransaction('favorites_track_refs', 'readwrite', (store) => store.put(ref));
+                    }
+                }
+
+                return importStore('favorites_tracks', data.favorites_tracks);
+            })(),
             importStore('favorites_albums', data.favorites_albums),
             importStore('favorites_artists', data.favorites_artists),
             importStore('favorites_playlists', data.favorites_playlists),
@@ -622,6 +705,9 @@ export class MusicDatabase {
             numberOfTracks: tracks.length,
             images: [], // Initialize images
         };
+        for (const track of playlist.tracks) {
+            await this._putTrackSnapshot(track);
+        }
         this._updatePlaylistMetadata(playlist);
         await this.performTransaction('user_playlists', 'readwrite', (store) => store.put(playlist));
 
@@ -638,7 +724,8 @@ export class MusicDatabase {
         playlist.tracks = playlist.tracks || [];
         const trackWithDate = { ...track, addedAt: Date.now() };
         const minifiedTrack = this._minifyItem(track.type || 'track', trackWithDate);
-        if (playlist.tracks.some((t) => t.id === track.id)) return;
+        if (playlist.tracks.some((t) => isSameTrack(t, minifiedTrack))) return;
+        await this._putTrackSnapshot(minifiedTrack);
         playlist.tracks.push(minifiedTrack);
         playlist.updatedAt = Date.now();
         this._updatePlaylistMetadata(playlist);
@@ -657,9 +744,11 @@ export class MusicDatabase {
 
         let addedCount = 0;
         for (const track of tracks) {
-            if (!playlist.tracks.some((t) => t.id === track.id)) {
+            if (!playlist.tracks.some((t) => isSameTrack(t, track))) {
                 const trackWithDate = { ...track, addedAt: Date.now() };
-                playlist.tracks.push(this._minifyItem(track.type || 'track', trackWithDate));
+                const minifiedTrack = this._minifyItem(track.type || 'track', trackWithDate);
+                await this._putTrackSnapshot(minifiedTrack);
+                playlist.tracks.push(minifiedTrack);
                 addedCount++;
             }
         }
@@ -680,6 +769,7 @@ export class MusicDatabase {
         if (!playlist) throw new Error('Playlist not found');
         playlist.tracks = playlist.tracks || [];
         playlist.tracks = playlist.tracks.filter((t) => {
+            if (trackId && t.trackKey === trackId) return false;
             if (trackType) {
                 return !(t.id == trackId && (t.type || 'track') === trackType);
             }

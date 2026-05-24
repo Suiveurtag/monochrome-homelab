@@ -2103,7 +2103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Prefer ID if available (from sorted view)
                 if (btn.dataset.trackId) {
-                    trackId = btn.dataset.trackId;
+                    trackId = btn.dataset.trackKey || btn.dataset.trackId;
                     trackType = btn.dataset.type || 'track';
                 } else if (btn.dataset.trackIndex) {
                     // Fallback to index (legacy/unsorted)

@@ -131,3 +131,32 @@ Affected areas:
 - `vite-plugin-auth-gate.js`
 - `docs/MILESTONES.md`
 - `docs/ARCHITECTURE.md`
+
+## 2026-05-24 - Hybrid Track Identity Is Additive
+
+Status: Accepted
+
+Context:
+
+- Tracks can come from external APIs, browser-local files, podcasts, tracker pages, and future server uploads.
+- Existing playback, routes, DOM data attributes, and API calls depend heavily on `track.id`.
+
+Decision:
+
+- Keep `track.id` as the compatibility/playback identifier.
+- Add `track.trackKey` plus `track.source` for source-aware persistence, favorites, playlists, sync, and future metadata overrides.
+- Store source-aware track snapshots in additive IndexedDB stores rather than replacing existing stores.
+
+Consequences:
+
+- New persistence code should compare tracks by `trackKey` when available and fall back to legacy `id`.
+- Existing stores and PocketBase JSON fields remain compatible and must not be renamed without a separate migration plan.
+- Metadata overrides may be stored by `trackKey`, but no editing UI or automatic override behavior is implied yet.
+
+Affected areas:
+
+- `js/track-model.ts`
+- `js/db.js`
+- `js/accounts/pocketbase.js`
+- `js/api.js`
+- `js/metadata.js`

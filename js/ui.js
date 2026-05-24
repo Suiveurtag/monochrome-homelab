@@ -5104,6 +5104,9 @@ export class UIRenderer {
                             removeBtn.title = 'Remove from playlist';
                             removeBtn.innerHTML = SVG_BIN(20);
                             removeBtn.dataset.trackId = currentTracks[index].id;
+                            if (currentTracks[index].trackKey) {
+                                removeBtn.dataset.trackKey = currentTracks[index].trackKey;
+                            }
                             removeBtn.dataset.type = currentTracks[index].type || 'track';
 
                             const menuBtn = actionsDiv.querySelector('.track-menu-btn');
@@ -6919,7 +6922,7 @@ export class UIRenderer {
             };
 
             if (likeBtn) {
-                const isLiked = await db.isFavorite('track', track.id);
+                const isLiked = await db.isFavorite('track', track);
                 likeBtn.innerHTML = this.createHeartIcon(isLiked);
                 likeBtn.classList.toggle('active', isLiked);
             }

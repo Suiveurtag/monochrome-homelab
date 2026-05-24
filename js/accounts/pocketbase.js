@@ -2,6 +2,7 @@
 import PocketBase from 'pocketbase';
 import { db } from '../db.js';
 import { authManager } from './auth.js';
+import { minifyHybridTrack } from '../track-model.ts';
 
 const PUBLIC_COLLECTION = 'public_playlists';
 const DEFAULT_POCKETBASE_URL = 'https://data.samidy.xyz';
@@ -179,7 +180,7 @@ const syncManager = {
         let library = this.safeParseInternal(record.library, 'library', {});
 
         const pluralType = type === 'mix' ? 'mixes' : `${type}s`;
-        const key = type === 'playlist' ? item.uuid : item.id;
+        const key = type === 'playlist' ? item.uuid : type === 'track' ? item.trackKey || item.id : item.id;
 
         if (!library[pluralType]) {
             library[pluralType] = {};
@@ -203,35 +204,7 @@ const syncManager = {
         };
 
         if (type === 'track') {
-            return {
-                ...base,
-                title: item.title || null,
-                duration: item.duration || null,
-                explicit: item.explicit || false,
-                artist: item.artist || (item.artists && item.artists.length > 0 ? item.artists[0] : null) || null,
-                artists: item.artists?.map((a) => ({ id: a.id, name: a.name || null })) || [],
-                album: item.album
-                    ? {
-                          id: item.album.id,
-                          title: item.album.title || null,
-                          cover: item.album.cover || null,
-                          releaseDate: item.album.releaseDate || null,
-                          vibrantColor: item.album.vibrantColor || null,
-                          artist: item.album.artist || null,
-                          numberOfTracks: item.album.numberOfTracks || null,
-                      }
-                    : null,
-                copyright: item.copyright || null,
-                isrc: item.isrc || null,
-                trackNumber: item.trackNumber || null,
-                streamStartDate: item.streamStartDate || null,
-                version: item.version || null,
-                mixes: item.mixes || null,
-                isPodcast: item.isPodcast || (item.id && String(item.id).startsWith('podcast_')) || null,
-                enclosureUrl: item.enclosureUrl || null,
-                enclosureType: item.enclosureType || null,
-                enclosureLength: item.enclosureLength || null,
-            };
+            return minifyHybridTrack({ ...base, ...item });
         }
 
         if (type === 'video') {
@@ -593,7 +566,7 @@ const syncManager = {
                     if (!history) history = [];
 
                     const mergeItem = (collection, item, type) => {
-                        const id = type === 'playlist' ? item.uuid || item.id : item.id;
+                        const id = type === 'playlist' ? item.uuid || item.id : type === 'track' ? item.trackKey || item.id : item.id;
                         if (!collection[id]) {
                             collection[id] = this._minifyItem(type, item);
                             needsUpdate = true;

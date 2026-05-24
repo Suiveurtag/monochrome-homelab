@@ -34,6 +34,7 @@ import {
     PreparedVideo,
     PreparedTrack,
 } from './container-classes.js';
+import { withTrackIdentity } from './track-model.ts';
 
 export const DASH_MANIFEST_UNAVAILABLE_CODE = 'DASH_MANIFEST_UNAVAILABLE';
 export { resolveDownloadTotalBytes };
@@ -312,6 +313,10 @@ export class LosslessAPI {
             normalized.audioQuality = derivedQuality;
         }
 
+        normalized = withTrackIdentity({
+            ...normalized,
+            source: normalized.source || { kind: 'external', provider: 'tidal', sourceId: String(normalized.id) },
+        });
         normalized.isUnavailable = isTrackUnavailable(normalized);
 
         return normalized.type == 'video' ? new PreparedVideo(normalized) : new PreparedTrack(normalized);

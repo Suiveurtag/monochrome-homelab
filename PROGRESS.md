@@ -7,53 +7,71 @@ This is the living handoff file for multi-session Codex work. Keep it current, c
 - Date: 2026-05-24
 - Branch: main
 - Last known commit: 874a9e6
-- Current milestone: M1 - Safety Net Inventory
+- Current milestone: M5a - Core Musique Hybride
 - Risk level: Medium
 
-The repo is prepared for a behavior-preserving multi-day refactor. A documentation-only audit pass has mapped current auth, PocketBase, Appwrite legacy surface, music API, player, storage, routing, sidebar, UI, and deployment boundaries. No application behavior has intentionally changed.
+The repo now has an additive hybrid track identity layer. Existing `track.id` playback/route behavior is preserved, while persisted tracks can carry source-aware `trackKey` and `source` metadata for external API tracks, browser-local files, podcasts, tracker tracks, future server uploads, favorites, playlists, sync, and future metadata overrides.
 
 ## Active Milestone
 
-M1 - Safety Net Inventory
+M5a - Core Musique Hybride
 
 Goal:
 
-- Identify behavior contracts that need tests or manual smoke coverage before major extractions.
+- Create a stable source-aware track identity and snapshot persistence boundary without replacing `track.id`.
 
 Success criteria:
 
-- Current tests and gaps are inventoried for routing, storage, auth sync, player, downloads, settings, search, sidebar, deploy/functions, and key UI behavior.
-- Existing tests are run if the environment allows.
-- Failing or skipped checks are recorded with reasons.
-- No app code behavior is changed.
+- Hybrid track helpers exist and are covered by focused tests.
+- IndexedDB v12 adds `track_catalog`, `track_metadata_overrides`, and `favorites_track_refs`.
+- Favorites, playlists, export/import, and PocketBase minification preserve `trackKey` and `source`.
+- Existing playback identifiers remain compatible.
 
 In scope:
 
-- Test and risk inventory.
-- Documentation updates for the test strategy.
+- Source-aware track identity.
+- Additive DB stores.
+- Legacy-compatible favorites/playlists.
+- Documentation updates.
 
 Out of scope:
 
-- Source code refactors.
+- Server upload implementation.
+- Metadata override UI.
+- Route redesign.
+- Provider strategy changes.
 - Formatting churn.
-- Dependency changes.
-- Behavior changes.
 
 ## Last Session Handoff
 
 Changes:
 
-- Documented the technical audit findings across architecture, milestones, decisions, and progress.
-- Recorded Better Auth as the active browser auth boundary, PocketBase as the current cloud sync/profile/public playlist boundary, and Appwrite as legacy/residual until an explicit decision changes that.
-- Reordered the recommended refactor milestones around observed risk: safety inventory, bootstrap/routing, storage contracts, auth/PocketBase, search/API, player, UI/sidebar/pages, then deploy/functions/downloads.
+- Added `js/track-model.ts` with `trackKey`, `source`, hybrid track minification, override application, and source-aware comparison helpers.
+- Added IndexedDB v12 stores: `track_catalog`, `track_metadata_overrides`, and `favorites_track_refs`.
+- Updated track favorites, history, playlists, export/import, PocketBase sync minification, API track preparation, local metadata reads, and high-value like/remove call sites to preserve or use hybrid track identity.
+- Added focused tests for hybrid track identity and DB persistence behavior.
+- Documented the new hybrid music core boundary.
 
 Why:
 
-- Future sessions need source-grounded audit context before starting behavior-preserving extractions.
-- The account/cloud/music/player/storage surfaces are tightly coupled and should be refactored only after their contracts are inventoried and tested.
+- Future external/local/server-upload tracks need a stable persisted identity without breaking route/player compatibility.
+- Favorites and playlists need to support multiple sources with overlapping legacy `id` values.
 
 Files touched:
 
+- `js/track-model.ts`
+- `js/tests/track-model.test.ts`
+- `js/tests/db.test.js`
+- `js/db.js`
+- `js/accounts/pocketbase.js`
+- `js/api.js`
+- `js/metadata.js`
+- `js/app.js`
+- `js/ui.js`
+- `js/events.js`
+- `js/ui-interactions.js`
+- `js/commandPalette.js`
+- `js/settings.js`
 - `PROGRESS.md`
 - `docs/ARCHITECTURE.md`
 - `docs/MILESTONES.md`
@@ -61,20 +79,29 @@ Files touched:
 
 Verification:
 
-- `git diff -- docs/ARCHITECTURE.md docs/MILESTONES.md docs/DECISIONS.md PROGRESS.md` produced no output because these docs are currently untracked.
-- `git status --short --branch` showed only `AGENTS.md`, `PROGRESS.md`, and `docs/` as untracked.
-- No app tests were run because no app code was changed.
+- `node --check js/db.js` passed.
+- `node --check js/accounts/pocketbase.js` passed.
+- `node --check js/api.js` passed.
+- `node --check js/metadata.js` passed.
+- `node --check js/app.js` passed.
+- `node --check js/events.js` passed.
+- `node --check js/ui-interactions.js` passed.
+- `node --check js/ui.js` passed.
+- `node --check js/commandPalette.js` passed.
+- `git diff --check` passed with only line-ending normalization warnings.
+- `bun run test -- js/tests/track-model.test.ts js/tests/db.test.js` could not run because `bun` is not installed in this environment.
+- `npm.cmd run test -- js/tests/track-model.test.ts js/tests/db.test.js` could not run because local dependencies are not installed (`vitest` not found).
 
 Known risks:
 
-- Audit findings are based on static source inspection and should be validated with M1 tests/smokes before source refactors.
-- Appwrite remains present in docs/UI/config but is not the observed active frontend auth client; avoid opportunistic removal.
-- Normal production audio stream resolution depends on Qobuz-by-ISRC after TIDAL metadata lookup; playback and download refactors must preserve this observed behavior.
-- PocketBase sync uses legacy `firebase_id` and JSON-shaped fields; shape changes need an explicit migration plan.
+- Focused tests were added but not executed here because dependencies are unavailable.
+- Many UI surfaces still pass only legacy `id` into `isFavorite`; this is intentionally supported as fallback but less precise for non-TIDAL sources.
+- Browser-local tracks still cannot serialize live `File` handles into cloud sync; local snapshots are metadata-only.
+- Normal production audio stream resolution still depends on Qobuz-by-ISRC after TIDAL metadata lookup and must remain protected.
 
 ## Next Exact Step
 
-Inventory existing test coverage and gaps for M1: routing, storage/IndexedDB/localStorage, auth sync/PocketBase, player/playback, search/API, sidebar/side-panel, downloads/settings, deploy/functions, and key UI behavior. Record which checks can run locally before any source refactor starts.
+Install project dependencies or run in an environment with them available, then execute `bun run test -- js/tests/track-model.test.ts js/tests/db.test.js` followed by `bun run test`, `bun run lint`, and `bun run build`. If tests pass, manually smoke API playback, liking/unliking, playlist add/remove, public playlists, and browser-local playback.
 
 ## Open Questions / Blockers
 
@@ -107,6 +134,18 @@ Append new entries here.
 | 2026-05-24 | `git diff --stat --cached` | Pass | No staged changes; no source behavior changes staged. |
 | 2026-05-24 | `git diff -- docs/ARCHITECTURE.md docs/MILESTONES.md docs/DECISIONS.md PROGRESS.md` | Pass | No output because the documentation files are untracked. |
 | 2026-05-24 | `git status --short --branch` | Pass | Only `AGENTS.md`, `PROGRESS.md`, and `docs/` are untracked; no source files changed. |
+| 2026-05-24 | `bun run test -- js/tests/track-model.test.ts js/tests/db.test.js` | Skipped | `bun` is not installed in this environment. |
+| 2026-05-24 | `npm.cmd run test -- js/tests/track-model.test.ts js/tests/db.test.js` | Skipped | Local dependencies are not installed; `vitest` was not found. |
+| 2026-05-24 | `node --check js/db.js` | Pass | Syntax check only. |
+| 2026-05-24 | `node --check js/accounts/pocketbase.js` | Pass | Syntax check only. |
+| 2026-05-24 | `node --check js/api.js` | Pass | Syntax check only. |
+| 2026-05-24 | `node --check js/metadata.js` | Pass | Syntax check only. |
+| 2026-05-24 | `node --check js/app.js` | Pass | Syntax check only. |
+| 2026-05-24 | `node --check js/events.js` | Pass | Syntax check only. |
+| 2026-05-24 | `node --check js/ui-interactions.js` | Pass | Syntax check only. |
+| 2026-05-24 | `node --check js/ui.js` | Pass | Syntax check only. |
+| 2026-05-24 | `node --check js/commandPalette.js` | Pass | Syntax check only. |
+| 2026-05-24 | `git diff --check` | Pass | Only line-ending normalization warnings. |
 
 ## Milestone History
 
@@ -115,3 +154,4 @@ Append completed milestones here.
 | Milestone | Date | Summary | Verification |
 | --- | --- | --- | --- |
 | M0 - Documentation baseline | 2026-05-24 | Internal docs added for Codex continuity. | Documentation-only status check passed. |
+| M5a - Core Musique Hybride | 2026-05-24 | Added additive source-aware track identity and persistence boundary. | JS syntax checks passed; test execution blocked by missing dependencies. |

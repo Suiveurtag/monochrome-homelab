@@ -331,7 +331,7 @@ export function initializeUIInteractions(player, api, ui) {
             if (contextMenu) {
                 const track = player.getCurrentQueue()[index];
                 if (track) {
-                    const isLiked = await db.isFavorite('track', track.id);
+                    const isLiked = await db.isFavorite('track', track);
                     const likeItem = contextMenu.querySelector('li[data-action="toggle-like"]');
                     if (likeItem) {
                         likeItem.textContent = isLiked ? 'Unlike' : 'Like';
@@ -459,7 +459,7 @@ export function initializeUIInteractions(player, api, ui) {
             const track = currentQueue[index];
             const likeBtn = item.querySelector('.queue-like-btn');
             if (likeBtn && track) {
-                const isLiked = await db.isFavorite('track', track.id);
+                const isLiked = await db.isFavorite('track', track);
                 likeBtn.classList.toggle('active', isLiked);
                 likeBtn.innerHTML = isLiked ? SVG_HEART_FILLED(20) : SVG_HEART(20);
             }

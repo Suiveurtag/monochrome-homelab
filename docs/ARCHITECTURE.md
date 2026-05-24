@@ -88,6 +88,7 @@ API and media:
 
 - `js/api.js`, `js/music-api.js`, and `js/HiFi.ts` handle provider access, API instance selection, caching, stream preparation, manifests, and media data shaping.
 - `js/container-classes.ts` defines track/album/playback-related classes used by the API layer.
+- `js/track-model.ts` defines the additive hybrid track identity contract. `track.id` remains the playback/route compatibility identifier, while `trackKey` and `source` identify persisted tracks across external APIs, browser-local files, podcasts, tracker tracks, and future server uploads.
 - `MusicAPI` is the app-facing facade. It currently routes most calls to `LosslessAPI`/TIDAL and podcast calls to `PodcastsAPI`.
 - `LosslessAPI.fetchWithRetry()` tries native `HiFiClient` routes for non-streaming requests, falls back to configured HiFi API instances, and uses configured streaming/Qobuz instances where appropriate.
 - `LosslessAPI.getStreamUrl()` resolves normal production audio through Qobuz by TIDAL ISRC. If no ISRC or Qobuz stream is available, playback reports a missing audio source.
@@ -110,9 +111,11 @@ Other feature areas:
 IndexedDB:
 
 - Database name: `MonochromeDB`.
-- Current version observed: `11`.
+- Current version observed: `12`.
 - Stores include `favorites_tracks`, `favorites_videos`, `favorites_albums`, `favorites_artists`, `favorites_playlists`, `favorites_mixes`, `history_tracks`, `user_playlists`, `user_folders`, `settings`, and `pinned_items`.
+- Hybrid music stores include `track_catalog`, `track_metadata_overrides`, and `favorites_track_refs`.
 - Key paths are part of the contract: most favorites use `id`, favorite playlists use `uuid`, history uses `timestamp`, user playlists/folders use `id`, and pinned items use `id`.
+- Hybrid track snapshots use `trackKey`; favorites track refs also use `trackKey`.
 - Store names, key paths, indexes, and persisted item shapes must be preserved unless a milestone includes an explicit migration plan.
 - Playlist lazy migrations in `getPlaylists()` update `numberOfTracks` and image collage metadata during reads, so read paths can write.
 
@@ -182,6 +185,7 @@ Preserve these during behavior-preserving refactors:
 - Media element setup and audio/video switching behavior.
 - Queue, shuffle, repeat, autoplay/radio, and playback quality behavior.
 - Search result normalization, TIDAL provider-prefixed IDs, Qobuz-by-ISRC stream resolution, and API fallback behavior.
+- Hybrid track identity: keep `id` playable and source-specific persistence under `trackKey` plus `source`.
 - Download output naming, metadata, lyrics inclusion, archive generation, and cancellation/progress behavior.
 - Sidebar collapse/order/visibility, pinned item rendering, queue/lyrics side panel behavior, and search history behavior.
 - PWA install/update/cache behavior.
