@@ -27,6 +27,59 @@ The 2026-05-24 technical audit observed these current boundaries:
 - The player combines queue state, media element switching, Shaka/DASH, HLS video, replay gain, preloading, Media Session, Android foreground service integration, radio/autoplay, and Safari/iOS behavior.
 - Deployment currently combines Vite build plugins, Cloudflare Pages Functions, Docker/Nginx static serving, optional Docker PocketBase, and Capacitor native shells.
 
+## Self-Hosted Contract Map
+
+This map captures the current contracts that the self-hosted roadmap must preserve or intentionally migrate.
+
+Track sources:
+
+- External catalog tracks are still the default path. They use `source.kind === "external"`, usually `provider: "tidal"`, keep `track.id` as the playback and route identifier, and resolve normal production audio through TIDAL/HiFi metadata plus Qobuz-by-ISRC stream lookup.
+- Browser-local tracks are metadata snapshots for files selected in the browser. They use `source.kind === "browser-local"` and may retain live `File`/`Blob` handles only in the current browser session, so cloud sync cannot make them portable.
+- Prototype uploaded tracks use `source.kind === "server-local"`, `track.id === uploadId`, `trackKey === v1:server-local:none:<uploadId>`, and `playback.mode === "remote-url"` with tokenized `/uploads/:id/stream` URLs.
+- `server-upload` remains accepted by `js/track-model.ts` and tests as a compatibility source kind for earlier planned upload data; new local filesystem uploads should use `server-local` until a later checkpoint migrates the model.
+- Podcasts and tracker tracks remain source-aware through `source.kind === "podcast"` and `source.kind === "tracker"` and should continue to bypass normal TIDAL/Qobuz stream assumptions.
+
+Auth and account boundary:
+
+- Better Auth is the browser session authority through `js/accounts/auth.js` and `js/accounts/config.js`.
+- `authManager` normalizes Better Auth users to expose legacy `$id`; existing sync, profile, listening-party, and upload code depend on that shape.
+- A localhost-only dev session exists behind `monochrome-dev-auth` and the account-page test button. It is a development fallback, not a production auth model.
+- PocketBase remains the cloud profile/sync/public playlist boundary. User records live in `DB_users`, keyed by legacy `firebase_id` values that currently receive Better Auth user ids.
+
+Storage boundary:
+
+- IndexedDB `MonochromeDB` is currently version `12`; store names, key paths, indexes, and persisted shapes are compatibility contracts.
+- Legacy stores such as `favorites_tracks`, `history_tracks`, and `user_playlists` remain authoritative for existing data and sync compatibility.
+- Hybrid stores `track_catalog`, `track_metadata_overrides`, and `favorites_track_refs` add source-aware identity without replacing legacy stores.
+- `localStorage` keys owned by `js/storage.js` and direct call sites remain compatibility contracts, especially API instances, playback settings, auth overrides, sidebar state, search history, and PWA settings.
+
+Local upload boundary:
+
+- `server/uploads/server.mjs` is a separate Node prototype server, not a Cloudflare Pages Function or final production storage layer.
+- Upload/list endpoints require `x-monochrome-user-id`; stream endpoints use per-track tokens because media elements cannot send custom auth headers.
+- Files and `manifest.json` are stored under `.storage/server-uploads/<hashed-user-id>` by default, configurable through `MONOCHROME_UPLOAD_STORAGE`.
+- Metadata is currently filename-derived: title, unknown artist, unknown duration, default artwork. Rich metadata extraction and artwork storage remain future work.
+
+Favorites and playlists:
+
+- Favorites write both legacy `favorites_tracks` snapshots and source-aware `favorites_track_refs` when object tracks expose `trackKey`.
+- Favorite reads must keep legacy id fallback because many UI paths still pass only an id string.
+- Playlists preserve object tracks with `trackKey`/`source` when available, dedupe/remove by `trackKey`, and fall back to legacy `id`.
+- PocketBase sync may carry uploaded-track metadata snapshots and local stream URLs, but it does not sync uploaded audio files.
+
+Social state:
+
+- Profiles, public playlists, theme store authorship, and listening parties currently use PocketBase-backed flows.
+- Listening parties still allow guest-like fallback ids in some paths; mandatory self-hosted auth and approval are future checkpoints.
+- There is no self-hosted account approval, admin management, chat, invitation, or server-side social store yet.
+
+Known limits:
+
+- The self-hosted backend does not yet exist as a unified server; only the local upload prototype server exists.
+- Uploaded audio storage is local and non-portable across users or devices unless the same server and tokenized stream URL remain available.
+- Full lint still has broader pre-existing `js/app.js` debt outside the upload work.
+- Localhost development can show expected remote auth/API CORS failures and existing Shaka warnings unrelated to upload storage.
+
 ## Runtime Startup Flow
 
 At runtime:

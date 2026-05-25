@@ -67,6 +67,8 @@ Do checkpoints 1 to 5 first to stabilize the model and self-hosted storage direc
 
 ## Checkpoint 1 - Map Current Contracts
 
+Status: Complete
+
 Objective:
 
 Create a concise technical map of current contracts before larger changes: track sources, auth, storage, local uploads, playlists, favorites, social state, and known limits.
@@ -90,6 +92,7 @@ Risks:
 Stop criteria:
 
 - A future session can understand the contracts to preserve without reading the whole repo.
+- Completed in `docs/ARCHITECTURE.md` under "Self-Hosted Contract Map".
 
 Out of scope:
 

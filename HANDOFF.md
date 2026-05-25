@@ -19,9 +19,9 @@ Only read `PROGRESS.md`, `docs/ARCHITECTURE.md`, `docs/MILESTONES.md`, or `docs/
 
 ## Last Completed Milestone
 
-Local Uploads Serveur prototype is complete.
+Self-Hosted Checkpoint 1 - Map Current Contracts is complete.
 
-It added a non-production local filesystem upload server plus minimal Library UI so signed-in users can upload audio files, list them as tracks, play them through direct `/stream` URLs, and persist them with the existing `trackKey`/`source` model.
+It added a concise contract map to `docs/ARCHITECTURE.md` for the self-hosted roadmap: track sources, auth, storage, local uploads, favorites/playlists, social state, and known limits. The previous Local Uploads Serveur prototype remains complete and committed.
 
 ## Core Musique Hybride Changes
 
@@ -110,9 +110,9 @@ Last known results:
 
 ## Next Recommended Milestone
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete the next small checkpoint.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 2 - Stabilize The Music Source Model.
 
-Otherwise, manually smoke local uploads in the running app with real auth and audio:
+For extra runtime confidence before deeper upload work, manually smoke local uploads in the running app with real auth and audio:
 
 - Start `bun run dev` or `npm run dev`.
 - In another shell start `bun run dev:uploads` or `npm run dev:uploads`.

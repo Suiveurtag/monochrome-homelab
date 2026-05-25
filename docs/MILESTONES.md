@@ -221,6 +221,27 @@ Required checks:
 - Build.
 - Manual or Playwright smoke for Library upload/list/playback.
 
+### Self-Hosted Checkpoint 1 - Map Current Contracts
+
+Status: Complete
+
+Goal:
+
+- Create a concise contract map for the self-hosted roadmap before larger backend and source-model changes.
+
+Scope:
+
+- Document current track sources, auth/account boundaries, storage boundaries, local uploads, favorites/playlists, social state, and known limits.
+
+Non-goals:
+
+- No runtime changes.
+- No new server implementation.
+
+Required checks:
+
+- Documentation-only review.
+
 ### M6 - Player And Media Boundary
 
 Status: Planned
