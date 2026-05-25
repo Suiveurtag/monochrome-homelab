@@ -279,3 +279,30 @@ Affected areas:
 - `.env.example`
 - `package.json`
 - `docs/ARCHITECTURE.md`
+
+## 2026-05-25 - Server Upload Storage Uses Structured Filesystem Layout
+
+Status: Accepted
+
+Context:
+
+- The prototype upload server originally stored files and `manifest.json` directly under each hashed user directory.
+- The self-hosted roadmap needs local filesystem storage that can grow to audio blobs, artwork, metadata, indexes, search, backup, and restore without unsafe filename handling.
+
+Decision:
+
+- Put new uploaded audio blobs under sharded `audio/` paths generated from server upload ids, never from user filenames.
+- Store per-track JSON metadata under `metadata/tracks/`, per-user upload ordering under `indexes/users/`, and stream-token lookup records under `indexes/streams/`.
+- Keep the legacy per-user `manifest.json` shape readable as a fallback, but write new uploads only to the structured layout.
+
+Consequences:
+
+- Existing upload/list/stream frontend behavior stays compatible while backend storage becomes ready for future metadata indexing and backup tooling.
+- User filenames remain metadata only and are not trusted as path segments.
+- Full migration, deletion, quotas, artwork extraction, and metadata parsing remain later checkpoints.
+
+Affected areas:
+
+- `server/storage/filesystem-library.mjs`
+- `server/uploads/server.mjs`
+- `docs/ARCHITECTURE.md`

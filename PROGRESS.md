@@ -8,37 +8,37 @@ For future Codex discussions, start with `HANDOFF.md` and `AGENTS.md`. Use this 
 
 - Date: 2026-05-25
 - Branch: main
-- Last known commit: ccdd30f
-- Current milestone: Self-Hosted Checkpoint 5 - Make Filesystem Storage Production-Ready (next)
+- Last known commit before current checkpoint: 9908f28
+- Current milestone: Self-Hosted Checkpoint 6 - Make Authentication Mandatory (next)
 - Risk level: Medium
 
 The repo now has an additive hybrid track identity layer plus a non-production local upload server prototype. Existing `track.id` playback/route behavior is preserved, while persisted tracks can carry source-aware `trackKey` and `source` metadata for external API tracks, browser-local files, podcasts, tracker tracks, and local server uploads.
 
-Self-Hosted Checkpoints 1 through 4 are complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map"; `js/track-model.ts` has additive future source kinds for `server-library`, `radio`, and `youtube-video` plus exported source normalization helpers; `js/server-library.js` is now the app-facing client boundary for future self-hosted library operations; and `server/selfhosted/server.mjs` is the minimal backend skeleton with config loading, data directories, `/health`, and auth placeholders.
+Self-Hosted Checkpoints 1 through 5 are complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map"; `js/track-model.ts` has additive future source kinds for `server-library`, `radio`, and `youtube-video` plus exported source normalization helpers; `js/server-library.js` is now the app-facing client boundary for future self-hosted library operations; `server/selfhosted/server.mjs` is the minimal backend skeleton with config loading, data directories, `/health`, and auth placeholders; and `server/storage/filesystem-library.mjs` now owns structured local filesystem storage for server-local uploads.
 
 `HANDOFF.md` is now the recommended first-read summary for future sessions; read `AGENTS.md` next, then consult the larger docs only if more detail is needed.
 
 ## Last Completed Self-Hosted Checkpoint
 
-Self-Hosted Checkpoint 4 - Define The Minimal Self-Hosted Backend
+Self-Hosted Checkpoint 5 - Make Filesystem Storage Production-Ready
 
 Goal:
 
-- Create the minimal homelab backend skeleton without replacing existing Cloudflare Pages or upload prototype behavior.
+- Move the local upload prototype from flat per-user manifest storage toward structured local filesystem storage for audio blobs, metadata, indexes, artwork, and temp files.
 
 Success criteria:
 
-- A local server starts and exposes `/health`.
-- Config/env values load.
-- Self-hosted filesystem data directories are created.
-- Auth boundary placeholders are explicit.
+- New uploaded files are written under safe deterministic sharded audio paths.
+- Track metadata and user upload ordering are stored as JSON indexes.
+- Stream token lookup no longer requires scanning every manifest for new uploads.
+- Existing prototype `manifest.json` uploads remain readable as a legacy fallback.
+- Upload/list/stream response contracts remain compatible with the current frontend.
 
 In scope:
 
-- `.env.example`
-- `package.json`
-- `server/selfhosted/config.mjs`
-- `server/selfhosted/server.mjs`
+- `server/storage/filesystem-library.mjs`
+- `server/storage/filesystem-library.test.mjs`
+- `server/uploads/server.mjs`
 - `docs/ARCHITECTURE.md`
 - `docs/SELF_HOSTED_CHECKPOINTS.md`
 - `docs/MILESTONES.md`
@@ -48,14 +48,19 @@ In scope:
 
 Out of scope:
 
-- Final upload storage.
-- Account approval implementation.
-- Admin, social, or production library backend endpoints.
+- Rich audio metadata extraction.
+- Artwork extraction/upload endpoints.
+- Deletion, quotas, backup/restore, or full legacy migration tooling.
+- Replacing the separate local upload prototype with the unified self-hosted backend.
 
 ## Last Session Handoff
 
 Changes:
 
+- Added `server/storage/filesystem-library.mjs`, a storage module for server-local uploads with sharded audio blobs, JSON track metadata, per-user indexes, stream token indexes, reserved artwork/tmp directories, and safe path resolution.
+- Added `server/storage/filesystem-library.test.mjs` covering structured upload storage and legacy manifest fallback.
+- Refactored `server/uploads/server.mjs` so upload/list/stream behavior delegates filesystem layout and token lookup to the storage module while keeping public API responses compatible.
+- Updated architecture, milestone, decision, handoff, and checkpoint roadmap docs for Self-Hosted Checkpoint 5.
 - Added `docs/SELF_HOSTED_CHECKPOINTS.md`, an autonomous checkpoint roadmap for evolving Monochrome into a self-hosted homelab music app.
 - Updated `HANDOFF.md` to point future sessions at the checkpoint roadmap when the user asks to continue the self-hosted plan.
 - Added `server/uploads/server.mjs`, a separate Node local upload server with health, upload, list, and tokenized stream endpoints.
@@ -72,6 +77,9 @@ Changes:
 
 Why:
 
+- Make local filesystem upload storage safer and more production-shaped before adding mandatory auth, admin approval, metadata editing, search, backup, or restore.
+- Keep user-provided filenames out of filesystem paths and prepare stable on-disk locations for future metadata/artwork/index work.
+- Preserve existing frontend upload/list/playback contracts and keep prior prototype manifest data readable.
 - Give future AI sessions a clear next-step mechanism so they can continue one checkpoint at a time without re-planning from scratch.
 - Prototype server uploads without committing to production storage.
 - Keep uploaded tracks compatible with the M5a hybrid identity model.
@@ -81,6 +89,8 @@ Files touched:
 
 - `HANDOFF.md`
 - `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `server/storage/filesystem-library.mjs`
+- `server/storage/filesystem-library.test.mjs`
 - `server/uploads/server.mjs`
 - `js/server-uploads.js`
 - `js/track-model.ts`
@@ -98,6 +108,11 @@ Files touched:
 
 Verification:
 
+- `node --check server/storage/filesystem-library.mjs server/uploads/server.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs` passed.
+- `node --test server/storage/filesystem-library.test.mjs` passed: 2 tests.
+- Direct upload server smoke passed with temp storage: health, upload, list, HEAD stream, and range stream.
+- `npm.cmd run build` passed with existing chunk/dynamic-import warnings.
+- `npm.cmd exec -- eslint server/storage/filesystem-library.mjs server/uploads/server.mjs` was skipped/blocked by the existing ESLint TypeScript project config excluding `server/**/*.mjs`.
 - Documentation-only checkpoint roadmap added; runtime validation not required for this file.
 - `node --check server/uploads/server.mjs js/server-uploads.js js/app.js js/ui.js js/events.js` passed.
 - Direct server smoke passed: health, upload, list, and HEAD stream.
@@ -110,6 +125,9 @@ Verification:
 
 Known risks:
 
+- The structured storage module keeps legacy manifests readable but does not migrate old files into the new layout.
+- Stream token indexes are local JSON files; future auth/deletion/backup checkpoints still need to define lifecycle rules.
+- Rich metadata/artwork extraction is still filename-only/default artwork.
 - Local Vite startup succeeds under Playwright, but localhost reports expected CORS failures for remote auth/API endpoints and an existing Shaka config warning for `streaming.jumpLargeGaps`.
 - Full lint still fails on broader existing `js/app.js` debt outside this milestone.
 - Many UI surfaces still pass only legacy `id` into `isFavorite`; this is intentionally supported as fallback but less precise for non-TIDAL sources.
@@ -123,9 +141,9 @@ Known risks:
 
 For future sessions, read `HANDOFF.md` and `AGENTS.md` first.
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 5 - Make Filesystem Storage Production-Ready.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 6 - Make Authentication Mandatory.
 
-If the user asks to continue the current local upload prototype, manually smoke real local uploads with real auth: run the app dev server plus `npm run dev:uploads`/`bun run dev:uploads`, upload a real audio file from Library > Local Files, play it, like/unlike it, add/remove it from a playlist, reload, and verify normal API playback still works.
+Before implementing Checkpoint 6, inspect `js/accounts/auth.js`, `js/accounts/config.js`, `js/app.js`, `js/ui.js`, account-page DOM in `index.html`, and the self-hosted auth placeholders. Keep the localhost-only `Use Test Session` path explicit and development-only.
 
 ## Open Questions / Blockers
 
@@ -199,6 +217,11 @@ Append new entries here.
 | 2026-05-25 | `node --check server/selfhosted/config.mjs server/selfhosted/server.mjs server/uploads/server.mjs` | Pass | Syntax checks passed for the self-hosted backend skeleton and existing upload server. |
 | 2026-05-25 | Self-hosted backend `/health` smoke | Pass | Started `createSelfHostedServer()` on an ephemeral port with temp data dir, fetched `/health`, verified `ok` and service name, then closed the server. |
 | 2026-05-25 | `npm.cmd run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings after adding the self-hosted backend skeleton. |
+| 2026-05-25 | `node --check server/storage/filesystem-library.mjs server/uploads/server.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs` | Pass | Syntax checks passed after extracting the upload storage module. |
+| 2026-05-25 | `node --test server/storage/filesystem-library.test.mjs` | Pass | 2 tests passed for structured upload storage and legacy manifest fallback. |
+| 2026-05-25 | Direct upload server smoke | Pass | Health, upload, list, HEAD stream, and range stream passed with an ephemeral structured storage directory. |
+| 2026-05-25 | `npm.cmd exec -- eslint server/storage/filesystem-library.mjs server/uploads/server.mjs` | Blocked | Existing ESLint TypeScript project config excludes `server/**/*.mjs`; syntax checks and Node tests covered the changed server modules. |
+| 2026-05-25 | `npm.cmd run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings after structured upload storage extraction. |
 
 ## Milestone History
 
@@ -213,3 +236,4 @@ Append completed milestones here.
 | Self-Hosted Checkpoint 2 - Stabilize The Music Source Model | 2026-05-25 | Added additive `server-library`, `radio`, and `youtube-video` source kinds plus exported source normalization helpers. | Focused track-model tests and targeted ESLint passed. |
 | Self-Hosted Checkpoint 3 - Prepare A Server Library Client Layer | 2026-05-25 | Added `js/server-library.js` and routed existing upload/list UI through it. | Syntax checks, targeted ESLint, and production build passed. |
 | Self-Hosted Checkpoint 4 - Define The Minimal Self-Hosted Backend | 2026-05-25 | Added minimal self-hosted backend config, data directories, `/health`, auth placeholders, env example, and dev script. | Server syntax checks, `/health` smoke, and production build passed. |
+| Self-Hosted Checkpoint 5 - Make Filesystem Storage Production-Ready | 2026-05-25 | Added structured local filesystem storage for server-local uploads with sharded audio, metadata, user indexes, stream indexes, and legacy manifest fallback. | Server syntax checks, Node storage tests, direct upload/list/stream smoke, and production build passed. |

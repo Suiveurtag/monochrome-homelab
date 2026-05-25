@@ -59,7 +59,8 @@ Local upload boundary:
 
 - `server/uploads/server.mjs` is a separate Node prototype server, not a Cloudflare Pages Function or final production storage layer.
 - Upload/list endpoints require `x-monochrome-user-id`; stream endpoints use per-track tokens because media elements cannot send custom auth headers.
-- Files and `manifest.json` are stored under `.storage/server-uploads/<hashed-user-id>` by default, configurable through `MONOCHROME_UPLOAD_STORAGE`.
+- New uploads are stored through `server/storage/filesystem-library.mjs` under a structured local filesystem layout: sharded audio blobs in `audio/`, JSON track metadata in `metadata/tracks/`, per-user indexes in `indexes/users/`, token lookup indexes in `indexes/streams/`, plus reserved `artwork/` and `tmp/` directories.
+- The storage root remains configurable through `MONOCHROME_UPLOAD_STORAGE`. The previous `.storage/server-uploads/<hashed-user-id>/manifest.json` prototype shape is still readable as a legacy fallback, but new writes use the structured layout.
 - Metadata is currently filename-derived: title, unknown artist, unknown duration, default artwork. Rich metadata extraction and artwork storage remain future work.
 
 Favorites and playlists:
@@ -223,7 +224,7 @@ Deployment:
 - Docker production builds with Bun and serves `dist/` through Nginx; Docker Compose can optionally run PocketBase via profile.
 - `nginx.conf` serves static assets directly and falls back app routes to `index.html`.
 - `server/selfhosted/server.mjs` is the minimal self-hosted backend skeleton. It loads config/env values, prepares data directories, exposes `/health`, and reserves auth endpoint space with placeholder responses.
-- `server/uploads/server.mjs` is a separate local Node dev server for the `server-local` upload prototype. It stores files under `.storage/server-uploads`, exposes upload/list/stream endpoints, and is not a Cloudflare Pages production storage design.
+- `server/uploads/server.mjs` is a separate local Node dev server for the `server-local` upload prototype. It now delegates filesystem layout, atomic blob/metadata writes, per-user indexes, and token stream lookup to `server/storage/filesystem-library.mjs`.
 - Frontend code should call `js/server-library.js` for self-hosted library behavior; `js/server-uploads.js` should remain the prototype transport adapter until the production backend replaces it.
 
 Native shells:

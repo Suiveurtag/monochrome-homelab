@@ -19,9 +19,9 @@ Only read `PROGRESS.md`, `docs/ARCHITECTURE.md`, `docs/MILESTONES.md`, or `docs/
 
 ## Last Completed Milestone
 
-Self-Hosted Checkpoint 4 - Define The Minimal Self-Hosted Backend is complete.
+Self-Hosted Checkpoint 5 - Make Filesystem Storage Production-Ready is complete.
 
-It added `server/selfhosted/server.mjs` plus `server/selfhosted/config.mjs` as a separate minimal self-hosted backend skeleton. The server loads env/config, prepares data directories, exposes `/health`, and reserves auth endpoint space with placeholder responses. The previous server library client, source-model, contract-map, and Local Uploads Serveur checkpoints remain complete and committed.
+It added `server/storage/filesystem-library.mjs` as the filesystem storage boundary for server-local uploads and refactored `server/uploads/server.mjs` to use it. New uploads now write sharded audio blobs, per-track metadata JSON, per-user indexes, stream-token indexes, and reserved artwork/tmp directories under `MONOCHROME_UPLOAD_STORAGE`, while legacy per-user `manifest.json` uploads remain readable. The previous minimal backend skeleton, server library client, source-model, contract-map, and Local Uploads Serveur checkpoints remain complete and committed.
 
 ## Core Musique Hybride Changes
 
@@ -42,6 +42,7 @@ It added `server/selfhosted/server.mjs` plus `server/selfhosted/config.mjs` as a
 ## Local Uploads Serveur Changes
 
 - Added `server/uploads/server.mjs`, a separate Node dev server for local filesystem uploads.
+- Added `server/storage/filesystem-library.mjs`, the structured filesystem storage layer used by the upload server.
 - Added `npm run dev:uploads` / `bun run dev:uploads` script entry.
 - Added `npm run dev:selfhost` / `bun run dev:selfhost` script entry for the minimal self-hosted backend.
 - Added `js/server-uploads.js` for client list/upload calls.
@@ -51,7 +52,9 @@ It added `server/selfhosted/server.mjs` plus `server/selfhosted/config.mjs` as a
 - Library > Local Files now has a minimal Server uploads panel with upload, refresh, count, and track list.
 - Player integration uses existing direct-audio handling via `audioUrl`/`remoteUrl`.
 - Favorites/playlists use existing object-track paths and preserve `trackKey`/`source`.
-- Files are stored under `.storage/server-uploads` by hashed user id; this is local prototype storage, not Cloudflare Pages production storage.
+- Upload storage root defaults to `.storage/server-uploads`; this is local prototype storage, not Cloudflare Pages production storage.
+- New server-local uploads use structured storage under `.storage/server-uploads` by default: `audio/`, `metadata/tracks/`, `indexes/users/`, `indexes/streams/`, `artwork/`, and `tmp/`.
+- Legacy `.storage/server-uploads/<hashed-user-id>/manifest.json` uploads remain listable and streamable as a fallback, but new writes do not use that shape.
 
 ## Decisions Not To Break
 
@@ -79,6 +82,7 @@ It added `server/selfhosted/server.mjs` plus `server/selfhosted/config.mjs` as a
 - `js/server-uploads.js`: local upload server client.
 - `js/server-library.js`: app-facing server library client wrapper over the prototype upload client.
 - `server/uploads/server.mjs`: non-production local filesystem upload server.
+- `server/storage/filesystem-library.mjs`: safe structured local filesystem storage for server-local upload blobs, metadata, user indexes, and stream-token indexes.
 - `server/selfhosted/server.mjs`: minimal self-hosted backend skeleton.
 - `server/selfhosted/config.mjs`: self-hosted env/config and data directory setup.
 - `PROGRESS.md`: detailed verification and latest handoff notes.
@@ -95,6 +99,7 @@ It added `server/selfhosted/server.mjs` plus `server/selfhosted/config.mjs` as a
 - On localhost, a visible `Use Test Session` button is available on the account page when no real account is signed in; it creates a dev-only fake user so uploads can be tested without Better Auth access.
 - Server upload metadata is basic: filename-derived title, unknown artist, unknown duration, no embedded artwork/tag extraction yet.
 - Uploaded audio file sync is out of scope; PocketBase playlist/favorite sync may contain metadata snapshots and local stream URLs that are not portable.
+- Structured upload storage does not yet include deletion, quotas, backup/restore, full legacy migration, or rich metadata/artwork extraction.
 
 ## Validation Commands
 
@@ -111,6 +116,11 @@ Last known results:
 - `npm.cmd exec -- vitest run --config=vite.config.ts js/tests/track-model.test.ts js/tests/db.test.js` passed: 16 tests.
 - `npm.cmd exec -- eslint js/track-model.ts js/server-uploads.js` passed.
 - `node --check server/uploads/server.mjs js/server-uploads.js js/app.js js/ui.js js/events.js` passed.
+- `node --check server/storage/filesystem-library.mjs server/uploads/server.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs` passed.
+- `node --test server/storage/filesystem-library.test.mjs` passed: 2 tests.
+- Direct upload server smoke passed after structured storage extraction: health, upload, list, HEAD stream, and range stream.
+- `npm.cmd run build` passed with existing chunk/dynamic-import warnings.
+- `npm.cmd exec -- eslint server/storage/filesystem-library.mjs server/uploads/server.mjs` is blocked by the existing ESLint TypeScript project config excluding `server/**/*.mjs`.
 - `npm.cmd run build` passed with existing chunk/dynamic-import warnings.
 - Direct server smoke passed: health, upload, list, and HEAD stream.
 - Playwright UI smoke passed: Library > Local Files shows Server uploads signed-out state, upload/list works with a test user, and clicking an uploaded WAV loads an audio `/stream` URL with `source.kind === "server-local"`.
@@ -118,16 +128,16 @@ Last known results:
 
 ## Next Recommended Milestone
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 5 - Make Filesystem Storage Production-Ready.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 6 - Make Authentication Mandatory.
 
-For extra runtime confidence before deeper upload work, manually smoke local uploads in the running app with real auth and audio:
+For extra runtime confidence before auth work, manually smoke local uploads in the running app with real auth and audio:
 
 - Start `bun run dev` or `npm run dev`.
 - In another shell start `bun run dev:uploads` or `npm run dev:uploads`.
 - Sign in, open Library > Local Files, upload a real audio file, play it, like/unlike it, add/remove it from a playlist, reload, and verify it still lists and plays.
 - Recheck normal API playback after the upload smoke.
 
-After that, decide whether to harden local upload metadata or move the storage backend toward production-ready R2/PocketBase files.
+After that, start the auth boundary work: inspect `js/accounts/auth.js`, `js/accounts/config.js`, `js/app.js`, `js/ui.js`, account-page DOM in `index.html`, and the self-hosted auth placeholders. Keep the localhost-only `Use Test Session` fallback explicit and development-only.
 
 ## Resume Instruction
 

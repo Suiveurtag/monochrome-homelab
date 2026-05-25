@@ -208,6 +208,8 @@ Out of scope:
 
 ## Checkpoint 5 - Make Filesystem Storage Production-Ready
 
+Status: Complete
+
 Objective:
 
 Move from the prototype `.storage/server-uploads` shape toward structured local filesystem storage for audio blobs, artwork, metadata, indexes, and configurable data directories.
@@ -236,6 +238,7 @@ Risks:
 Stop criteria:
 
 - Uploaded files are stored under safe deterministic paths, listable, streamable, and ready for future metadata indexing.
+- Completed by adding `server/storage/filesystem-library.mjs`, sharded audio blob paths, JSON track metadata, user indexes, stream token indexes, legacy manifest fallback, and focused storage tests.
 
 Out of scope:
 

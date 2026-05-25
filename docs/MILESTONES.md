@@ -316,6 +316,32 @@ Required checks:
 - Manual smoke of `/health`.
 - Production build.
 
+### Self-Hosted Checkpoint 5 - Make Filesystem Storage Production-Ready
+
+Status: Complete
+
+Goal:
+
+- Move the local upload prototype from per-user manifest storage toward a structured filesystem layout for production self-hosted audio storage.
+
+Scope:
+
+- Add a server storage module that owns safe local paths, sharded audio blobs, JSON track metadata, user indexes, stream token indexes, reserved artwork/tmp directories, and legacy manifest read fallback.
+- Keep upload/list/stream response contracts compatible for existing frontend code.
+
+Non-goals:
+
+- No rich metadata extraction.
+- No deletion/migration tooling.
+- No unified production backend route replacement.
+
+Required checks:
+
+- Syntax checks for server modules.
+- Node storage tests.
+- Manual upload/list/stream smoke.
+- Production build.
+
 ### M6 - Player And Media Boundary
 
 Status: Planned
