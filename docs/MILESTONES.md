@@ -369,6 +369,32 @@ Required checks:
 - Production build.
 - Manual/browser smoke for signed-out redirect and localhost test session.
 
+### Self-Hosted Checkpoint 7 - Add Admin Approval For Accounts
+
+Status: Complete
+
+Goal:
+
+- Add self-hosted account approval states and backend enforcement so new accounts require approval before use.
+
+Scope:
+
+- Add a JSON account store with `pending`, `approved`, `rejected`, and `disabled` states.
+- Bootstrap the first account, or configured bootstrap admin user id, as an approved admin.
+- Add self-hosted account/admin endpoints for current-account checks, account listing, and approval state updates.
+
+Non-goals:
+
+- No full admin dashboard.
+- No profile/social migration.
+- No replacement of Better Auth or PocketBase browser/session boundaries.
+
+Required checks:
+
+- Server account tests.
+- Syntax checks for touched server modules.
+- Production build.
+
 ### M6 - Player And Media Boundary
 
 Status: Planned

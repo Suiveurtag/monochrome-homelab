@@ -9,38 +9,38 @@ For future Codex discussions, start with `HANDOFF.md` and `AGENTS.md`. Use this 
 - Date: 2026-05-25
 - Branch: main
 - Last known commit before current checkpoint: d850835
-- Current milestone: Self-Hosted Checkpoint 7 - Add Admin Approval For Accounts (next)
+- Current milestone: Self-Hosted Checkpoint 8 - Add Admin Account Management (next)
 - Risk level: Medium
 
 The repo now has an additive hybrid track identity layer plus a non-production local upload server prototype. Existing `track.id` playback/route behavior is preserved, while persisted tracks can carry source-aware `trackKey` and `source` metadata for external API tracks, browser-local files, podcasts, tracker tracks, and local server uploads.
 
-Self-Hosted Checkpoints 1 through 6 are complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map"; `js/track-model.ts` has additive future source kinds for `server-library`, `radio`, and `youtube-video` plus exported source normalization helpers; `js/server-library.js` is now the app-facing client boundary for future self-hosted library operations; `server/selfhosted/server.mjs` is the minimal backend skeleton with config loading, data directories, `/health`, and auth placeholders; `server/storage/filesystem-library.mjs` now owns structured local filesystem storage for server-local uploads; and `js/auth-gate.js` gates configured self-hosted browser sessions behind `/account`.
+Self-Hosted Checkpoints 1 through 7 are complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map"; `js/track-model.ts` has additive future source kinds for `server-library`, `radio`, and `youtube-video` plus exported source normalization helpers; `js/server-library.js` is now the app-facing client boundary for future self-hosted library operations; `server/selfhosted/server.mjs` is the minimal backend skeleton with config loading, data directories, `/health`, and auth placeholders; `server/storage/filesystem-library.mjs` now owns structured local filesystem storage for server-local uploads; `js/auth-gate.js` gates configured self-hosted browser sessions behind `/account`; and `server/selfhosted/accounts.mjs` provides self-hosted account approval state.
 
 `HANDOFF.md` is now the recommended first-read summary for future sessions; read `AGENTS.md` next, then consult the larger docs only if more detail is needed.
 
 ## Last Completed Self-Hosted Checkpoint
 
-Self-Hosted Checkpoint 6 - Make Authentication Mandatory
+Self-Hosted Checkpoint 7 - Add Admin Approval For Accounts
 
 Goal:
 
-- Require authentication for configured self-hosted browser sessions while keeping the default public app ungated and the localhost test fallback explicit.
+- Add account approval states and backend enforcement so new self-hosted accounts require approval before use.
 
 Success criteria:
 
-- `MONOCHROME_AUTH_REQUIRED=true` is injected into the browser as `window.__MONOCHROME_AUTH_REQUIRED__`.
-- Signed-out users on protected app routes are redirected to `/account`.
-- `/account`, `/login`, `/login.html`, and `/reset-password` remain reachable.
-- Signed-in or localhost test-session users can navigate normally.
-- The `Use Test Session` fallback remains localhost-only.
+- Accounts can be `pending`, `approved`, `rejected`, or `disabled`.
+- The first account, or the configured bootstrap admin user id, becomes an approved admin.
+- Later accounts default to pending while approval is required.
+- Pending/disabled/rejected accounts are blocked by `/api/accounts/me`.
+- Admin account listing and status updates are available through backend endpoints.
 
 In scope:
 
-- `js/auth-gate.js`
-- `js/tests/auth-gate.test.js`
-- `js/accounts/auth.js`
-- `js/app.js`
-- `vite-plugin-auth-gate.js`
+- `.env.example`
+- `server/selfhosted/accounts.mjs`
+- `server/selfhosted/accounts.test.mjs`
+- `server/selfhosted/config.mjs`
+- `server/selfhosted/server.mjs`
 - `docs/ARCHITECTURE.md`
 - `docs/SELF_HOSTED_CHECKPOINTS.md`
 - `docs/MILESTONES.md`
@@ -50,15 +50,19 @@ In scope:
 
 Out of scope:
 
-- Admin approval workflow.
-- Server-side approval enforcement.
-- Full account management UI.
-- Auth provider redesign.
+- Full admin dashboard.
+- Profile/social migration.
+- Better Auth or PocketBase replacement.
 
 ## Last Session Handoff
 
 Changes:
 
+- Added `server/selfhosted/accounts.mjs`, a JSON account approval store with `pending`, `approved`, `rejected`, and `disabled` states.
+- Added `server/selfhosted/accounts.test.mjs` covering first-admin bootstrap, pending-account blocking, approval, and disabled-account blocking.
+- Updated `server/selfhosted/server.mjs` with `/api/accounts/me`, `/api/admin/accounts`, and `/api/admin/accounts/:userId` endpoints.
+- Updated `server/selfhosted/config.mjs` and `.env.example` with account storage and temporary admin/bootstrap config.
+- Updated architecture, milestone, decision, handoff, and checkpoint roadmap docs for Self-Hosted Checkpoint 7.
 - Added `js/auth-gate.js`, a pure client auth gate helper for explicit self-hosted mandatory auth.
 - Added `js/tests/auth-gate.test.js` covering config defaults, localhost detection, auth-route allowlist, and signed-out route redirects.
 - Updated `js/accounts/auth.js` to expose `authManager.ready`, reuse the shared localhost detector, refresh account UI after auth initialization, and show a self-hosted required-auth status message when configured.
@@ -85,6 +89,9 @@ Changes:
 
 Why:
 
+- Add the approval model needed before exposing admin account management UI.
+- Ensure new self-hosted users are pending by default and cannot pass `/api/accounts/me` until approved.
+- Provide a temporary admin-secret/admin-account backend path for account approval before the full admin dashboard exists.
 - Make self-hosted auth mandatory only for deployments that opt in through config, while preserving default/public app behavior.
 - Keep the auth boundary centralized so later admin approval work can build on it without scattering route checks.
 - Preserve localhost-only dev access through the existing test session path.
@@ -100,6 +107,11 @@ Files touched:
 
 - `HANDOFF.md`
 - `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `.env.example`
+- `server/selfhosted/accounts.mjs`
+- `server/selfhosted/accounts.test.mjs`
+- `server/selfhosted/config.mjs`
+- `server/selfhosted/server.mjs`
 - `js/auth-gate.js`
 - `js/tests/auth-gate.test.js`
 - `js/accounts/auth.js`
@@ -124,6 +136,9 @@ Files touched:
 
 Verification:
 
+- `node --check server/selfhosted/accounts.mjs server/selfhosted/accounts.test.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs` passed.
+- `node --test server/selfhosted/accounts.test.mjs` passed: 2 tests.
+- `npm.cmd run build` passed with existing chunk/dynamic-import warnings.
 - `node --check js/auth-gate.js js/accounts/auth.js js/app.js vite-plugin-auth-gate.js` passed.
 - `npm.cmd exec -- vitest run --config=vite.config.ts js/tests/auth-gate.test.js` passed: 3 tests.
 - `npm.cmd exec -- eslint js/auth-gate.js js/accounts/auth.js vite-plugin-auth-gate.js` passed.
@@ -146,7 +161,9 @@ Verification:
 
 Known risks:
 
-- Mandatory auth is currently a browser route boundary for configured self-hosted sessions; server-side account approval/admin enforcement is intentionally left for Checkpoints 7 and 8.
+- Admin account management UI is not implemented yet; account approvals currently use backend endpoints with `MONOCHROME_ADMIN_SECRET` or an approved admin account header.
+- The account store is JSON-file based and suitable for the current homelab checkpoint, but backup/restore and concurrent write hardening remain future work.
+- Mandatory auth is currently a browser route boundary for configured self-hosted sessions; account approval is enforced by the self-hosted `/api/accounts/me` backend endpoint, while full admin UI enforcement is left for Checkpoint 8.
 - `authManager.ready` is now awaited before initial app routing; this should reduce auth flicker but slightly ties first render to session-check completion.
 - The structured storage module keeps legacy manifests readable but does not migrate old files into the new layout.
 - Stream token indexes are local JSON files; future auth/deletion/backup checkpoints still need to define lifecycle rules.
@@ -164,9 +181,9 @@ Known risks:
 
 For future sessions, read `HANDOFF.md` and `AGENTS.md` first.
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 7 - Add Admin Approval For Accounts.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 8 - Add Admin Account Management.
 
-Before implementing Checkpoint 7, define the account state model (`pending`, `approved`, `rejected`, `disabled`) and bootstrap-admin behavior. Inspect `js/auth-gate.js`, `js/accounts/auth.js`, `server/selfhosted/server.mjs`, `server/selfhosted/config.mjs`, and the account page DOM in `index.html`.
+Before implementing Checkpoint 8, inspect `server/selfhosted/accounts.mjs`, `server/selfhosted/server.mjs`, `js/auth-gate.js`, `js/accounts/auth.js`, `js/app.js`, account page DOM in `index.html`, and existing settings/account UI patterns.
 
 ## Open Questions / Blockers
 
@@ -250,6 +267,9 @@ Append new entries here.
 | 2026-05-25 | `npm.cmd exec -- eslint js/auth-gate.js js/accounts/auth.js vite-plugin-auth-gate.js` | Pass | Targeted lint passed for newly touched auth boundary files. |
 | 2026-05-25 | `npm.cmd run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings after auth gate changes. |
 | 2026-05-25 | Browser smoke with `MONOCHROME_AUTH_REQUIRED=true` | Pass | Signed-out `/search/test` redirected to `/account`; localhost `Use Test Session` enabled normal `/search/test` navigation afterward. |
+| 2026-05-25 | `node --check server/selfhosted/accounts.mjs server/selfhosted/accounts.test.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs` | Pass | Syntax checks passed for account approval store, tests, and touched backend modules. |
+| 2026-05-25 | `node --test server/selfhosted/accounts.test.mjs` | Pass | 2 tests passed for first-admin bootstrap, pending blocking, approval, and disabled blocking. |
+| 2026-05-25 | `npm.cmd run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings after account approval backend changes. |
 
 ## Milestone History
 
@@ -266,3 +286,4 @@ Append completed milestones here.
 | Self-Hosted Checkpoint 4 - Define The Minimal Self-Hosted Backend | 2026-05-25 | Added minimal self-hosted backend config, data directories, `/health`, auth placeholders, env example, and dev script. | Server syntax checks, `/health` smoke, and production build passed. |
 | Self-Hosted Checkpoint 5 - Make Filesystem Storage Production-Ready | 2026-05-25 | Added structured local filesystem storage for server-local uploads with sharded audio, metadata, user indexes, stream indexes, and legacy manifest fallback. | Server syntax checks, Node storage tests, direct upload/list/stream smoke, and production build passed. |
 | Self-Hosted Checkpoint 6 - Make Authentication Mandatory | 2026-05-25 | Added opt-in self-hosted mandatory auth route guard, config injection, auth readiness wait, account redirect, and localhost-only test-session smoke. | Focused auth-gate tests, syntax checks, targeted ESLint, production build, and browser smoke passed. |
+| Self-Hosted Checkpoint 7 - Add Admin Approval For Accounts | 2026-05-25 | Added self-hosted account approval store, first-admin bootstrap, pending-by-default accounts, and account/admin endpoints. | Backend syntax checks, account approval tests, and production build passed. |

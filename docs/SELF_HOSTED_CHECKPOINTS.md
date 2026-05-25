@@ -286,6 +286,8 @@ Out of scope:
 
 ## Checkpoint 7 - Add Admin Approval For Accounts
 
+Status: Complete
+
 Objective:
 
 Add account states such as pending, approved, rejected, and disabled. Block unapproved accounts from app features.
@@ -312,6 +314,7 @@ Stop criteria:
 
 - A first admin can be bootstrapped.
 - New users require approval before use.
+- Completed by adding `server/selfhosted/accounts.mjs`, self-hosted `/api/accounts/me` and `/api/admin/accounts` endpoints, first-user/configured bootstrap admin behavior, pending-by-default new accounts, and account approval tests.
 
 Out of scope:
 

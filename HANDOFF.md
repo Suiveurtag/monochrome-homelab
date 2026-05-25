@@ -19,9 +19,9 @@ Only read `PROGRESS.md`, `docs/ARCHITECTURE.md`, `docs/MILESTONES.md`, or `docs/
 
 ## Last Completed Milestone
 
-Self-Hosted Checkpoint 6 - Make Authentication Mandatory is complete.
+Self-Hosted Checkpoint 7 - Add Admin Approval For Accounts is complete.
 
-It added `js/auth-gate.js` as the browser-side self-hosted auth boundary, injects `MONOCHROME_AUTH_REQUIRED` as `window.__MONOCHROME_AUTH_REQUIRED__` when explicitly configured, waits for auth initialization before initial routing, and redirects signed-out protected app routes to `/account`. The localhost-only `Use Test Session` fallback remains development-only. Checkpoint 5 structured upload storage and the previous minimal backend skeleton, server library client, source-model, contract-map, and Local Uploads Serveur checkpoints remain complete and committed.
+It added `server/selfhosted/accounts.mjs` as the self-hosted account approval store plus `/api/accounts/me`, `/api/admin/accounts`, and `/api/admin/accounts/:userId` endpoints. Accounts use `pending`, `approved`, `rejected`, and `disabled`; the first account, or `MONOCHROME_BOOTSTRAP_ADMIN_USER_ID` when configured, becomes approved admin; later accounts default to pending and are blocked while approval is required. Checkpoint 6 browser mandatory auth, checkpoint 5 structured upload storage, and the previous minimal backend skeleton, server library client, source-model, contract-map, and Local Uploads Serveur checkpoints remain complete and committed.
 
 ## Core Musique Hybride Changes
 
@@ -65,6 +65,7 @@ It added `js/auth-gate.js` as the browser-side self-hosted auth boundary, inject
 - Do not rename IndexedDB stores or PocketBase JSON fields without a migration plan.
 - Better Auth is the active browser auth boundary.
 - Mandatory self-hosted auth is opt-in through `MONOCHROME_AUTH_REQUIRED=true`; default/public app behavior remains ungated unless configured.
+- Self-hosted account approval is server-side JSON state under the self-hosted data directory; `MONOCHROME_ADMIN_SECRET` is a temporary bootstrap/admin API mechanism until the admin UI checkpoint.
 - PocketBase is the active cloud sync/profile/public playlist boundary.
 - Appwrite is legacy/residual; do not remove it opportunistically.
 - Preserve TIDAL/HiFi metadata lookup plus Qobuz-by-ISRC stream resolution.
@@ -86,6 +87,7 @@ It added `js/auth-gate.js` as the browser-side self-hosted auth boundary, inject
 - `server/storage/filesystem-library.mjs`: safe structured local filesystem storage for server-local upload blobs, metadata, user indexes, and stream-token indexes.
 - `server/selfhosted/server.mjs`: minimal self-hosted backend skeleton.
 - `server/selfhosted/config.mjs`: self-hosted env/config and data directory setup.
+- `server/selfhosted/accounts.mjs`: self-hosted account approval store and state helpers.
 - `PROGRESS.md`: detailed verification and latest handoff notes.
 - `js/auth-gate.js`: client-side mandatory auth route guard helpers.
 
@@ -102,7 +104,8 @@ It added `js/auth-gate.js` as the browser-side self-hosted auth boundary, inject
 - Server upload metadata is basic: filename-derived title, unknown artist, unknown duration, no embedded artwork/tag extraction yet.
 - Uploaded audio file sync is out of scope; PocketBase playlist/favorite sync may contain metadata snapshots and local stream URLs that are not portable.
 - Structured upload storage does not yet include deletion, quotas, backup/restore, full legacy migration, or rich metadata/artwork extraction.
-- Mandatory auth is currently a client-side route boundary; server-side account approval/admin enforcement starts in later checkpoints.
+- Mandatory auth is currently a client-side route boundary; account approval is enforced by the self-hosted `/api/accounts/me` endpoint, while full admin UI enforcement starts in Checkpoint 8.
+- Admin account management UI is not implemented yet; approval currently uses backend endpoints with `MONOCHROME_ADMIN_SECRET` or an approved admin account header.
 
 ## Validation Commands
 
@@ -129,13 +132,16 @@ Last known results:
 - `npm.cmd exec -- eslint js/auth-gate.js js/accounts/auth.js vite-plugin-auth-gate.js` passed.
 - Browser smoke with `MONOCHROME_AUTH_REQUIRED=true` passed: `/search/test` redirected to `/account`, localhost `Use Test Session` signed in, and `/search/test` rendered afterward.
 - `npm.cmd run build` passed with existing chunk/dynamic-import warnings.
+- `node --check server/selfhosted/accounts.mjs server/selfhosted/accounts.test.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs` passed.
+- `node --test server/selfhosted/accounts.test.mjs` passed: 2 tests.
+- `npm.cmd run build` passed with existing chunk/dynamic-import warnings.
 - Direct server smoke passed: health, upload, list, and HEAD stream.
 - Playwright UI smoke passed: Library > Local Files shows Server uploads signed-out state, upload/list works with a test user, and clicking an uploaded WAV loads an audio `/stream` URL with `source.kind === "server-local"`.
 - Broader ESLint on `js/app.js/js/ui.js/js/events.js` still fails on pre-existing `app.js` errors and warnings unrelated to this milestone.
 
 ## Next Recommended Milestone
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 7 - Add Admin Approval For Accounts.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 8 - Add Admin Account Management.
 
 For extra runtime confidence before auth work, manually smoke local uploads in the running app with real auth and audio:
 
@@ -144,7 +150,7 @@ For extra runtime confidence before auth work, manually smoke local uploads in t
 - Sign in, open Library > Local Files, upload a real audio file, play it, like/unlike it, add/remove it from a playlist, reload, and verify it still lists and plays.
 - Recheck normal API playback after the upload smoke.
 
-After that, start account approval work: define pending/approved/rejected/disabled account states, bootstrap first-admin behavior, and ensure unapproved accounts are blocked client-side and server-side.
+After that, build an admin account management UI/API client that can list users, approve/reject/disable accounts, and protect admin actions from non-admin users.
 
 ## Resume Instruction
 

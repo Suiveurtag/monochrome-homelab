@@ -47,6 +47,8 @@ Auth and account boundary:
 - `authManager` normalizes Better Auth users to expose legacy `$id`; existing sync, profile, listening-party, and upload code depend on that shape.
 - `js/auth-gate.js` defines the client-side mandatory-auth boundary for self-hosted deployments. When `window.__MONOCHROME_AUTH_REQUIRED__ === true`, signed-out app routes redirect to `/account`, while auth/reset routes remain accessible.
 - `vite-plugin-auth-gate.js` injects `window.__MONOCHROME_AUTH_REQUIRED__` only when `MONOCHROME_AUTH_REQUIRED` is explicitly present in the Vite environment, so the public/default app remains unchanged unless configured.
+- `server/selfhosted/accounts.mjs` defines self-hosted account approval states: `pending`, `approved`, `rejected`, and `disabled`. The first account, or `MONOCHROME_BOOTSTRAP_ADMIN_USER_ID` when configured, is bootstrapped as an approved admin; later accounts default to pending while approval is required.
+- The self-hosted backend exposes `/api/accounts/me`, `/api/admin/accounts`, and `/api/admin/accounts/:userId` for account state checks and temporary admin-secret/admin-account approval operations. The full admin dashboard is still a later checkpoint.
 - A localhost-only dev session exists behind `monochrome-dev-auth` and the account-page test button. It is a development fallback, not a production auth model.
 - PocketBase remains the cloud profile/sync/public playlist boundary. User records live in `DB_users`, keyed by legacy `firebase_id` values that currently receive Better Auth user ids.
 
@@ -226,6 +228,7 @@ Deployment:
 - Docker production builds with Bun and serves `dist/` through Nginx; Docker Compose can optionally run PocketBase via profile.
 - `nginx.conf` serves static assets directly and falls back app routes to `index.html`.
 - `server/selfhosted/server.mjs` is the minimal self-hosted backend skeleton. It loads config/env values, prepares data directories, exposes `/health`, and reserves auth endpoint space with placeholder responses.
+- `server/selfhosted/accounts.mjs` is the self-hosted account approval store. It writes JSON account state under the configured self-hosted data directory and is separate from the existing Better Auth/PocketBase browser boundaries.
 - `server/uploads/server.mjs` is a separate local Node dev server for the `server-local` upload prototype. It now delegates filesystem layout, atomic blob/metadata writes, per-user indexes, and token stream lookup to `server/storage/filesystem-library.mjs`.
 - Frontend code should call `js/server-library.js` for self-hosted library behavior; `js/server-uploads.js` should remain the prototype transport adapter until the production backend replaces it.
 

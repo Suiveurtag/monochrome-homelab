@@ -336,3 +336,33 @@ Affected areas:
 - `js/app.js`
 - `vite-plugin-auth-gate.js`
 - `docs/ARCHITECTURE.md`
+
+## 2026-05-25 - Self-Hosted Accounts Require Approval
+
+Status: Accepted
+
+Context:
+
+- Mandatory auth alone does not decide who is allowed to use a private self-hosted instance.
+- The roadmap needs account states and a bootstrap admin before a full admin dashboard exists.
+
+Decision:
+
+- Store self-hosted account state as JSON under the configured server data directory.
+- Use explicit account statuses: `pending`, `approved`, `rejected`, and `disabled`.
+- Bootstrap the first seen account as an approved admin unless `MONOCHROME_BOOTSTRAP_ADMIN_USER_ID` is configured, in which case that user id is the bootstrap admin.
+- Allow temporary account approval through a configured `MONOCHROME_ADMIN_SECRET` or an already approved admin account until the admin UI checkpoint exists.
+
+Consequences:
+
+- New accounts are blocked by `/api/accounts/me` while approval is required and their status is not `approved`.
+- The admin secret is a temporary homelab bootstrap mechanism and must be replaced or hidden behind UI/server authorization in later checkpoints.
+- Existing Better Auth/PocketBase browser account behavior is not removed or migrated by this checkpoint.
+
+Affected areas:
+
+- `server/selfhosted/accounts.mjs`
+- `server/selfhosted/server.mjs`
+- `server/selfhosted/config.mjs`
+- `.env.example`
+- `docs/ARCHITECTURE.md`

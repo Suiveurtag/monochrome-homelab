@@ -42,12 +42,15 @@ export function getSelfHostedConfig(overrides = {}) {
             artwork: join(dataDir, 'artwork'),
             metadata: join(dataDir, 'metadata'),
             indexes: join(dataDir, 'indexes'),
+            accounts: join(dataDir, 'accounts'),
             tmp: join(dataDir, 'tmp'),
         },
         auth: {
             required: process.env.MONOCHROME_AUTH_REQUIRED !== 'false',
             approvalRequired: process.env.MONOCHROME_AUTH_APPROVAL_REQUIRED !== 'false',
             provider: process.env.MONOCHROME_AUTH_PROVIDER || 'placeholder',
+            adminSecret: overrides.adminSecret || process.env.MONOCHROME_ADMIN_SECRET || null,
+            bootstrapAdminUserId: overrides.bootstrapAdminUserId || process.env.MONOCHROME_BOOTSTRAP_ADMIN_USER_ID || null,
         },
     };
 }
