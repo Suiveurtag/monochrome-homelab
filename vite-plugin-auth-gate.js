@@ -25,9 +25,13 @@ function buildInjectionScript(env) {
     const POCKETBASE_URL = env.POCKETBASE_URL;
     const AUTH_GOOGLE_ENABLED = env.AUTH_GOOGLE_ENABLED;
     const AUTH_EMAIL_ENABLED = env.AUTH_EMAIL_ENABLED;
+    const MONOCHROME_AUTH_REQUIRED = env.MONOCHROME_AUTH_REQUIRED;
 
     const flags = [];
     if (AUTH_ENABLED) flags.push('window.__AUTH_GATE__=true');
+    if (MONOCHROME_AUTH_REQUIRED !== undefined) {
+        flags.push(`window.__MONOCHROME_AUTH_REQUIRED__=${MONOCHROME_AUTH_REQUIRED !== 'false'}`);
+    }
     const authProviderOverrides = {};
     if (AUTH_GOOGLE_ENABLED !== undefined) {
         authProviderOverrides.google = AUTH_GOOGLE_ENABLED !== 'false';

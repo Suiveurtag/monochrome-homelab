@@ -19,9 +19,9 @@ Only read `PROGRESS.md`, `docs/ARCHITECTURE.md`, `docs/MILESTONES.md`, or `docs/
 
 ## Last Completed Milestone
 
-Self-Hosted Checkpoint 5 - Make Filesystem Storage Production-Ready is complete.
+Self-Hosted Checkpoint 6 - Make Authentication Mandatory is complete.
 
-It added `server/storage/filesystem-library.mjs` as the filesystem storage boundary for server-local uploads and refactored `server/uploads/server.mjs` to use it. New uploads now write sharded audio blobs, per-track metadata JSON, per-user indexes, stream-token indexes, and reserved artwork/tmp directories under `MONOCHROME_UPLOAD_STORAGE`, while legacy per-user `manifest.json` uploads remain readable. The previous minimal backend skeleton, server library client, source-model, contract-map, and Local Uploads Serveur checkpoints remain complete and committed.
+It added `js/auth-gate.js` as the browser-side self-hosted auth boundary, injects `MONOCHROME_AUTH_REQUIRED` as `window.__MONOCHROME_AUTH_REQUIRED__` when explicitly configured, waits for auth initialization before initial routing, and redirects signed-out protected app routes to `/account`. The localhost-only `Use Test Session` fallback remains development-only. Checkpoint 5 structured upload storage and the previous minimal backend skeleton, server library client, source-model, contract-map, and Local Uploads Serveur checkpoints remain complete and committed.
 
 ## Core Musique Hybride Changes
 
@@ -64,6 +64,7 @@ It added `server/storage/filesystem-library.mjs` as the filesystem storage bound
 - Keep legacy fallback by `id` for existing favorites, playlists, history, UI surfaces, and sync data.
 - Do not rename IndexedDB stores or PocketBase JSON fields without a migration plan.
 - Better Auth is the active browser auth boundary.
+- Mandatory self-hosted auth is opt-in through `MONOCHROME_AUTH_REQUIRED=true`; default/public app behavior remains ungated unless configured.
 - PocketBase is the active cloud sync/profile/public playlist boundary.
 - Appwrite is legacy/residual; do not remove it opportunistically.
 - Preserve TIDAL/HiFi metadata lookup plus Qobuz-by-ISRC stream resolution.
@@ -86,6 +87,7 @@ It added `server/storage/filesystem-library.mjs` as the filesystem storage bound
 - `server/selfhosted/server.mjs`: minimal self-hosted backend skeleton.
 - `server/selfhosted/config.mjs`: self-hosted env/config and data directory setup.
 - `PROGRESS.md`: detailed verification and latest handoff notes.
+- `js/auth-gate.js`: client-side mandatory auth route guard helpers.
 
 ## Known Risks
 
@@ -100,6 +102,7 @@ It added `server/storage/filesystem-library.mjs` as the filesystem storage bound
 - Server upload metadata is basic: filename-derived title, unknown artist, unknown duration, no embedded artwork/tag extraction yet.
 - Uploaded audio file sync is out of scope; PocketBase playlist/favorite sync may contain metadata snapshots and local stream URLs that are not portable.
 - Structured upload storage does not yet include deletion, quotas, backup/restore, full legacy migration, or rich metadata/artwork extraction.
+- Mandatory auth is currently a client-side route boundary; server-side account approval/admin enforcement starts in later checkpoints.
 
 ## Validation Commands
 
@@ -121,6 +124,10 @@ Last known results:
 - Direct upload server smoke passed after structured storage extraction: health, upload, list, HEAD stream, and range stream.
 - `npm.cmd run build` passed with existing chunk/dynamic-import warnings.
 - `npm.cmd exec -- eslint server/storage/filesystem-library.mjs server/uploads/server.mjs` is blocked by the existing ESLint TypeScript project config excluding `server/**/*.mjs`.
+- `node --check js/auth-gate.js js/accounts/auth.js js/app.js vite-plugin-auth-gate.js` passed.
+- `npm.cmd exec -- vitest run --config=vite.config.ts js/tests/auth-gate.test.js` passed: 3 tests.
+- `npm.cmd exec -- eslint js/auth-gate.js js/accounts/auth.js vite-plugin-auth-gate.js` passed.
+- Browser smoke with `MONOCHROME_AUTH_REQUIRED=true` passed: `/search/test` redirected to `/account`, localhost `Use Test Session` signed in, and `/search/test` rendered afterward.
 - `npm.cmd run build` passed with existing chunk/dynamic-import warnings.
 - Direct server smoke passed: health, upload, list, and HEAD stream.
 - Playwright UI smoke passed: Library > Local Files shows Server uploads signed-out state, upload/list works with a test user, and clicking an uploaded WAV loads an audio `/stream` URL with `source.kind === "server-local"`.
@@ -128,7 +135,7 @@ Last known results:
 
 ## Next Recommended Milestone
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 6 - Make Authentication Mandatory.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 7 - Add Admin Approval For Accounts.
 
 For extra runtime confidence before auth work, manually smoke local uploads in the running app with real auth and audio:
 
@@ -137,7 +144,7 @@ For extra runtime confidence before auth work, manually smoke local uploads in t
 - Sign in, open Library > Local Files, upload a real audio file, play it, like/unlike it, add/remove it from a playlist, reload, and verify it still lists and plays.
 - Recheck normal API playback after the upload smoke.
 
-After that, start the auth boundary work: inspect `js/accounts/auth.js`, `js/accounts/config.js`, `js/app.js`, `js/ui.js`, account-page DOM in `index.html`, and the self-hosted auth placeholders. Keep the localhost-only `Use Test Session` fallback explicit and development-only.
+After that, start account approval work: define pending/approved/rejected/disabled account states, bootstrap first-admin behavior, and ensure unapproved accounts are blocked client-side and server-side.
 
 ## Resume Instruction
 

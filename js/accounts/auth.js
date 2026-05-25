@@ -1,17 +1,10 @@
 // js/accounts/auth.js
 import { authClient } from './config.js';
+import { isClientAuthRequired, isLocalDevEnvironment } from '../auth-gate.js';
 
 function normalizeUser(user) {
     if (!user) return null;
     return { ...user, $id: user.id };
-}
-
-function isLocalDevEnvironment() {
-    return (
-        window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1' ||
-        window.location.hostname === '::1'
-    );
 }
 
 function getDevAuthUser() {
@@ -35,7 +28,8 @@ export class AuthManager {
     constructor() {
         this.user = null;
         this.authListeners = [];
-        this.init().catch(console.error);
+        this.initialized = false;
+        this.ready = this.init().catch(console.error);
     }
 
     async init() {
@@ -58,6 +52,8 @@ export class AuthManager {
                 this.user = null;
                 this.updateUI(null);
             }
+        } finally {
+            this.initialized = true;
         }
     }
 
@@ -78,7 +74,7 @@ export class AuthManager {
 
     onAuthStateChanged(callback) {
         this.authListeners.push(callback);
-        if (this.user !== null) {
+        if (this.initialized || this.user !== null) {
             callback(this.user);
         }
     }
@@ -274,7 +270,11 @@ export class AuthManager {
                     devBtn.style.display = 'none';
                 }
             }
-            if (statusText) statusText.textContent = 'Sync your library across devices';
+            if (statusText) {
+                statusText.textContent = isClientAuthRequired()
+                    ? 'Sign in is required to use this self-hosted instance'
+                    : 'Sync your library across devices';
+            }
         }
     }
 }

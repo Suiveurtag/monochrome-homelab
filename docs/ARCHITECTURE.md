@@ -45,6 +45,8 @@ Auth and account boundary:
 
 - Better Auth is the browser session authority through `js/accounts/auth.js` and `js/accounts/config.js`.
 - `authManager` normalizes Better Auth users to expose legacy `$id`; existing sync, profile, listening-party, and upload code depend on that shape.
+- `js/auth-gate.js` defines the client-side mandatory-auth boundary for self-hosted deployments. When `window.__MONOCHROME_AUTH_REQUIRED__ === true`, signed-out app routes redirect to `/account`, while auth/reset routes remain accessible.
+- `vite-plugin-auth-gate.js` injects `window.__MONOCHROME_AUTH_REQUIRED__` only when `MONOCHROME_AUTH_REQUIRED` is explicitly present in the Vite environment, so the public/default app remains unchanged unless configured.
 - A localhost-only dev session exists behind `monochrome-dev-auth` and the account-page test button. It is a development fallback, not a production auth model.
 - PocketBase remains the cloud profile/sync/public playlist boundary. User records live in `DB_users`, keyed by legacy `firebase_id` values that currently receive Better Auth user ids.
 

@@ -306,3 +306,33 @@ Affected areas:
 - `server/storage/filesystem-library.mjs`
 - `server/uploads/server.mjs`
 - `docs/ARCHITECTURE.md`
+
+## 2026-05-25 - Mandatory Auth Is Configured For Self-Hosted Browser Sessions
+
+Status: Accepted
+
+Context:
+
+- The self-hosted roadmap requires authentication before regular app use.
+- The public/default app should not become gated unless a deployment explicitly opts in.
+- Local development still needs a clear test-only fallback while real Better Auth access is unavailable.
+
+Decision:
+
+- Treat `MONOCHROME_AUTH_REQUIRED=true` as the browser-side opt-in for mandatory auth and inject it as `window.__MONOCHROME_AUTH_REQUIRED__`.
+- Redirect signed-out users away from protected app routes to `/account`; keep `/account`, `/login`, `/login.html`, and `/reset-password` accessible.
+- Keep `Use Test Session` available only on localhost-style hosts through the existing dev auth storage keys.
+
+Consequences:
+
+- Self-hosted deployments can require sign-in without changing default public behavior.
+- This is a client-side boundary until later checkpoints add server-side account approval and admin enforcement.
+- Future auth work should build on `js/auth-gate.js` instead of scattering route checks.
+
+Affected areas:
+
+- `js/auth-gate.js`
+- `js/accounts/auth.js`
+- `js/app.js`
+- `vite-plugin-auth-gate.js`
+- `docs/ARCHITECTURE.md`

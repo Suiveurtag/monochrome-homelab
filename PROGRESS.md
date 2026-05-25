@@ -8,37 +8,39 @@ For future Codex discussions, start with `HANDOFF.md` and `AGENTS.md`. Use this 
 
 - Date: 2026-05-25
 - Branch: main
-- Last known commit before current checkpoint: 9908f28
-- Current milestone: Self-Hosted Checkpoint 6 - Make Authentication Mandatory (next)
+- Last known commit before current checkpoint: d850835
+- Current milestone: Self-Hosted Checkpoint 7 - Add Admin Approval For Accounts (next)
 - Risk level: Medium
 
 The repo now has an additive hybrid track identity layer plus a non-production local upload server prototype. Existing `track.id` playback/route behavior is preserved, while persisted tracks can carry source-aware `trackKey` and `source` metadata for external API tracks, browser-local files, podcasts, tracker tracks, and local server uploads.
 
-Self-Hosted Checkpoints 1 through 5 are complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map"; `js/track-model.ts` has additive future source kinds for `server-library`, `radio`, and `youtube-video` plus exported source normalization helpers; `js/server-library.js` is now the app-facing client boundary for future self-hosted library operations; `server/selfhosted/server.mjs` is the minimal backend skeleton with config loading, data directories, `/health`, and auth placeholders; and `server/storage/filesystem-library.mjs` now owns structured local filesystem storage for server-local uploads.
+Self-Hosted Checkpoints 1 through 6 are complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map"; `js/track-model.ts` has additive future source kinds for `server-library`, `radio`, and `youtube-video` plus exported source normalization helpers; `js/server-library.js` is now the app-facing client boundary for future self-hosted library operations; `server/selfhosted/server.mjs` is the minimal backend skeleton with config loading, data directories, `/health`, and auth placeholders; `server/storage/filesystem-library.mjs` now owns structured local filesystem storage for server-local uploads; and `js/auth-gate.js` gates configured self-hosted browser sessions behind `/account`.
 
 `HANDOFF.md` is now the recommended first-read summary for future sessions; read `AGENTS.md` next, then consult the larger docs only if more detail is needed.
 
 ## Last Completed Self-Hosted Checkpoint
 
-Self-Hosted Checkpoint 5 - Make Filesystem Storage Production-Ready
+Self-Hosted Checkpoint 6 - Make Authentication Mandatory
 
 Goal:
 
-- Move the local upload prototype from flat per-user manifest storage toward structured local filesystem storage for audio blobs, metadata, indexes, artwork, and temp files.
+- Require authentication for configured self-hosted browser sessions while keeping the default public app ungated and the localhost test fallback explicit.
 
 Success criteria:
 
-- New uploaded files are written under safe deterministic sharded audio paths.
-- Track metadata and user upload ordering are stored as JSON indexes.
-- Stream token lookup no longer requires scanning every manifest for new uploads.
-- Existing prototype `manifest.json` uploads remain readable as a legacy fallback.
-- Upload/list/stream response contracts remain compatible with the current frontend.
+- `MONOCHROME_AUTH_REQUIRED=true` is injected into the browser as `window.__MONOCHROME_AUTH_REQUIRED__`.
+- Signed-out users on protected app routes are redirected to `/account`.
+- `/account`, `/login`, `/login.html`, and `/reset-password` remain reachable.
+- Signed-in or localhost test-session users can navigate normally.
+- The `Use Test Session` fallback remains localhost-only.
 
 In scope:
 
-- `server/storage/filesystem-library.mjs`
-- `server/storage/filesystem-library.test.mjs`
-- `server/uploads/server.mjs`
+- `js/auth-gate.js`
+- `js/tests/auth-gate.test.js`
+- `js/accounts/auth.js`
+- `js/app.js`
+- `vite-plugin-auth-gate.js`
 - `docs/ARCHITECTURE.md`
 - `docs/SELF_HOSTED_CHECKPOINTS.md`
 - `docs/MILESTONES.md`
@@ -48,15 +50,21 @@ In scope:
 
 Out of scope:
 
-- Rich audio metadata extraction.
-- Artwork extraction/upload endpoints.
-- Deletion, quotas, backup/restore, or full legacy migration tooling.
-- Replacing the separate local upload prototype with the unified self-hosted backend.
+- Admin approval workflow.
+- Server-side approval enforcement.
+- Full account management UI.
+- Auth provider redesign.
 
 ## Last Session Handoff
 
 Changes:
 
+- Added `js/auth-gate.js`, a pure client auth gate helper for explicit self-hosted mandatory auth.
+- Added `js/tests/auth-gate.test.js` covering config defaults, localhost detection, auth-route allowlist, and signed-out route redirects.
+- Updated `js/accounts/auth.js` to expose `authManager.ready`, reuse the shared localhost detector, refresh account UI after auth initialization, and show a self-hosted required-auth status message when configured.
+- Updated `js/app.js` to wait for auth initialization before initial routing and redirect signed-out protected routes to `/account` when `MONOCHROME_AUTH_REQUIRED=true`.
+- Updated `vite-plugin-auth-gate.js` to inject `window.__MONOCHROME_AUTH_REQUIRED__` only when `MONOCHROME_AUTH_REQUIRED` is explicitly present in the Vite environment.
+- Updated architecture, milestone, decision, handoff, and checkpoint roadmap docs for Self-Hosted Checkpoint 6.
 - Added `server/storage/filesystem-library.mjs`, a storage module for server-local uploads with sharded audio blobs, JSON track metadata, per-user indexes, stream token indexes, reserved artwork/tmp directories, and safe path resolution.
 - Added `server/storage/filesystem-library.test.mjs` covering structured upload storage and legacy manifest fallback.
 - Refactored `server/uploads/server.mjs` so upload/list/stream behavior delegates filesystem layout and token lookup to the storage module while keeping public API responses compatible.
@@ -77,6 +85,9 @@ Changes:
 
 Why:
 
+- Make self-hosted auth mandatory only for deployments that opt in through config, while preserving default/public app behavior.
+- Keep the auth boundary centralized so later admin approval work can build on it without scattering route checks.
+- Preserve localhost-only dev access through the existing test session path.
 - Make local filesystem upload storage safer and more production-shaped before adding mandatory auth, admin approval, metadata editing, search, backup, or restore.
 - Keep user-provided filenames out of filesystem paths and prepare stable on-disk locations for future metadata/artwork/index work.
 - Preserve existing frontend upload/list/playback contracts and keep prior prototype manifest data readable.
@@ -89,6 +100,11 @@ Files touched:
 
 - `HANDOFF.md`
 - `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `js/auth-gate.js`
+- `js/tests/auth-gate.test.js`
+- `js/accounts/auth.js`
+- `js/app.js`
+- `vite-plugin-auth-gate.js`
 - `server/storage/filesystem-library.mjs`
 - `server/storage/filesystem-library.test.mjs`
 - `server/uploads/server.mjs`
@@ -108,6 +124,11 @@ Files touched:
 
 Verification:
 
+- `node --check js/auth-gate.js js/accounts/auth.js js/app.js vite-plugin-auth-gate.js` passed.
+- `npm.cmd exec -- vitest run --config=vite.config.ts js/tests/auth-gate.test.js` passed: 3 tests.
+- `npm.cmd exec -- eslint js/auth-gate.js js/accounts/auth.js vite-plugin-auth-gate.js` passed.
+- `npm.cmd run build` passed with existing chunk/dynamic-import warnings.
+- Browser smoke with `MONOCHROME_AUTH_REQUIRED=true` passed: signed-out `/search/test` redirected to `/account`, localhost `Use Test Session` signed in, and `/search/test` rendered afterward.
 - `node --check server/storage/filesystem-library.mjs server/uploads/server.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs` passed.
 - `node --test server/storage/filesystem-library.test.mjs` passed: 2 tests.
 - Direct upload server smoke passed with temp storage: health, upload, list, HEAD stream, and range stream.
@@ -125,6 +146,8 @@ Verification:
 
 Known risks:
 
+- Mandatory auth is currently a browser route boundary for configured self-hosted sessions; server-side account approval/admin enforcement is intentionally left for Checkpoints 7 and 8.
+- `authManager.ready` is now awaited before initial app routing; this should reduce auth flicker but slightly ties first render to session-check completion.
 - The structured storage module keeps legacy manifests readable but does not migrate old files into the new layout.
 - Stream token indexes are local JSON files; future auth/deletion/backup checkpoints still need to define lifecycle rules.
 - Rich metadata/artwork extraction is still filename-only/default artwork.
@@ -141,9 +164,9 @@ Known risks:
 
 For future sessions, read `HANDOFF.md` and `AGENTS.md` first.
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 6 - Make Authentication Mandatory.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 7 - Add Admin Approval For Accounts.
 
-Before implementing Checkpoint 6, inspect `js/accounts/auth.js`, `js/accounts/config.js`, `js/app.js`, `js/ui.js`, account-page DOM in `index.html`, and the self-hosted auth placeholders. Keep the localhost-only `Use Test Session` path explicit and development-only.
+Before implementing Checkpoint 7, define the account state model (`pending`, `approved`, `rejected`, `disabled`) and bootstrap-admin behavior. Inspect `js/auth-gate.js`, `js/accounts/auth.js`, `server/selfhosted/server.mjs`, `server/selfhosted/config.mjs`, and the account page DOM in `index.html`.
 
 ## Open Questions / Blockers
 
@@ -222,6 +245,11 @@ Append new entries here.
 | 2026-05-25 | Direct upload server smoke | Pass | Health, upload, list, HEAD stream, and range stream passed with an ephemeral structured storage directory. |
 | 2026-05-25 | `npm.cmd exec -- eslint server/storage/filesystem-library.mjs server/uploads/server.mjs` | Blocked | Existing ESLint TypeScript project config excludes `server/**/*.mjs`; syntax checks and Node tests covered the changed server modules. |
 | 2026-05-25 | `npm.cmd run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings after structured upload storage extraction. |
+| 2026-05-25 | `node --check js/auth-gate.js js/accounts/auth.js js/app.js vite-plugin-auth-gate.js` | Pass | Syntax checks passed for the client auth gate and touched app/auth files. |
+| 2026-05-25 | `npm.cmd exec -- vitest run --config=vite.config.ts js/tests/auth-gate.test.js` | Pass | 1 file, 3 tests passed for mandatory auth helper behavior. |
+| 2026-05-25 | `npm.cmd exec -- eslint js/auth-gate.js js/accounts/auth.js vite-plugin-auth-gate.js` | Pass | Targeted lint passed for newly touched auth boundary files. |
+| 2026-05-25 | `npm.cmd run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings after auth gate changes. |
+| 2026-05-25 | Browser smoke with `MONOCHROME_AUTH_REQUIRED=true` | Pass | Signed-out `/search/test` redirected to `/account`; localhost `Use Test Session` enabled normal `/search/test` navigation afterward. |
 
 ## Milestone History
 
@@ -237,3 +265,4 @@ Append completed milestones here.
 | Self-Hosted Checkpoint 3 - Prepare A Server Library Client Layer | 2026-05-25 | Added `js/server-library.js` and routed existing upload/list UI through it. | Syntax checks, targeted ESLint, and production build passed. |
 | Self-Hosted Checkpoint 4 - Define The Minimal Self-Hosted Backend | 2026-05-25 | Added minimal self-hosted backend config, data directories, `/health`, auth placeholders, env example, and dev script. | Server syntax checks, `/health` smoke, and production build passed. |
 | Self-Hosted Checkpoint 5 - Make Filesystem Storage Production-Ready | 2026-05-25 | Added structured local filesystem storage for server-local uploads with sharded audio, metadata, user indexes, stream indexes, and legacy manifest fallback. | Server syntax checks, Node storage tests, direct upload/list/stream smoke, and production build passed. |
+| Self-Hosted Checkpoint 6 - Make Authentication Mandatory | 2026-05-25 | Added opt-in self-hosted mandatory auth route guard, config injection, auth readiness wait, account redirect, and localhost-only test-session smoke. | Focused auth-gate tests, syntax checks, targeted ESLint, production build, and browser smoke passed. |

@@ -342,6 +342,33 @@ Required checks:
 - Manual upload/list/stream smoke.
 - Production build.
 
+### Self-Hosted Checkpoint 6 - Make Authentication Mandatory
+
+Status: Complete
+
+Goal:
+
+- Require authentication for configured self-hosted browser sessions while preserving public/default app behavior and explicit localhost development fallback.
+
+Scope:
+
+- Add a small client auth-gate helper with tests.
+- Inject `MONOCHROME_AUTH_REQUIRED` into the app as `window.__MONOCHROME_AUTH_REQUIRED__` when explicitly configured.
+- Wait for the auth manager before initial routing and redirect signed-out app routes to `/account` when auth is required.
+
+Non-goals:
+
+- No admin approval workflow.
+- No server-side session enforcement beyond existing placeholders.
+- No redesign of account UI or auth providers.
+
+Required checks:
+
+- Focused auth-gate tests.
+- Targeted syntax/lint checks.
+- Production build.
+- Manual/browser smoke for signed-out redirect and localhost test session.
+
 ### M6 - Player And Media Boundary
 
 Status: Planned

@@ -247,6 +247,8 @@ Out of scope:
 
 ## Checkpoint 6 - Make Authentication Mandatory
 
+Status: Complete
+
 Objective:
 
 Require authentication for the self-hosted app while keeping dev/test fallbacks explicit and localhost-only.
@@ -275,6 +277,7 @@ Stop criteria:
 
 - Signed-out users see a clear auth boundary.
 - Signed-in users can use the app normally.
+- Completed by adding `js/auth-gate.js`, injecting `MONOCHROME_AUTH_REQUIRED` into the browser config, waiting for auth initialization before initial routing, redirecting signed-out protected routes to `/account`, and preserving localhost-only `Use Test Session`.
 
 Out of scope:
 

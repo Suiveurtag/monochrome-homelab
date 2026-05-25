@@ -30,6 +30,7 @@ import { db } from './db.js';
 import { showNotification } from './downloads.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { authManager } from './accounts/auth.js';
+import { shouldRedirectForAuth } from './auth-gate.js';
 import { uploadServerLibraryTrack } from './server-library.js';
 import { registerSW } from 'virtual:pwa-register';
 import { openEditProfile } from './profile.js';
@@ -413,6 +414,8 @@ async function uploadCoverImage(file) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     await modernSettings.waitPending();
+    await authManager.ready;
+    authManager.updateUI(authManager.user);
 
     // Request persistent storage to reduce risk of browser wiping data on updates or cleanup
     if (navigator.storage && navigator.storage.persist) {
@@ -2642,6 +2645,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (modalSettings.shouldCloseOnNavigation()) {
             sidePanelManager.close();
             modalSettings.closeAllModals();
+        }
+
+        if (shouldRedirectForAuth({ user: authManager.user })) {
+            window.history.replaceState({}, '', '/account');
         }
 
         await router();
