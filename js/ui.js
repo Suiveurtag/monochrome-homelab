@@ -40,7 +40,7 @@ import { Visualizer } from './visualizer.js';
 import { audioContextManager } from './audio-context.js';
 import { navigate } from './router.js';
 import { sidePanelManager } from './side-panel.js';
-import { getUploadServerUrl, listServerUploadTracks } from './server-uploads.js';
+import { getServerLibraryBaseUrl, listServerLibraryTracks } from './server-library.js';
 import {
     renderUnreleasedPage as renderUnreleasedTrackerPage,
     renderTrackerArtistPage as renderTrackerArtistContent,
@@ -2760,10 +2760,10 @@ export class UIRenderer {
         if (statusEl) statusEl.textContent = 'Loading server uploads...';
 
         try {
-            const tracks = await listServerUploadTracks();
+            const tracks = await listServerLibraryTracks();
             window.serverUploadTracksCache = tracks;
             if (countEl) countEl.textContent = `${tracks.length} ${tracks.length === 1 ? 'track' : 'tracks'}`;
-            if (statusEl) statusEl.textContent = `Local upload server: ${getUploadServerUrl()}`;
+            if (statusEl) statusEl.textContent = `Local upload server: ${getServerLibraryBaseUrl()}`;
 
             if (tracks.length === 0) {
                 listContainer.innerHTML = createPlaceholder('No server uploads');

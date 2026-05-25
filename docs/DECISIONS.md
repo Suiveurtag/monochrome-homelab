@@ -220,3 +220,32 @@ Affected areas:
 - `js/tests/track-model.test.ts`
 - `docs/ARCHITECTURE.md`
 - `docs/SELF_HOSTED_CHECKPOINTS.md`
+
+## 2026-05-25 - Server Library Client Is The Frontend Boundary
+
+Status: Accepted
+
+Context:
+
+- The local upload prototype exposes only upload/list/stream behavior, but the self-hosted roadmap needs a stable frontend API for list, search, upload, metadata updates, stream URLs, and artwork URLs.
+- Calling the prototype upload client directly from UI code would make the later production backend migration noisier.
+
+Decision:
+
+- Add `js/server-library.js` as the narrow frontend client for self-hosted library operations.
+- Keep `js/server-uploads.js` as the current prototype transport adapter.
+- Route existing Library > Local Files upload/list UI through `js/server-library.js` while preserving the visible server uploads UI and behavior.
+
+Consequences:
+
+- Future backend work can replace the implementation behind `server-library` without touching every UI call site.
+- Metadata updates are exposed as an explicit placeholder that throws until a backend endpoint exists.
+- Search is currently client-side over listed prototype uploads; server-side search remains a later checkpoint.
+
+Affected areas:
+
+- `js/server-library.js`
+- `js/server-uploads.js`
+- `js/app.js`
+- `js/ui.js`
+- `docs/ARCHITECTURE.md`

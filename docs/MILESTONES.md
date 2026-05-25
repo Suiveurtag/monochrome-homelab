@@ -266,6 +266,31 @@ Required checks:
 - Focused `track-model` tests.
 - Targeted ESLint for `js/track-model.ts`.
 
+### Self-Hosted Checkpoint 3 - Prepare A Server Library Client Layer
+
+Status: Complete
+
+Goal:
+
+- Isolate frontend calls for the future self-hosted server library behind a stable client layer.
+
+Scope:
+
+- Add `js/server-library.js` with list, search, upload, metadata update placeholder, stream URL, and artwork URL helpers.
+- Route current Library upload/list UI through the server library client while preserving local upload prototype behavior.
+
+Non-goals:
+
+- No production database or storage implementation.
+- No server-side search endpoint.
+- No metadata editing UI.
+
+Required checks:
+
+- Syntax checks for touched frontend modules.
+- Targeted ESLint for `js/server-library.js` and `js/server-uploads.js`.
+- Production build.
+
 ### M6 - Player And Media Boundary
 
 Status: Planned

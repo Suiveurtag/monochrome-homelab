@@ -19,9 +19,9 @@ Only read `PROGRESS.md`, `docs/ARCHITECTURE.md`, `docs/MILESTONES.md`, or `docs/
 
 ## Last Completed Milestone
 
-Self-Hosted Checkpoint 2 - Stabilize The Music Source Model is complete.
+Self-Hosted Checkpoint 3 - Prepare A Server Library Client Layer is complete.
 
-It expanded the additive hybrid source model with future-facing `server-library`, `radio`, and `youtube-video` source kinds, exported shared source-kind/normalization helpers, and added focused tests. The previous contract map and Local Uploads Serveur prototype remain complete and committed.
+It added `js/server-library.js` as the stable frontend client for future self-hosted library operations. Current upload/list UI now calls this layer, while `js/server-uploads.js` remains the local prototype transport adapter. The previous source-model and contract-map checkpoints remain complete and committed.
 
 ## Core Musique Hybride Changes
 
@@ -44,6 +44,7 @@ It expanded the additive hybrid source model with future-facing `server-library`
 - Added `server/uploads/server.mjs`, a separate Node dev server for local filesystem uploads.
 - Added `npm run dev:uploads` / `bun run dev:uploads` script entry.
 - Added `js/server-uploads.js` for client list/upload calls.
+- Added `js/server-library.js` as the app-facing self-hosted library client.
 - Added source kind `server-local` while preserving existing `server-upload` compatibility.
 - Server upload tracks use `track.id === uploadId`, `source.kind === "server-local"`, and `trackKey` generated through the hybrid model on the client.
 - Library > Local Files now has a minimal Server uploads panel with upload, refresh, count, and track list.
@@ -75,6 +76,7 @@ It expanded the additive hybrid source model with future-facing `server-library`
 - `js/ui.js`, `js/events.js`, `js/ui-interactions.js`, `js/app.js`: main UI wiring and track actions.
 - `js/metadata.js`: browser-local metadata shape.
 - `js/server-uploads.js`: local upload server client.
+- `js/server-library.js`: app-facing server library client wrapper over the prototype upload client.
 - `server/uploads/server.mjs`: non-production local filesystem upload server.
 - `PROGRESS.md`: detailed verification and latest handoff notes.
 
@@ -113,7 +115,7 @@ Last known results:
 
 ## Next Recommended Milestone
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 3 - Prepare A Server Library Client Layer.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 4 - Define The Minimal Self-Hosted Backend.
 
 For extra runtime confidence before deeper upload work, manually smoke local uploads in the running app with real auth and audio:
 

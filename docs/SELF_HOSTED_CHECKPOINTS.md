@@ -137,6 +137,8 @@ Out of scope:
 
 ## Checkpoint 3 - Prepare A Server Library Client Layer
 
+Status: Complete
+
 Objective:
 
 Isolate client calls for the future server library: list, search, upload, metadata update, stream URL, artwork URL.
@@ -160,6 +162,7 @@ Risks:
 Stop criteria:
 
 - The frontend has a stable, narrow client API even if it still talks to the prototype server.
+- Completed by adding `js/server-library.js` and routing existing upload UI calls through it.
 
 Out of scope:
 

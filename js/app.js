@@ -30,7 +30,7 @@ import { db } from './db.js';
 import { showNotification } from './downloads.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { authManager } from './accounts/auth.js';
-import { uploadServerTrack } from './server-uploads.js';
+import { uploadServerLibraryTrack } from './server-library.js';
 import { registerSW } from 'virtual:pwa-register';
 import { openEditProfile } from './profile.js';
 import { ThemeStore } from './themeStore.js';
@@ -2495,7 +2495,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (statusEl) statusEl.textContent = `Uploading ${file.name}...`;
 
             try {
-                await uploadServerTrack(file);
+                await uploadServerLibraryTrack(file);
                 showNotification(`Uploaded ${file.name}`);
                 await UIRenderer.instance.renderServerUploads();
             } catch (error) {
