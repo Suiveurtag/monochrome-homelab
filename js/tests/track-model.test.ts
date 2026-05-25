@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'vitest';
-import { applyTrackOverrides, getTrackKey, isSameTrack, minifyHybridTrack, withTrackIdentity } from '../track-model.ts';
+import {
+    applyTrackOverrides,
+    getTrackKey,
+    isSameTrack,
+    minifyHybridTrack,
+    normalizeTrackSourceRef,
+    TRACK_SOURCE_KINDS,
+    withTrackIdentity,
+} from '../track-model.ts';
 
 describe('track-model', () => {
     test('creates stable keys for TIDAL numeric ids', () => {
@@ -36,6 +44,50 @@ describe('track-model', () => {
 
         expect(upload.trackKey).toBe('v1:server-local:none:upload-1');
         expect(upload.trackKey).not.toBe(getTrackKey({ id: 'upload-1', title: 'External Track' }));
+    });
+
+    test('defines additive source kinds for self-hosted roadmap features', () => {
+        expect(TRACK_SOURCE_KINDS).toEqual([
+            'external',
+            'server-upload',
+            'server-local',
+            'server-library',
+            'browser-local',
+            'podcast',
+            'tracker',
+            'radio',
+            'youtube-video',
+        ]);
+    });
+
+    test('creates stable identities for future server library, radio, and YouTube sources', () => {
+        expect(
+            withTrackIdentity({
+                id: 'srv-1',
+                title: 'Server Library Track',
+                source: { kind: 'server-library', sourceId: 'srv-1' },
+            }).trackKey,
+        ).toBe('v1:server-library:none:srv-1');
+
+        expect(withTrackIdentity({ id: 'radio:station-1', title: 'Station', isRadio: true }).trackKey).toBe(
+            'v1:radio:none:station-1',
+        );
+
+        expect(withTrackIdentity({ id: 'youtube:dQw4w9WgXcQ', title: 'Clip', isYouTubeVideo: true }).trackKey).toBe(
+            'v1:youtube-video:none:dQw4w9WgXcQ',
+        );
+    });
+
+    test('exports source normalization for future server clients', () => {
+        expect(normalizeTrackSourceRef({ id: 'q:abc', title: 'Qobuz Track' })).toEqual({
+            kind: 'external',
+            provider: 'qobuz',
+            sourceId: 'abc',
+        });
+        expect(normalizeTrackSourceRef({ id: 'radio:station-1', title: 'Station', isRadio: true })).toEqual({
+            kind: 'radio',
+            sourceId: 'station-1',
+        });
     });
 
     test('marks browser local files as local without making them server uploads', () => {

@@ -192,3 +192,31 @@ Affected areas:
 - `js/app.js`
 - `js/ui.js`
 - `js/events.js`
+
+## 2026-05-25 - Self-Hosted Source Kinds Are Additive
+
+Status: Accepted
+
+Context:
+
+- The self-hosted roadmap needs stable names for future production filesystem library tracks, radio streams, and YouTube video associations.
+- Existing playback, routes, DOM datasets, API calls, favorites, playlists, and sync data still depend on `track.id` and legacy source shapes.
+
+Decision:
+
+- Keep existing source kinds and add future-facing `server-library`, `radio`, and `youtube-video` kinds to the hybrid track model.
+- Export `TRACK_SOURCE_KINDS`, `isTrackSourceKind`, and `normalizeTrackSourceRef` so future server clients can share the same source normalization boundary.
+- Do not migrate existing `server-local` uploaded tracks or legacy `server-upload` compatibility data in this checkpoint.
+
+Consequences:
+
+- Future self-hosted features can persist identities with `trackKey` before their UI/backend implementation exists.
+- Source-kind additions are compatible because track identity remains additive and `track.id` remains the playback/route compatibility identifier.
+- Later checkpoints still need to define backend storage, metadata precedence, and UI behavior for `server-library`, `radio`, and `youtube-video`.
+
+Affected areas:
+
+- `js/track-model.ts`
+- `js/tests/track-model.test.ts`
+- `docs/ARCHITECTURE.md`
+- `docs/SELF_HOSTED_CHECKPOINTS.md`

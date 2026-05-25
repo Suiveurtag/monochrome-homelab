@@ -8,42 +8,46 @@ For future Codex discussions, start with `HANDOFF.md` and `AGENTS.md`. Use this 
 
 - Date: 2026-05-25
 - Branch: main
-- Last known commit: 93eb928
-- Current milestone: Self-Hosted Checkpoint 2 - Stabilize The Music Source Model (next)
+- Last known commit: ce393df
+- Current milestone: Self-Hosted Checkpoint 3 - Prepare A Server Library Client Layer (next)
 - Risk level: Medium
 
 The repo now has an additive hybrid track identity layer plus a non-production local upload server prototype. Existing `track.id` playback/route behavior is preserved, while persisted tracks can carry source-aware `trackKey` and `source` metadata for external API tracks, browser-local files, podcasts, tracker tracks, and local server uploads.
 
-Self-Hosted Checkpoint 1 is complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map" covering track sources, auth/account boundaries, storage, local uploads, favorites/playlists, social state, and known limits.
+Self-Hosted Checkpoints 1 and 2 are complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map", and `js/track-model.ts` now has additive future source kinds for `server-library`, `radio`, and `youtube-video` plus exported source normalization helpers.
 
 `HANDOFF.md` is now the recommended first-read summary for future sessions; read `AGENTS.md` next, then consult the larger docs only if more detail is needed.
 
 ## Last Completed Self-Hosted Checkpoint
 
-Self-Hosted Checkpoint 1 - Map Current Contracts
+Self-Hosted Checkpoint 2 - Stabilize The Music Source Model
 
 Goal:
 
-- Create a concise technical map of current contracts before larger self-hosted changes.
+- Define source types clearly for current and planned self-hosted music surfaces while preserving `track.id` compatibility.
 
 Success criteria:
 
-- A future session can understand the current self-hosted contracts without reading the whole repo.
-- The map covers track sources, auth, storage, local uploads, playlists, favorites, social state, and known limits.
+- Future source kinds can be represented without destructive migration.
+- `track.id` remains usable everywhere it is currently expected.
+- Source normalization helpers are exported for future server clients.
 
 In scope:
 
+- `js/track-model.ts`
+- `js/tests/track-model.test.ts`
 - `docs/ARCHITECTURE.md`
 - `docs/SELF_HOSTED_CHECKPOINTS.md`
 - `docs/MILESTONES.md`
+- `docs/DECISIONS.md`
 - `HANDOFF.md`
 - `PROGRESS.md`
 
 Out of scope:
 
-- Runtime changes.
-- Server implementation.
-- Reworking the music source helpers.
+- Playlist, favorite, route, or player migrations.
+- New UI.
+- Production upload server or backend persistence changes.
 
 ## Last Session Handoff
 
@@ -116,7 +120,7 @@ Known risks:
 
 For future sessions, read `HANDOFF.md` and `AGENTS.md` first.
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 2 - Stabilize The Music Source Model.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 3 - Prepare A Server Library Client Layer.
 
 If the user asks to continue the current local upload prototype, manually smoke real local uploads with real auth: run the app dev server plus `npm run dev:uploads`/`bun run dev:uploads`, upload a real audio file from Library > Local Files, play it, like/unlike it, add/remove it from a playlist, reload, and verify normal API playback still works.
 
@@ -181,6 +185,10 @@ Append new entries here.
 | 2026-05-25 | Self-hosted checkpoint roadmap documentation | Pass | Added `docs/SELF_HOSTED_CHECKPOINTS.md`; runtime validation not required. |
 | 2026-05-25 | Local uploads closeout validation | Pass | Re-ran `node --check` on upload/frontend modules, focused Vitest DB/track-model tests, targeted ESLint for track model/upload client, and production build before commit. |
 | 2026-05-25 | Self-Hosted Checkpoint 1 documentation review | Pass | Documentation-only contract map; inspected source references for track identity, upload server/client, DB favorites/playlists, auth, PocketBase, and listening-party boundaries. |
+| 2026-05-25 | `npm.cmd exec -- vitest run --config=vite.config.ts js/tests/track-model.test.ts` | Pass | 1 file, 10 tests passed after adding future source-kind coverage. |
+| 2026-05-25 | `npm.cmd exec -- eslint js/track-model.ts` | Pass | Targeted lint passed for the expanded source model. |
+| 2026-05-25 | `npm.cmd exec -- vitest run --config=vite.config.ts js/tests/track-model.test.ts js/tests/db.test.js` | Pass | 2 files, 19 tests passed on rerun. First combined run hit the existing pinned-items IndexedDB isolation flake, while `db.test.js` passed alone immediately after. |
+| 2026-05-25 | `npm.cmd run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings. |
 
 ## Milestone History
 
@@ -192,3 +200,4 @@ Append completed milestones here.
 | M5a - Core Musique Hybride | 2026-05-24 | Added additive source-aware track identity and persistence boundary. | JS syntax checks passed; test execution blocked by missing dependencies. |
 | Local Uploads Serveur prototype | 2026-05-25 | Added local filesystem upload server, `server-local` tracks, minimal Library UI, direct playback, and favorites/playlists compatibility. | Focused tests, build, syntax checks, direct server smoke, and Playwright UI/player smoke passed. |
 | Self-Hosted Checkpoint 1 - Map Current Contracts | 2026-05-25 | Added a concise self-hosted contract map to architecture docs. | Documentation review passed; no runtime validation required. |
+| Self-Hosted Checkpoint 2 - Stabilize The Music Source Model | 2026-05-25 | Added additive `server-library`, `radio`, and `youtube-video` source kinds plus exported source normalization helpers. | Focused track-model tests and targeted ESLint passed. |

@@ -101,6 +101,8 @@ Out of scope:
 
 ## Checkpoint 2 - Stabilize The Music Source Model
 
+Status: Complete
+
 Objective:
 
 Define source types clearly: external API, browser-local, prototype `server-local`, future filesystem server, radio, and YouTube video association. Consolidate helpers around `trackKey` and `source`.
@@ -125,6 +127,7 @@ Stop criteria:
 
 - Future source kinds can be represented without destructive migration.
 - `track.id` remains usable everywhere it is currently expected.
+- Completed by adding additive `server-library`, `radio`, and `youtube-video` source kinds plus exported source normalization helpers in `js/track-model.ts`.
 
 Out of scope:
 

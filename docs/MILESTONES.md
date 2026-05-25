@@ -242,6 +242,30 @@ Required checks:
 
 - Documentation-only review.
 
+### Self-Hosted Checkpoint 2 - Stabilize The Music Source Model
+
+Status: Complete
+
+Goal:
+
+- Define source types clearly for current and planned self-hosted music surfaces while preserving `track.id` compatibility.
+
+Scope:
+
+- Add additive `server-library`, `radio`, and `youtube-video` source kinds.
+- Export source-kind and normalization helpers for future server clients.
+- Add focused tests for the expanded source model.
+
+Non-goals:
+
+- No playlist, favorite, route, or player migration.
+- No new UI or backend persistence behavior.
+
+Required checks:
+
+- Focused `track-model` tests.
+- Targeted ESLint for `js/track-model.ts`.
+
 ### M6 - Player And Media Boundary
 
 Status: Planned

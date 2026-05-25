@@ -19,14 +19,15 @@ Only read `PROGRESS.md`, `docs/ARCHITECTURE.md`, `docs/MILESTONES.md`, or `docs/
 
 ## Last Completed Milestone
 
-Self-Hosted Checkpoint 1 - Map Current Contracts is complete.
+Self-Hosted Checkpoint 2 - Stabilize The Music Source Model is complete.
 
-It added a concise contract map to `docs/ARCHITECTURE.md` for the self-hosted roadmap: track sources, auth, storage, local uploads, favorites/playlists, social state, and known limits. The previous Local Uploads Serveur prototype remains complete and committed.
+It expanded the additive hybrid source model with future-facing `server-library`, `radio`, and `youtube-video` source kinds, exported shared source-kind/normalization helpers, and added focused tests. The previous contract map and Local Uploads Serveur prototype remain complete and committed.
 
 ## Core Musique Hybride Changes
 
 - Added `js/track-model.ts`.
 - Added helpers: `getTrackKey`, `withTrackIdentity`, `minifyHybridTrack`, `applyTrackOverrides`, `isSameTrack`.
+- Exported helpers: `TRACK_SOURCE_KINDS`, `isTrackSourceKind`, `normalizeTrackSourceRef`.
 - Bumped IndexedDB `MonochromeDB` to version `12`.
 - Added stores: `track_catalog`, `track_metadata_overrides`, `favorites_track_refs`.
 - Preserved existing stores: `favorites_tracks`, `history_tracks`, `user_playlists`, and others.
@@ -35,6 +36,8 @@ It added a concise contract map to `docs/ARCHITECTURE.md` for the self-hosted ro
 - PocketBase track minification preserves `trackKey`/`source`.
 - API tracks are annotated as external/TIDAL.
 - Browser-local metadata is annotated as `browser-local`.
+- Future self-hosted filesystem library tracks can use `server-library`.
+- Future radio and YouTube association identities can use `radio` and `youtube-video`.
 
 ## Local Uploads Serveur Changes
 
@@ -110,7 +113,7 @@ Last known results:
 
 ## Next Recommended Milestone
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 2 - Stabilize The Music Source Model.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 3 - Prepare A Server Library Client Layer.
 
 For extra runtime confidence before deeper upload work, manually smoke local uploads in the running app with real auth and audio:
 

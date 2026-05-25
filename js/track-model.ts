@@ -1,4 +1,13 @@
-export type TrackSourceKind = 'external' | 'server-upload' | 'server-local' | 'browser-local' | 'podcast' | 'tracker';
+export type TrackSourceKind =
+    | 'external'
+    | 'server-upload'
+    | 'server-local'
+    | 'server-library'
+    | 'browser-local'
+    | 'podcast'
+    | 'tracker'
+    | 'radio'
+    | 'youtube-video';
 export type ExternalProvider = 'tidal' | 'qobuz' | 'hifi' | 'unknown';
 export type TrackKey = string;
 
@@ -32,7 +41,7 @@ export interface HybridTrack {
     audioQuality?: string | null;
     mediaMetadata?: { tags?: string[] } | null;
     playback?: {
-        mode: 'api-stream' | 'remote-url' | 'browser-file' | 'podcast' | 'tracker';
+        mode: 'api-stream' | 'remote-url' | 'browser-file' | 'podcast' | 'tracker' | 'server-stream' | 'radio-stream' | 'youtube-video';
         url?: string;
         mimeType?: string;
     };
@@ -61,24 +70,33 @@ type TrackLike = Partial<HybridTrack> & {
     isLocal?: boolean;
     isPodcast?: boolean;
     isTracker?: boolean;
+    isRadio?: boolean;
+    isYouTubeVideo?: boolean;
+    youtubeVideoId?: string | null;
     remoteUrl?: string | null;
     audioUrl?: string | null;
+    streamUrl?: string | null;
     enclosureUrl?: string | null;
     enclosureType?: string | null;
     file?: File | Blob | null;
 };
 
-const SOURCE_KINDS = new Set<TrackSourceKind>([
+export const TRACK_SOURCE_KINDS: readonly TrackSourceKind[] = [
     'external',
     'server-upload',
     'server-local',
+    'server-library',
     'browser-local',
     'podcast',
     'tracker',
-]);
+    'radio',
+    'youtube-video',
+];
+
+const SOURCE_KINDS = new Set<TrackSourceKind>(TRACK_SOURCE_KINDS);
 const EXTERNAL_PROVIDERS = new Set<ExternalProvider>(['tidal', 'qobuz', 'hifi', 'unknown']);
 
-function isTrackSourceKind(value: unknown): value is TrackSourceKind {
+export function isTrackSourceKind(value: unknown): value is TrackSourceKind {
     return typeof value === 'string' && SOURCE_KINDS.has(value);
 }
 
@@ -95,7 +113,7 @@ function stripKnownProviderPrefix(id: string): { provider?: ExternalProvider; so
     return { sourceId: id };
 }
 
-function normalizeSourceRef(track: TrackLike): TrackSourceRef {
+export function normalizeTrackSourceRef(track: TrackLike): TrackSourceRef {
     if (isTrackSourceKind(track.source?.kind) && track.source.sourceId != null) {
         const source: TrackSourceRef = {
             kind: track.source.kind,
@@ -112,6 +130,14 @@ function normalizeSourceRef(track: TrackLike): TrackSourceRef {
 
     if (track.isTracker || id.startsWith('tracker-')) {
         return { kind: 'tracker', sourceId: prefixed.sourceId || id };
+    }
+
+    if (track.isRadio || id.startsWith('radio:')) {
+        return { kind: 'radio', sourceId: id.startsWith('radio:') ? id.slice(6) : prefixed.sourceId || id };
+    }
+
+    if (track.isYouTubeVideo || track.youtubeVideoId || id.startsWith('youtube:')) {
+        return { kind: 'youtube-video', sourceId: track.youtubeVideoId || (id.startsWith('youtube:') ? id.slice(8) : prefixed.sourceId || id) };
     }
 
     if (track.isPodcast || id.startsWith('podcast_') || track.enclosureUrl) {
@@ -142,11 +168,11 @@ export function getTrackKey(track: TrackLike | string | number | null | undefine
         });
     }
     if (track.trackKey) return track.trackKey;
-    return makeTrackKey(normalizeSourceRef(track));
+    return makeTrackKey(normalizeTrackSourceRef(track));
 }
 
 export function withTrackIdentity<T extends TrackLike>(track: T): T & { trackKey: TrackKey; source: TrackSourceRef } {
-    const source = normalizeSourceRef(track);
+    const source = normalizeTrackSourceRef(track);
     const trackKey = track.trackKey || makeTrackKey(source);
     return { ...track, source, trackKey };
 }
@@ -175,9 +201,13 @@ export function minifyHybridTrack(track: TrackLike): HybridTrack {
         (identified.isLocal
             ? { mode: 'browser-file' as const }
             : identified.isPodcast
-              ? { mode: 'podcast' as const, url: identified.enclosureUrl || undefined, mimeType: identified.enclosureType || undefined }
+                ? { mode: 'podcast' as const, url: identified.enclosureUrl || undefined, mimeType: identified.enclosureType || undefined }
               : identified.isTracker
                 ? { mode: 'tracker' as const, url: identified.remoteUrl || identified.audioUrl || undefined }
+                : identified.isRadio || identified.source.kind === 'radio'
+                  ? { mode: 'radio-stream' as const, url: identified.streamUrl || identified.remoteUrl || identified.audioUrl || undefined }
+                  : identified.isYouTubeVideo || identified.source.kind === 'youtube-video'
+                    ? { mode: 'youtube-video' as const, url: identified.remoteUrl || identified.audioUrl || undefined }
                 : identified.remoteUrl || identified.audioUrl
                   ? { mode: 'remote-url' as const, url: identified.remoteUrl || identified.audioUrl || undefined }
                   : { mode: 'api-stream' as const });
@@ -218,12 +248,16 @@ export function minifyHybridTrack(track: TrackLike): HybridTrack {
         isLocal: identified.isLocal || identified.source.kind === 'browser-local' || undefined,
         isTracker: identified.isTracker || identified.source.kind === 'tracker' || undefined,
         trackerInfo: (identified as { trackerInfo?: unknown }).trackerInfo || null,
+        isRadio: identified.isRadio || identified.source.kind === 'radio' || undefined,
+        isYouTubeVideo: identified.isYouTubeVideo || identified.source.kind === 'youtube-video' || undefined,
+        youtubeVideoId: identified.youtubeVideoId || (identified.source.kind === 'youtube-video' ? identified.source.sourceId : null),
         isPodcast: identified.isPodcast || identified.source.kind === 'podcast' || undefined,
         enclosureUrl: identified.enclosureUrl || null,
         enclosureType: identified.enclosureType || null,
         enclosureLength: (identified as { enclosureLength?: number | string | null }).enclosureLength || null,
-        audioUrl: identified.audioUrl || identified.remoteUrl || null,
+        audioUrl: identified.audioUrl || identified.remoteUrl || identified.streamUrl || null,
         remoteUrl: identified.remoteUrl || null,
+        streamUrl: identified.streamUrl || null,
     } as HybridTrack;
 }
 

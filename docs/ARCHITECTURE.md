@@ -36,8 +36,10 @@ Track sources:
 - External catalog tracks are still the default path. They use `source.kind === "external"`, usually `provider: "tidal"`, keep `track.id` as the playback and route identifier, and resolve normal production audio through TIDAL/HiFi metadata plus Qobuz-by-ISRC stream lookup.
 - Browser-local tracks are metadata snapshots for files selected in the browser. They use `source.kind === "browser-local"` and may retain live `File`/`Blob` handles only in the current browser session, so cloud sync cannot make them portable.
 - Prototype uploaded tracks use `source.kind === "server-local"`, `track.id === uploadId`, `trackKey === v1:server-local:none:<uploadId>`, and `playback.mode === "remote-url"` with tokenized `/uploads/:id/stream` URLs.
+- Future production filesystem library tracks can use `source.kind === "server-library"` once a stable self-hosted backend exists. This is additive and does not migrate the current `server-local` prototype.
 - `server-upload` remains accepted by `js/track-model.ts` and tests as a compatibility source kind for earlier planned upload data; new local filesystem uploads should use `server-local` until a later checkpoint migrates the model.
 - Podcasts and tracker tracks remain source-aware through `source.kind === "podcast"` and `source.kind === "tracker"` and should continue to bypass normal TIDAL/Qobuz stream assumptions.
+- Future dedicated radio and YouTube association flows can use `source.kind === "radio"` and `source.kind === "youtube-video"` when they need persisted playable identities.
 
 Auth and account boundary:
 
