@@ -1,80 +1,95 @@
 # Refactor Progress
 
-This is the living handoff file for multi-session Codex work. Keep it current, concise, and factual.
+This is the detailed progress log for multi-session Codex work. Keep it current, concise, and factual.
+
+For future Codex discussions, start with `HANDOFF.md` and `AGENTS.md`. Use this file only when the short handoff does not contain enough detail.
 
 ## Current State
 
-- Date: 2026-05-24
+- Date: 2026-05-25
 - Branch: main
 - Last known commit: 6539363
-- Current milestone: M5a - Core Musique Hybride
+- Current milestone: Local Uploads Serveur prototype
 - Risk level: Medium
 
-The repo now has an additive hybrid track identity layer. Existing `track.id` playback/route behavior is preserved, while persisted tracks can carry source-aware `trackKey` and `source` metadata for external API tracks, browser-local files, podcasts, tracker tracks, future server uploads, favorites, playlists, sync, and future metadata overrides.
+The repo now has an additive hybrid track identity layer plus a non-production local upload server prototype. Existing `track.id` playback/route behavior is preserved, while persisted tracks can carry source-aware `trackKey` and `source` metadata for external API tracks, browser-local files, podcasts, tracker tracks, and local server uploads.
+
+`HANDOFF.md` is now the recommended first-read summary for future sessions; read `AGENTS.md` next, then consult the larger docs only if more detail is needed.
 
 ## Active Milestone
 
-M5a - Core Musique Hybride
+Local Uploads Serveur prototype
 
 Goal:
 
-- Create a stable source-aware track identity and snapshot persistence boundary without replacing `track.id`.
+- Allow a signed-in user to upload audio to a separate local filesystem server, list uploaded tracks in Library > Local Files, play them, and preserve `trackKey`/`source` compatibility.
 
 Success criteria:
 
-- Hybrid track helpers exist and are covered by focused tests.
-- IndexedDB v12 adds `track_catalog`, `track_metadata_overrides`, and `favorites_track_refs`.
-- Favorites, playlists, export/import, and PocketBase minification preserve `trackKey` and `source`.
-- Existing playback identifiers remain compatible.
+- Local upload server stores files and a manifest under `.storage/server-uploads`.
+- Upload/list/stream endpoints work for a user-scoped prototype.
+- Uploaded tracks use `source.kind === "server-local"` and `track.id === uploadId`.
+- Library UI supports minimal upload/list/refresh.
+- Player direct-audio path handles uploaded tracks.
+- Existing favorites/playlists preserve `trackKey`/`source` for uploaded track objects.
 
 In scope:
 
-- Source-aware track identity.
-- Additive DB stores.
-- Legacy-compatible favorites/playlists.
+- Local server model and filesystem storage.
+- Minimal upload/list/stream endpoints.
+- Basic filename-derived metadata.
+- Minimal Library UI.
+- Player/favorites/playlists compatibility via existing paths.
 - Documentation updates.
 
 Out of scope:
 
-- Server upload implementation.
-- Metadata override UI.
-- Route redesign.
-- Provider strategy changes.
+- Production Cloudflare/R2/PocketBase file storage.
+- Rich embedded metadata/artwork extraction.
+- Syncing uploaded audio files.
+- Public playback/share of uploaded files.
+- Download/transcode flows for uploads.
 - Formatting churn.
 
 ## Last Session Handoff
 
 Changes:
 
-- Follow-up: cleaned up `js/track-model.ts` lint issues introduced by the hybrid identity helper.
-- Installed local Bun dependencies and Playwright Chromium in this environment so browser tests can run.
-- Added `js/track-model.ts` with `trackKey`, `source`, hybrid track minification, override application, and source-aware comparison helpers.
-- Added IndexedDB v12 stores: `track_catalog`, `track_metadata_overrides`, and `favorites_track_refs`.
-- Updated track favorites, history, playlists, export/import, PocketBase sync minification, API track preparation, local metadata reads, and high-value like/remove call sites to preserve or use hybrid track identity.
-- Added focused tests for hybrid track identity and DB persistence behavior.
-- Documented the new hybrid music core boundary.
+- Added `docs/SELF_HOSTED_CHECKPOINTS.md`, an autonomous checkpoint roadmap for evolving Monochrome into a self-hosted homelab music app.
+- Updated `HANDOFF.md` to point future sessions at the checkpoint roadmap when the user asks to continue the self-hosted plan.
+- Added `server/uploads/server.mjs`, a separate Node local upload server with health, upload, list, and tokenized stream endpoints.
+- Added `dev:uploads` script.
+- Added `js/server-uploads.js` client helpers.
+- Added `server-local` to `js/track-model.ts` without removing existing `server-upload` compatibility.
+- Added a minimal Server uploads panel under Library > Local Files.
+- Wired upload/refresh events and direct-audio playback through existing player behavior.
+- Adjusted track favorite state updates to pass full track objects where server-local identity matters.
+- Skipped waveform API stream lookup for direct-audio/server-local tracks.
+- Hid incompatible context menu actions for server-local tracks.
+- Added focused `server-local` identity coverage.
+- Updated handoff, architecture, milestones, and decisions docs.
 
 Why:
 
-- The hybrid helper had lint violations around unnecessary type assertions and object stringification fallback.
-- Future external/local/server-upload tracks need a stable persisted identity without breaking route/player compatibility.
-- Favorites and playlists need to support multiple sources with overlapping legacy `id` values.
+- Give future AI sessions a clear next-step mechanism so they can continue one checkpoint at a time without re-planning from scratch.
+- Prototype server uploads without committing to production storage.
+- Keep uploaded tracks compatible with the M5a hybrid identity model.
+- Reuse existing direct-audio, favorites, and playlist paths instead of adding parallel persistence behavior.
 
 Files touched:
 
+- `HANDOFF.md`
+- `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `server/uploads/server.mjs`
+- `js/server-uploads.js`
 - `js/track-model.ts`
 - `js/tests/track-model.test.ts`
-- `js/tests/db.test.js`
-- `js/db.js`
-- `js/accounts/pocketbase.js`
-- `js/api.js`
-- `js/metadata.js`
 - `js/app.js`
 - `js/ui.js`
 - `js/events.js`
-- `js/ui-interactions.js`
-- `js/commandPalette.js`
-- `js/settings.js`
+- `index.html`
+- `styles.css`
+- `package.json`
 - `PROGRESS.md`
 - `docs/ARCHITECTURE.md`
 - `docs/MILESTONES.md`
@@ -82,37 +97,34 @@ Files touched:
 
 Verification:
 
-- `bun install` passed.
-- `bun x playwright install chromium` passed.
-- `bun run test:headless -- js/tests/track-model.test.ts js/tests/db.test.js` passed: 15 tests.
-- `bun x eslint js/track-model.ts` passed.
-- `bun run build` passed.
-- `bun run test:headless` failed on existing broader suite issues: `player.test.js` mock lacks `autoplaySettings`, API download expectations fail/time out, and browser connection closed after failures.
-- `bun run lint` failed on broad pre-existing lint debt; the only `js/track-model.ts` errors were fixed and rechecked.
-- `node --check js/db.js` passed.
-- `node --check js/accounts/pocketbase.js` passed.
-- `node --check js/api.js` passed.
-- `node --check js/metadata.js` passed.
-- `node --check js/app.js` passed.
-- `node --check js/events.js` passed.
-- `node --check js/ui-interactions.js` passed.
-- `node --check js/ui.js` passed.
-- `node --check js/commandPalette.js` passed.
-- `git diff --check` passed with only line-ending normalization warnings.
-- `bun run test -- js/tests/track-model.test.ts js/tests/db.test.js` could not run because `bun` is not installed in this environment.
-- `npm.cmd run test -- js/tests/track-model.test.ts js/tests/db.test.js` could not run because local dependencies are not installed (`vitest` not found).
+- Documentation-only checkpoint roadmap added; runtime validation not required for this file.
+- `node --check server/uploads/server.mjs js/server-uploads.js js/app.js js/ui.js js/events.js` passed.
+- Direct server smoke passed: health, upload, list, and HEAD stream.
+- `npm.cmd exec -- vitest run --config=vite.config.ts js/tests/track-model.test.ts js/tests/db.test.js` passed: 16 tests.
+- `npm.cmd exec -- eslint js/track-model.ts js/server-uploads.js` passed.
+- `npm.cmd run build` passed with existing chunk/dynamic-import warnings.
+- Playwright UI smoke passed: signed-out Server uploads state renders, upload/list works with injected test user and ephemeral upload server, clicking an uploaded WAV loads `/stream` with `source.kind === "server-local"`.
+- Added localhost-only `Use Test Session` auth fallback so upload testing does not require a real Better Auth login.
+- `npm.cmd exec -- eslint js/track-model.ts js/server-uploads.js js/app.js js/ui.js js/events.js` failed on pre-existing `js/app.js` errors (`no-empty`, `no-floating-promises`) and warnings; targeted new/frontend helper lint passed.
 
 Known risks:
 
 - Local Vite startup succeeds under Playwright, but localhost reports expected CORS failures for remote auth/API endpoints and an existing Shaka config warning for `streaming.jumpLargeGaps`.
-- Full test/lint suites still fail on broader issues outside this follow-up.
+- Full lint still fails on broader existing `js/app.js` debt outside this milestone.
 - Many UI surfaces still pass only legacy `id` into `isFavorite`; this is intentionally supported as fallback but less precise for non-TIDAL sources.
 - Browser-local tracks still cannot serialize live `File` handles into cloud sync; local snapshots are metadata-only.
+- Server-local uploaded audio files do not sync; cloud favorites/playlists may only carry metadata snapshots and local stream URLs.
+- The local upload server auth boundary is prototype-only. Upload/list require the signed-in user id header, while stream URLs use per-track tokens for audio element compatibility.
+- Server-local metadata is basic: filename title, unknown artist, unknown duration, no embedded artwork.
 - Normal production audio stream resolution still depends on Qobuz-by-ISRC after TIDAL metadata lookup and must remain protected.
 
 ## Next Exact Step
 
-Manually smoke the app through `bun run dev` rather than opening `index.html` directly. Recheck startup, liking/unliking, playlist add/remove, public playlists, and browser-local playback; if the app is still visibly broken, capture the browser console stack trace and compare it against the known localhost CORS/Shaka warnings.
+For future sessions, read `HANDOFF.md` and `AGENTS.md` first.
+
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete the next small checkpoint only.
+
+If the user asks to continue the current local upload prototype, manually smoke real local uploads with real auth: run the app dev server plus `npm run dev:uploads`/`bun run dev:uploads`, upload a real audio file from Library > Local Files, play it, like/unlike it, add/remove it from a playlist, reload, and verify normal API playback still works.
 
 ## Open Questions / Blockers
 
@@ -164,6 +176,16 @@ Append new entries here.
 | 2026-05-24 | `bun run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk warnings. |
 | 2026-05-24 | `bun run test:headless` | Fail | Broader suite failures remain in `player.test.js` mock and API download tests; not specific to `track-model.ts` follow-up. |
 | 2026-05-24 | `bun run lint` | Fail | Broad existing lint debt remains; `js/track-model.ts` now passes targeted ESLint. |
+| 2026-05-25 | Documentation-only handoff update | Pass | Added `HANDOFF.md`; no functional code changed. |
+| 2026-05-25 | `node --check server/uploads/server.mjs js/server-uploads.js js/app.js js/ui.js js/events.js` | Pass | Syntax checks for local upload server and touched frontend modules. |
+| 2026-05-25 | Direct local upload server smoke | Pass | Health, upload, list, and HEAD stream succeeded with an ephemeral storage directory. |
+| 2026-05-25 | `npm.cmd exec -- vitest run --config=vite.config.ts js/tests/track-model.test.ts js/tests/db.test.js` | Pass | 2 files, 16 tests passed. |
+| 2026-05-25 | `npm.cmd exec -- eslint js/track-model.ts js/server-uploads.js` | Pass | Targeted lint for hybrid model and upload client. |
+| 2026-05-25 | `npm.cmd run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings. |
+| 2026-05-25 | Playwright local upload UI smoke | Pass | Server uploads panel rendered, upload/list worked with injected test auth, and an uploaded WAV loaded as `/stream` in the player. |
+| 2026-05-25 | `npm.cmd exec -- eslint js/track-model.ts js/server-uploads.js js/app.js js/ui.js js/events.js` | Fail | Broader touched-file lint still hits pre-existing `js/app.js` errors and warnings. |
+| 2026-05-25 | Self-hosted checkpoint roadmap documentation | Pass | Added `docs/SELF_HOSTED_CHECKPOINTS.md`; runtime validation not required. |
+| 2026-05-25 | Local uploads closeout validation | Pass | Re-ran `node --check` on upload/frontend modules, focused Vitest DB/track-model tests, targeted ESLint for track model/upload client, and production build before commit. |
 
 ## Milestone History
 
@@ -173,3 +195,4 @@ Append completed milestones here.
 | --- | --- | --- | --- |
 | M0 - Documentation baseline | 2026-05-24 | Internal docs added for Codex continuity. | Documentation-only status check passed. |
 | M5a - Core Musique Hybride | 2026-05-24 | Added additive source-aware track identity and persistence boundary. | JS syntax checks passed; test execution blocked by missing dependencies. |
+| Local Uploads Serveur prototype | 2026-05-25 | Added local filesystem upload server, `server-local` tracks, minimal Library UI, direct playback, and favorites/playlists compatibility. | Focused tests, build, syntax checks, direct server smoke, and Playwright UI/player smoke passed. |

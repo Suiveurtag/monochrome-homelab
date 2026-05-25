@@ -6508,6 +6508,60 @@ img[src=''] {
     margin-bottom: 0;
 }
 
+.server-uploads-panel {
+    margin-top: 16px;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+}
+
+.server-uploads-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 20px 12px;
+}
+
+.server-uploads-header h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.server-uploads-status,
+.server-uploads-count {
+    margin: 4px 0 0;
+    color: var(--muted-foreground);
+    font-size: 0.85rem;
+}
+
+.server-uploads-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.server-uploads-actions .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 640px) {
+    .server-uploads-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .server-uploads-actions {
+        justify-content: flex-start;
+        width: 100%;
+    }
+}
+
 .library-liked-tracks-toolbar {
     display: flex;
     flex-direction: column;

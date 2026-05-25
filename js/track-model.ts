@@ -1,4 +1,4 @@
-export type TrackSourceKind = 'external' | 'server-upload' | 'browser-local' | 'podcast' | 'tracker';
+export type TrackSourceKind = 'external' | 'server-upload' | 'server-local' | 'browser-local' | 'podcast' | 'tracker';
 export type ExternalProvider = 'tidal' | 'qobuz' | 'hifi' | 'unknown';
 export type TrackKey = string;
 
@@ -68,7 +68,14 @@ type TrackLike = Partial<HybridTrack> & {
     file?: File | Blob | null;
 };
 
-const SOURCE_KINDS = new Set<TrackSourceKind>(['external', 'server-upload', 'browser-local', 'podcast', 'tracker']);
+const SOURCE_KINDS = new Set<TrackSourceKind>([
+    'external',
+    'server-upload',
+    'server-local',
+    'browser-local',
+    'podcast',
+    'tracker',
+]);
 const EXTERNAL_PROVIDERS = new Set<ExternalProvider>(['tidal', 'qobuz', 'hifi', 'unknown']);
 
 function isTrackSourceKind(value: unknown): value is TrackSourceKind {

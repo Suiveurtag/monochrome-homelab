@@ -27,6 +27,17 @@ describe('track-model', () => {
         expect(upload.trackKey).not.toBe(external.trackKey);
     });
 
+    test('creates server-local identities for local upload server tracks', () => {
+        const upload = withTrackIdentity({
+            id: 'upload-1',
+            title: 'Uploaded Track',
+            source: { kind: 'server-local', sourceId: 'upload-1' },
+        });
+
+        expect(upload.trackKey).toBe('v1:server-local:none:upload-1');
+        expect(upload.trackKey).not.toBe(getTrackKey({ id: 'upload-1', title: 'External Track' }));
+    });
+
     test('marks browser local files as local without making them server uploads', () => {
         const local = withTrackIdentity({ id: 'local-song.flac-1', title: 'Local', isLocal: true });
 

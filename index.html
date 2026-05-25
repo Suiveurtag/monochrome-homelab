@@ -2357,6 +2357,32 @@
                                     </button>
                                 </div>
                                 <div id="local-files-list"></div>
+                                <div class="server-uploads-panel">
+                                    <div class="server-uploads-header">
+                                        <div>
+                                            <h3>Server uploads</h3>
+                                            <p id="server-uploads-status" class="server-uploads-status"></p>
+                                        </div>
+                                        <div class="server-uploads-actions">
+                                            <span id="server-uploads-count" class="server-uploads-count">0 tracks</span>
+                                            <input
+                                                type="file"
+                                                id="server-upload-input"
+                                                accept="audio/*,.flac,.mp3,.m4a,.mp4,.wav,.ogg,.opus,.aac"
+                                                style="display: none"
+                                            />
+                                            <button id="server-upload-btn" class="btn-secondary">
+                                                <use svg="!lucide/upload.svg" size="16" />
+                                                <span>Upload</span>
+                                            </button>
+                                            <button id="refresh-server-uploads-btn" class="btn-secondary">
+                                                <use svg="!lucide/refresh-cw.svg" size="16" />
+                                                <span>Refresh</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="track-list" id="server-uploads-list"></div>
+                                </div>
                             </div>
                         </div>
                     </section>
@@ -5996,6 +6022,9 @@
                             <button id="auth-github-btn" class="btn-secondary">Connect with GitHub</button>
                             <button id="auth-discord-btn" class="btn-secondary">Connect with Discord</button>
                             <button id="toggle-email-auth-btn" class="btn-secondary">Connect with Email</button>
+                            <button id="auth-dev-btn" class="btn-secondary" style="display: none">
+                                Use Test Session
+                            </button>
                             <button id="view-my-profile-btn" class="btn-secondary" style="display: none">
                                 View My Profile
                             </button>

@@ -6,6 +6,31 @@ function normalizeUser(user) {
     return { ...user, $id: user.id };
 }
 
+function isLocalDevEnvironment() {
+    return (
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname === '::1'
+    );
+}
+
+function getDevAuthUser() {
+    const stored = localStorage.getItem('monochrome-dev-auth-user');
+    if (stored) {
+        try {
+            const parsed = JSON.parse(stored);
+            if (parsed?.$id && parsed?.email) return parsed;
+        } catch {}
+    }
+
+    return {
+        id: 'dev-user',
+        $id: 'dev-user',
+        email: 'dev@localhost',
+        name: 'Dev User',
+    };
+}
+
 export class AuthManager {
     constructor() {
         this.user = null;
@@ -26,9 +51,29 @@ export class AuthManager {
             this.authListeners.forEach((listener) => listener(this.user));
         } catch (err) {
             console.warn('Session check failed:', err);
-            this.user = null;
-            this.updateUI(null);
+            const useDevAuth = localStorage.getItem('monochrome-dev-auth') === 'true';
+            if (useDevAuth && isLocalDevEnvironment()) {
+                this.useDevSession();
+            } else {
+                this.user = null;
+                this.updateUI(null);
+            }
         }
+    }
+
+    useDevSession() {
+        const user = getDevAuthUser();
+        localStorage.setItem('monochrome-dev-auth', 'true');
+        localStorage.setItem('monochrome-dev-auth-user', JSON.stringify(user));
+        this.user = user;
+        this.updateUI(this.user);
+        this.authListeners.forEach((listener) => listener(this.user));
+        return this.user;
+    }
+
+    clearDevSession() {
+        localStorage.removeItem('monochrome-dev-auth');
+        localStorage.removeItem('monochrome-dev-auth-user');
     }
 
     onAuthStateChanged(callback) {
@@ -131,6 +176,7 @@ export class AuthManager {
     async signOut() {
         try {
             await authClient.signOut();
+            this.clearDevSession();
             this.user = null;
             this.updateUI(null);
             this.authListeners.forEach((listener) => listener(null));
@@ -154,6 +200,7 @@ export class AuthManager {
         const emailToggleBtn = document.getElementById('toggle-email-auth-btn');
         const githubBtn = document.getElementById('auth-github-btn');
         const discordBtn = document.getElementById('auth-discord-btn');
+        const devBtn = document.getElementById('auth-dev-btn');
 
         if (!connectBtn) return;
 
@@ -166,6 +213,7 @@ export class AuthManager {
             if (emailToggleBtn) emailToggleBtn.style.display = 'none';
             if (githubBtn) githubBtn.style.display = 'none';
             if (discordBtn) discordBtn.style.display = 'none';
+            if (devBtn) devBtn.style.display = 'none';
             if (statusText) statusText.textContent = user ? `Signed in as ${user.email}` : 'Signed in';
 
             const accountPage = document.getElementById('page-account');
@@ -201,6 +249,7 @@ export class AuthManager {
             if (emailToggleBtn) emailToggleBtn.style.display = 'none';
             if (githubBtn) githubBtn.style.display = 'none';
             if (discordBtn) discordBtn.style.display = 'none';
+            if (devBtn) devBtn.style.display = 'none';
             if (statusText) statusText.textContent = `Signed in as ${user.email}`;
         } else {
             connectBtn.textContent = 'Connect with Google';
@@ -216,6 +265,14 @@ export class AuthManager {
             if (discordBtn) {
                 discordBtn.style.display = 'inline-block';
                 discordBtn.onclick = () => this.signInWithDiscord();
+            }
+            if (devBtn) {
+                if (isLocalDevEnvironment()) {
+                    devBtn.style.display = 'inline-block';
+                    devBtn.onclick = () => this.useDevSession();
+                } else {
+                    devBtn.style.display = 'none';
+                }
             }
             if (statusText) statusText.textContent = 'Sync your library across devices';
         }

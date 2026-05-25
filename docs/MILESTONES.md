@@ -192,6 +192,35 @@ Required checks:
 - Focused tests for `track-model` and `db` when dependencies are installed.
 - Existing test/lint/build checks as feasible.
 
+### Local Uploads Serveur Prototype
+
+Status: Complete
+
+Goal:
+
+- Add a minimal non-production server upload path that stores audio files locally and exposes them as hybrid tracks.
+
+Scope:
+
+- Separate Node dev upload server with filesystem storage under `.storage/server-uploads`.
+- `server-local` track source compatible with `trackKey`/`source`.
+- Minimal Library > Local Files upload/list UI.
+- Direct-audio player compatibility plus existing favorites/playlists object-track paths.
+
+Non-goals:
+
+- No production Cloudflare/R2/PocketBase file storage.
+- No rich metadata/artwork extraction.
+- No uploaded audio sync or public sharing.
+- No download/transcode integration for uploaded files.
+
+Required checks:
+
+- Focused `track-model` and DB tests.
+- Local upload server smoke for health/upload/list/stream.
+- Build.
+- Manual or Playwright smoke for Library upload/list/playback.
+
 ### M6 - Player And Media Boundary
 
 Status: Planned

@@ -625,8 +625,12 @@ export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui)
             player.currentTrack &&
             (player.currentTrack.isTracker ||
                 (player.currentTrack.id && String(player.currentTrack.id).startsWith('tracker-')));
+        const isDirectAudioTrack =
+            player.currentTrack &&
+            (player.currentTrack.source?.kind === 'server-local' ||
+                (player.currentTrack.audioUrl && !player.currentTrack.isLocal));
 
-        if (!waveformSettings.isEnabled() || !player.currentTrack || isTracker) {
+        if (!waveformSettings.isEnabled() || !player.currentTrack || isTracker || isDirectAudioTrack) {
             if (progressBar) {
                 progressBar.style.webkitMaskImage = '';
                 progressBar.style.maskImage = '';
@@ -1971,6 +1975,27 @@ async function updateContextMenuLikeState(contextMenu, contextTrack) {
         }
     });
 
+    if (contextTrack.source?.kind === 'server-local') {
+        const hiddenActions = new Set([
+            'start-infinite-radio',
+            'start-mix',
+            'request-song',
+            'go-to-artist',
+            'go-to-album',
+            'copy-link',
+            'open-in-new-tab',
+            'open-in-harmony',
+            'open-original-url',
+            'download',
+            'block-track',
+            'block-album',
+            'block-artist',
+        ]);
+        contextMenu.querySelectorAll('li[data-action]').forEach((item) => {
+            if (hiddenActions.has(item.dataset.action)) item.style.display = 'none';
+        });
+    }
+
     // Handle multiple artists for "Go to artist"
     const artistItem = contextMenu.querySelector('li[data-action="go-to-artist"]');
     if (artistItem) {
@@ -1979,7 +2004,7 @@ async function updateContextMenuLikeState(contextMenu, contextTrack) {
             : contextTrack.artist
               ? [contextTrack.artist]
               : [];
-        const canShowArtist = type === 'track' || type === 'album';
+        const canShowArtist = (type === 'track' || type === 'album') && contextTrack.source?.kind !== 'server-local';
 
         if (artists.length > 1 && canShowArtist) {
             artistItem.style.display = 'block';

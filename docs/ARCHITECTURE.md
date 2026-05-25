@@ -89,6 +89,7 @@ API and media:
 - `js/api.js`, `js/music-api.js`, and `js/HiFi.ts` handle provider access, API instance selection, caching, stream preparation, manifests, and media data shaping.
 - `js/container-classes.ts` defines track/album/playback-related classes used by the API layer.
 - `js/track-model.ts` defines the additive hybrid track identity contract. `track.id` remains the playback/route compatibility identifier, while `trackKey` and `source` identify persisted tracks across external APIs, browser-local files, podcasts, tracker tracks, and future server uploads.
+- `js/server-uploads.js` is the browser client for the local upload prototype. It requires the current Better Auth user id, calls the local upload server, and normalizes returned tracks through `withTrackIdentity`.
 - `MusicAPI` is the app-facing facade. It currently routes most calls to `LosslessAPI`/TIDAL and podcast calls to `PodcastsAPI`.
 - `LosslessAPI.fetchWithRetry()` tries native `HiFiClient` routes for non-streaming requests, falls back to configured HiFi API instances, and uses configured streaming/Qobuz instances where appropriate.
 - `LosslessAPI.getStreamUrl()` resolves normal production audio through Qobuz by TIDAL ISRC. If no ISRC or Qobuz stream is available, playback reports a missing audio source.
@@ -165,6 +166,7 @@ Deployment:
 - `vite-plugin-auth-gate.js` injects selected env-derived globals and provides preview-server auth gating when enabled.
 - Docker production builds with Bun and serves `dist/` through Nginx; Docker Compose can optionally run PocketBase via profile.
 - `nginx.conf` serves static assets directly and falls back app routes to `index.html`.
+- `server/uploads/server.mjs` is a separate local Node dev server for the `server-local` upload prototype. It stores files under `.storage/server-uploads`, exposes upload/list/stream endpoints, and is not a Cloudflare Pages production storage design.
 
 Native shells:
 
@@ -186,6 +188,7 @@ Preserve these during behavior-preserving refactors:
 - Queue, shuffle, repeat, autoplay/radio, and playback quality behavior.
 - Search result normalization, TIDAL provider-prefixed IDs, Qobuz-by-ISRC stream resolution, and API fallback behavior.
 - Hybrid track identity: keep `id` playable and source-specific persistence under `trackKey` plus `source`.
+- Server-local uploads: keep `source.kind === "server-local"` for local filesystem uploads, keep `track.id` equal to the upload id, and route persisted identity through the existing hybrid helpers.
 - Download output naming, metadata, lyrics inclusion, archive generation, and cancellation/progress behavior.
 - Sidebar collapse/order/visibility, pinned item rendering, queue/lyrics side panel behavior, and search history behavior.
 - PWA install/update/cache behavior.

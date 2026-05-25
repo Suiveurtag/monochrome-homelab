@@ -160,3 +160,35 @@ Affected areas:
 - `js/accounts/pocketbase.js`
 - `js/api.js`
 - `js/metadata.js`
+
+## 2026-05-25 - Local Upload Prototype Uses Server-Local Source
+
+Status: Accepted
+
+Context:
+
+- The app needs a minimal server upload path before choosing production storage.
+- Cloudflare Pages Functions do not provide persistent local filesystem storage.
+- The hybrid identity model already supports source-aware persistence without replacing `track.id`.
+
+Decision:
+
+- Add a non-production Node upload server that stores audio files under `.storage/server-uploads`.
+- Represent its tracks with `source.kind === "server-local"` and `track.id === uploadId`.
+- Keep existing `server-upload` identity compatibility for prior tests/data, but use `server-local` for this local filesystem prototype.
+- Require a signed-in app user id for upload/list calls; use per-track stream tokens for audio element playback because media elements cannot send custom auth headers.
+
+Consequences:
+
+- This is a local prototype boundary, not a production Cloudflare/R2 storage design.
+- Uploaded audio files are not synced through PocketBase; only metadata snapshots may appear in favorites/playlists.
+- Rich metadata extraction, quotas, deletion, public sharing, and production auth hardening remain future work.
+
+Affected areas:
+
+- `server/uploads/server.mjs`
+- `js/server-uploads.js`
+- `js/track-model.ts`
+- `js/app.js`
+- `js/ui.js`
+- `js/events.js`

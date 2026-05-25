@@ -30,6 +30,7 @@ import { db } from './db.js';
 import { showNotification } from './downloads.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { authManager } from './accounts/auth.js';
+import { uploadServerTrack } from './server-uploads.js';
 import { registerSW } from 'virtual:pwa-register';
 import { openEditProfile } from './profile.js';
 import { ThemeStore } from './themeStore.js';
@@ -589,6 +590,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             await scanLocalMediaFolder(!!window.localFilesCache);
         }
+    };
+
+    window.refreshServerUploads = async () => {
+        await UIRenderer.instance.renderServerUploads();
     };
 
     // Kick off a background scan of the saved local media folder on startup so
@@ -2468,7 +2473,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         }
+
+        if (e.target.closest('#server-upload-btn')) {
+            document.getElementById('server-upload-input')?.click();
+        }
+
+        if (e.target.closest('#refresh-server-uploads-btn')) {
+            await UIRenderer.instance.renderServerUploads();
+        }
     });
+
+    const serverUploadInput = document.getElementById('server-upload-input');
+    if (serverUploadInput) {
+        serverUploadInput.addEventListener('change', async () => {
+            const file = serverUploadInput.files?.[0];
+            if (!file) return;
+
+            const uploadBtn = document.getElementById('server-upload-btn');
+            const statusEl = document.getElementById('server-uploads-status');
+            if (uploadBtn) uploadBtn.disabled = true;
+            if (statusEl) statusEl.textContent = `Uploading ${file.name}...`;
+
+            try {
+                await uploadServerTrack(file);
+                showNotification(`Uploaded ${file.name}`);
+                await UIRenderer.instance.renderServerUploads();
+            } catch (error) {
+                console.error('Server upload failed:', error);
+                showNotification(error.message || 'Server upload failed');
+                if (statusEl) statusEl.textContent = 'Upload failed.';
+            } finally {
+                serverUploadInput.value = '';
+                if (uploadBtn) uploadBtn.disabled = !authManager.user;
+            }
+        });
+    }
 
     const searchForm = document.getElementById('search-form');
     const searchInput = document.getElementById('search-input');

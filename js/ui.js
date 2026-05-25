@@ -40,6 +40,7 @@ import { Visualizer } from './visualizer.js';
 import { audioContextManager } from './audio-context.js';
 import { navigate } from './router.js';
 import { sidePanelManager } from './side-panel.js';
+import { getUploadServerUrl, listServerUploadTracks } from './server-uploads.js';
 import {
     renderUnreleasedPage as renderUnreleasedTrackerPage,
     renderTrackerArtistPage as renderTrackerArtistContent,
@@ -402,7 +403,8 @@ export class UIRenderer {
                     likeBtn.style.display = 'none';
                 } else {
                     likeBtn.style.display = 'flex';
-                    await this.updateLikeState(likeBtn.parentElement, track.type || 'track', track.id);
+                    const likeType = track.type || 'track';
+                    await this.updateLikeState(likeBtn.parentElement, likeType, likeType === 'track' ? track : track.id);
                 }
             }
 
@@ -432,7 +434,8 @@ export class UIRenderer {
                     fsLikeBtn.style.display = 'none';
                 } else {
                     fsLikeBtn.style.display = 'flex';
-                    await this.updateLikeState(fsLikeBtn.parentElement, track.type || 'track', track.id);
+                    const likeType = track.type || 'track';
+                    await this.updateLikeState(fsLikeBtn.parentElement, likeType, likeType === 'track' ? track : track.id);
                 }
             }
             if (fsAddPlaylistBtn) {
@@ -1122,7 +1125,9 @@ export class UIRenderer {
             if (element && track) {
                 trackDataStore.set(element, track);
                 // Async update for like button
-                this.updateLikeState(element, track.type || 'track', track.id).catch(console.error);
+                this.updateLikeState(element, track.type || 'track', track.type === 'track' ? track : track.id).catch(
+                    console.error
+                );
             }
         });
 
@@ -2691,6 +2696,7 @@ export class UIRenderer {
         // Render Local Files
         if (localContainer) {
             await this.renderLocalFiles(localContainer);
+            await this.renderServerUploads();
         }
     }
 
@@ -2731,6 +2737,44 @@ export class UIRenderer {
             if (introDiv) introDiv.style.display = 'block';
             if (headerDiv) headerDiv.style.display = 'none';
             if (listContainer) listContainer.innerHTML = '';
+        }
+    }
+
+    async renderServerUploads() {
+        const statusEl = document.getElementById('server-uploads-status');
+        const listContainer = document.getElementById('server-uploads-list');
+        const countEl = document.getElementById('server-uploads-count');
+        const uploadBtn = document.getElementById('server-upload-btn');
+
+        if (!listContainer) return;
+
+        if (!authManager.user) {
+            if (statusEl) statusEl.textContent = 'Sign in to use server uploads.';
+            if (countEl) countEl.textContent = '0 tracks';
+            if (uploadBtn) uploadBtn.disabled = true;
+            listContainer.innerHTML = createPlaceholder('No server uploads');
+            return;
+        }
+
+        if (uploadBtn) uploadBtn.disabled = false;
+        if (statusEl) statusEl.textContent = 'Loading server uploads...';
+
+        try {
+            const tracks = await listServerUploadTracks();
+            window.serverUploadTracksCache = tracks;
+            if (countEl) countEl.textContent = `${tracks.length} ${tracks.length === 1 ? 'track' : 'tracks'}`;
+            if (statusEl) statusEl.textContent = `Local upload server: ${getUploadServerUrl()}`;
+
+            if (tracks.length === 0) {
+                listContainer.innerHTML = createPlaceholder('No server uploads');
+            } else {
+                await this.renderListWithTracks(listContainer, tracks, true, false, false, true);
+            }
+        } catch (error) {
+            console.warn('Failed to load server uploads:', error);
+            if (countEl) countEl.textContent = 'Unavailable';
+            if (statusEl) statusEl.textContent = 'Upload server unavailable.';
+            listContainer.innerHTML = createPlaceholder('No server uploads');
         }
     }
 
