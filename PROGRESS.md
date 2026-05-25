@@ -8,35 +8,37 @@ For future Codex discussions, start with `HANDOFF.md` and `AGENTS.md`. Use this 
 
 - Date: 2026-05-25
 - Branch: main
-- Last known commit: 6df47a7
-- Current milestone: Self-Hosted Checkpoint 4 - Define The Minimal Self-Hosted Backend (next)
+- Last known commit: ccdd30f
+- Current milestone: Self-Hosted Checkpoint 5 - Make Filesystem Storage Production-Ready (next)
 - Risk level: Medium
 
 The repo now has an additive hybrid track identity layer plus a non-production local upload server prototype. Existing `track.id` playback/route behavior is preserved, while persisted tracks can carry source-aware `trackKey` and `source` metadata for external API tracks, browser-local files, podcasts, tracker tracks, and local server uploads.
 
-Self-Hosted Checkpoints 1, 2, and 3 are complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map"; `js/track-model.ts` has additive future source kinds for `server-library`, `radio`, and `youtube-video` plus exported source normalization helpers; and `js/server-library.js` is now the app-facing client boundary for future self-hosted library operations.
+Self-Hosted Checkpoints 1 through 4 are complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map"; `js/track-model.ts` has additive future source kinds for `server-library`, `radio`, and `youtube-video` plus exported source normalization helpers; `js/server-library.js` is now the app-facing client boundary for future self-hosted library operations; and `server/selfhosted/server.mjs` is the minimal backend skeleton with config loading, data directories, `/health`, and auth placeholders.
 
 `HANDOFF.md` is now the recommended first-read summary for future sessions; read `AGENTS.md` next, then consult the larger docs only if more detail is needed.
 
 ## Last Completed Self-Hosted Checkpoint
 
-Self-Hosted Checkpoint 3 - Prepare A Server Library Client Layer
+Self-Hosted Checkpoint 4 - Define The Minimal Self-Hosted Backend
 
 Goal:
 
-- Isolate frontend calls for the future server library behind a stable client layer.
+- Create the minimal homelab backend skeleton without replacing existing Cloudflare Pages or upload prototype behavior.
 
 Success criteria:
 
-- The frontend has a stable, narrow client API even if it still talks to the prototype upload server.
-- Existing Library upload/list UI behavior is preserved.
+- A local server starts and exposes `/health`.
+- Config/env values load.
+- Self-hosted filesystem data directories are created.
+- Auth boundary placeholders are explicit.
 
 In scope:
 
-- `js/server-library.js`
-- `js/server-uploads.js`
-- `js/app.js`
-- `js/ui.js`
+- `.env.example`
+- `package.json`
+- `server/selfhosted/config.mjs`
+- `server/selfhosted/server.mjs`
 - `docs/ARCHITECTURE.md`
 - `docs/SELF_HOSTED_CHECKPOINTS.md`
 - `docs/MILESTONES.md`
@@ -46,9 +48,9 @@ In scope:
 
 Out of scope:
 
-- Production database or storage implementation.
-- Server-side search endpoint.
-- Metadata editing UI.
+- Final upload storage.
+- Account approval implementation.
+- Admin, social, or production library backend endpoints.
 
 ## Last Session Handoff
 
@@ -121,7 +123,7 @@ Known risks:
 
 For future sessions, read `HANDOFF.md` and `AGENTS.md` first.
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 4 - Define The Minimal Self-Hosted Backend.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 5 - Make Filesystem Storage Production-Ready.
 
 If the user asks to continue the current local upload prototype, manually smoke real local uploads with real auth: run the app dev server plus `npm run dev:uploads`/`bun run dev:uploads`, upload a real audio file from Library > Local Files, play it, like/unlike it, add/remove it from a playlist, reload, and verify normal API playback still works.
 
@@ -194,6 +196,9 @@ Append new entries here.
 | 2026-05-25 | `npm.cmd exec -- eslint js/server-library.js js/server-uploads.js` | Pass | Targeted lint passed for the server library boundary and upload transport adapter. |
 | 2026-05-25 | `npm.cmd exec -- eslint js/server-library.js js/server-uploads.js js/app.js js/ui.js` | Fail | Broader touched-file lint still hits pre-existing `js/app.js` errors and warnings; new server library files passed targeted lint. |
 | 2026-05-25 | `npm.cmd run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings after adding `js/server-library.js`. |
+| 2026-05-25 | `node --check server/selfhosted/config.mjs server/selfhosted/server.mjs server/uploads/server.mjs` | Pass | Syntax checks passed for the self-hosted backend skeleton and existing upload server. |
+| 2026-05-25 | Self-hosted backend `/health` smoke | Pass | Started `createSelfHostedServer()` on an ephemeral port with temp data dir, fetched `/health`, verified `ok` and service name, then closed the server. |
+| 2026-05-25 | `npm.cmd run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings after adding the self-hosted backend skeleton. |
 
 ## Milestone History
 
@@ -207,3 +212,4 @@ Append completed milestones here.
 | Self-Hosted Checkpoint 1 - Map Current Contracts | 2026-05-25 | Added a concise self-hosted contract map to architecture docs. | Documentation review passed; no runtime validation required. |
 | Self-Hosted Checkpoint 2 - Stabilize The Music Source Model | 2026-05-25 | Added additive `server-library`, `radio`, and `youtube-video` source kinds plus exported source normalization helpers. | Focused track-model tests and targeted ESLint passed. |
 | Self-Hosted Checkpoint 3 - Prepare A Server Library Client Layer | 2026-05-25 | Added `js/server-library.js` and routed existing upload/list UI through it. | Syntax checks, targeted ESLint, and production build passed. |
+| Self-Hosted Checkpoint 4 - Define The Minimal Self-Hosted Backend | 2026-05-25 | Added minimal self-hosted backend config, data directories, `/health`, auth placeholders, env example, and dev script. | Server syntax checks, `/health` smoke, and production build passed. |

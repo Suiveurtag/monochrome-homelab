@@ -249,3 +249,33 @@ Affected areas:
 - `js/app.js`
 - `js/ui.js`
 - `docs/ARCHITECTURE.md`
+
+## 2026-05-25 - Self-Hosted Backend Starts As A Separate Skeleton
+
+Status: Accepted
+
+Context:
+
+- The project still serves the app through Vite/Cloudflare Pages/Docker static paths.
+- The upload prototype already has a separate local server, but the production self-hosted backend shape is not defined yet.
+- The roadmap needs a minimal backend foundation without replacing existing Cloudflare Pages behavior.
+
+Decision:
+
+- Add `server/selfhosted/server.mjs` as a separate minimal Node backend skeleton.
+- Add `server/selfhosted/config.mjs` for env/config loading and deterministic data directory paths.
+- Expose `/health` and placeholder `/api/auth/*` responses only; do not wire production library, metadata, admin, or social endpoints yet.
+
+Consequences:
+
+- Future backend checkpoints have a single entrypoint for self-hosted server work.
+- Existing frontend, Cloudflare Pages Functions, and local upload prototype behavior remain unchanged.
+- Auth is explicitly represented as required/approval-required placeholder config until the auth checkpoints implement enforcement.
+
+Affected areas:
+
+- `server/selfhosted/server.mjs`
+- `server/selfhosted/config.mjs`
+- `.env.example`
+- `package.json`
+- `docs/ARCHITECTURE.md`

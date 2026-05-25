@@ -222,6 +222,7 @@ Deployment:
 - `vite-plugin-auth-gate.js` injects selected env-derived globals and provides preview-server auth gating when enabled.
 - Docker production builds with Bun and serves `dist/` through Nginx; Docker Compose can optionally run PocketBase via profile.
 - `nginx.conf` serves static assets directly and falls back app routes to `index.html`.
+- `server/selfhosted/server.mjs` is the minimal self-hosted backend skeleton. It loads config/env values, prepares data directories, exposes `/health`, and reserves auth endpoint space with placeholder responses.
 - `server/uploads/server.mjs` is a separate local Node dev server for the `server-local` upload prototype. It stores files under `.storage/server-uploads`, exposes upload/list/stream endpoints, and is not a Cloudflare Pages production storage design.
 - Frontend code should call `js/server-library.js` for self-hosted library behavior; `js/server-uploads.js` should remain the prototype transport adapter until the production backend replaces it.
 

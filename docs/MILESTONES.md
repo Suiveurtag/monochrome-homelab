@@ -291,6 +291,31 @@ Required checks:
 - Targeted ESLint for `js/server-library.js` and `js/server-uploads.js`.
 - Production build.
 
+### Self-Hosted Checkpoint 4 - Define The Minimal Self-Hosted Backend
+
+Status: Complete
+
+Goal:
+
+- Create the minimal homelab backend skeleton without replacing Cloudflare Pages or the local upload prototype.
+
+Scope:
+
+- Add a self-hosted Node server entrypoint with config loading, filesystem data paths, `/health`, and auth placeholder responses.
+- Add `.env.example` entries and `dev:selfhost`.
+
+Non-goals:
+
+- No final upload storage.
+- No account approval implementation.
+- No social/admin/library backend endpoints beyond placeholders.
+
+Required checks:
+
+- Syntax checks for server modules.
+- Manual smoke of `/health`.
+- Production build.
+
 ### M6 - Player And Media Boundary
 
 Status: Planned

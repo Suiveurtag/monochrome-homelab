@@ -170,6 +170,8 @@ Out of scope:
 
 ## Checkpoint 4 - Define The Minimal Self-Hosted Backend
 
+Status: Complete
+
 Objective:
 
 Create the minimal Ubuntu/homelab server skeleton: HTTP API, config loading, filesystem paths, health endpoint, and auth boundary placeholders. Do not replace Cloudflare Pages behavior yet.
@@ -196,6 +198,7 @@ Risks:
 Stop criteria:
 
 - A local server starts, exposes `/health`, loads config, and does not break the frontend build.
+- Completed with `server/selfhosted/server.mjs`, `server/selfhosted/config.mjs`, `.env.example`, and the `dev:selfhost` script.
 
 Out of scope:
 

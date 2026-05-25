@@ -19,9 +19,9 @@ Only read `PROGRESS.md`, `docs/ARCHITECTURE.md`, `docs/MILESTONES.md`, or `docs/
 
 ## Last Completed Milestone
 
-Self-Hosted Checkpoint 3 - Prepare A Server Library Client Layer is complete.
+Self-Hosted Checkpoint 4 - Define The Minimal Self-Hosted Backend is complete.
 
-It added `js/server-library.js` as the stable frontend client for future self-hosted library operations. Current upload/list UI now calls this layer, while `js/server-uploads.js` remains the local prototype transport adapter. The previous source-model and contract-map checkpoints remain complete and committed.
+It added `server/selfhosted/server.mjs` plus `server/selfhosted/config.mjs` as a separate minimal self-hosted backend skeleton. The server loads env/config, prepares data directories, exposes `/health`, and reserves auth endpoint space with placeholder responses. The previous server library client, source-model, contract-map, and Local Uploads Serveur checkpoints remain complete and committed.
 
 ## Core Musique Hybride Changes
 
@@ -43,6 +43,7 @@ It added `js/server-library.js` as the stable frontend client for future self-ho
 
 - Added `server/uploads/server.mjs`, a separate Node dev server for local filesystem uploads.
 - Added `npm run dev:uploads` / `bun run dev:uploads` script entry.
+- Added `npm run dev:selfhost` / `bun run dev:selfhost` script entry for the minimal self-hosted backend.
 - Added `js/server-uploads.js` for client list/upload calls.
 - Added `js/server-library.js` as the app-facing self-hosted library client.
 - Added source kind `server-local` while preserving existing `server-upload` compatibility.
@@ -78,6 +79,8 @@ It added `js/server-library.js` as the stable frontend client for future self-ho
 - `js/server-uploads.js`: local upload server client.
 - `js/server-library.js`: app-facing server library client wrapper over the prototype upload client.
 - `server/uploads/server.mjs`: non-production local filesystem upload server.
+- `server/selfhosted/server.mjs`: minimal self-hosted backend skeleton.
+- `server/selfhosted/config.mjs`: self-hosted env/config and data directory setup.
 - `PROGRESS.md`: detailed verification and latest handoff notes.
 
 ## Known Risks
@@ -115,7 +118,7 @@ Last known results:
 
 ## Next Recommended Milestone
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 4 - Define The Minimal Self-Hosted Backend.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 5 - Make Filesystem Storage Production-Ready.
 
 For extra runtime confidence before deeper upload work, manually smoke local uploads in the running app with real auth and audio:
 
