@@ -1,6 +1,8 @@
 import {
     getUploadServerUrl,
     listServerUploadTracks,
+    searchServerUploadTracks,
+    updateServerUploadTrackMetadata,
     uploadServerTrack,
 } from './server-uploads.js';
 
@@ -12,6 +14,8 @@ function normalizeSearchText(value) {
     return String(value || '')
         .normalize('NFKD')
         .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[_-]+/g, ' ')
+        .replace(/\s+/g, ' ')
         .toLowerCase()
         .trim();
 }
@@ -21,13 +25,15 @@ function getTrackSearchText(track) {
         ? track.artists.map((artist) => artist?.name).filter(Boolean)
         : [track.artist?.name].filter(Boolean);
     const tags = [
-        ...(track.mediaMetadata?.tags || []),
-        ...(track.album?.mediaMetadata?.tags || []),
+        ...(Array.isArray(track.tags) ? track.tags : []),
+        ...(Array.isArray(track.mediaMetadata?.tags) ? track.mediaMetadata.tags : []),
+        ...(Array.isArray(track.album?.mediaMetadata?.tags) ? track.album.mediaMetadata.tags : []),
     ];
 
     return normalizeSearchText([
         track.title,
         track.album?.title,
+        track.originalFileName,
         ...artistNames,
         ...tags,
     ].join(' '));
@@ -40,22 +46,37 @@ export function filterServerLibraryTracks(tracks, query) {
 }
 
 export async function listServerLibraryTracks(options = {}) {
+    if (options.query) {
+        return searchServerLibraryTracks(options.query, options);
+    }
+
     const tracks = await listServerUploadTracks();
-    return filterServerLibraryTracks(tracks, options.query);
+    return tracks;
 }
 
 export async function searchServerLibraryTracks(query, options = {}) {
-    const tracks = await listServerLibraryTracks({ ...options, query });
     const limit = Number(options.limit || 50);
-    return tracks.slice(0, limit);
+    try {
+        return await searchServerUploadTracks(query, { ...options, limit });
+    } catch (error) {
+        if (!/not found|404/i.test(error.message || '')) {
+            throw error;
+        }
+        const tracks = await listServerUploadTracks();
+        return filterServerLibraryTracks(tracks, query).slice(0, limit);
+    }
 }
 
 export async function uploadServerLibraryTrack(file) {
     return uploadServerTrack(file);
 }
 
-export async function updateServerLibraryTrackMetadata() {
-    throw new Error('Server library metadata updates are not supported by the local upload prototype yet');
+export async function updateServerLibraryTrackMetadata(track, metadata) {
+    const trackId = typeof track === 'string' ? track : track?.id;
+    if (!trackId) {
+        throw new Error('Missing uploaded track id');
+    }
+    return updateServerUploadTrackMetadata(trackId, metadata);
 }
 
 export function getServerLibraryStreamUrl(track) {

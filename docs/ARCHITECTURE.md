@@ -48,7 +48,7 @@ Auth and account boundary:
 - `js/auth-gate.js` defines the client-side mandatory-auth boundary for self-hosted deployments. When `window.__MONOCHROME_AUTH_REQUIRED__ === true`, signed-out app routes redirect to `/account`, while auth/reset routes remain accessible.
 - `vite-plugin-auth-gate.js` injects `window.__MONOCHROME_AUTH_REQUIRED__` only when `MONOCHROME_AUTH_REQUIRED` is explicitly present in the Vite environment, so the public/default app remains unchanged unless configured.
 - `server/selfhosted/accounts.mjs` defines self-hosted account approval states: `pending`, `approved`, `rejected`, and `disabled`. The first account, or `MONOCHROME_BOOTSTRAP_ADMIN_USER_ID` when configured, is bootstrapped as an approved admin; later accounts default to pending while approval is required.
-- The self-hosted backend exposes `/api/accounts/me`, `/api/admin/accounts`, and `/api/admin/accounts/:userId` for account state checks and temporary admin-secret/admin-account approval operations. The full admin dashboard is still a later checkpoint.
+- The self-hosted backend exposes `/api/accounts/me`, `/api/admin/accounts`, and `/api/admin/accounts/:userId` for account state checks and admin account updates. `js/selfhosted-admin.js` is the browser client for this boundary and renders the Account page admin panel only for approved admin accounts.
 - A localhost-only dev session exists behind `monochrome-dev-auth` and the account-page test button. It is a development fallback, not a production auth model.
 - PocketBase remains the cloud profile/sync/public playlist boundary. User records live in `DB_users`, keyed by legacy `firebase_id` values that currently receive Better Auth user ids.
 
@@ -62,10 +62,13 @@ Storage boundary:
 Local upload boundary:
 
 - `server/uploads/server.mjs` is a separate Node prototype server, not a Cloudflare Pages Function or final production storage layer.
-- Upload/list endpoints require `x-monochrome-user-id`; stream endpoints use per-track tokens because media elements cannot send custom auth headers.
+- Upload/list/search endpoints require `x-monochrome-user-id`; stream endpoints use per-track tokens because media elements cannot send custom auth headers.
 - New uploads are stored through `server/storage/filesystem-library.mjs` under a structured local filesystem layout: sharded audio blobs in `audio/`, JSON track metadata in `metadata/tracks/`, per-user indexes in `indexes/users/`, token lookup indexes in `indexes/streams/`, plus reserved `artwork/` and `tmp/` directories.
+- Uploaded music search is exposed through `/uploads/search` and currently performs a bounded per-user scan over structured metadata plus legacy manifest fallback data. It normalizes case, accents, underscores, and hyphens across title, artist, album, original filename, and available tags.
+- New structured uploads run server-side TagLib extraction before metadata JSON is written. Embedded title, artist, album, year, duration, and genre are used as upload defaults when available, and embedded artwork is stored under `artwork/` and served through tokenized `/uploads/:id/artwork` URLs when TagLib exposes picture data.
+- Structured uploaded tracks can be edited through `/uploads/:id/metadata` by a signed-in user whose upload index contains that track. Edited server metadata is written back to the track metadata JSON and takes precedence over filename-derived and embedded defaults for title, artist, album, year, artwork URL, and tags.
 - The storage root remains configurable through `MONOCHROME_UPLOAD_STORAGE`. The previous `.storage/server-uploads/<hashed-user-id>/manifest.json` prototype shape is still readable as a legacy fallback, but new writes use the structured layout.
-- Metadata is currently filename-derived: title, unknown artist, unknown duration, default artwork. Rich metadata extraction and artwork storage remain future work.
+- Default metadata is still filename-derived on upload: title, unknown artist, unknown duration, default artwork. Rich metadata extraction, artwork file storage, metadata edit history, and moderation remain future work.
 
 Favorites and playlists:
 
@@ -151,6 +154,10 @@ API and media:
 - `js/track-model.ts` defines the additive hybrid track identity contract. `track.id` remains the playback/route compatibility identifier, while `trackKey` and `source` identify persisted tracks across external APIs, browser-local files, podcasts, tracker tracks, and future server uploads.
 - `js/server-library.js` is the frontend boundary for self-hosted library operations: list, search, upload, metadata update placeholder, stream URL, and artwork URL helpers. It currently delegates to the local upload prototype.
 - `js/server-uploads.js` is the browser client for the local upload prototype. It requires the current Better Auth user id, calls the local upload server, and normalizes returned tracks through `withTrackIdentity`.
+- Library > Uploaded Music is the dedicated UI surface for server-local uploads. It lists uploaded tracks through `js/server-library.js`, sends non-empty search queries to server-side upload search, provides upload/refresh/search controls, offers context-menu metadata editing for server-local tracks, and reuses the standard track-list rendering so play, favorite, and playlist actions follow existing track behavior. Library > Local Files remains reserved for browser-selected folders.
+- `js/selfhosted-radios.js` is the browser client for self-hosted radios. It calls the self-hosted backend with the normalized Better Auth user id headers and normalizes enabled radio entries into hybrid tracks with `source.kind === "radio"` and direct stream URLs.
+- Library > Radio lists self-hosted radio stations, filters them locally, lets approved users add new station entries through `/api/radios`, and reuses the standard track-list click path so radio playback goes through the existing direct-audio player behavior.
+- `js/selfhosted-admin.js` is the browser client and renderer for self-hosted account approval/admin operations. It calls the self-hosted backend with the normalized Better Auth user id headers and treats the backend as the authorization authority.
 - `MusicAPI` is the app-facing facade. It currently routes most calls to `LosslessAPI`/TIDAL and podcast calls to `PodcastsAPI`.
 - `LosslessAPI.fetchWithRetry()` tries native `HiFiClient` routes for non-streaming requests, falls back to configured HiFi API instances, and uses configured streaming/Qobuz instances where appropriate.
 - `LosslessAPI.getStreamUrl()` resolves normal production audio through Qobuz by TIDAL ISRC. If no ISRC or Qobuz stream is available, playback reports a missing audio source.
@@ -229,6 +236,7 @@ Deployment:
 - `nginx.conf` serves static assets directly and falls back app routes to `index.html`.
 - `server/selfhosted/server.mjs` is the minimal self-hosted backend skeleton. It loads config/env values, prepares data directories, exposes `/health`, and reserves auth endpoint space with placeholder responses.
 - `server/selfhosted/accounts.mjs` is the self-hosted account approval store. It writes JSON account state under the configured self-hosted data directory and is separate from the existing Better Auth/PocketBase browser boundaries.
+- `server/selfhosted/radios.mjs` is the self-hosted radio store. It persists JSON radio entries under the self-hosted data directory with name, stream URL, genre, country, artwork URL, enabled status, creator, and timestamps. `/api/radios` lists enabled radios and lets approved users create radios; `/api/admin/radios` lets admins list disabled radios and update radio state/metadata.
 - `server/uploads/server.mjs` is a separate local Node dev server for the `server-local` upload prototype. It now delegates filesystem layout, atomic blob/metadata writes, per-user indexes, and token stream lookup to `server/storage/filesystem-library.mjs`.
 - Frontend code should call `js/server-library.js` for self-hosted library behavior; `js/server-uploads.js` should remain the prototype transport adapter until the production backend replaces it.
 

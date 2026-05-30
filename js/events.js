@@ -28,6 +28,7 @@ import { partyManager } from './listening-party.js';
 import { MusicAPI } from './music-api.js';
 import { LyricsManager } from './lyrics.js';
 import { Player } from './player.js';
+import { updateServerLibraryTrackMetadata } from './server-library.js';
 
 let currentTrackIdForWaveform = null;
 
@@ -115,6 +116,91 @@ function isMultiSelectRange(e) {
         (shortcut.alt ? e.altKey : !e.altKey) &&
         key === shortcutKey
     );
+}
+
+function getServerTrackTagText(track) {
+    const tags = Array.isArray(track.tags) ? track.tags : track.mediaMetadata?.tags;
+    return Array.isArray(tags) ? tags.join(', ') : '';
+}
+
+async function showServerMetadataEditor(track, ui) {
+    if (track?.source?.kind !== 'server-local') {
+        showNotification('Metadata editing is only available for uploaded music');
+        return;
+    }
+
+    const modal = document.createElement('div');
+    modal.className = 'modal active server-metadata-modal';
+    modal.innerHTML = `
+        <div class="modal-overlay"></div>
+        <form class="modal-content server-metadata-form">
+            <h3>Edit metadata</h3>
+            <label>
+                <span>Title</span>
+                <input name="title" type="text" maxlength="300" value="${escapeHtml(track.title || '')}" required />
+            </label>
+            <label>
+                <span>Artist</span>
+                <input name="artist" type="text" maxlength="300" value="${escapeHtml(track.artist?.name || track.artists?.[0]?.name || '')}" />
+            </label>
+            <label>
+                <span>Album</span>
+                <input name="album" type="text" maxlength="300" value="${escapeHtml(track.album?.title || '')}" />
+            </label>
+            <label>
+                <span>Year</span>
+                <input name="year" type="number" min="0" max="9999" inputmode="numeric" value="${escapeHtml(track.year || '')}" />
+            </label>
+            <label>
+                <span>Artwork URL</span>
+                <input name="artworkUrl" type="url" maxlength="1000" value="${escapeHtml(track.artworkUrl || track.cover || '')}" />
+            </label>
+            <label>
+                <span>Tags</span>
+                <input name="tags" type="text" maxlength="1000" value="${escapeHtml(getServerTrackTagText(track))}" />
+            </label>
+            <div class="server-metadata-actions">
+                <button type="button" class="btn-secondary server-metadata-cancel">Cancel</button>
+                <button type="submit" class="btn-primary">Save</button>
+            </div>
+        </form>
+    `;
+
+    const close = () => modal.remove();
+    modal.querySelector('.modal-overlay')?.addEventListener('click', close);
+    modal.querySelector('.server-metadata-cancel')?.addEventListener('click', close);
+    modal.querySelector('form')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const data = new FormData(form);
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+            const tagsValue = data.get('tags');
+            await updateServerLibraryTrackMetadata(track, {
+                title: data.get('title'),
+                artist: data.get('artist'),
+                album: data.get('album'),
+                year: data.get('year'),
+                artworkUrl: data.get('artworkUrl'),
+                tags: (typeof tagsValue === 'string' ? tagsValue : '')
+                    .split(',')
+                    .map((tag) => tag.trim())
+                    .filter(Boolean),
+            });
+            showNotification('Metadata saved');
+            close();
+            await ui?.renderServerUploads?.();
+        } catch (error) {
+            console.error('Failed to save uploaded track metadata:', error);
+            showNotification(error.message || 'Failed to save metadata');
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    });
+
+    document.body.appendChild(modal);
 }
 
 function getSelectedTracks() {
@@ -1823,6 +1909,8 @@ export async function handleTrackAction(
             closeBtn.onclick = () => modal.remove();
         }
         document.body.appendChild(modal);
+    } else if (action === 'edit-server-metadata') {
+        await showServerMetadataEditor(item, ui);
     } else if (action === 'open-original-url') {
         // Open the original source URL for the track
         let url = null;
@@ -1994,6 +2082,9 @@ async function updateContextMenuLikeState(contextMenu, contextTrack) {
         contextMenu.querySelectorAll('li[data-action]').forEach((item) => {
             if (hiddenActions.has(item.dataset.action)) item.style.display = 'none';
         });
+    } else {
+        const editMetadataItem = contextMenu.querySelector('li[data-action="edit-server-metadata"]');
+        if (editMetadataItem) editMetadataItem.style.display = 'none';
     }
 
     // Handle multiple artists for "Go to artist"

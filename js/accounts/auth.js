@@ -217,7 +217,11 @@ export class AuthManager {
                 const title = accountPage.querySelector('.section-title');
                 if (title) title.textContent = 'Account';
                 accountPage.querySelectorAll('.account-content > p, .account-content > div').forEach((el) => {
-                    if (el.id !== 'auth-status' && el.id !== 'auth-buttons-container') {
+                    if (
+                        el.id !== 'auth-status' &&
+                        el.id !== 'auth-buttons-container' &&
+                        el.id !== 'selfhosted-admin-panel'
+                    ) {
                         el.style.display = 'none';
                     }
                 });

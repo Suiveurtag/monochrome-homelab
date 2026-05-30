@@ -26,6 +26,7 @@ function buildInjectionScript(env) {
     const AUTH_GOOGLE_ENABLED = env.AUTH_GOOGLE_ENABLED;
     const AUTH_EMAIL_ENABLED = env.AUTH_EMAIL_ENABLED;
     const MONOCHROME_AUTH_REQUIRED = env.MONOCHROME_AUTH_REQUIRED;
+    const MONOCHROME_SELF_HOSTED_SERVER_URL = env.MONOCHROME_SELF_HOSTED_SERVER_URL;
 
     const flags = [];
     if (AUTH_ENABLED) flags.push('window.__AUTH_GATE__=true');
@@ -45,6 +46,9 @@ function buildInjectionScript(env) {
     if (APPWRITE_ENDPOINT) flags.push(`window.__APPWRITE_ENDPOINT__=${JSON.stringify(APPWRITE_ENDPOINT)}`);
     if (APPWRITE_PROJECT_ID) flags.push(`window.__APPWRITE_PROJECT_ID__=${JSON.stringify(APPWRITE_PROJECT_ID)}`);
     if (POCKETBASE_URL) flags.push(`window.__POCKETBASE_URL__=${JSON.stringify(POCKETBASE_URL)}`);
+    if (MONOCHROME_SELF_HOSTED_SERVER_URL) {
+        flags.push(`window.__MONOCHROME_SELF_HOSTED_SERVER_URL__=${JSON.stringify(MONOCHROME_SELF_HOSTED_SERVER_URL)}`);
+    }
 
     return flags.length > 0 ? `<script>${flags.join(';')};</script>` : null;
 }

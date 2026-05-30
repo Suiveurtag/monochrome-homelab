@@ -6,58 +6,102 @@ For future Codex discussions, start with `HANDOFF.md` and `AGENTS.md`. Use this 
 
 ## Current State
 
-- Date: 2026-05-25
+- Date: 2026-05-30
 - Branch: main
 - Last known commit before current checkpoint: d850835
-- Current milestone: Self-Hosted Checkpoint 8 - Add Admin Account Management (next)
+- Current milestone: Self-Hosted Checkpoint 14 - Add A Dedicated Radio Tab (complete)
 - Risk level: Medium
 
-The repo now has an additive hybrid track identity layer plus a non-production local upload server prototype. Existing `track.id` playback/route behavior is preserved, while persisted tracks can carry source-aware `trackKey` and `source` metadata for external API tracks, browser-local files, podcasts, tracker tracks, and local server uploads.
+The repo now has an additive hybrid track identity layer, a non-production local upload server prototype, mandatory self-hosted auth gating, server-side account approval, a basic in-app admin account management panel, a dedicated Uploaded Music tab, server-side search for uploaded music, shared server metadata editing for structured uploads, embedded audio metadata extraction on upload, a self-hosted radio backend model, and a dedicated Library > Radio surface. Existing `track.id` playback/route behavior is preserved, while persisted tracks can carry source-aware `trackKey` and `source` metadata for external API tracks, browser-local files, podcasts, tracker tracks, local server uploads, and radio streams.
 
-Self-Hosted Checkpoints 1 through 7 are complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map"; `js/track-model.ts` has additive future source kinds for `server-library`, `radio`, and `youtube-video` plus exported source normalization helpers; `js/server-library.js` is now the app-facing client boundary for future self-hosted library operations; `server/selfhosted/server.mjs` is the minimal backend skeleton with config loading, data directories, `/health`, and auth placeholders; `server/storage/filesystem-library.mjs` now owns structured local filesystem storage for server-local uploads; `js/auth-gate.js` gates configured self-hosted browser sessions behind `/account`; and `server/selfhosted/accounts.mjs` provides self-hosted account approval state.
+Self-Hosted Checkpoints 1 through 14 are complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map"; `js/track-model.ts` has additive future source kinds for `server-library`, `radio`, and `youtube-video` plus exported source normalization helpers; `js/server-library.js` is now the app-facing client boundary for future self-hosted library operations; `server/selfhosted/server.mjs` is the minimal backend skeleton with config loading, data directories, `/health`, auth placeholders, and radio endpoints; `server/storage/filesystem-library.mjs` now owns structured local filesystem storage, bounded search, shared metadata updates, and extracted metadata defaults for server-local uploads; `js/auth-gate.js` gates configured self-hosted browser sessions behind `/account`; `server/selfhosted/accounts.mjs` provides self-hosted account approval state; `js/selfhosted-admin.js` renders account management for approved admins; Library > Uploaded Music is the dedicated surface for server-local uploaded tracks; and Library > Radio is the dedicated surface for self-hosted radio streams.
 
 `HANDOFF.md` is now the recommended first-read summary for future sessions; read `AGENTS.md` next, then consult the larger docs only if more detail is needed.
 
 ## Last Completed Self-Hosted Checkpoint
 
-Self-Hosted Checkpoint 7 - Add Admin Approval For Accounts
+Self-Hosted Checkpoint 14 - Add A Dedicated Radio Tab
 
 Goal:
 
-- Add account approval states and backend enforcement so new self-hosted accounts require approval before use.
+- Add a dedicated playable radio tab with list, search/filter, play, and playback state.
 
 Success criteria:
 
-- Accounts can be `pending`, `approved`, `rejected`, or `disabled`.
-- The first account, or the configured bootstrap admin user id, becomes an approved admin.
-- Later accounts default to pending while approval is required.
-- Pending/disabled/rejected accounts are blocked by `/api/accounts/me`.
-- Admin account listing and status updates are available through backend endpoints.
+- Approved signed-in users can list enabled radios in Library > Radio.
+- Users can filter visible radios locally.
+- Users can add a radio station through the existing `/api/radios` endpoint.
+- Clicking a radio station loads a hybrid `source.kind === "radio"` track into the existing player.
 
 In scope:
 
-- `.env.example`
-- `server/selfhosted/accounts.mjs`
-- `server/selfhosted/accounts.test.mjs`
-- `server/selfhosted/config.mjs`
-- `server/selfhosted/server.mjs`
+- `js/selfhosted-radios.js`
+- `js/ui.js`
+- `js/app.js`
+- `index.html`
+- `styles.css`
 - `docs/ARCHITECTURE.md`
 - `docs/SELF_HOSTED_CHECKPOINTS.md`
 - `docs/MILESTONES.md`
-- `docs/DECISIONS.md`
 - `HANDOFF.md`
 - `PROGRESS.md`
 
 Out of scope:
 
-- Full admin dashboard.
-- Profile/social migration.
-- Better Auth or PocketBase replacement.
+- Radio recording.
+- ICY/live metadata.
+- Admin radio management UI beyond the existing backend endpoints.
 
 ## Last Session Handoff
 
 Changes:
 
+- Added `js/selfhosted-radios.js`, a self-hosted radio client that calls `/api/radios` with the current Better Auth user headers and normalizes radios into hybrid tracks.
+- Added Library > Radio with refresh, count, search/filter, add-station form, and a standard track-list rendering surface.
+- Routed radio refresh/search/create events through `js/app.js`.
+- Represented radio stations as direct-audio hybrid tracks with `source.kind === "radio"`, `playback.mode === "radio-stream"`, and `audioUrl`/`remoteUrl`/`streamUrl` set to the station stream.
+- Hid the standard track context menu for radio rows to avoid unsupported download/metadata actions.
+- Added responsive radio form styling alongside the existing uploaded-music panel styles.
+- Updated architecture, milestone, handoff, and checkpoint roadmap docs for Self-Hosted Checkpoint 14.
+- Added `server/selfhosted/radios.mjs`, a JSON-backed radio store with name, stream URL, genre, country, artwork URL, enabled status, creator, and timestamps.
+- Added self-hosted radio endpoints: approved-user `/api/radios` list/create plus admin `/api/admin/radios` list/update.
+- Added URL validation for radio stream and artwork URLs.
+- Added radio API tests for create/list/disable/admin visibility, invalid stream URL rejection, and pending-user rejection.
+- Updated architecture, milestone, handoff, and checkpoint roadmap docs for Self-Hosted Checkpoint 13.
+- Added `server/storage/audio-metadata.mjs`, a server-side TagLib extraction helper for upload defaults and embedded artwork.
+- Updated structured upload saves to read embedded title, artist, album, year, duration, and genre before falling back to filename/default metadata.
+- Stored extracted artwork under the structured `artwork/` directory and exposed it through tokenized `/uploads/:id/artwork` URLs.
+- Preserved manual shared metadata edits as the precedence layer over extracted upload defaults.
+- Added a generated tagged WAV fixture test for upload metadata extraction.
+- Added HTTP upload extraction smoke coverage proving extracted metadata is returned and searchable.
+- Updated architecture, milestone, handoff, and checkpoint roadmap docs for Self-Hosted Checkpoint 12.
+- Added shared server metadata updates for structured uploaded tracks in `server/storage/filesystem-library.mjs`.
+- Added `/uploads/:id/metadata` to the local upload prototype server, requiring the same signed-in user id header and a track in that user's upload index.
+- Added upload/server-library metadata update helpers for the frontend.
+- Added an `Edit metadata` context-menu action for `server-local` uploaded tracks with a focused modal editor for title, artist, album, year, artwork URL, and tags.
+- Updated public uploaded-track responses so edited metadata, artwork URL, tags, year, and updated timestamps round-trip to the browser.
+- Added storage coverage proving metadata updates persist, dedupe tags, affect search, and reject unrelated users.
+- Documented server metadata precedence and current edit-permission scope in `docs/DECISIONS.md`.
+- Updated architecture, milestone, handoff, and checkpoint roadmap docs for Self-Hosted Checkpoint 11.
+- Added bounded server-side search for uploaded music in `server/storage/filesystem-library.mjs`.
+- Added `/uploads/search` to the local upload prototype server, requiring the same `x-monochrome-user-id` header as list/upload.
+- Added `searchServerUploadTracks()` and routed `searchServerLibraryTracks()` through the server endpoint with a compatibility fallback for older upload servers.
+- Updated Library > Uploaded Music so non-empty queries call server-side search instead of loading and filtering the full list in the browser.
+- Added storage search coverage for normalized title, artist, album, original filename, tags, limits, and per-user isolation.
+- Updated architecture, milestone, handoff, and checkpoint roadmap docs for Self-Hosted Checkpoint 10.
+- Added a dedicated Library > Uploaded Music tab for server-local uploads.
+- Moved upload/refresh/count/list controls out of the browser Local Files tab.
+- Added an uploaded-music search input that filters the currently listed uploaded tracks through the existing server library helper.
+- Kept uploaded tracks on the standard track-list renderer so play, inline like, and menu/playlist action behavior stays shared.
+- Updated Library rendering so browser Local Files and server Uploaded Music are separate surfaces.
+- Updated architecture, milestone, handoff, and checkpoint roadmap docs for Self-Hosted Checkpoint 9.
+- Added `js/selfhosted-admin.js`, a self-hosted account/admin client and Account page renderer for admin account management.
+- Added an Account page self-hosted admin panel with account status, refresh, account list, approve/reject/disable buttons, and role selection.
+- Updated `js/accounts/auth.js` so the mandatory-auth Account page keeps the new admin panel visible while hiding public sync copy.
+- Updated `js/app.js` to initialize the admin panel after auth/UI startup.
+- Added optional `MONOCHROME_SELF_HOSTED_SERVER_URL` injection and `.env.example` documentation for the browser admin client.
+- Added server account test coverage proving an approved non-admin cannot list or patch admin account endpoints.
+- Updated architecture, milestone, decision, handoff, and checkpoint roadmap docs for Self-Hosted Checkpoint 8.
 - Added `server/selfhosted/accounts.mjs`, a JSON account approval store with `pending`, `approved`, `rejected`, and `disabled` states.
 - Added `server/selfhosted/accounts.test.mjs` covering first-admin bootstrap, pending-account blocking, approval, and disabled-account blocking.
 - Updated `server/selfhosted/server.mjs` with `/api/accounts/me`, `/api/admin/accounts`, and `/api/admin/accounts/:userId` endpoints.
@@ -89,6 +133,27 @@ Changes:
 
 Why:
 
+- Make self-hosted radio discoverable and playable from its own music surface instead of requiring raw API calls.
+- Reuse hybrid track identity and the existing direct-audio player path so radio playback does not introduce a parallel player.
+- Keep the radio UI small and compatible with the backend approval boundary while leaving admin moderation and live metadata for later checkpoints.
+- Establish the radio server contract before adding a playable Radio tab and player integration.
+- Keep radio persistence simple and local to the self-hosted backend while preserving account approval as the access boundary.
+- Validate stream URLs server-side before any future playback UI consumes them.
+- Give uploads useful default metadata immediately while keeping user-edited server metadata authoritative.
+- Reuse the existing TagLib dependency already present in the project instead of adding native dependencies.
+- Keep extracted artwork private to the tokenized upload URL pattern used by audio streams.
+- Let self-hosted uploaded tracks move beyond filename-derived metadata before adding embedded tag extraction.
+- Keep manual server metadata as the precedence layer future automatic extraction should not overwrite casually.
+- Preserve the prototype upload auth model by allowing edits only for tracks already in the requesting user's upload index.
+- Make uploaded-music search scale better than browser-only filtering while keeping the prototype storage model simple.
+- Keep search scoped to the current uploaded-music user and preserve existing list/upload auth behavior.
+- Normalize common filename and metadata differences before later rich metadata extraction arrives.
+- Make uploaded server music discoverable as its own music surface before adding backend search, metadata editing, and richer library behavior.
+- Avoid conflating browser-local file handles with self-hosted server-local audio files.
+- Reuse existing track UI/action contracts instead of introducing parallel play/favorite/playlist logic.
+- Give self-hosted admins an in-app account management path instead of requiring raw API calls for routine approvals.
+- Keep backend authorization as the real security boundary while using the UI only as a convenience layer.
+- Make the self-hosted backend URL configurable for deployed browser clients without changing default public app behavior.
 - Add the approval model needed before exposing admin account management UI.
 - Ensure new self-hosted users are pending by default and cannot pass `/api/accounts/me` until approved.
 - Provide a temporary admin-secret/admin-account backend path for account approval before the full admin dashboard exists.
@@ -105,9 +170,76 @@ Why:
 
 Files touched:
 
+- `js/selfhosted-radios.js`
+- `index.html`
+- `styles.css`
+- `js/ui.js`
+- `js/app.js`
+- `docs/ARCHITECTURE.md`
+- `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `docs/MILESTONES.md`
+- `HANDOFF.md`
+- `PROGRESS.md`
+- `server/selfhosted/radios.mjs`
+- `server/selfhosted/radios.test.mjs`
+- `server/selfhosted/server.mjs`
+- `server/selfhosted/config.mjs`
+- `docs/ARCHITECTURE.md`
+- `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `docs/MILESTONES.md`
+- `HANDOFF.md`
+- `PROGRESS.md`
+- `server/storage/audio-metadata.mjs`
+- `server/storage/filesystem-library.mjs`
+- `server/storage/filesystem-library.test.mjs`
+- `server/uploads/server.mjs`
+- `docs/ARCHITECTURE.md`
+- `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `docs/MILESTONES.md`
+- `HANDOFF.md`
+- `PROGRESS.md`
+- `server/storage/filesystem-library.mjs`
+- `server/storage/filesystem-library.test.mjs`
+- `server/uploads/server.mjs`
+- `js/server-uploads.js`
+- `js/server-library.js`
+- `js/events.js`
+- `index.html`
+- `styles.css`
+- `docs/ARCHITECTURE.md`
+- `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `docs/MILESTONES.md`
+- `docs/DECISIONS.md`
+- `HANDOFF.md`
+- `PROGRESS.md`
+- `server/storage/filesystem-library.mjs`
+- `server/storage/filesystem-library.test.mjs`
+- `server/uploads/server.mjs`
+- `js/server-uploads.js`
+- `js/server-library.js`
+- `js/ui.js`
+- `docs/ARCHITECTURE.md`
+- `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `docs/MILESTONES.md`
+- `HANDOFF.md`
+- `PROGRESS.md`
+- `js/selfhosted-admin.js`
 - `HANDOFF.md`
 - `docs/SELF_HOSTED_CHECKPOINTS.md`
 - `.env.example`
+- `index.html`
+- `styles.css`
+- `js/ui.js`
+- `js/app.js`
+- `docs/ARCHITECTURE.md`
+- `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `docs/MILESTONES.md`
+- `HANDOFF.md`
+- `PROGRESS.md`
+- `vite-plugin-auth-gate.js`
+- `js/accounts/auth.js`
+- `js/app.js`
+- `server/selfhosted/accounts.test.mjs`
 - `server/selfhosted/accounts.mjs`
 - `server/selfhosted/accounts.test.mjs`
 - `server/selfhosted/config.mjs`
@@ -136,6 +268,49 @@ Files touched:
 
 Verification:
 
+- `node --check js/selfhosted-radios.js js/ui.js js/app.js` passed.
+- `npm exec -- eslint js/selfhosted-radios.js` passed.
+- `node --test server/selfhosted/radios.test.mjs` passed: 2 tests. Expected 403/400 errors were logged during rejection coverage.
+- `git diff --check` passed.
+- `npm run build` passed with existing chunk/dynamic-import warnings.
+- Playwright radio tab smoke passed with `MONOCHROME_AUTH_REQUIRED=true`: mocked self-hosted radio API rendered Library > Radio, filtered a station by genre, clicked it, and verified the player loaded a `source.kind === "radio"` track with the expected stream URL. Localhost also logged expected remote auth/API CORS noise and the existing Shaka config warning.
+- `node --check server/selfhosted/radios.mjs server/selfhosted/radios.test.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs` passed.
+- `node --test server/selfhosted/radios.test.mjs` passed: 2 tests. Expected 403/400 errors were logged during rejection coverage.
+- `node --test server/selfhosted/accounts.test.mjs` passed: 3 tests. Expected 403 errors were logged during non-admin rejection coverage.
+- Final combined syntax check passed for touched server/frontend modules.
+- Final combined Node test run passed: 10 tests across storage, radio, and account suites.
+- Final `npm exec -- eslint js/events.js js/server-library.js js/server-uploads.js` passed.
+- Final `git diff --check` passed.
+- Final `npm run build` passed with existing chunk/dynamic-import warnings.
+- `node --check server/storage/audio-metadata.mjs server/storage/filesystem-library.mjs server/uploads/server.mjs` passed.
+- `node --test server/storage/filesystem-library.test.mjs` passed: 5 tests.
+- HTTP upload metadata extraction smoke passed: temp upload server uploaded a tagged WAV, returned extracted title/artist/album/year, and found the track by extracted genre search.
+- `node --check server/storage/filesystem-library.mjs server/uploads/server.mjs js/server-library.js js/server-uploads.js js/events.js js/ui.js` passed.
+- `node --test server/storage/filesystem-library.test.mjs` passed: 4 tests.
+- `npm exec -- eslint js/events.js js/server-library.js js/server-uploads.js` passed.
+- HTTP upload metadata smoke passed: temp upload server uploaded a WAV, patched metadata through `/uploads/:id/metadata`, and found the updated track by tag search.
+- `git diff --check` passed.
+- `npm run build` passed with existing chunk/dynamic-import warnings.
+- `node --check server/storage/filesystem-library.mjs server/uploads/server.mjs js/server-library.js js/server-uploads.js js/ui.js` passed.
+- `node --test server/storage/filesystem-library.test.mjs` passed: 3 tests.
+- `npm exec -- eslint js/server-library.js js/server-uploads.js` passed.
+- HTTP upload search smoke passed: temp upload server uploaded two WAVs and `/uploads/search?q=jazz&limit=5` returned the matching track.
+- `git diff --check` passed.
+- `npm run build` passed with existing chunk/dynamic-import warnings.
+- `node --check js/app.js js/ui.js js/server-library.js js/server-uploads.js` passed.
+- `npm exec -- eslint js/server-library.js js/server-uploads.js` passed.
+- `git diff --check` passed.
+- Playwright uploaded music tab smoke passed: temp upload server plus Vite dev uploaded a WAV, rendered it in Library > Uploaded Music, filtered matching and non-matching searches, and confirmed like/menu action entry points.
+- Initial Playwright uploaded music smoke uploaded and rendered the track but failed because the assertion expected the filename hyphen instead of the server-derived display title; rerun with the displayed title passed.
+- `npm run build` passed with existing chunk/dynamic-import warnings.
+- `node --check js/selfhosted-admin.js js/accounts/auth.js js/app.js vite-plugin-auth-gate.js` passed.
+- `node --check server/selfhosted/accounts.mjs server/selfhosted/accounts.test.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs` passed.
+- `node --test server/selfhosted/accounts.test.mjs` passed: 3 tests. The new non-admin authorization test logs expected 403 errors from the server handler.
+- `npm exec -- eslint js/selfhosted-admin.js js/accounts/auth.js vite-plugin-auth-gate.js` passed after installing local dependencies with `npm install --no-package-lock`.
+- `npm run build` passed with existing chunk/dynamic-import warnings.
+- Playwright admin account UI smoke passed: approved admin dev session saw the account list, pending listener could be approved, approved listener saw no admin action buttons.
+- Initial `npm run build` was blocked before dependency install because `vite` was not found.
+- Initial `npm exec -- eslint ...` was blocked before dependency install because the local ESLint config dependency `@eslint/js` was unavailable.
 - `node --check server/selfhosted/accounts.mjs server/selfhosted/accounts.test.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs` passed.
 - `node --test server/selfhosted/accounts.test.mjs` passed: 2 tests.
 - `npm.cmd run build` passed with existing chunk/dynamic-import warnings.
@@ -161,9 +336,20 @@ Verification:
 
 Known risks:
 
-- Admin account management UI is not implemented yet; account approvals currently use backend endpoints with `MONOCHROME_ADMIN_SECRET` or an approved admin account header.
+- Radio playback uses browser support for direct stream URLs; HLS/ICY edge cases and Safari/mobile behavior still need real-device smoke.
+- Library > Radio currently has a basic add form and local filtering only; admin disable/edit still uses backend endpoints directly.
+- Radio rows intentionally hide the standard track menu because download/metadata actions are not yet radio-aware.
+- Radio backend validation only verifies URL shape/protocol, not stream reachability or browser playback compatibility.
+- Embedded metadata extraction depends on TagLib format support; automated coverage uses a generated tagged WAV, while manual MP3/FLAC/M4A smoke remains useful.
+- Embedded artwork serving is implemented but not covered by the generated WAV fixture because the lightweight fixture has no picture block.
+- Shared metadata editing currently applies to structured uploaded tracks in the requesting user's upload index; legacy manifest uploads remain readable but not editable through the new endpoint.
+- Metadata edits have no history, conflict handling, moderation, or rich permission model yet.
+- Uploaded Music search is now server-side for non-empty queries, but it is still a bounded metadata scan rather than a dedicated full-text index.
+- Uploaded track actions still rely on the standard track list/context menu behavior; this is intentional, but richer uploaded-music-specific actions remain future work.
+- The admin account panel is intentionally basic and has no invitations, audit trail, bulk actions, search, or social moderation.
+- The admin panel depends on `MONOCHROME_SELF_HOSTED_SERVER_URL`, `window.__MONOCHROME_SELF_HOSTED_SERVER_URL__`, or `localStorage.monochrome-selfhosted-server-url` matching the running self-hosted backend.
 - The account store is JSON-file based and suitable for the current homelab checkpoint, but backup/restore and concurrent write hardening remain future work.
-- Mandatory auth is currently a browser route boundary for configured self-hosted sessions; account approval is enforced by the self-hosted `/api/accounts/me` backend endpoint, while full admin UI enforcement is left for Checkpoint 8.
+- Mandatory auth is currently a browser route boundary for configured self-hosted sessions; account approval and admin actions are enforced by the self-hosted backend endpoints.
 - `authManager.ready` is now awaited before initial app routing; this should reduce auth flicker but slightly ties first render to session-check completion.
 - The structured storage module keeps legacy manifests readable but does not migrate old files into the new layout.
 - Stream token indexes are local JSON files; future auth/deletion/backup checkpoints still need to define lifecycle rules.
@@ -181,9 +367,9 @@ Known risks:
 
 For future sessions, read `HANDOFF.md` and `AGENTS.md` first.
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 8 - Add Admin Account Management.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 15 - Associate YouTube Clips With Songs.
 
-Before implementing Checkpoint 8, inspect `server/selfhosted/accounts.mjs`, `server/selfhosted/server.mjs`, `js/auth-gate.js`, `js/accounts/auth.js`, `js/app.js`, account page DOM in `index.html`, and existing settings/account UI patterns.
+Before implementing Checkpoint 15, inspect `js/track-model.ts`, the uploaded-track metadata edit path in `server/storage/filesystem-library.mjs`, `server/uploads/server.mjs`, `js/server-library.js`, `js/events.js`, `js/ui.js`, `js/player.js`, and relevant track detail/page rendering so YouTube clip associations can be added without disrupting normal audio playback.
 
 ## Open Questions / Blockers
 
@@ -238,6 +424,42 @@ Append new entries here.
 | 2026-05-25 | Documentation-only handoff update | Pass | Added `HANDOFF.md`; no functional code changed. |
 | 2026-05-25 | `node --check server/uploads/server.mjs js/server-uploads.js js/app.js js/ui.js js/events.js` | Pass | Syntax checks for local upload server and touched frontend modules. |
 | 2026-05-25 | Direct local upload server smoke | Pass | Health, upload, list, and HEAD stream succeeded with an ephemeral storage directory. |
+| 2026-05-30 | `node --check js/selfhosted-admin.js js/accounts/auth.js js/app.js vite-plugin-auth-gate.js` | Pass | Syntax checks for admin client and touched frontend modules. |
+| 2026-05-30 | `node --check server/selfhosted/accounts.mjs server/selfhosted/accounts.test.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs` | Pass | Syntax checks for account server modules and tests. |
+| 2026-05-30 | `node --test server/selfhosted/accounts.test.mjs` | Pass | 3 tests; expected 403 errors were logged during non-admin endpoint rejection coverage. |
+| 2026-05-30 | `npm install --no-package-lock` | Pass | Installed local dependencies because `node_modules` was absent and Bun was unavailable; npm reported existing dependency vulnerabilities. |
+| 2026-05-30 | `npm exec -- eslint js/selfhosted-admin.js js/accounts/auth.js vite-plugin-auth-gate.js` | Pass | Targeted lint for the new admin client and touched auth/config modules. |
+| 2026-05-30 | `npm run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings. |
+| 2026-05-30 | Playwright admin account UI smoke | Pass | Temp self-hosted server plus Vite dev: admin saw account list and approved a pending listener; listener saw no admin action buttons. |
+| 2026-05-30 | `node --check js/app.js js/ui.js js/server-library.js js/server-uploads.js` | Pass | Syntax checks for uploaded-music tab changes and server library client helpers. |
+| 2026-05-30 | `npm exec -- eslint js/server-library.js js/server-uploads.js` | Pass | Targeted lint for upload client boundary; broader app/ui lint remains pre-existing debt. |
+| 2026-05-30 | Playwright uploaded music tab smoke | Pass | Temp upload server plus Vite dev: upload, dedicated tab list, search filter, no-match empty state, like/menu action entry points. |
+| 2026-05-30 | `npm run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings. |
+| 2026-05-30 | `node --check server/storage/filesystem-library.mjs server/uploads/server.mjs js/server-library.js js/server-uploads.js js/ui.js` | Pass | Syntax checks for uploaded-music server search and frontend client/UI wiring. |
+| 2026-05-30 | `node --test server/storage/filesystem-library.test.mjs` | Pass | 3 tests passed, including normalized uploaded-track search coverage. |
+| 2026-05-30 | `npm exec -- eslint js/server-library.js js/server-uploads.js` | Pass | Targeted lint for upload client search helpers. |
+| 2026-05-30 | HTTP upload search smoke | Pass | Temp upload server uploaded two WAVs; `/uploads/search?q=jazz&limit=5` returned the matching track. |
+| 2026-05-30 | `git diff --check` | Pass | No whitespace errors. |
+| 2026-05-30 | `npm run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings. |
+| 2026-05-30 | `node --check server/storage/filesystem-library.mjs server/uploads/server.mjs js/server-library.js js/server-uploads.js js/events.js js/ui.js` | Pass | Syntax checks for shared uploaded-track metadata storage, endpoint, client helpers, and context-menu UI wiring. |
+| 2026-05-30 | `node --test server/storage/filesystem-library.test.mjs` | Pass | 4 tests passed, including shared metadata update coverage. |
+| 2026-05-30 | `npm exec -- eslint js/events.js js/server-library.js js/server-uploads.js` | Pass | Targeted lint for metadata editor and upload client helpers. |
+| 2026-05-30 | HTTP upload metadata smoke | Pass | Temp upload server uploaded a WAV, patched metadata through `/uploads/:id/metadata`, and found the updated track by tag search. |
+| 2026-05-30 | `git diff --check` | Pass | No whitespace errors. |
+| 2026-05-30 | `npm run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings. |
+| 2026-05-30 | `node --check server/storage/audio-metadata.mjs server/storage/filesystem-library.mjs server/uploads/server.mjs` | Pass | Syntax checks for upload metadata extraction and artwork serving changes. |
+| 2026-05-30 | `node --test server/storage/filesystem-library.test.mjs` | Pass | 5 tests passed, including generated tagged WAV extraction coverage. |
+| 2026-05-30 | HTTP upload metadata extraction smoke | Pass | Temp upload server uploaded a tagged WAV, returned extracted title/artist/album/year, and found it by extracted genre search. |
+| 2026-05-30 | `node --check server/selfhosted/radios.mjs server/selfhosted/radios.test.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs` | Pass | Syntax checks for radio store, tests, and touched self-hosted server modules. |
+| 2026-05-30 | `node --test server/selfhosted/radios.test.mjs` | Pass | 2 tests passed; expected 403/400 errors were logged during rejection coverage. |
+| 2026-05-30 | `node --test server/selfhosted/accounts.test.mjs` | Pass | Existing account endpoint tests still pass after adding radio routes. |
+| 2026-05-30 | Final combined validation | Pass | Syntax checks for touched modules, storage/radio/account Node tests (10 tests), targeted frontend ESLint, diff check, and production build all passed. |
+| 2026-05-30 | `node --check js/selfhosted-radios.js js/ui.js js/app.js` | Pass | Syntax checks for the radio client and touched frontend wiring. |
+| 2026-05-30 | `npm exec -- eslint js/selfhosted-radios.js` | Pass | Targeted lint for the new radio client. |
+| 2026-05-30 | `node --test server/selfhosted/radios.test.mjs` | Pass | Existing radio API tests still pass after adding the frontend radio tab. |
+| 2026-05-30 | Playwright radio tab smoke | Pass | Mocked self-hosted API rendered Library > Radio, filtered a station by genre, clicked it, and verified the player loaded a `source.kind === "radio"` track with the expected stream URL. |
+| 2026-05-30 | `git diff --check` | Pass | No whitespace errors. |
+| 2026-05-30 | `npm run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings. |
 | 2026-05-25 | `npm.cmd exec -- vitest run --config=vite.config.ts js/tests/track-model.test.ts js/tests/db.test.js` | Pass | 2 files, 16 tests passed. |
 | 2026-05-25 | `npm.cmd exec -- eslint js/track-model.ts js/server-uploads.js` | Pass | Targeted lint for hybrid model and upload client. |
 | 2026-05-25 | `npm.cmd run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings. |
@@ -287,3 +509,10 @@ Append completed milestones here.
 | Self-Hosted Checkpoint 5 - Make Filesystem Storage Production-Ready | 2026-05-25 | Added structured local filesystem storage for server-local uploads with sharded audio, metadata, user indexes, stream indexes, and legacy manifest fallback. | Server syntax checks, Node storage tests, direct upload/list/stream smoke, and production build passed. |
 | Self-Hosted Checkpoint 6 - Make Authentication Mandatory | 2026-05-25 | Added opt-in self-hosted mandatory auth route guard, config injection, auth readiness wait, account redirect, and localhost-only test-session smoke. | Focused auth-gate tests, syntax checks, targeted ESLint, production build, and browser smoke passed. |
 | Self-Hosted Checkpoint 7 - Add Admin Approval For Accounts | 2026-05-25 | Added self-hosted account approval store, first-admin bootstrap, pending-by-default accounts, and account/admin endpoints. | Backend syntax checks, account approval tests, and production build passed. |
+| Self-Hosted Checkpoint 8 - Add Admin Account Management | 2026-05-30 | Added Account page admin management UI and self-hosted admin client for account listing, approval, rejection, disabling, and roles. | Backend/account tests, syntax checks, targeted ESLint, production build, and Playwright admin smoke passed. |
+| Self-Hosted Checkpoint 9 - Add A Dedicated Uploaded Music Tab | 2026-05-30 | Added Library > Uploaded Music with upload, refresh, count, search entry, standard track list actions, and Local Files separation. | Syntax checks, targeted lint, production build, and Playwright uploaded-music smoke passed. |
+| Self-Hosted Checkpoint 10 - Add Server-Side Search For Uploads | 2026-05-30 | Added bounded server-side uploaded-track search through filesystem storage, `/uploads/search`, frontend helpers, and Uploaded Music UI wiring. | Syntax checks, Node storage search tests, targeted lint, HTTP upload search smoke, diff check, and production build passed. |
+| Self-Hosted Checkpoint 11 - Add Shared Custom Metadata | 2026-05-30 | Added server-stored uploaded-track metadata editing, `/uploads/:id/metadata`, frontend helpers, and an Uploaded Music context-menu editor. | Syntax checks, Node storage metadata tests, targeted lint, HTTP metadata smoke, and production build passed. |
+| Self-Hosted Checkpoint 12 - Extract Basic Audio Metadata On Upload | 2026-05-30 | Added server-side TagLib extraction for uploaded-track defaults and tokenized extracted artwork serving. | Syntax checks, Node storage fixture tests, HTTP extraction smoke, diff check, and production build passed. |
+| Self-Hosted Checkpoint 13 - Add A Radio Backend Model | 2026-05-30 | Added a JSON-backed self-hosted radio store plus approved-user and admin radio endpoints. | Syntax checks, radio API tests, existing account tests, diff check, and production build passed. |
+| Self-Hosted Checkpoint 14 - Add A Dedicated Radio Tab | 2026-05-30 | Added Library > Radio with self-hosted radio list/create/refresh/search and playback through hybrid radio tracks. | Frontend syntax checks, targeted radio client lint, existing radio API tests, Playwright radio tab smoke, diff check, and production build passed. |

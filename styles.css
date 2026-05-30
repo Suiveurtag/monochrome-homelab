@@ -6119,6 +6119,127 @@ img[src=''] {
     padding: 1rem 0;
 }
 
+.selfhosted-admin-panel {
+    margin: 28px auto 0;
+    max-width: 980px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+}
+
+.selfhosted-admin-header,
+.admin-account-row,
+.admin-account-controls,
+.selfhosted-account-summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.selfhosted-admin-header {
+    justify-content: space-between;
+}
+
+.selfhosted-admin-header h3 {
+    margin: 0 0 6px;
+    font-size: 1.05rem;
+}
+
+.selfhosted-admin-message,
+.selfhosted-account-summary,
+.admin-account-meta {
+    color: var(--muted-foreground);
+    font-size: 0.86rem;
+}
+
+.selfhosted-account-summary,
+.admin-account-meta,
+.admin-account-controls {
+    flex-wrap: wrap;
+}
+
+.selfhosted-admin-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.admin-account-row {
+    justify-content: space-between;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.admin-account-main {
+    min-width: 0;
+}
+
+.admin-account-name {
+    color: var(--foreground);
+    font-weight: 600;
+}
+
+.admin-account-meta {
+    margin-top: 4px;
+}
+
+.admin-account-status {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px 8px;
+    color: var(--foreground);
+    font-size: 0.78rem;
+    text-transform: capitalize;
+}
+
+.admin-account-status[data-status="approved"] {
+    border-color: rgb(34 197 94 / 45%);
+    color: #4ade80;
+}
+
+.admin-account-status[data-status="pending"] {
+    border-color: rgb(234 179 8 / 45%);
+    color: #facc15;
+}
+
+.admin-account-status[data-status="rejected"],
+.admin-account-status[data-status="disabled"] {
+    border-color: rgb(239 68 68 / 45%);
+    color: #f87171;
+}
+
+.admin-account-role-select {
+    min-height: 34px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--background);
+    color: var(--foreground);
+    padding: 0 8px;
+}
+
+.admin-account-controls .btn-secondary {
+    padding: 6px 10px;
+    font-size: 0.85rem;
+}
+
+.admin-account-empty {
+    color: var(--muted-foreground);
+    padding: 12px;
+}
+
+@media (max-width: 760px) {
+    .selfhosted-admin-header,
+    .admin-account-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .admin-account-controls {
+        width: 100%;
+    }
+}
+
 .fullscreen-main-view {
     flex: 1;
     min-height: 0;
@@ -6509,9 +6630,7 @@ img[src=''] {
 }
 
 .server-uploads-panel {
-    margin-top: 16px;
-    border-top: 1px solid var(--border);
-    padding-top: 16px;
+    padding-top: 4px;
 }
 
 .server-uploads-header {
@@ -6550,6 +6669,94 @@ img[src=''] {
     font-size: 0.85rem;
 }
 
+.uploaded-music-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.uploaded-music-toolbar,
+.radio-library-toolbar {
+    padding: 0 20px;
+}
+
+.radio-library-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.radio-library-toolbar {
+    display: grid;
+    gap: 10px;
+}
+
+.radio-create-form {
+    display: grid;
+    grid-template-columns: minmax(130px, 1fr) minmax(180px, 1.5fr) minmax(110px, 0.8fr) auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.radio-create-form input {
+    min-height: 36px;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--background);
+    color: var(--foreground);
+    padding: 7px 10px;
+    font: inherit;
+    font-size: 0.9rem;
+}
+
+.radio-create-form .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 7px 12px;
+    font-size: 0.9rem;
+}
+
+.server-metadata-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.server-metadata-form h3 {
+    margin: 0 0 4px;
+    font-size: 1.1rem;
+}
+
+.server-metadata-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: var(--muted-foreground);
+    font-size: 0.85rem;
+}
+
+.server-metadata-form input {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--background);
+    color: var(--foreground);
+    padding: 8px 10px;
+    font: inherit;
+}
+
+.server-metadata-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+}
+
 @media (max-width: 640px) {
     .server-uploads-header {
         align-items: flex-start;
@@ -6559,6 +6766,14 @@ img[src=''] {
     .server-uploads-actions {
         justify-content: flex-start;
         width: 100%;
+    }
+
+    .radio-create-form {
+        grid-template-columns: 1fr;
+    }
+
+    .server-metadata-actions {
+        flex-direction: column-reverse;
     }
 }
 

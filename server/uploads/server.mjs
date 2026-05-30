@@ -25,7 +25,7 @@ function setCors(req, res) {
         res.setHeader('access-control-allow-origin', '*');
     }
     res.setHeader('vary', 'origin');
-    res.setHeader('access-control-allow-methods', 'GET,HEAD,POST,OPTIONS');
+    res.setHeader('access-control-allow-methods', 'GET,HEAD,PATCH,POST,OPTIONS');
     res.setHeader('access-control-allow-headers', 'content-type,x-monochrome-user-id,x-monochrome-user-email');
 }
 
@@ -41,6 +41,11 @@ function getBaseUrl(req) {
 
 function publicTrack(req, track) {
     const audioUrl = `${getBaseUrl(req)}/uploads/${encodeURIComponent(track.id)}/stream?token=${encodeURIComponent(track.streamToken)}`;
+    const extractedArtworkUrl = track.artwork?.path
+        ? `${getBaseUrl(req)}/uploads/${encodeURIComponent(track.id)}/artwork?token=${encodeURIComponent(track.streamToken)}`
+        : null;
+    const artworkUrl = track.artworkUrl || track.cover || extractedArtworkUrl || track.album?.cover;
+    const album = artworkUrl ? { ...(track.album || {}), cover: artworkUrl } : track.album;
     return {
         id: track.id,
         trackKey: track.trackKey,
@@ -50,10 +55,20 @@ function publicTrack(req, track) {
         duration: track.duration,
         artist: track.artist,
         artists: track.artists,
-        album: track.album,
+        album,
+        year: track.year,
+        releaseDate: track.releaseDate,
+        cover: artworkUrl,
+        artworkUrl,
+        artwork: track.artwork,
+        tags: track.tags,
+        mediaMetadata: track.mediaMetadata,
+        sharedMetadata: track.sharedMetadata,
         mimeType: track.mimeType,
         size: track.size,
+        originalFileName: track.originalFileName,
         createdAt: track.createdAt,
+        updatedAt: track.updatedAt,
         audioUrl,
         remoteUrl: audioUrl,
         playback: { mode: 'remote-url', url: audioUrl, mimeType: track.mimeType },
@@ -73,6 +88,18 @@ async function readBody(req) {
         chunks.push(chunk);
     }
     return Buffer.concat(chunks);
+}
+
+async function readJsonBody(req) {
+    const body = await readBody(req);
+    if (!body.length) return {};
+    try {
+        return JSON.parse(body.toString('utf8'));
+    } catch {
+        const error = new Error('Invalid JSON body');
+        error.statusCode = 400;
+        throw error;
+    }
 }
 
 function parseMultipart(req, body) {
@@ -133,6 +160,14 @@ async function handleList(req, res, storage, userId) {
     sendJson(res, 200, { tracks: tracks.map((track) => publicTrack(req, track)) });
 }
 
+async function handleSearch(req, res, storage, userId, searchParams) {
+    await storage.ensure();
+    const query = searchParams.get('q') || searchParams.get('query') || '';
+    const limit = searchParams.get('limit') || undefined;
+    const tracks = await storage.searchTracks(userId, { query, limit });
+    sendJson(res, 200, { tracks: tracks.map((track) => publicTrack(req, track)) });
+}
+
 async function handleUpload(req, res, storage, userId) {
     const body = await readBody(req);
     const file = parseMultipart(req, body).find((part) => part.filename && part.content.length > 0);
@@ -152,6 +187,17 @@ async function handleUpload(req, res, storage, userId) {
     });
 
     sendJson(res, 201, { track: publicTrack(req, track) });
+}
+
+async function handleMetadataUpdate(req, res, storage, userId, uploadId) {
+    const patch = await readJsonBody(req);
+    await storage.ensure();
+    const track = await storage.updateTrackMetadata(userId, uploadId, patch);
+    if (!track) {
+        sendJson(res, 404, { error: 'Upload not found' });
+        return;
+    }
+    sendJson(res, 200, { track: publicTrack(req, track) });
 }
 
 async function handleStream(req, res, storage, uploadId, token) {
@@ -198,6 +244,28 @@ async function handleStream(req, res, storage, uploadId, token) {
     else res.end();
 }
 
+async function handleArtwork(req, res, storage, uploadId, token) {
+    if (!token) {
+        sendJson(res, 401, { error: 'Missing artwork token' });
+        return;
+    }
+
+    await storage.ensure();
+    const artwork = await storage.getArtworkInfo(uploadId, token);
+    if (!artwork) {
+        sendJson(res, 404, { error: 'Artwork not found' });
+        return;
+    }
+
+    res.writeHead(200, {
+        'content-type': artwork.track.artwork?.mimeType || 'application/octet-stream',
+        'content-length': artwork.stat.size,
+        'cache-control': 'private, max-age=3600',
+    });
+    if (req.method !== 'HEAD') artwork.createReadStream().pipe(res);
+    else res.end();
+}
+
 async function route(req, res, storage) {
     setCors(req, res);
 
@@ -220,6 +288,23 @@ async function route(req, res, storage) {
         return;
     }
 
+    const artworkMatch = url.pathname.match(/^\/uploads\/([^/]+)\/artwork$/);
+    if (artworkMatch && (req.method === 'GET' || req.method === 'HEAD')) {
+        await handleArtwork(req, res, storage, decodeURIComponent(artworkMatch[1]), url.searchParams.get('token'));
+        return;
+    }
+
+    const metadataMatch = url.pathname.match(/^\/uploads\/([^/]+)\/metadata$/);
+    if (metadataMatch && req.method === 'PATCH') {
+        const userId = getRequestUser(req);
+        if (!userId) {
+            sendJson(res, 401, { error: 'Missing x-monochrome-user-id header' });
+            return;
+        }
+        await handleMetadataUpdate(req, res, storage, userId, decodeURIComponent(metadataMatch[1]));
+        return;
+    }
+
     if (url.pathname === '/uploads' && req.method === 'GET') {
         const userId = getRequestUser(req);
         if (!userId) {
@@ -227,6 +312,16 @@ async function route(req, res, storage) {
             return;
         }
         await handleList(req, res, storage, userId);
+        return;
+    }
+
+    if (url.pathname === '/uploads/search' && req.method === 'GET') {
+        const userId = getRequestUser(req);
+        if (!userId) {
+            sendJson(res, 401, { error: 'Missing x-monochrome-user-id header' });
+            return;
+        }
+        await handleSearch(req, res, storage, userId, url.searchParams);
         return;
     }
 

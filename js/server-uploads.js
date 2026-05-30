@@ -70,6 +70,24 @@ export async function listServerUploadTracks() {
     return (data.tracks || []).map(normalizeServerUploadTrack);
 }
 
+export async function searchServerUploadTracks(query, options = {}) {
+    const normalizedQuery = String(query || '').trim();
+    if (!normalizedQuery) {
+        return listServerUploadTracks();
+    }
+
+    const params = new URLSearchParams({ q: normalizedQuery });
+    if (options.limit) {
+        params.set('limit', String(options.limit));
+    }
+
+    const response = await fetch(`${getUploadServerUrl()}/uploads/search?${params}`, {
+        headers: getAuthHeaders(),
+    });
+    const data = await parseUploadResponse(response);
+    return (data.tracks || []).map(normalizeServerUploadTrack);
+}
+
 export async function uploadServerTrack(file) {
     if (!file?.type?.startsWith('audio/') && !/\.(flac|mp3|m4a|mp4|wav|ogg|opus|aac)$/i.test(file?.name || '')) {
         throw new Error('Only audio files are accepted');
@@ -82,6 +100,19 @@ export async function uploadServerTrack(file) {
         method: 'POST',
         headers: getAuthHeaders(),
         body,
+    });
+    const data = await parseUploadResponse(response);
+    return normalizeServerUploadTrack(data.track);
+}
+
+export async function updateServerUploadTrackMetadata(trackId, metadata) {
+    const response = await fetch(`${getUploadServerUrl()}/uploads/${encodeURIComponent(trackId)}/metadata`, {
+        method: 'PATCH',
+        headers: {
+            ...getAuthHeaders(),
+            'content-type': 'application/json',
+        },
+        body: JSON.stringify(metadata || {}),
     });
     const data = await parseUploadResponse(response);
     return normalizeServerUploadTrack(data.track);

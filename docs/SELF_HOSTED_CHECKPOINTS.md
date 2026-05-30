@@ -322,6 +322,8 @@ Out of scope:
 
 ## Checkpoint 8 - Add Admin Account Management
 
+Status: Complete
+
 Objective:
 
 Add an admin UI to list users, approve accounts, disable accounts, and manage roles.
@@ -349,12 +351,15 @@ Stop criteria:
 
 - Admin can manage accounts in the app.
 - Non-admin users cannot access or call admin actions.
+- Completed by adding `js/selfhosted-admin.js`, the Account page admin panel, self-hosted server URL injection, targeted styles, and non-admin server authorization coverage.
 
 Out of scope:
 
 - Social moderation tools.
 
 ## Checkpoint 9 - Add A Dedicated Uploaded Music Tab
+
+Status: Complete
 
 Objective:
 
@@ -381,12 +386,15 @@ Risks:
 Stop criteria:
 
 - Uploaded music has a dedicated usable tab without regressing Local Files behavior.
+- Completed by adding a Library > Uploaded Music tab with upload, refresh, local search/filtering, track list playback, inline like state, and existing track menu/playlist actions.
 
 Out of scope:
 
 - Advanced shared metadata editing.
 
 ## Checkpoint 10 - Add Server-Side Search For Uploads
+
+Status: Complete
 
 Objective:
 
@@ -412,12 +420,15 @@ Risks:
 Stop criteria:
 
 - A query returns coherent, bounded results from uploaded music.
+- Completed by adding filesystem-backed uploaded-track search, `/uploads/search`, frontend search client helpers, and Uploaded Music UI wiring that uses server-side search for non-empty queries.
 
 Out of scope:
 
 - Global search across all source types.
 
 ## Checkpoint 11 - Add Shared Custom Metadata
+
+Status: Complete
 
 Objective:
 
@@ -446,12 +457,15 @@ Risks:
 Stop criteria:
 
 - Server metadata is shared and has clear precedence rules.
+- Completed by adding structured-upload metadata updates, `/uploads/:id/metadata`, frontend update helpers, an Uploaded Music context-menu metadata editor, server metadata precedence documentation, and storage/HTTP coverage.
 
 Out of scope:
 
 - Metadata edit history or moderation queue.
 
 ## Checkpoint 12 - Extract Basic Audio Metadata On Upload
+
+Status: Complete
 
 Objective:
 
@@ -478,6 +492,7 @@ Risks:
 Stop criteria:
 
 - Uploads get useful default metadata that users can correct.
+- Completed by adding server-side TagLib extraction for upload defaults, tokenized extracted artwork serving when artwork is available, storage fixture tests for tagged WAV metadata, and HTTP upload extraction smoke coverage.
 
 Out of scope:
 
@@ -485,6 +500,8 @@ Out of scope:
 - Automatic external metadata matching.
 
 ## Checkpoint 13 - Add A Radio Backend Model
+
+Status: Complete
 
 Objective:
 
@@ -509,6 +526,7 @@ Risks:
 Stop criteria:
 
 - Radios can be created, listed, validated, enabled, and disabled server-side.
+- Completed by adding a JSON-backed self-hosted radio store, approved-user create/list endpoints, admin list/update endpoints, URL validation, and focused radio API tests.
 
 Out of scope:
 
@@ -516,6 +534,8 @@ Out of scope:
 - ICY/live metadata.
 
 ## Checkpoint 14 - Add A Dedicated Radio Tab
+
+Status: Complete
 
 Objective:
 
@@ -543,6 +563,7 @@ Risks:
 Stop criteria:
 
 - At least one supported radio stream plays without breaking normal playback.
+- Completed by adding Library > Radio, `js/selfhosted-radios.js`, approved-user radio list/create helpers, local radio filtering, radio track normalization with `source.kind === "radio"`, and playback through existing direct-audio player handling.
 
 Out of scope:
 

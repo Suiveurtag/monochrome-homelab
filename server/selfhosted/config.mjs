@@ -43,6 +43,7 @@ export function getSelfHostedConfig(overrides = {}) {
             metadata: join(dataDir, 'metadata'),
             indexes: join(dataDir, 'indexes'),
             accounts: join(dataDir, 'accounts'),
+            radios: join(dataDir, 'radios'),
             tmp: join(dataDir, 'tmp'),
         },
         auth: {

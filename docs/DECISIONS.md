@@ -218,6 +218,37 @@ Affected areas:
 
 - `js/track-model.ts`
 - `js/tests/track-model.test.ts`
+
+## 2026-05-30 - Uploaded Track Metadata Is Server-Shared
+
+Status: Accepted
+
+Context:
+
+- Server-local uploads initially derive title and album defaults from filenames.
+- The self-hosted roadmap needs editable metadata that is visible wherever the uploaded track is listed, before richer metadata extraction or moderation exists.
+- The local upload prototype is still per-user for list/upload access and does not yet have social sharing or a production permission model.
+
+Decision:
+
+- Store edited uploaded-track metadata in the server filesystem track metadata JSON.
+- Treat server metadata as the precedence layer for `server-local` uploaded tracks returned by list, search, stream-adjacent public track responses, and frontend rendering.
+- Allow the requesting signed-in user to edit metadata only for uploaded tracks present in their server upload index in the current prototype.
+- Keep metadata edit history, moderation, and cross-user sharing permissions out of this checkpoint.
+
+Consequences:
+
+- Metadata edits are shared at the server track record level, not as browser-local IndexedDB overrides.
+- Later production sharing/admin work can broaden who may edit or view a server-library track without changing the frontend track shape.
+- Legacy manifest uploads remain readable, but shared metadata editing currently applies to structured storage tracks.
+
+Affected areas:
+
+- `server/storage/filesystem-library.mjs`
+- `server/uploads/server.mjs`
+- `js/server-uploads.js`
+- `js/server-library.js`
+- `js/events.js`
 - `docs/ARCHITECTURE.md`
 - `docs/SELF_HOSTED_CHECKPOINTS.md`
 
@@ -366,3 +397,35 @@ Affected areas:
 - `server/selfhosted/config.mjs`
 - `.env.example`
 - `docs/ARCHITECTURE.md`
+
+## 2026-05-30 - Self-Hosted Admin UI Uses Server Authorization
+
+Status: Accepted
+
+Context:
+
+- Checkpoint 8 needs in-app account management without weakening the server-side approval boundary.
+- Hiding admin UI alone is not sufficient protection for account updates.
+
+Decision:
+
+- Add a browser admin client and Account page panel for approved self-hosted admins.
+- Let the UI call `/api/accounts/me` first and only render account management controls when the current account is approved and has the `admin` role.
+- Keep `/api/admin/accounts` and `/api/admin/accounts/:userId` authorization enforced by the self-hosted backend through approved admin account headers or the configured bootstrap admin secret.
+
+Consequences:
+
+- Non-admin users see account status but no account management controls.
+- Direct non-admin calls to admin endpoints remain rejected by the backend.
+- Self-hosted deployments can configure the frontend backend URL with `MONOCHROME_SELF_HOSTED_SERVER_URL` or the local storage override.
+
+Affected areas:
+
+- `js/selfhosted-admin.js`
+- `index.html`
+- `styles.css`
+- `js/accounts/auth.js`
+- `js/app.js`
+- `server/selfhosted/accounts.test.mjs`
+- `vite-plugin-auth-gate.js`
+- `.env.example`

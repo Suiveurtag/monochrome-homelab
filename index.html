@@ -175,6 +175,7 @@
                 <li data-action="request-song" data-type-filter="track,video">Request song</li>
                 <li data-action="go-to-artist" data-type-filter="track,album,video">Go to artist</li>
                 <li data-action="go-to-album" data-type-filter="track,video">Go to album</li>
+                <li data-action="edit-server-metadata" data-type-filter="track">Edit metadata</li>
                 <li data-action="copy-link">Copy link</li>
                 <li data-action="open-in-new-tab">Open in new tab</li>
                 <li data-action="open-in-harmony" data-type-filter="album">Open in Harmony</li>
@@ -2231,6 +2232,8 @@
                             <button class="search-tab" data-tab="albums">Albums</button>
                             <button class="search-tab" data-tab="artists">Artists</button>
                             <button class="search-tab" data-tab="playlists">Playlists and Mixes</button>
+                            <button class="search-tab" data-tab="uploads">Uploaded Music</button>
+                            <button class="search-tab" data-tab="radio">Radio</button>
                             <button class="search-tab" data-tab="local">Local Files</button>
                         </div>
                         <div class="search-tab-content active" id="library-tab-tracks">
@@ -2320,6 +2323,124 @@
                         <div class="search-tab-content" id="library-tab-playlists">
                             <div class="card-grid" id="library-playlists-container"></div>
                         </div>
+                        <div class="search-tab-content" id="library-tab-uploads">
+                            <div class="server-uploads-panel uploaded-music-panel">
+                                <div class="server-uploads-header">
+                                    <div>
+                                        <h3>Uploaded Music</h3>
+                                        <p id="server-uploads-status" class="server-uploads-status"></p>
+                                    </div>
+                                    <div class="server-uploads-actions">
+                                        <span id="server-uploads-count" class="server-uploads-count">0 tracks</span>
+                                        <input
+                                            type="file"
+                                            id="server-upload-input"
+                                            accept="audio/*,.flac,.mp3,.m4a,.mp4,.wav,.ogg,.opus,.aac"
+                                            style="display: none"
+                                        />
+                                        <button id="server-upload-btn" class="btn-secondary">
+                                            <use svg="!lucide/upload.svg" size="16" />
+                                            <span>Upload</span>
+                                        </button>
+                                        <button id="refresh-server-uploads-btn" class="btn-secondary">
+                                            <use svg="!lucide/refresh-cw.svg" size="16" />
+                                            <span>Refresh</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="uploaded-music-toolbar">
+                                    <form class="track-list-search-container" onsubmit="return false;">
+                                        <use svg="!lucide/search.svg" class="search-icon" size="18" />
+                                        <input
+                                            type="search"
+                                            id="server-uploads-search"
+                                            class="track-list-search-input"
+                                            placeholder="Search uploaded music..."
+                                            autocomplete="off"
+                                            autocorrect="off"
+                                            autocapitalize="off"
+                                            spellcheck="false"
+                                        />
+                                        <button
+                                            type="button"
+                                            class="search-clear-btn btn-icon"
+                                            title="Clear search"
+                                            style="display: none"
+                                        >
+                                            &times;
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="track-list" id="server-uploads-list"></div>
+                            </div>
+                        </div>
+                        <div class="search-tab-content" id="library-tab-radio">
+                            <div class="server-uploads-panel radio-library-panel">
+                                <div class="server-uploads-header">
+                                    <div>
+                                        <h3>Radio</h3>
+                                        <p id="selfhosted-radio-status" class="server-uploads-status"></p>
+                                    </div>
+                                    <div class="server-uploads-actions">
+                                        <span id="selfhosted-radio-count" class="server-uploads-count">0 stations</span>
+                                        <button id="refresh-selfhosted-radios-btn" class="btn-secondary">
+                                            <use svg="!lucide/refresh-cw.svg" size="16" />
+                                            <span>Refresh</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="radio-library-toolbar">
+                                    <form class="track-list-search-container" onsubmit="return false;">
+                                        <use svg="!lucide/search.svg" class="search-icon" size="18" />
+                                        <input
+                                            type="search"
+                                            id="selfhosted-radio-search"
+                                            class="track-list-search-input"
+                                            placeholder="Search radio stations..."
+                                            autocomplete="off"
+                                            autocorrect="off"
+                                            autocapitalize="off"
+                                            spellcheck="false"
+                                        />
+                                        <button
+                                            type="button"
+                                            class="search-clear-btn btn-icon"
+                                            title="Clear search"
+                                            style="display: none"
+                                        >
+                                            &times;
+                                        </button>
+                                    </form>
+                                    <form id="selfhosted-radio-create-form" class="radio-create-form">
+                                        <input
+                                            type="text"
+                                            id="selfhosted-radio-name"
+                                            placeholder="Station name"
+                                            autocomplete="off"
+                                            required
+                                        />
+                                        <input
+                                            type="url"
+                                            id="selfhosted-radio-stream-url"
+                                            placeholder="Stream URL"
+                                            autocomplete="off"
+                                            required
+                                        />
+                                        <input
+                                            type="text"
+                                            id="selfhosted-radio-genre"
+                                            placeholder="Genre"
+                                            autocomplete="off"
+                                        />
+                                        <button id="selfhosted-radio-create-btn" class="btn-secondary" type="submit">
+                                            <use svg="!lucide/plus.svg" size="16" />
+                                            <span>Add</span>
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="track-list" id="selfhosted-radio-list"></div>
+                            </div>
+                        </div>
                         <div class="search-tab-content" id="library-tab-local">
                             <div class="track-list" id="library-local-container">
                                 <div id="local-files-intro" style="padding: 20px; text-align: center">
@@ -2357,32 +2478,6 @@
                                     </button>
                                 </div>
                                 <div id="local-files-list"></div>
-                                <div class="server-uploads-panel">
-                                    <div class="server-uploads-header">
-                                        <div>
-                                            <h3>Server uploads</h3>
-                                            <p id="server-uploads-status" class="server-uploads-status"></p>
-                                        </div>
-                                        <div class="server-uploads-actions">
-                                            <span id="server-uploads-count" class="server-uploads-count">0 tracks</span>
-                                            <input
-                                                type="file"
-                                                id="server-upload-input"
-                                                accept="audio/*,.flac,.mp3,.m4a,.mp4,.wav,.ogg,.opus,.aac"
-                                                style="display: none"
-                                            />
-                                            <button id="server-upload-btn" class="btn-secondary">
-                                                <use svg="!lucide/upload.svg" size="16" />
-                                                <span>Upload</span>
-                                            </button>
-                                            <button id="refresh-server-uploads-btn" class="btn-secondary">
-                                                <use svg="!lucide/refresh-cw.svg" size="16" />
-                                                <span>Refresh</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="track-list" id="server-uploads-list"></div>
-                                </div>
                             </div>
                         </div>
                     </section>
@@ -6033,6 +6128,19 @@
                         <p id="auth-status" style="text-align: center; padding-top: 15px; color: #8b8b93">
                             Sync your library across devices
                         </p>
+                        <div id="selfhosted-admin-panel" class="selfhosted-admin-panel" style="display: none">
+                            <div class="selfhosted-admin-header">
+                                <div>
+                                    <h3>Self-hosted accounts</h3>
+                                    <div id="selfhosted-account-summary" class="selfhosted-account-summary"></div>
+                                </div>
+                                <button id="refresh-selfhosted-admin-btn" class="btn-secondary">Refresh</button>
+                            </div>
+                            <p id="selfhosted-admin-message" class="selfhosted-admin-message"></p>
+                            <div id="selfhosted-admin-tools" style="display: none">
+                                <div id="selfhosted-admin-list" class="selfhosted-admin-list"></div>
+                            </div>
+                        </div>
                         <p style="padding-top: 50px; text-align: center; color: #8b8b93">
                             We only store music data and a randomized ID to find out which Google/Email account is
                             which.

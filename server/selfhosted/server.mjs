@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { createAccountStore, isAccountAllowed } from './accounts.mjs';
 import { ensureSelfHostedDataDirs, getSelfHostedConfig, loadEnvFile } from './config.mjs';
+import { createRadioStore } from './radios.mjs';
 
 function sendJson(res, status, payload) {
     const body = JSON.stringify(payload);
@@ -71,7 +72,17 @@ async function requireAdmin(req, config, accountStore) {
     throw error;
 }
 
-async function route(req, res, config, accountStore) {
+async function requireAllowedAccount(req, config, accountStore) {
+    const account = await accountStore.ensureAccount(getRequestProfile(req));
+    if (config.auth.approvalRequired && !isAccountAllowed(account)) {
+        const error = new Error(`Account is ${account.status}`);
+        error.statusCode = 403;
+        throw error;
+    }
+    return account;
+}
+
+async function route(req, res, config, accountStore, radioStore) {
     setCors(res);
 
     if (req.method === 'OPTIONS') {
@@ -119,6 +130,35 @@ async function route(req, res, config, accountStore) {
         return;
     }
 
+    if (url.pathname === '/api/radios' && req.method === 'GET') {
+        await requireAllowedAccount(req, config, accountStore);
+        sendJson(res, 200, { radios: await radioStore.listRadios() });
+        return;
+    }
+
+    if (url.pathname === '/api/radios' && req.method === 'POST') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const body = await readJsonBody(req);
+        const radio = await radioStore.createRadio(body, account.userId);
+        sendJson(res, 201, { radio });
+        return;
+    }
+
+    if (url.pathname === '/api/admin/radios' && req.method === 'GET') {
+        await requireAdmin(req, config, accountStore);
+        sendJson(res, 200, { radios: await radioStore.listRadios({ includeDisabled: true }) });
+        return;
+    }
+
+    const radioUpdateMatch = url.pathname.match(/^\/api\/admin\/radios\/([^/]+)$/);
+    if (radioUpdateMatch && req.method === 'PATCH') {
+        await requireAdmin(req, config, accountStore);
+        const body = await readJsonBody(req);
+        const radio = await radioStore.updateRadio(decodeURIComponent(radioUpdateMatch[1]), body);
+        sendJson(res, 200, { radio });
+        return;
+    }
+
     if (url.pathname.startsWith('/api/auth/')) {
         sendJson(res, 501, {
             error: 'Self-hosted auth endpoints are not implemented yet',
@@ -138,11 +178,12 @@ export async function createSelfHostedServer(options = {}) {
     const config = getSelfHostedConfig(options);
     await ensureSelfHostedDataDirs(config);
     const accountStore = createAccountStore(config);
+    const radioStore = createRadioStore(config);
 
     return {
         config,
         server: createServer((req, res) => {
-            route(req, res, config, accountStore).catch((error) => {
+            route(req, res, config, accountStore, radioStore).catch((error) => {
                 console.error(error);
                 sendJson(res, error.statusCode || 500, { error: error.message || 'Self-hosted server error' });
             });

@@ -395,6 +395,201 @@ Required checks:
 - Syntax checks for touched server modules.
 - Production build.
 
+### Self-Hosted Checkpoint 8 - Add Admin Account Management
+
+Status: Complete
+
+Goal:
+
+- Add an in-app self-hosted admin account management surface for approved admins.
+
+Scope:
+
+- Add a frontend admin account client for `/api/accounts/me`, `/api/admin/accounts`, and account status/role updates.
+- Add an Account page panel that lists accounts for approved admins and supports approving, rejecting, disabling, and role changes.
+- Keep non-admin users out of admin account calls in the UI while relying on server authorization as the enforcement boundary.
+
+Non-goals:
+
+- No social moderation tools.
+- No replacement of Better Auth or PocketBase browser/session boundaries.
+- No profile/social migration.
+
+Required checks:
+
+- Server account tests.
+- Targeted syntax/lint checks.
+- Production build.
+
+### Self-Hosted Checkpoint 9 - Add A Dedicated Uploaded Music Tab
+
+Status: Complete
+
+Goal:
+
+- Give server-uploaded music its own Library tab instead of nesting it under browser Local Files.
+
+Scope:
+
+- Add a Library > Uploaded Music tab with upload, refresh, count, search/filtering, and a track list.
+- Reuse existing track-list rendering so uploaded tracks keep play, inline like, and track menu/playlist behavior.
+- Preserve the browser Local Files tab and folder-selection behavior.
+
+Non-goals:
+
+- No advanced shared metadata editing.
+- No server-side uploaded-music search index yet.
+- No production storage migration.
+
+Required checks:
+
+- Syntax checks for touched frontend modules.
+- Targeted lint where feasible.
+- Production build.
+- Browser smoke for upload/list/search and track actions.
+
+### Self-Hosted Checkpoint 10 - Add Server-Side Search For Uploads
+
+Status: Complete
+
+Goal:
+
+- Search uploaded server music on the upload server instead of filtering only after loading the full browser list.
+
+Scope:
+
+- Add filesystem-backed search over uploaded track title, artist, album, original filename, and tags.
+- Add a bounded `/uploads/search` endpoint to the local upload prototype server.
+- Route the Uploaded Music search field through the server library client search API.
+
+Non-goals:
+
+- No global search across external catalog, browser-local files, and uploaded tracks.
+- No full-text index or production database search yet.
+- No metadata editing UI.
+
+Required checks:
+
+- Syntax checks for touched server/frontend modules.
+- Storage search tests.
+- HTTP upload search smoke.
+- Targeted frontend helper lint.
+
+### Self-Hosted Checkpoint 11 - Add Shared Custom Metadata
+
+Status: Complete
+
+Goal:
+
+- Let uploaded tracks use editable server-stored metadata instead of only filename-derived defaults.
+
+Scope:
+
+- Add structured storage metadata updates for title, artist, album, year, artwork URL, and tags.
+- Add a bounded upload-server metadata update endpoint.
+- Add frontend update helpers and an Uploaded Music context-menu metadata editor.
+- Document server metadata precedence and edit permissions for the current prototype.
+
+Non-goals:
+
+- No metadata edit history or moderation queue.
+- No broad cross-user library sharing model.
+- No automatic embedded tag extraction.
+
+Required checks:
+
+- Syntax checks for touched server/frontend modules.
+- Storage metadata tests.
+- HTTP metadata update smoke.
+- Targeted frontend lint.
+- Production build.
+
+### Self-Hosted Checkpoint 12 - Extract Basic Audio Metadata On Upload
+
+Status: Complete
+
+Goal:
+
+- Use embedded audio tags as better default metadata for newly uploaded server-local tracks.
+
+Scope:
+
+- Add server-side TagLib metadata extraction during upload.
+- Use embedded title, artist, album, year, duration, and genre tags when available.
+- Store extracted artwork under the structured artwork directory and serve it through a tokenized artwork endpoint when available.
+- Preserve manual shared server metadata as the later precedence layer.
+
+Non-goals:
+
+- No audio fingerprinting.
+- No automatic external catalog matching.
+- No overwrite of existing manually edited uploaded-track metadata.
+
+Required checks:
+
+- Syntax checks for touched server modules.
+- Storage tests with a small generated tagged audio fixture.
+- HTTP upload extraction smoke.
+- Production build.
+
+### Self-Hosted Checkpoint 13 - Add A Radio Backend Model
+
+Status: Complete
+
+Goal:
+
+- Add a server-side model and API for playable radio entries before building the radio UI.
+
+Scope:
+
+- Add a JSON-backed radio store under the self-hosted data directory.
+- Support radio fields for name, stream URL, genre, country, artwork URL, enabled status, creator, and timestamps.
+- Add approved-user create/list endpoints and admin list/update endpoints.
+- Validate stream and artwork URLs before persistence.
+
+Non-goals:
+
+- No dedicated radio UI.
+- No ICY/live metadata.
+- No radio recording.
+
+Required checks:
+
+- Syntax checks for touched self-hosted server modules.
+- Radio API tests.
+- Existing account tests.
+- Production build.
+
+### Self-Hosted Checkpoint 14 - Add A Dedicated Radio Tab
+
+Status: Complete
+
+Goal:
+
+- Add a dedicated playable Library radio surface backed by the self-hosted radio API.
+
+Scope:
+
+- Add Library > Radio as its own tab.
+- Add `js/selfhosted-radios.js` as the browser radio client and normalizer.
+- List approved enabled radios, filter them locally, create new radio entries, and refresh the list.
+- Represent radio entries as hybrid tracks with `source.kind === "radio"` and direct stream playback URLs.
+- Reuse existing track-list click handling and player direct-audio behavior for playback.
+
+Non-goals:
+
+- No radio recording.
+- No ICY/live station metadata.
+- No admin radio management UI beyond the existing backend endpoints.
+
+Required checks:
+
+- Syntax checks for touched frontend modules.
+- Targeted lint for the new radio client.
+- Radio API tests.
+- Playwright smoke for open tab, filter, and load a radio track into the player.
+- Production build.
+
 ### M6 - Player And Media Boundary
 
 Status: Planned

@@ -19,9 +19,9 @@ Only read `PROGRESS.md`, `docs/ARCHITECTURE.md`, `docs/MILESTONES.md`, or `docs/
 
 ## Last Completed Milestone
 
-Self-Hosted Checkpoint 7 - Add Admin Approval For Accounts is complete.
+Self-Hosted Checkpoint 14 - Add A Dedicated Radio Tab is complete.
 
-It added `server/selfhosted/accounts.mjs` as the self-hosted account approval store plus `/api/accounts/me`, `/api/admin/accounts`, and `/api/admin/accounts/:userId` endpoints. Accounts use `pending`, `approved`, `rejected`, and `disabled`; the first account, or `MONOCHROME_BOOTSTRAP_ADMIN_USER_ID` when configured, becomes approved admin; later accounts default to pending and are blocked while approval is required. Checkpoint 6 browser mandatory auth, checkpoint 5 structured upload storage, and the previous minimal backend skeleton, server library client, source-model, contract-map, and Local Uploads Serveur checkpoints remain complete and committed.
+It added Library > Radio plus `js/selfhosted-radios.js`: approved signed-in users can list enabled self-hosted radios, filter them locally, add new station entries through `/api/radios`, refresh the list, and play stations as hybrid tracks with `source.kind === "radio"` through the existing direct-audio player path. Checkpoint 13 added the JSON-backed self-hosted radio API, Checkpoint 12 embedded upload metadata extraction, Checkpoint 11 shared metadata editing, Checkpoint 10 server-side upload search, Checkpoint 9 dedicated Uploaded Music tab, Checkpoint 8 admin account management, Checkpoint 7 account approval, Checkpoint 6 browser mandatory auth, Checkpoint 5 structured upload storage, and the previous minimal backend skeleton, server library client, source-model, contract-map, and Local Uploads Serveur checkpoints remain complete.
 
 ## Core Musique Hybride Changes
 
@@ -49,7 +49,15 @@ It added `server/selfhosted/accounts.mjs` as the self-hosted account approval st
 - Added `js/server-library.js` as the app-facing self-hosted library client.
 - Added source kind `server-local` while preserving existing `server-upload` compatibility.
 - Server upload tracks use `track.id === uploadId`, `source.kind === "server-local"`, and `trackKey` generated through the hybrid model on the client.
-- Library > Local Files now has a minimal Server uploads panel with upload, refresh, count, and track list.
+- Library > Uploaded Music now has the server uploads UI with upload, refresh, count, server-side search for non-empty queries, and track list.
+- Non-empty Uploaded Music search queries now call server-side upload search through `js/server-library.js` and `/uploads/search`.
+- Uploaded Music track menus now include metadata editing for `server-local` tracks.
+- Structured uploaded-track metadata can be edited server-side for title, artist, album, year, artwork URL, and tags.
+- New structured uploads extract embedded title, artist, album, year, duration, genre, and artwork when available.
+- Extracted artwork is exposed through tokenized `/uploads/:id/artwork` URLs.
+- Self-hosted radios now have a backend model with create/list/admin update endpoints.
+- Library > Radio now has list, refresh, add-station, search/filter, and playback through the existing track-list/player flow.
+- Library > Local Files remains the browser folder/File System Access surface.
 - Player integration uses existing direct-audio handling via `audioUrl`/`remoteUrl`.
 - Favorites/playlists use existing object-track paths and preserve `trackKey`/`source`.
 - Upload storage root defaults to `.storage/server-uploads`; this is local prototype storage, not Cloudflare Pages production storage.
@@ -65,7 +73,7 @@ It added `server/selfhosted/accounts.mjs` as the self-hosted account approval st
 - Do not rename IndexedDB stores or PocketBase JSON fields without a migration plan.
 - Better Auth is the active browser auth boundary.
 - Mandatory self-hosted auth is opt-in through `MONOCHROME_AUTH_REQUIRED=true`; default/public app behavior remains ungated unless configured.
-- Self-hosted account approval is server-side JSON state under the self-hosted data directory; `MONOCHROME_ADMIN_SECRET` is a temporary bootstrap/admin API mechanism until the admin UI checkpoint.
+- Self-hosted account approval is server-side JSON state under the self-hosted data directory; the Account page admin panel now uses approved admin account headers, while `MONOCHROME_ADMIN_SECRET` remains a bootstrap/API fallback.
 - PocketBase is the active cloud sync/profile/public playlist boundary.
 - Appwrite is legacy/residual; do not remove it opportunistically.
 - Preserve TIDAL/HiFi metadata lookup plus Qobuz-by-ISRC stream resolution.
@@ -83,11 +91,15 @@ It added `server/selfhosted/accounts.mjs` as the self-hosted account approval st
 - `js/metadata.js`: browser-local metadata shape.
 - `js/server-uploads.js`: local upload server client.
 - `js/server-library.js`: app-facing server library client wrapper over the prototype upload client.
-- `server/uploads/server.mjs`: non-production local filesystem upload server.
-- `server/storage/filesystem-library.mjs`: safe structured local filesystem storage for server-local upload blobs, metadata, user indexes, and stream-token indexes.
+- `js/selfhosted-admin.js`: app-facing self-hosted account/admin client and Account page admin panel renderer.
+- `js/selfhosted-radios.js`: app-facing self-hosted radio client and radio-to-hybrid-track normalizer.
+- `server/uploads/server.mjs`: non-production local filesystem upload server, including `/uploads/search`, `/uploads/:id/metadata`, and `/uploads/:id/artwork`.
+- `server/storage/audio-metadata.mjs`: server-side TagLib extraction for uploaded audio defaults and embedded artwork.
+- `server/storage/filesystem-library.mjs`: safe structured local filesystem storage for server-local upload blobs, metadata, user indexes, stream-token indexes, bounded per-user search, and shared metadata updates.
 - `server/selfhosted/server.mjs`: minimal self-hosted backend skeleton.
 - `server/selfhosted/config.mjs`: self-hosted env/config and data directory setup.
 - `server/selfhosted/accounts.mjs`: self-hosted account approval store and state helpers.
+- `server/selfhosted/radios.mjs`: self-hosted JSON radio store and validation helpers.
 - `PROGRESS.md`: detailed verification and latest handoff notes.
 - `js/auth-gate.js`: client-side mandatory auth route guard helpers.
 
@@ -103,9 +115,9 @@ It added `server/selfhosted/accounts.mjs` as the self-hosted account approval st
 - On localhost, a visible `Use Test Session` button is available on the account page when no real account is signed in; it creates a dev-only fake user so uploads can be tested without Better Auth access.
 - Server upload metadata is basic: filename-derived title, unknown artist, unknown duration, no embedded artwork/tag extraction yet.
 - Uploaded audio file sync is out of scope; PocketBase playlist/favorite sync may contain metadata snapshots and local stream URLs that are not portable.
-- Structured upload storage does not yet include deletion, quotas, backup/restore, full legacy migration, or rich metadata/artwork extraction.
-- Mandatory auth is currently a client-side route boundary; account approval is enforced by the self-hosted `/api/accounts/me` endpoint, while full admin UI enforcement starts in Checkpoint 8.
-- Admin account management UI is not implemented yet; approval currently uses backend endpoints with `MONOCHROME_ADMIN_SECRET` or an approved admin account header.
+- Structured upload storage does not yet include deletion, quotas, backup/restore, full legacy migration, a dedicated full-text index, edit history/moderation, or rich metadata/artwork extraction.
+- Mandatory auth is currently a client-side route boundary; account approval is enforced by the self-hosted `/api/accounts/me` endpoint, and admin account management relies on server-side `/api/admin/accounts` authorization.
+- The admin panel is intentionally basic; it does not include invitations, moderation tools, audit history, or richer profile/social account state yet.
 
 ## Validation Commands
 
@@ -123,7 +135,17 @@ Last known results:
 - `npm.cmd exec -- eslint js/track-model.ts js/server-uploads.js` passed.
 - `node --check server/uploads/server.mjs js/server-uploads.js js/app.js js/ui.js js/events.js` passed.
 - `node --check server/storage/filesystem-library.mjs server/uploads/server.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs` passed.
-- `node --test server/storage/filesystem-library.test.mjs` passed: 2 tests.
+- `node --test server/storage/filesystem-library.test.mjs` passed: 3 tests.
+- HTTP upload search smoke passed: temp upload server uploaded two WAVs and `/uploads/search?q=jazz&limit=5` returned the matching track.
+- `node --test server/storage/filesystem-library.test.mjs` passed: 4 tests after shared metadata coverage.
+- HTTP upload metadata smoke passed: temp upload server uploaded a WAV, patched metadata, and found the updated track by tag search.
+- `node --test server/storage/filesystem-library.test.mjs` passed: 5 tests after embedded upload metadata extraction coverage.
+- HTTP upload metadata extraction smoke passed: temp upload server uploaded a tagged WAV and returned/search-matched extracted metadata.
+- `node --test server/selfhosted/radios.test.mjs` passed: 2 tests. Expected 403/400 errors were logged during rejection coverage.
+- Playwright radio tab smoke passed: mocked self-hosted radio API rendered Library > Radio, filtered a station by genre, and clicking it loaded a `source.kind === "radio"` track into the player with the expected stream URL. Localhost also logged expected remote auth/API CORS noise and the existing Shaka warning.
+- `node --check js/selfhosted-radios.js js/ui.js js/app.js` passed.
+- `npm exec -- eslint js/selfhosted-radios.js` passed.
+- `node --test server/selfhosted/accounts.test.mjs` passed after adding radio endpoints.
 - Direct upload server smoke passed after structured storage extraction: health, upload, list, HEAD stream, and range stream.
 - `npm.cmd run build` passed with existing chunk/dynamic-import warnings.
 - `npm.cmd exec -- eslint server/storage/filesystem-library.mjs server/uploads/server.mjs` is blocked by the existing ESLint TypeScript project config excluding `server/**/*.mjs`.
@@ -141,16 +163,16 @@ Last known results:
 
 ## Next Recommended Milestone
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 8 - Add Admin Account Management.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 15 - Associate YouTube Clips With Songs.
 
-For extra runtime confidence before auth work, manually smoke local uploads in the running app with real auth and audio:
+For extra runtime confidence before YouTube association work, manually smoke uploaded music and radio surfaces:
 
 - Start `bun run dev` or `npm run dev`.
 - In another shell start `bun run dev:uploads` or `npm run dev:uploads`.
-- Sign in, open Library > Local Files, upload a real audio file, play it, like/unlike it, add/remove it from a playlist, reload, and verify it still lists and plays.
+- Sign in, open Library > Uploaded Music, upload a tagged real audio file, verify extracted metadata/artwork when available, edit its metadata from the row menu, search for edited title/tag, play it, like/unlike it, add/remove it from a playlist, reload, and verify it still lists, searches, and plays.
 - Recheck normal API playback after the upload smoke.
-
-After that, build an admin account management UI/API client that can list users, approve/reject/disable accounts, and protect admin actions from non-admin users.
+- Use an approved self-hosted user to add a station from Library > Radio, verify filtering, play it, switch to another station if available, then switch back to normal API playback.
+- As admin, disable the station through `/api/admin/radios/:id` and verify it no longer appears in Library > Radio after refresh.
 
 ## Resume Instruction
 

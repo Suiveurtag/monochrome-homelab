@@ -32,6 +32,8 @@ import { syncManager } from './accounts/pocketbase.js';
 import { authManager } from './accounts/auth.js';
 import { shouldRedirectForAuth } from './auth-gate.js';
 import { uploadServerLibraryTrack } from './server-library.js';
+import { initializeSelfHostedAdminPanel, renderSelfHostedAdminPanel } from './selfhosted-admin.js';
+import { createSelfHostedRadio, listSelfHostedRadios } from './selfhosted-radios.js';
 import { registerSW } from 'virtual:pwa-register';
 import { openEditProfile } from './profile.js';
 import { ThemeStore } from './themeStore.js';
@@ -416,6 +418,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await modernSettings.waitPending();
     await authManager.ready;
     authManager.updateUI(authManager.user);
+    renderSelfHostedAdminPanel().catch(console.error);
 
     // Request persistent storage to reduce risk of browser wiping data on updates or cleanup
     if (navigator.storage && navigator.storage.persist) {
@@ -599,6 +602,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         await UIRenderer.instance.renderServerUploads();
     };
 
+    window.refreshSelfHostedRadios = async () => {
+        window.selfHostedRadioTracksCache = await listSelfHostedRadios();
+        await UIRenderer.instance.renderSelfHostedRadios();
+    };
+
     // Kick off a background scan of the saved local media folder on startup so
     // that the Library > Local tab is populated without requiring the user to
     // manually press "Load [folder]" every session.  The function internally
@@ -664,6 +672,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         scrobbler
     );
     initializeUIInteractions(Player.instance, MusicAPI.instance, UIRenderer.instance);
+    initializeSelfHostedAdminPanel();
     initializeKeyboardShortcuts(Player.instance, audioPlayer);
 
     // Restore UI state for the current track (like button, theme)
@@ -2484,6 +2493,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target.closest('#refresh-server-uploads-btn')) {
             await UIRenderer.instance.renderServerUploads();
         }
+
+        if (e.target.closest('#refresh-selfhosted-radios-btn')) {
+            await window.refreshSelfHostedRadios();
+        }
+
     });
 
     const serverUploadInput = document.getElementById('server-upload-input');
@@ -2508,6 +2522,56 @@ document.addEventListener('DOMContentLoaded', async () => {
             } finally {
                 serverUploadInput.value = '';
                 if (uploadBtn) uploadBtn.disabled = !authManager.user;
+            }
+        });
+    }
+
+    const serverUploadsSearch = document.getElementById('server-uploads-search');
+    if (serverUploadsSearch) {
+        const renderFilteredServerUploads = debounce(() => {
+            UIRenderer.instance.renderServerUploads().catch(console.error);
+        }, 150);
+        serverUploadsSearch.addEventListener('input', renderFilteredServerUploads);
+    }
+
+    const selfHostedRadioSearch = document.getElementById('selfhosted-radio-search');
+    if (selfHostedRadioSearch) {
+        const renderFilteredRadios = debounce(() => {
+            UIRenderer.instance.renderSelfHostedRadios().catch(console.error);
+        }, 150);
+        selfHostedRadioSearch.addEventListener('input', renderFilteredRadios);
+    }
+
+    const selfHostedRadioForm = document.getElementById('selfhosted-radio-create-form');
+    if (selfHostedRadioForm) {
+        selfHostedRadioForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const nameInput = document.getElementById('selfhosted-radio-name');
+            const streamInput = document.getElementById('selfhosted-radio-stream-url');
+            const genreInput = document.getElementById('selfhosted-radio-genre');
+            const submitBtn = document.getElementById('selfhosted-radio-create-btn');
+            const statusEl = document.getElementById('selfhosted-radio-status');
+            const name = nameInput?.value?.trim();
+            const streamUrl = streamInput?.value?.trim();
+            const genre = genreInput?.value?.trim();
+
+            if (!name || !streamUrl) return;
+
+            if (submitBtn) submitBtn.disabled = true;
+            if (statusEl) statusEl.textContent = `Adding ${name}...`;
+
+            try {
+                const radio = await createSelfHostedRadio({ name, streamUrl, genre });
+                window.selfHostedRadioTracksCache = [radio, ...(window.selfHostedRadioTracksCache || [])];
+                selfHostedRadioForm.reset();
+                showNotification(`Added ${name}`);
+                await UIRenderer.instance.renderSelfHostedRadios();
+            } catch (error) {
+                console.error('Self-hosted radio creation failed:', error);
+                showNotification(error.message || 'Failed to add radio station');
+                if (statusEl) statusEl.textContent = 'Failed to add radio station.';
+            } finally {
+                if (submitBtn) submitBtn.disabled = !authManager.user;
             }
         });
     }

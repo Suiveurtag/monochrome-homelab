@@ -40,7 +40,8 @@ import { Visualizer } from './visualizer.js';
 import { audioContextManager } from './audio-context.js';
 import { navigate } from './router.js';
 import { sidePanelManager } from './side-panel.js';
-import { getServerLibraryBaseUrl, listServerLibraryTracks } from './server-library.js';
+import { getServerLibraryBaseUrl, listServerLibraryTracks, searchServerLibraryTracks } from './server-library.js';
+import { filterSelfHostedRadios, listSelfHostedRadios } from './selfhosted-radios.js';
 import {
     renderUnreleasedPage as renderUnreleasedTrackerPage,
     renderTrackerArtistPage as renderTrackerArtistContent,
@@ -550,7 +551,7 @@ export class UIRenderer {
         const actionsHTML = isUnavailable
             ? ''
             : `
-            <button class="track-menu-btn" type="button" title="More options" ${track.isLocal ? 'style="display:none"' : ''}>
+            <button class="track-menu-btn" type="button" title="More options" ${track.isLocal || track.isRadio ? 'style="display:none"' : ''}>
                 ${SVG_MENU(20)}
             </button>
         `;
@@ -2550,6 +2551,8 @@ export class UIRenderer {
         const artistsContainer = document.getElementById('library-artists-container');
         const playlistsContainer = document.getElementById('library-playlists-container');
         const localContainer = document.getElementById('library-local-container');
+        const uploadsContainer = document.getElementById('library-tab-uploads');
+        const radioContainer = document.getElementById('library-tab-radio');
         const foldersContainer = document.getElementById('my-folders-container');
         const myPlaylistsContainer = document.getElementById('my-playlists-container');
 
@@ -2693,10 +2696,15 @@ export class UIRenderer {
             }
         }
 
-        // Render Local Files
+        // Render local browser files and dedicated uploaded music tab
         if (localContainer) {
             await this.renderLocalFiles(localContainer);
+        }
+        if (uploadsContainer) {
             await this.renderServerUploads();
+        }
+        if (radioContainer) {
+            await this.renderSelfHostedRadios();
         }
     }
 
@@ -2745,8 +2753,10 @@ export class UIRenderer {
         const listContainer = document.getElementById('server-uploads-list');
         const countEl = document.getElementById('server-uploads-count');
         const uploadBtn = document.getElementById('server-upload-btn');
+        const searchInput = document.getElementById('server-uploads-search');
 
         if (!listContainer) return;
+        if (searchInput) this.setupSearchClearButton(searchInput);
 
         if (!authManager.user) {
             if (statusEl) statusEl.textContent = 'Sign in to use server uploads.';
@@ -2760,13 +2770,21 @@ export class UIRenderer {
         if (statusEl) statusEl.textContent = 'Loading server uploads...';
 
         try {
-            const tracks = await listServerLibraryTracks();
-            window.serverUploadTracksCache = tracks;
-            if (countEl) countEl.textContent = `${tracks.length} ${tracks.length === 1 ? 'track' : 'tracks'}`;
+            const query = searchInput?.value?.trim() || '';
+            const tracks = query
+                ? await searchServerLibraryTracks(query, { limit: 100 })
+                : await listServerLibraryTracks();
+            if (!query) {
+                window.serverUploadTracksCache = tracks;
+            }
+            const countText = query
+                ? `${tracks.length} ${tracks.length === 1 ? 'result' : 'results'}`
+                : `${tracks.length} ${tracks.length === 1 ? 'track' : 'tracks'}`;
+            if (countEl) countEl.textContent = countText;
             if (statusEl) statusEl.textContent = `Local upload server: ${getServerLibraryBaseUrl()}`;
 
             if (tracks.length === 0) {
-                listContainer.innerHTML = createPlaceholder('No server uploads');
+                listContainer.innerHTML = createPlaceholder(query ? 'No uploaded tracks match your search.' : 'No uploaded music yet.');
             } else {
                 await this.renderListWithTracks(listContainer, tracks, true, false, false, true);
             }
@@ -2775,6 +2793,49 @@ export class UIRenderer {
             if (countEl) countEl.textContent = 'Unavailable';
             if (statusEl) statusEl.textContent = 'Upload server unavailable.';
             listContainer.innerHTML = createPlaceholder('No server uploads');
+        }
+    }
+
+    async renderSelfHostedRadios() {
+        const statusEl = document.getElementById('selfhosted-radio-status');
+        const listContainer = document.getElementById('selfhosted-radio-list');
+        const countEl = document.getElementById('selfhosted-radio-count');
+        const searchInput = document.getElementById('selfhosted-radio-search');
+
+        if (!listContainer) return;
+        if (searchInput) this.setupSearchClearButton(searchInput);
+
+        if (!authManager.user) {
+            if (statusEl) statusEl.textContent = 'Sign in to use self-hosted radio.';
+            if (countEl) countEl.textContent = '0 stations';
+            listContainer.innerHTML = createPlaceholder('No radio stations');
+            return;
+        }
+
+        if (statusEl) statusEl.textContent = 'Loading radio stations...';
+
+        try {
+            if (!window.selfHostedRadioTracksCache) {
+                window.selfHostedRadioTracksCache = await listSelfHostedRadios();
+            }
+            const query = searchInput?.value?.trim() || '';
+            const radios = filterSelfHostedRadios(window.selfHostedRadioTracksCache, query);
+            const countText = query
+                ? `${radios.length} ${radios.length === 1 ? 'result' : 'results'}`
+                : `${radios.length} ${radios.length === 1 ? 'station' : 'stations'}`;
+            if (countEl) countEl.textContent = countText;
+            if (statusEl) statusEl.textContent = 'Self-hosted radio streams';
+
+            if (radios.length === 0) {
+                listContainer.innerHTML = createPlaceholder(query ? 'No radio stations match your search.' : 'No radio stations yet.');
+            } else {
+                await this.renderListWithTracks(listContainer, radios, true);
+            }
+        } catch (error) {
+            console.warn('Failed to load self-hosted radios:', error);
+            if (countEl) countEl.textContent = 'Unavailable';
+            if (statusEl) statusEl.textContent = 'Radio server unavailable.';
+            listContainer.innerHTML = createPlaceholder('No radio stations');
         }
     }
 

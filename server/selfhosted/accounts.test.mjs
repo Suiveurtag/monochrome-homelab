@@ -98,4 +98,37 @@ describe('self-hosted account approval', () => {
             await app.close();
         }
     });
+
+    it('rejects admin account management from non-admin users', async () => {
+        const app = await createTestServer();
+        try {
+            await fetch(`${app.baseUrl}/api/accounts/me`, { headers: userHeaders('admin') });
+            await fetch(`${app.baseUrl}/api/accounts/me`, { headers: userHeaders('listener') });
+            await fetch(`${app.baseUrl}/api/admin/accounts/listener`, {
+                method: 'PATCH',
+                headers: {
+                    'content-type': 'application/json',
+                    'x-monochrome-admin-secret': 'test-secret',
+                },
+                body: JSON.stringify({ status: 'approved' }),
+            });
+
+            const list = await fetch(`${app.baseUrl}/api/admin/accounts`, {
+                headers: userHeaders('listener'),
+            });
+            assert.equal(list.status, 403);
+
+            const update = await fetch(`${app.baseUrl}/api/admin/accounts/admin`, {
+                method: 'PATCH',
+                headers: {
+                    'content-type': 'application/json',
+                    ...userHeaders('listener'),
+                },
+                body: JSON.stringify({ role: 'user' }),
+            });
+            assert.equal(update.status, 403);
+        } finally {
+            await app.close();
+        }
+    });
 });
