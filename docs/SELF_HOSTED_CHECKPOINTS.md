@@ -750,6 +750,8 @@ Out of scope:
 
 ## Checkpoint 20 - Add Self-Hosted Listening Parties
 
+Status: Complete
+
 Objective:
 
 Connect or refactor listening parties to the self-hosted server: room, participants, current track, position, play/pause, and host controls.
@@ -774,6 +776,7 @@ Risks:
 Stop criteria:
 
 - A simple party works with external tracks and accessible uploads.
+- Completed by adding JSON-backed `/api/parties` endpoints for room creation, joining, host playback updates, messages, requests, heartbeat, leave/end flows, accepted-contact join/read authorization, focused endpoint tests, and a self-hosted mode in `js/listening-party.js` that uses conservative polling while preserving the existing PocketBase party path by default.
 
 Out of scope:
 
@@ -782,6 +785,8 @@ Out of scope:
 - Sub-second perfect sync.
 
 ## Checkpoint 21 - Clarify Migration From Existing Services
+
+Status: Complete
 
 Objective:
 
@@ -809,6 +814,7 @@ Risks:
 Stop criteria:
 
 - The service boundary is documented and enforced in code where needed.
+- Completed by adding `shouldUseSelfHostedServices()` as the frontend boundary for self-hosted-only fallback services, gating profile fallback/mirroring/invitations/view-profile behavior behind mandatory self-hosted auth, and documenting the migration contract.
 
 Out of scope:
 

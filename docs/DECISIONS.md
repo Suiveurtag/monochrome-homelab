@@ -583,3 +583,65 @@ Affected areas:
 - `js/app.js`
 - `index.html`
 - `styles.css`
+
+## 2026-05-30 - Self-Hosted Listening Parties Use Polling And Accepted Contacts
+
+Status: Accepted
+
+Context:
+
+- The existing listening-party UI is PocketBase-backed and realtime, but the self-hosted backend does not yet have websocket or push infrastructure.
+- Checkpoint 18 already defines accepted invitation/contact state for self-hosted social privacy.
+- Playback behavior for normal app use must remain unchanged outside configured self-hosted deployments.
+
+Decision:
+
+- Keep PocketBase-backed listening parties as the default/public app path.
+- When mandatory self-hosted auth is enabled, route the existing listening-party UI through JSON-backed `/api/parties` endpoints.
+- Require approved self-hosted accounts for all party endpoints, accepted-contact state for non-host reads/joins, and host-only authorization for playback mutations.
+- Use conservative polling for party state, messages, members, requests, and guest playback sync until a separate realtime decision is made.
+
+Consequences:
+
+- Self-hosted parties are simpler and less realtime than the PocketBase path, but they avoid adding a second infrastructure dependency.
+- Hosts remain authoritative for play/pause, current track, position, and queue snapshots.
+- Direct-audio uploads and radio tracks must preserve their stream URLs during party guest sync so accessible uploads keep playing.
+
+Affected areas:
+
+- `server/selfhosted/parties.mjs`
+- `server/selfhosted/server.mjs`
+- `server/selfhosted/config.mjs`
+- `server/selfhosted/invitations.mjs`
+- `js/listening-party.js`
+- `js/ui.js`
+
+## 2026-05-30 - Self-Hosted Services Are Opt-In Behind Mandatory Auth
+
+Status: Accepted
+
+Context:
+
+- Better Auth remains the browser session authority.
+- PocketBase remains the default/public sync, profile, public playlist, and listening-party service.
+- Appwrite remains legacy/residual configuration, not an active frontend account boundary.
+- The self-hosted backend is additive and should not become a second source of truth for public/default deployments.
+
+Decision:
+
+- Use `shouldUseSelfHostedServices()` as the frontend boundary for self-hosted-only service fallbacks.
+- Keep that boundary equivalent to mandatory self-hosted auth for now.
+- Allow profile fallback, self-hosted profile mirroring, profile contact invitations, and own-profile fallback navigation only when that boundary is enabled.
+
+Consequences:
+
+- Public/default deployments preserve PocketBase-first profile and social behavior and avoid opportunistic calls to a local self-hosted backend.
+- Homelab deployments can still use the self-hosted backend when `MONOCHROME_AUTH_REQUIRED=true`.
+- A later migration can widen or change `shouldUseSelfHostedServices()` deliberately without editing every call site.
+
+Affected areas:
+
+- `js/auth-gate.js`
+- `js/profile.js`
+- `js/tests/auth-gate.test.js`
+- `docs/ARCHITECTURE.md`

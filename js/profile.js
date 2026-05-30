@@ -7,6 +7,7 @@ import { debounce, escapeHtml } from './utils.js';
 import { Player } from './player.js';
 import { getSelfHostedOwnProfile, getSelfHostedProfile, updateSelfHostedProfile } from './selfhosted-profiles.js';
 import { renderSelfHostedInvitationsPanel, sendSelfHostedInvitation } from './selfhosted-invitations.js';
+import { shouldUseSelfHostedServices } from './auth-gate.js';
 
 // objects execution february 29th 2027
 
@@ -141,7 +142,7 @@ let currentProfileUsername = null;
 async function getProfileForDisplay(username) {
     const pocketbaseProfile = await syncManager.getProfile(username);
     if (pocketbaseProfile) return pocketbaseProfile;
-    if (!authManager.user) return null;
+    if (!authManager.user || !shouldUseSelfHostedServices()) return null;
 
     try {
         return await getSelfHostedProfile(username);
@@ -157,7 +158,7 @@ async function getEditableProfileData() {
         return { source: 'pocketbase', profile: data.profile };
     }
 
-    if (!authManager.user) return null;
+    if (!authManager.user || !shouldUseSelfHostedServices()) return null;
     try {
         const profile = await getSelfHostedOwnProfile();
         return { source: 'self-hosted', profile };
@@ -517,7 +518,7 @@ export async function loadProfile(username) {
 
     if (isOwner) {
         editProfileBtn.style.display = 'inline-flex';
-    } else if (profileInviteBtn && authManager.user && profile.userId) {
+    } else if (profileInviteBtn && authManager.user && shouldUseSelfHostedServices() && profile.userId) {
         profileInviteBtn.style.display = 'inline-flex';
     }
 
@@ -641,7 +642,7 @@ async function saveProfile() {
             await updateSelfHostedProfile(data);
         } else {
             await syncManager.updateProfile(data);
-            updateSelfHostedProfile(data).catch(() => {});
+            if (shouldUseSelfHostedServices()) updateSelfHostedProfile(data).catch(() => {});
         }
         editProfileModal.classList.remove('active');
         await loadProfile(newUsername);
@@ -681,13 +682,15 @@ viewMyProfileBtn.addEventListener('click', async () => {
     const data = await syncManager.getUserData();
     if (data && data.profile && data.profile.username) {
         navigate(`/user/@${data.profile.username}`);
-    } else {
+    } else if (shouldUseSelfHostedServices()) {
         try {
             const profile = await getSelfHostedOwnProfile();
             navigate(`/user/@${profile.username}`);
         } catch {
             await openEditProfile();
         }
+    } else {
+        await openEditProfile();
     }
 });
 

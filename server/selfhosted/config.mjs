@@ -48,6 +48,7 @@ export function getSelfHostedConfig(overrides = {}) {
             shares: join(dataDir, 'shares'),
             invitations: join(dataDir, 'invitations'),
             messages: join(dataDir, 'messages'),
+            parties: join(dataDir, 'parties'),
             tmp: join(dataDir, 'tmp'),
         },
         auth: {

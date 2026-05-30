@@ -4,6 +4,7 @@ import { createAccountStore, isAccountAllowed } from './accounts.mjs';
 import { ensureSelfHostedDataDirs, getSelfHostedConfig, loadEnvFile } from './config.mjs';
 import { createInvitationStore } from './invitations.mjs';
 import { createMessageStore } from './messages.mjs';
+import { createPartyStore } from './parties.mjs';
 import { createProfileStore } from './profiles.mjs';
 import { createRadioStore } from './radios.mjs';
 import { createShareStore } from './shares.mjs';
@@ -93,7 +94,18 @@ async function requireAcceptedContact(invitationStore, ownUserId, contactUserId)
     throw error;
 }
 
-async function route(req, res, config, accountStore, profileStore, radioStore, shareStore, invitationStore, messageStore) {
+async function route(
+    req,
+    res,
+    config,
+    accountStore,
+    profileStore,
+    radioStore,
+    shareStore,
+    invitationStore,
+    messageStore,
+    partyStore,
+) {
     setCors(res);
 
     if (req.method === 'OPTIONS') {
@@ -279,6 +291,108 @@ async function route(req, res, config, accountStore, profileStore, radioStore, s
         return;
     }
 
+    if (url.pathname === '/api/parties' && req.method === 'POST') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const body = await readJsonBody(req);
+        sendJson(res, 201, { party: await partyStore.createParty(account, body) });
+        return;
+    }
+
+    const partyJoinMatch = url.pathname.match(/^\/api\/parties\/([^/]+)\/join$/);
+    if (partyJoinMatch && req.method === 'POST') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const partyId = decodeURIComponent(partyJoinMatch[1]);
+        const party = await partyStore.getParty(partyId);
+        if (!party) {
+            sendJson(res, 404, { error: 'Party not found' });
+            return;
+        }
+        if (party.hostUserId !== account.userId) {
+            await requireAcceptedContact(invitationStore, account.userId, party.hostUserId);
+        }
+        const body = await readJsonBody(req);
+        sendJson(res, 200, { party: await partyStore.joinParty(account, partyId, body) });
+        return;
+    }
+
+    const partyPlaybackMatch = url.pathname.match(/^\/api\/parties\/([^/]+)\/playback$/);
+    if (partyPlaybackMatch && req.method === 'PATCH') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const body = await readJsonBody(req);
+        const party = await partyStore.updatePlayback(account.userId, decodeURIComponent(partyPlaybackMatch[1]), body);
+        sendJson(res, 200, { party });
+        return;
+    }
+
+    const partyHeartbeatMatch = url.pathname.match(/^\/api\/parties\/([^/]+)\/heartbeat$/);
+    if (partyHeartbeatMatch && req.method === 'POST') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const body = await readJsonBody(req);
+        const party = await partyStore.heartbeat(account.userId, decodeURIComponent(partyHeartbeatMatch[1]), body);
+        sendJson(res, 200, { party });
+        return;
+    }
+
+    const partyMessageMatch = url.pathname.match(/^\/api\/parties\/([^/]+)\/messages$/);
+    if (partyMessageMatch && req.method === 'POST') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const body = await readJsonBody(req);
+        const party = await partyStore.createMessage(account.userId, decodeURIComponent(partyMessageMatch[1]), body);
+        sendJson(res, 201, { party });
+        return;
+    }
+
+    const partyRequestsMatch = url.pathname.match(/^\/api\/parties\/([^/]+)\/requests$/);
+    if (partyRequestsMatch && req.method === 'POST') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const body = await readJsonBody(req);
+        const party = await partyStore.createRequest(account.userId, decodeURIComponent(partyRequestsMatch[1]), body);
+        sendJson(res, 201, { party });
+        return;
+    }
+
+    const partyRequestDeleteMatch = url.pathname.match(/^\/api\/parties\/([^/]+)\/requests\/([^/]+)$/);
+    if (partyRequestDeleteMatch && req.method === 'DELETE') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const party = await partyStore.deleteRequest(
+            account.userId,
+            decodeURIComponent(partyRequestDeleteMatch[1]),
+            decodeURIComponent(partyRequestDeleteMatch[2]),
+        );
+        sendJson(res, 200, { party });
+        return;
+    }
+
+    const partyLeaveMatch = url.pathname.match(/^\/api\/parties\/([^/]+)\/leave$/);
+    if (partyLeaveMatch && req.method === 'POST') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const party = await partyStore.leaveParty(account.userId, decodeURIComponent(partyLeaveMatch[1]));
+        sendJson(res, 200, { party });
+        return;
+    }
+
+    const partyMatch = url.pathname.match(/^\/api\/parties\/([^/]+)$/);
+    if (partyMatch && req.method === 'GET') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const party = await partyStore.getParty(decodeURIComponent(partyMatch[1]));
+        if (!party) {
+            sendJson(res, 404, { error: 'Party not found' });
+            return;
+        }
+        if (party.hostUserId !== account.userId) {
+            await requireAcceptedContact(invitationStore, account.userId, party.hostUserId);
+        }
+        sendJson(res, 200, { party });
+        return;
+    }
+
+    if (partyMatch && req.method === 'DELETE') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const party = await partyStore.endParty(account.userId, decodeURIComponent(partyMatch[1]));
+        sendJson(res, 200, { party });
+        return;
+    }
+
     if (url.pathname.startsWith('/api/auth/')) {
         sendJson(res, 501, {
             error: 'Self-hosted auth endpoints are not implemented yet',
@@ -303,16 +417,26 @@ export async function createSelfHostedServer(options = {}) {
     const shareStore = createShareStore(config);
     const invitationStore = createInvitationStore(config);
     const messageStore = createMessageStore(config);
+    const partyStore = createPartyStore(config);
 
     return {
         config,
         server: createServer((req, res) => {
-            route(req, res, config, accountStore, profileStore, radioStore, shareStore, invitationStore, messageStore).catch(
-                (error) => {
+            route(
+                req,
+                res,
+                config,
+                accountStore,
+                profileStore,
+                radioStore,
+                shareStore,
+                invitationStore,
+                messageStore,
+                partyStore,
+            ).catch((error) => {
                     console.error(error);
                     sendJson(res, error.statusCode || 500, { error: error.message || 'Self-hosted server error' });
-                },
-            );
+                });
         }),
     };
 }

@@ -9,6 +9,10 @@ export function isClientAuthRequired() {
     return localStorage.getItem('monochrome-auth-required') === 'true';
 }
 
+export function shouldUseSelfHostedServices() {
+    return isClientAuthRequired();
+}
+
 export function isAuthRoute(pathname = window.location.pathname) {
     const path = pathname.replace(/\/+$/, '') || '/';
     return path === '/account' || path === '/login' || path === '/login.html' || path === '/reset-password';

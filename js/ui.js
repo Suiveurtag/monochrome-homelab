@@ -35,6 +35,7 @@ import { db } from './db.js';
 import { getVibrantColorFromImage } from './vibrant-color.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { authManager } from './accounts/auth.js';
+import { isClientAuthRequired } from './auth-gate.js';
 import { partyManager } from './listening-party.js';
 import { Visualizer } from './visualizer.js';
 import { audioContextManager } from './audio-context.js';
@@ -2466,11 +2467,16 @@ export class UIRenderer {
         const hostControls = document.getElementById('parties-host-controls');
         const loginBtn = document.getElementById('parties-login-btn');
 
-        hostControls.style.display = 'block';
+        const selfHostedRequired = isClientAuthRequired();
+        hostControls.style.display = !selfHostedRequired || authManager.user ? 'block' : 'none';
         if (authManager.user) {
             authRequired.style.display = 'none';
         } else {
             authRequired.style.display = 'block';
+            const copy = authRequired.querySelector('p');
+            if (copy && selfHostedRequired) {
+                copy.textContent = 'Sign in with an approved account to host or join self-hosted listening parties.';
+            }
             loginBtn.onclick = () => navigate('/account');
         }
     }

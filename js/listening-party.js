@@ -4,8 +4,10 @@ import { Player } from './player.js';
 import { navigate } from './router.js';
 import { getTrackArtists, escapeHtml } from './utils.js';
 import { audioContextManager } from './audio-context.js';
+import { isClientAuthRequired } from './auth-gate.js';
 import { showNotification } from './downloads.js';
 import { SVG_PAUSE } from './icons.js';
+import { getSelfHostedServerUrl } from './selfhosted-admin.js';
 
 class Modal {
     static async show({ title, content, actions = [] }) {
@@ -87,8 +89,84 @@ export class ListeningPartyManager {
         this.isLeaving = false;
         this.isInternalSync = false;
         this.originalSafePlay = null;
+        this.selfHostedPollInterval = null;
 
         this.setupEventListeners();
+    }
+
+    _isSelfHostedMode() {
+        return isClientAuthRequired();
+    }
+
+    _selfHostedHeaders() {
+        const user = authManager.user;
+        if (!user?.$id) throw new Error('Sign in before using self-hosted listening parties');
+        return {
+            'content-type': 'application/json',
+            'x-monochrome-user-id': user.$id,
+            'x-monochrome-user-email': user.email || '',
+            'x-monochrome-user-name': user.name || user.email || '',
+        };
+    }
+
+    async _selfHostedRequest(path, options = {}) {
+        const response = await fetch(`${getSelfHostedServerUrl()}${path}`, {
+            ...options,
+            headers: {
+                ...this._selfHostedHeaders(),
+                ...(options.headers || {}),
+            },
+        });
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : {};
+        if (!response.ok) {
+            throw new Error(data.error || `Self-hosted party request failed (${response.status})`);
+        }
+        return data;
+    }
+
+    _fromSelfHostedParty(party) {
+        if (!party) return null;
+        return {
+            ...party,
+            current_track: party.currentTrack || null,
+            is_playing: !!party.isPlaying,
+            playback_time: Number(party.playbackTime || 0),
+            playback_timestamp: Number(party.playbackTimestamp || Date.now()),
+            queue: Array.isArray(party.queue) ? party.queue : [],
+            members: Array.isArray(party.members)
+                ? party.members.map((member) => ({
+                      ...member,
+                      name: member.name || member.userId || 'Member',
+                      avatar_url: member.avatarUrl || '',
+                      is_host: !!member.isHost,
+                      typing_until: member.typingUntil || 0,
+                  }))
+                : [],
+            messages: Array.isArray(party.messages)
+                ? party.messages.map((message) => ({
+                      ...message,
+                      sender_name: message.senderName || message.senderUserId || 'Member',
+                      content: message.content || '',
+                  }))
+                : [],
+            requests: Array.isArray(party.requests)
+                ? party.requests.map((request) => ({
+                      ...request,
+                      requested_by: request.requestedBy || request.requesterUserId || 'Member',
+                  }))
+                : [],
+        };
+    }
+
+    _applySelfHostedParty(party) {
+        const normalized = this._fromSelfHostedParty(party);
+        if (!normalized) return null;
+        this.currentParty = normalized;
+        this.members = normalized.members;
+        this.messages = normalized.messages;
+        this.requests = normalized.requests;
+        return normalized;
     }
 
     setupEventListeners() {
@@ -128,6 +206,9 @@ export class ListeningPartyManager {
         if (this.maintenanceMode) {
             await Modal.alert('Under Maintenance', this.maintenanceMessage);
             return;
+        }
+        if (this._isSelfHostedMode()) {
+            return await this.createSelfHostedParty();
         }
 
         const nameInput = document.getElementById('party-name-input');
@@ -171,7 +252,40 @@ export class ListeningPartyManager {
         }
     }
 
+    async createSelfHostedParty() {
+        const user = authManager.user;
+        if (!user?.$id) {
+            navigate('/account');
+            return;
+        }
+        const nameInput = document.getElementById('party-name-input');
+        const player = Player.instance;
+        const currentTrack = player.currentTrack ? syncManager._minifyItem('track', player.currentTrack) : null;
+        const fallbackPartyName = user.name || user.email ? `${user.name || user.email}'s Party` : 'Listening Party';
+        const name = nameInput?.value.trim() || fallbackPartyName;
+        try {
+            const { party } = await this._selfHostedRequest('/api/parties', {
+                method: 'POST',
+                body: JSON.stringify({
+                    name,
+                    currentTrack,
+                    isPlaying: player.currentTrack ? !player.activeElement.paused : false,
+                    playbackTime: player.activeElement.currentTime || 0,
+                    queue: player.queue?.map((track) => syncManager._minifyItem('track', track)) || [],
+                    memberName: user.name || user.email || user.$id,
+                }),
+            });
+            navigate(`/party/${party.id}`);
+        } catch (error) {
+            console.error('Self-hosted create party error:', error);
+            await Modal.alert('Error', error.message || 'Failed to create the party. Please try again.');
+        }
+    }
+
     async joinParty(partyId) {
+        if (this._isSelfHostedMode()) {
+            return await this.joinSelfHostedParty(partyId);
+        }
         if (this.currentParty?.id === partyId || this.isJoining) return;
         this.isJoining = true;
 
@@ -242,6 +356,43 @@ export class ListeningPartyManager {
         } catch (error) {
             console.error('Join error:', error);
             await Modal.alert('Error', 'Failed to join the party. It may have ended.');
+            navigate('/parties');
+        } finally {
+            this.isJoining = false;
+        }
+    }
+
+    async joinSelfHostedParty(partyId) {
+        if (this.currentParty?.id === partyId || this.isJoining) return;
+        this.isJoining = true;
+        try {
+            if (!authManager.user?.$id) {
+                navigate('/account');
+                return;
+            }
+            const { party } = await this._selfHostedRequest(`/api/parties/${encodeURIComponent(partyId)}/join`, {
+                method: 'POST',
+                body: JSON.stringify({ memberName: authManager.user.name || authManager.user.email || authManager.user.$id }),
+            });
+            const normalized = this._applySelfHostedParty(party);
+            this.isHost = normalized.hostUserId === authManager.user.$id;
+            this.memberId = this.members.find((member) => member.userId === authManager.user.$id)?.id || null;
+            this.setupSubscriptions(partyId);
+            this.startHeartbeat();
+            this.renderPartyUI();
+            await this.loadInitialData(partyId);
+
+            if (!this.isHost) {
+                this.lockControls();
+                this.setupGuestSyncInterception();
+                if (normalized.current_track) {
+                    await audioContextManager.resume();
+                    await this.syncWithHost(normalized);
+                }
+            }
+        } catch (error) {
+            console.error('Self-hosted join error:', error);
+            await Modal.alert('Error', error.message || 'Failed to join the party. It may have ended.');
             navigate('/parties');
         } finally {
             this.isJoining = false;
@@ -468,6 +619,31 @@ export class ListeningPartyManager {
     setupSubscriptions(partyId) {
         this.unsubscribeFunctions.forEach((unsub) => unsub());
         this.unsubscribeFunctions = [];
+        clearInterval(this.selfHostedPollInterval);
+        this.selfHostedPollInterval = null;
+        if (this._isSelfHostedMode()) {
+            const poll = async () => {
+                if (!this.currentParty || this.currentParty.id !== partyId) return;
+                try {
+                    const { party } = await this._selfHostedRequest(`/api/parties/${encodeURIComponent(partyId)}`);
+                    const normalized = this._applySelfHostedParty(party);
+                    if (!this.isHost) await this.syncWithHost(normalized);
+                    this.updatePartyHeader();
+                    this.renderMembers();
+                    this.renderTypingIndicator();
+                    this.renderRequests();
+                    const container = document.getElementById('party-chat-messages');
+                    if (container) {
+                        container.innerHTML = '';
+                        this.messages.forEach((message) => this.addChatMessage(message));
+                    }
+                } catch (error) {
+                    console.warn('Failed to poll self-hosted party:', error);
+                }
+            };
+            this.selfHostedPollInterval = setInterval(poll, 2500);
+            return;
+        }
         const f_id = authManager.user ? authManager.user.$id : 'guest';
 
         pb.collection('parties')
@@ -530,6 +706,13 @@ export class ListeningPartyManager {
     }
 
     async loadMembers() {
+        if (this._isSelfHostedMode()) {
+            this.members = this.currentParty?.members || [];
+            this.renderMembers();
+            this.renderTypingIndicator();
+            this.updatePartyHeader();
+            return;
+        }
         const f_id = authManager.user ? authManager.user.$id : 'guest';
         this.members = await pb
             .collection('party_members')
@@ -545,6 +728,13 @@ export class ListeningPartyManager {
         const lastPing = this._lastTypingPing || 0;
         if (now - lastPing < 1500) return;
         this._lastTypingPing = now;
+        if (this._isSelfHostedMode()) {
+            this._selfHostedRequest(`/api/parties/${encodeURIComponent(this.currentParty.id)}/heartbeat`, {
+                method: 'POST',
+                body: JSON.stringify({ typingUntil: now + 3000 }),
+            }).catch(() => {});
+            return;
+        }
         const f_id = authManager.user?.$id || 'guest';
         pb.collection('party_members')
             .update(this.memberId, { typing_until: now + 3000 }, { f_id })
@@ -555,6 +745,13 @@ export class ListeningPartyManager {
         if (!this.memberId || !this.currentParty) return;
         if ((this._lastTypingPing || 0) === 0) return;
         this._lastTypingPing = 0;
+        if (this._isSelfHostedMode()) {
+            this._selfHostedRequest(`/api/parties/${encodeURIComponent(this.currentParty.id)}/heartbeat`, {
+                method: 'POST',
+                body: JSON.stringify({ typingUntil: 0 }),
+            }).catch(() => {});
+            return;
+        }
         const f_id = authManager.user?.$id || 'guest';
         pb.collection('party_members')
             .update(this.memberId, { typing_until: 0 }, { f_id })
@@ -592,6 +789,15 @@ export class ListeningPartyManager {
     }
 
     async loadMessages() {
+        if (this._isSelfHostedMode()) {
+            this.messages = this.currentParty?.messages || [];
+            const container = document.getElementById('party-chat-messages');
+            if (container) {
+                container.innerHTML = '';
+                this.messages.forEach((m) => this.addChatMessage(m));
+            }
+            return;
+        }
         const f_id = authManager.user ? authManager.user.$id : 'guest';
         const res = await pb
             .collection('party_messages')
@@ -605,6 +811,11 @@ export class ListeningPartyManager {
     }
 
     async loadRequests() {
+        if (this._isSelfHostedMode()) {
+            this.requests = this.currentParty?.requests || [];
+            this.renderRequests();
+            return;
+        }
         const f_id = authManager.user ? authManager.user.$id : 'guest';
         try {
             this.requests = await pb.collection('party_requests').getFullList({
@@ -729,7 +940,16 @@ export class ListeningPartyManager {
                     if (req) {
                         Player.instance.addToQueue(req.track);
                         showNotification(`Added "${req.track.title}" to queue`);
-                        await pb.collection('party_requests').delete(req.id, { f_id });
+                        if (this._isSelfHostedMode()) {
+                            const { party } = await this._selfHostedRequest(
+                                `/api/parties/${encodeURIComponent(this.currentParty.id)}/requests/${encodeURIComponent(req.id)}`,
+                                { method: 'DELETE' }
+                            );
+                            this._applySelfHostedParty(party);
+                            this.renderRequests();
+                        } else {
+                            await pb.collection('party_requests').delete(req.id, { f_id });
+                        }
                     }
                 })
             );
@@ -780,6 +1000,22 @@ export class ListeningPartyManager {
         const content = input.value.trim();
         input.value = '';
         this._clearTyping();
+        if (this._isSelfHostedMode()) {
+            try {
+                const { party } = await this._selfHostedRequest(
+                    `/api/parties/${encodeURIComponent(this.currentParty.id)}/messages`,
+                    {
+                        method: 'POST',
+                        body: JSON.stringify({ content }),
+                    }
+                );
+                this._applySelfHostedParty(party);
+                await this.loadMessages();
+            } catch (error) {
+                console.warn('Failed to send self-hosted party message:', error);
+            }
+            return;
+        }
         const profile = await this.getMemberProfile();
         const f_id = authManager.user ? authManager.user.$id : 'guest';
         try {
@@ -791,6 +1027,24 @@ export class ListeningPartyManager {
 
     async requestSong(track) {
         if (!this.currentParty) return;
+        if (this._isSelfHostedMode()) {
+            try {
+                const minifiedTrack = syncManager._minifyItem('track', track);
+                const { party } = await this._selfHostedRequest(
+                    `/api/parties/${encodeURIComponent(this.currentParty.id)}/requests`,
+                    {
+                        method: 'POST',
+                        body: JSON.stringify({ track: minifiedTrack }),
+                    }
+                );
+                this._applySelfHostedParty(party);
+                this.renderRequests();
+                showNotification(`Requested "${track.title}"`);
+            } catch (error) {
+                console.error('Self-hosted request error:', error);
+            }
+            return;
+        }
         const profile = await this.getMemberProfile();
         const f_id = authManager.user ? authManager.user.$id : 'guest';
         try {
@@ -825,7 +1079,8 @@ export class ListeningPartyManager {
 
             if (currentId !== targetId) {
                 const cleanedTrack = { ...party.current_track };
-                if (!cleanedTrack.isTracker) {
+                const directAudioSource = ['server-local', 'server-library', 'radio'].includes(cleanedTrack.source?.kind);
+                if (!cleanedTrack.isTracker && !directAudioSource) {
                     delete cleanedTrack.audioUrl;
                     delete cleanedTrack.streamUrl;
                     delete cleanedTrack.remoteUrl;
@@ -907,6 +1162,23 @@ export class ListeningPartyManager {
             const el = player.activeElement;
             const sharedTrack = player.currentTrack ? syncManager._minifyItem('track', player.currentTrack) : null;
             try {
+                if (this._isSelfHostedMode()) {
+                    const { party } = await this._selfHostedRequest(
+                        `/api/parties/${encodeURIComponent(this.currentParty.id)}/playback`,
+                        {
+                            method: 'PATCH',
+                            body: JSON.stringify({
+                                currentTrack: sharedTrack,
+                                isPlaying: !el.paused,
+                                playbackTime: el.currentTime,
+                                queue: player.queue?.map((t) => syncManager._minifyItem('track', t)) || [],
+                            }),
+                        }
+                    );
+                    this._applySelfHostedParty(party);
+                    this.updatePartyHeader();
+                    return;
+                }
                 await pb.collection('parties').update(
                     this.currentParty.id,
                     {
@@ -955,6 +1227,18 @@ export class ListeningPartyManager {
         this.heartbeatInterval = setInterval(async () => {
             if (!this.memberId) return;
             try {
+                if (this._isSelfHostedMode()) {
+                    const { party } = await this._selfHostedRequest(
+                        `/api/parties/${encodeURIComponent(this.currentParty.id)}/heartbeat`,
+                        {
+                            method: 'POST',
+                            body: JSON.stringify({ typingUntil: this._lastTypingPing ? Date.now() + 3000 : 0 }),
+                        }
+                    );
+                    this._applySelfHostedParty(party);
+                    this.updatePartyHeader();
+                    return;
+                }
                 await pb
                     .collection('party_members')
                     .update(this.memberId, { last_seen: Date.now() }, { f_id: authManager.user?.$id || 'guest' });
@@ -971,6 +1255,32 @@ export class ListeningPartyManager {
         const f_id = this.isHost ? this._hostFid(this.currentParty) : authManager.user?.$id || 'guest';
 
         try {
+            if (this._isSelfHostedMode()) {
+                if (this.isHost && shouldCleanup) {
+                    const end = await Modal.confirm(
+                        'End Party?',
+                        'Leaving will end the party for everyone. Are you sure?',
+                        'End Party',
+                        'danger'
+                    );
+                    if (!end) {
+                        this.isLeaving = false;
+                        return;
+                    }
+                    await this._selfHostedRequest(`/api/parties/${encodeURIComponent(partyIdForCleanup)}`, {
+                        method: 'DELETE',
+                    }).catch((error) => {
+                        console.error('Failed to end self-hosted party:', error);
+                        showNotification('Failed to end party. Please try again.');
+                    });
+                } else if (partyIdForCleanup) {
+                    await this._selfHostedRequest(`/api/parties/${encodeURIComponent(partyIdForCleanup)}/leave`, {
+                        method: 'POST',
+                    }).catch((error) => {
+                        console.error('Failed to leave self-hosted party:', error);
+                    });
+                }
+            } else
             if (this.isHost && shouldCleanup) {
                 const end = await Modal.confirm(
                     'End Party?',
@@ -1023,6 +1333,8 @@ export class ListeningPartyManager {
             this.unsubscribeFunctions = [];
             clearInterval(this.syncInterval);
             clearInterval(this.heartbeatInterval);
+            clearInterval(this.selfHostedPollInterval);
+            this.selfHostedPollInterval = null;
             clearTimeout(this._typingExpireTimer);
             this._typingExpireTimer = null;
             this._lastTypingPing = 0;

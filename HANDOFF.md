@@ -19,9 +19,9 @@ Only read `PROGRESS.md`, `docs/ARCHITECTURE.md`, `docs/MILESTONES.md`, or `docs/
 
 ## Last Completed Milestone
 
-Self-Hosted Checkpoint 19 - Add Minimal Chat is complete.
+Self-Hosted Checkpoint 21 - Clarify Migration From Existing Services is complete.
 
-It added `server/selfhosted/messages.mjs`, approved-user `/api/messages` list/send endpoints gated by accepted invitation contacts, `js/selfhosted-chat.js`, and a small Account page Messages panel for manual-refresh 1:1 chat. Checkpoint 18 added contact invitations. Checkpoint 17 added internal song/playlist sharing. Checkpoint 16 added self-hosted public profiles. Checkpoint 15 added YouTube clip associations. Checkpoints 14 through 5 and the previous minimal backend skeleton, server library client, source-model, contract-map, and Local Uploads Serveur checkpoints remain complete.
+It added `shouldUseSelfHostedServices()` as the frontend boundary for self-hosted-only service fallbacks, kept that boundary tied to mandatory self-hosted auth, and gated profile fallback/mirroring/contact invitations through it. Checkpoint 20 added self-hosted listening parties. Checkpoint 19 added minimal 1:1 chat. Checkpoint 18 added contact invitations. Checkpoint 17 added internal song/playlist sharing. Checkpoints 16 through 5 and the previous minimal backend skeleton, server library client, source-model, contract-map, and Local Uploads Serveur checkpoints remain complete.
 
 ## Core Musique Hybride Changes
 
@@ -57,12 +57,14 @@ It added `server/selfhosted/messages.mjs`, approved-user `/api/messages` list/se
 - External catalog tracks can store local browser YouTube clip associations through `js/youtube-clips.js`, keyed by source-aware `trackKey`.
 - Associated YouTube clips appear in Track info and on the Track page as embeds plus external YouTube links; they do not replace audio playback.
 - Self-hosted approved users now have JSON-backed public profiles with username, display name, avatar URL, banner URL, bio/about, website, simple stats, public playlist JSON, privacy flags, and timestamps.
-- Existing profile routes/UI keep PocketBase as the primary profile source and fall back to self-hosted profiles when PocketBase data is unavailable.
+- Existing profile routes/UI keep PocketBase as the primary profile source and fall back to self-hosted profiles only when mandatory self-hosted auth is enabled.
 - Approved users can now create stable internal `/share/:id` links for tracks and playlists.
 - Shared music links store canonical app hrefs when portable plus minified track/playlist snapshots for display and playback fallback.
 - Approved self-hosted users can now send, list, accept, and reject contact invitations; pending and accepted invitations block duplicate requests.
 - Profile pages expose a `Connect` action for other self-hosted users, and Account shows incoming/outgoing invitation state with accept/reject controls.
 - Accepted contacts can exchange persistent 1:1 text messages through Account > Messages; message list/send endpoints are approved-user only and require an accepted invitation relationship.
+- Approved self-hosted users can host listening parties from the existing Parties page. Accepted contacts can join by `/party/:id`, receive host playback updates through polling, chat in the party, and request songs. PocketBase remains the default party backend unless `MONOCHROME_AUTH_REQUIRED=true`.
+- `js/auth-gate.js` exposes `shouldUseSelfHostedServices()` as the migration boundary for self-hosted-only frontend services; public/default deployments should not opportunistically call the self-hosted backend.
 - New structured uploads extract embedded title, artist, album, year, duration, genre, and artwork when available.
 - Extracted artwork is exposed through tokenized `/uploads/:id/artwork` URLs.
 - Self-hosted radios now have a backend model with create/list/admin update endpoints.
@@ -119,6 +121,7 @@ It added `server/selfhosted/messages.mjs`, approved-user `/api/messages` list/se
 - `server/selfhosted/shares.mjs`: self-hosted JSON internal share store for approved users.
 - `server/selfhosted/invitations.mjs`: self-hosted JSON contact invitation store for approved users.
 - `server/selfhosted/messages.mjs`: self-hosted JSON 1:1 message store gated by accepted contacts.
+- `server/selfhosted/parties.mjs`: self-hosted JSON listening-party store for rooms, members, chat messages, requests, and host playback state.
 - `server/selfhosted/radios.mjs`: self-hosted JSON radio store and validation helpers.
 - `PROGRESS.md`: detailed verification and latest handoff notes.
 - `js/auth-gate.js`: client-side mandatory auth route guard helpers.
@@ -151,6 +154,9 @@ It added `server/selfhosted/messages.mjs`, approved-user `/api/messages` list/se
 - Chat rows currently display durable user ids rather than profile display names.
 - Chat has manual refresh/contact selection only; realtime push, notifications, typing indicators, unread counts, and pagination UI are out of scope.
 - Message records are plaintext JSON in the self-hosted data directory; end-to-end encryption is not implemented.
+- Self-hosted listening parties use polling rather than realtime subscriptions, so sync is intentionally coarse compared with the PocketBase path.
+- Self-hosted party joins are limited to accepted contacts of the host; shareable public party links are not implemented.
+- Self-hosted party messages and requests are plaintext JSON in the self-hosted data directory.
 
 ## Validation Commands
 
@@ -164,6 +170,11 @@ Preferred:
 
 Last known results:
 
+- `node --check js/auth-gate.js js/profile.js` passed.
+- `npm exec -- vitest run --config=vite.config.ts js/tests/auth-gate.test.js` passed: 4 tests.
+- `npm exec -- eslint js/auth-gate.js js/profile.js` passed.
+- `git diff --check` passed.
+- `npm run build` passed with existing chunk/dynamic-import and large chunk warnings.
 - `npm.cmd exec -- vitest run --config=vite.config.ts js/tests/track-model.test.ts js/tests/db.test.js` passed: 16 tests.
 - `npm.cmd exec -- eslint js/track-model.ts js/server-uploads.js` passed.
 - `node --check server/uploads/server.mjs js/server-uploads.js js/app.js js/ui.js js/events.js` passed.
@@ -201,7 +212,7 @@ Last known results:
 - `npm run build` passed with existing chunk/dynamic-import warnings.
 - `node --check server/selfhosted/messages.mjs server/selfhosted/messages.test.mjs server/selfhosted/invitations.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs js/selfhosted-chat.js js/selfhosted-invitations.js js/profile.js js/app.js` passed.
 - `node --test server/selfhosted/messages.test.mjs server/selfhosted/invitations.test.mjs` passed: 4 tests. Expected 409/403 errors were logged during rejection coverage.
-- `node --test server/selfhosted/accounts.test.mjs server/selfhosted/profiles.test.mjs server/selfhosted/radios.test.mjs server/selfhosted/shares.test.mjs server/selfhosted/invitations.test.mjs server/selfhosted/messages.test.mjs` passed: 13 tests.
+- `node --test server/selfhosted/accounts.test.mjs server/selfhosted/profiles.test.mjs server/selfhosted/radios.test.mjs server/selfhosted/shares.test.mjs server/selfhosted/invitations.test.mjs server/selfhosted/messages.test.mjs server/selfhosted/parties.test.mjs` passed: 15 tests.
 - `npm exec -- eslint js/selfhosted-chat.js js/selfhosted-invitations.js js/profile.js` passed.
 - `git diff --check` passed.
 - `npm run build` passed with existing chunk/dynamic-import and large chunk warnings.
@@ -222,7 +233,7 @@ Last known results:
 
 ## Next Recommended Milestone
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 20 - Add Self-Hosted Listening Parties.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 22 - Add Ubuntu 26.04 Install Commands.
 
 For extra runtime confidence before YouTube association work, manually smoke uploaded music and radio surfaces:
 
@@ -238,6 +249,7 @@ For extra runtime confidence before YouTube association work, manually smoke upl
 - Create an internal share for an external track, an uploaded track, and a playlist; open each `/share/:id` as another approved user and verify canonical open/playback behavior.
 - Send, accept, reject, and duplicate-test invitations between two approved users from profile pages and the Account invitations panel.
 - After accepting an invitation, exchange messages in both directions from Account > Messages and verify they persist after refresh.
+- Start a self-hosted party as an approved host, open `/party/:id` as an accepted contact in another browser/session, verify join, host play/pause/track changes, chat, and a song request. Include one external catalog track and one accessible uploaded track.
 
 ## Resume Instruction
 

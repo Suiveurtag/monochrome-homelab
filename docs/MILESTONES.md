@@ -736,6 +736,67 @@ Required checks:
 - Targeted frontend lint.
 - Production build.
 
+### Self-Hosted Checkpoint 20 - Add Self-Hosted Listening Parties
+
+Status: Complete
+
+Goal:
+
+- Let approved self-hosted users host simple listening parties that accepted contacts can join.
+
+Scope:
+
+- Add JSON-backed self-hosted party storage for rooms, members, messages, requests, and host playback state.
+- Add approved-user party endpoints under `/api/parties`.
+- Require an accepted invitation/contact relationship before non-host users can read or join a party.
+- Keep host playback controls authoritative and use conservative polling for guest sync.
+- Switch the existing listening-party UI to the self-hosted backend only when mandatory self-hosted auth is enabled.
+
+Non-goals:
+
+- No voice chat.
+- No advanced moderation.
+- No sub-second perfect sync.
+- No websocket/realtime infrastructure.
+- No replacement of default PocketBase-backed listening parties for public deployments.
+
+Required checks:
+
+- Syntax checks for touched frontend/server modules.
+- Self-hosted party endpoint tests.
+- Existing self-hosted account/profile/radio/share/invitation/message endpoint tests.
+- Targeted frontend lint.
+- Production build.
+
+### Self-Hosted Checkpoint 21 - Clarify Migration From Existing Services
+
+Status: Complete
+
+Goal:
+
+- Make the Better Auth, PocketBase, Appwrite legacy, and self-hosted backend boundaries explicit before install/update work.
+
+Scope:
+
+- Document the service ownership model.
+- Keep Better Auth as the browser session authority.
+- Keep PocketBase as the default/public sync/profile/public playlist/listening-party boundary.
+- Treat Appwrite as legacy/residual configuration only.
+- Gate self-hosted-only frontend fallbacks behind the mandatory self-hosted auth boundary.
+
+Non-goals:
+
+- No removal of Appwrite, PocketBase, or Better Auth.
+- No migration of cloud sync/profile data.
+- No production install scripts yet.
+
+Required checks:
+
+- Syntax checks for touched frontend modules.
+- Focused auth-gate tests.
+- Targeted frontend lint.
+- Production build.
+
 ### M6 - Player And Media Boundary
 
 Status: Planned

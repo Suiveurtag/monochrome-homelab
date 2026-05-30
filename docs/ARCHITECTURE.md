@@ -46,11 +46,13 @@ Auth and account boundary:
 - Better Auth is the browser session authority through `js/accounts/auth.js` and `js/accounts/config.js`.
 - `authManager` normalizes Better Auth users to expose legacy `$id`; existing sync, profile, listening-party, and upload code depend on that shape.
 - `js/auth-gate.js` defines the client-side mandatory-auth boundary for self-hosted deployments. When `window.__MONOCHROME_AUTH_REQUIRED__ === true`, signed-out app routes redirect to `/account`, while auth/reset routes remain accessible.
+- `js/auth-gate.js` also exports `shouldUseSelfHostedServices()` as the frontend migration boundary for self-hosted-only services. Today it is intentionally equivalent to mandatory self-hosted auth, so default/public deployments keep PocketBase-backed profile/social behavior and do not opportunistically call the local self-hosted backend.
 - `vite-plugin-auth-gate.js` injects `window.__MONOCHROME_AUTH_REQUIRED__` only when `MONOCHROME_AUTH_REQUIRED` is explicitly present in the Vite environment, so the public/default app remains unchanged unless configured.
 - `server/selfhosted/accounts.mjs` defines self-hosted account approval states: `pending`, `approved`, `rejected`, and `disabled`. The first account, or `MONOCHROME_BOOTSTRAP_ADMIN_USER_ID` when configured, is bootstrapped as an approved admin; later accounts default to pending while approval is required.
 - The self-hosted backend exposes `/api/accounts/me`, `/api/admin/accounts`, and `/api/admin/accounts/:userId` for account state checks and admin account updates. `js/selfhosted-admin.js` is the browser client for this boundary and renders the Account page admin panel only for approved admin accounts.
 - A localhost-only dev session exists behind `monochrome-dev-auth` and the account-page test button. It is a development fallback, not a production auth model.
 - PocketBase remains the cloud profile/sync/public playlist boundary. User records live in `DB_users`, keyed by legacy `firebase_id` values that currently receive Better Auth user ids.
+- Appwrite remains legacy/residual configuration and settings surface only. It is not an active frontend auth or sync boundary and should not be removed without a dedicated migration decision.
 
 Storage boundary:
 
@@ -79,15 +81,17 @@ Favorites and playlists:
 
 Social state:
 
-- Profiles, public playlists, theme store authorship, and listening parties currently use PocketBase-backed flows.
+- Profiles, public playlists, and theme store authorship currently use PocketBase-backed flows.
 - Self-hosted public profiles now have a JSON-backed fallback under the self-hosted data directory. `/api/profiles/me` lets approved users read/update their profile, and `/api/profiles/:username` lets approved users view other approved users' public profile data.
-- `js/selfhosted-profiles.js` is the frontend client for the self-hosted profile endpoints. The existing `js/profile.js` page keeps PocketBase as the primary profile source and falls back to self-hosted profiles when PocketBase data is unavailable.
-- Listening parties still allow guest-like fallback ids in some paths and have not yet moved to the self-hosted backend.
-- There is no self-hosted chat, invitation, notification, social graph, or listening-party store yet.
+- `js/selfhosted-profiles.js` is the frontend client for the self-hosted profile endpoints. The existing `js/profile.js` page keeps PocketBase as the primary profile source and falls back to self-hosted profiles only when `shouldUseSelfHostedServices()` is true and PocketBase data is unavailable.
+- Self-hosted invitations are JSON-backed account-scoped contact records. Accepted invitations are the current contact boundary for chat and joining self-hosted listening parties.
+- Self-hosted 1:1 chat is JSON-backed and requires approved accounts plus an accepted contact relationship.
+- Listening parties keep the existing PocketBase-backed flow for default/public app behavior. When mandatory self-hosted auth is enabled, `js/listening-party.js` uses the self-hosted backend instead: approved hosts create JSON-backed rooms, accepted contacts can join, host playback updates are polled by guests, and direct-audio uploaded/radio tracks keep their stream URLs for playback.
+- There is no self-hosted notification store or realtime push infrastructure yet.
 
 Known limits:
 
-- The self-hosted backend does not yet exist as a unified server; only the local upload prototype server exists.
+- The self-hosted backend is a minimal Node server, not yet a complete production deployment bundle. The local upload prototype still runs as a separate server and has not been merged into the self-hosted backend.
 - Uploaded audio storage is local and non-portable across users or devices unless the same server and tokenized stream URL remain available.
 - Full lint still has broader pre-existing `js/app.js` debt outside the upload work.
 - Localhost development can show expected remote auth/API CORS failures and existing Shaka warnings unrelated to upload storage.
@@ -166,6 +170,8 @@ API and media:
 - `js/selfhosted-shares.js` calls the self-hosted share API with the same Better Auth user headers. The track context menu can create stable internal `/share/:id` links for tracks and playlists, and `js/router.js` routes those links to `UIRenderer.renderSharePage()`.
 - `/share/:id` loads a stored share snapshot, shows a shared music page, and can open the canonical app route when one is portable or play the shared snapshot directly for server-local uploads and playlist snapshots.
 - `js/selfhosted-invitations.js` calls the self-hosted invitations API with the same Better Auth user headers. The profile page can send a contact invitation with the Connect button, and the Account page invitations panel lists incoming/outgoing invitations and lets recipients accept or reject pending requests.
+- `server/selfhosted/parties.mjs` is the JSON-backed self-hosted listening-party store. It persists rooms, members, chat messages, song requests, and host playback state under the self-hosted data directory. Party endpoints require approved accounts; non-host joins and reads require an accepted invitation/contact relationship with the host; playback mutations are host-only.
+- `js/listening-party.js` keeps PocketBase listening parties as the default path, but switches to `/api/parties` when `MONOCHROME_AUTH_REQUIRED=true`. The first self-hosted implementation uses conservative polling rather than websockets/realtime push.
 - `MusicAPI` is the app-facing facade. It currently routes most calls to `LosslessAPI`/TIDAL and podcast calls to `PodcastsAPI`.
 - `LosslessAPI.fetchWithRetry()` tries native `HiFiClient` routes for non-streaming requests, falls back to configured HiFi API instances, and uses configured streaming/Qobuz instances where appropriate.
 - `LosslessAPI.getStreamUrl()` resolves normal production audio through Qobuz by TIDAL ISRC. If no ISRC or Qobuz stream is available, playback reports a missing audio source.

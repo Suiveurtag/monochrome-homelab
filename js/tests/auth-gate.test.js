@@ -3,6 +3,7 @@ import {
     isAuthRoute,
     isClientAuthRequired,
     isLocalDevEnvironment,
+    shouldUseSelfHostedServices,
     shouldRedirectForAuth,
 } from '../auth-gate.js';
 
@@ -38,5 +39,16 @@ describe('auth-gate', () => {
         expect(shouldRedirectForAuth({ user: null, pathname: '/search/test' })).toBe(true);
         expect(shouldRedirectForAuth({ user: { id: 'user-1' }, pathname: '/search/test' })).toBe(false);
         expect(shouldRedirectForAuth({ user: null, pathname: '/account' })).toBe(false);
+    });
+
+    test('uses self-hosted services only when mandatory self-hosted auth is enabled', () => {
+        expect(shouldUseSelfHostedServices()).toBe(false);
+
+        window.__MONOCHROME_AUTH_REQUIRED__ = true;
+        expect(shouldUseSelfHostedServices()).toBe(true);
+
+        window.__MONOCHROME_AUTH_REQUIRED__ = false;
+        localStorage.setItem('monochrome-auth-required', 'true');
+        expect(shouldUseSelfHostedServices()).toBe(false);
     });
 });
