@@ -246,8 +246,10 @@ Deployment:
 
 - `vite.config.ts` defines Vite build, PWA, SVG-use, upload, blob asset, and auth-gate plugins.
 - `vite-plugin-auth-gate.js` injects selected env-derived globals and provides preview-server auth gating when enabled.
+- It also injects self-hosted and upload server URLs when configured, so a built homelab deployment can point browser clients at the public reverse-proxy origin instead of localhost defaults.
 - Docker production builds with Bun and serves `dist/` through Nginx; Docker Compose can optionally run PocketBase via profile.
 - `nginx.conf` serves static assets directly and falls back app routes to `index.html`.
+- `scripts/install-ubuntu.sh` is the first Ubuntu 26.04 homelab installer. It copies the app to `/opt/monochrome`, writes `/etc/monochrome/monochrome.env`, builds `dist/`, creates `monochrome-selfhost.service` and `monochrome-uploads.service`, stores data under `/var/lib/monochrome`, and writes an Nginx site that serves static files while proxying `/api/`, `/health`, and `/uploads/`.
 - `server/selfhosted/server.mjs` is the minimal self-hosted backend skeleton. It loads config/env values, prepares data directories, exposes `/health`, and reserves auth endpoint space with placeholder responses.
 - `server/selfhosted/accounts.mjs` is the self-hosted account approval store. It writes JSON account state under the configured self-hosted data directory and is separate from the existing Better Auth/PocketBase browser boundaries.
 - `server/selfhosted/radios.mjs` is the self-hosted radio store. It persists JSON radio entries under the self-hosted data directory with name, stream URL, genre, country, artwork URL, enabled status, creator, and timestamps. `/api/radios` lists enabled radios and lets approved users create radios; `/api/admin/radios` lets admins list disabled radios and update radio state/metadata.

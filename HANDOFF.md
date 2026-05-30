@@ -19,9 +19,9 @@ Only read `PROGRESS.md`, `docs/ARCHITECTURE.md`, `docs/MILESTONES.md`, or `docs/
 
 ## Last Completed Milestone
 
-Self-Hosted Checkpoint 21 - Clarify Migration From Existing Services is complete.
+Self-Hosted Checkpoint 22 - Add Ubuntu 26.04 Install Commands is complete.
 
-It added `shouldUseSelfHostedServices()` as the frontend boundary for self-hosted-only service fallbacks, kept that boundary tied to mandatory self-hosted auth, and gated profile fallback/mirroring/contact invitations through it. Checkpoint 20 added self-hosted listening parties. Checkpoint 19 added minimal 1:1 chat. Checkpoint 18 added contact invitations. Checkpoint 17 added internal song/playlist sharing. Checkpoints 16 through 5 and the previous minimal backend skeleton, server library client, source-model, contract-map, and Local Uploads Serveur checkpoints remain complete.
+It added `scripts/install-ubuntu.sh`, `docs/SELF_HOSTING.md`, systemd/Nginx deployment conventions, and `MONOCHROME_UPLOAD_SERVER_URL` build injection for reverse-proxied upload calls. Checkpoint 21 added `shouldUseSelfHostedServices()` as the frontend boundary for self-hosted-only service fallbacks. Checkpoint 20 added self-hosted listening parties. Checkpoint 19 added minimal 1:1 chat. Checkpoint 18 added contact invitations. Checkpoint 17 added internal song/playlist sharing. Checkpoints 16 through 5 and the previous minimal backend skeleton, server library client, source-model, contract-map, and Local Uploads Serveur checkpoints remain complete.
 
 ## Core Musique Hybride Changes
 
@@ -65,6 +65,9 @@ It added `shouldUseSelfHostedServices()` as the frontend boundary for self-hoste
 - Accepted contacts can exchange persistent 1:1 text messages through Account > Messages; message list/send endpoints are approved-user only and require an accepted invitation relationship.
 - Approved self-hosted users can host listening parties from the existing Parties page. Accepted contacts can join by `/party/:id`, receive host playback updates through polling, chat in the party, and request songs. PocketBase remains the default party backend unless `MONOCHROME_AUTH_REQUIRED=true`.
 - `js/auth-gate.js` exposes `shouldUseSelfHostedServices()` as the migration boundary for self-hosted-only frontend services; public/default deployments should not opportunistically call the self-hosted backend.
+- `scripts/install-ubuntu.sh` now provides the first Ubuntu 26.04 install path: apt dependencies, `/opt/monochrome`, `/etc/monochrome/monochrome.env`, `/var/lib/monochrome`, frontend build, `monochrome-selfhost.service`, `monochrome-uploads.service`, and Nginx static/proxy setup.
+- `docs/SELF_HOSTING.md` documents the install command, paths, service operations, config edits, and reverse proxy/TLS expectations.
+- `vite-plugin-auth-gate.js` injects `MONOCHROME_UPLOAD_SERVER_URL` when configured, so installed browser clients can call uploads through the public reverse-proxy origin instead of `localhost:8789`.
 - New structured uploads extract embedded title, artist, album, year, duration, genre, and artwork when available.
 - Extracted artwork is exposed through tokenized `/uploads/:id/artwork` URLs.
 - Self-hosted radios now have a backend model with create/list/admin update endpoints.
@@ -123,6 +126,8 @@ It added `shouldUseSelfHostedServices()` as the frontend boundary for self-hoste
 - `server/selfhosted/messages.mjs`: self-hosted JSON 1:1 message store gated by accepted contacts.
 - `server/selfhosted/parties.mjs`: self-hosted JSON listening-party store for rooms, members, chat messages, requests, and host playback state.
 - `server/selfhosted/radios.mjs`: self-hosted JSON radio store and validation helpers.
+- `scripts/install-ubuntu.sh`: Ubuntu 26.04 installer for the first homelab deployment path.
+- `docs/SELF_HOSTING.md`: self-hosted install, service, config, and reverse proxy guide.
 - `PROGRESS.md`: detailed verification and latest handoff notes.
 - `js/auth-gate.js`: client-side mandatory auth route guard helpers.
 
@@ -157,6 +162,9 @@ It added `shouldUseSelfHostedServices()` as the frontend boundary for self-hoste
 - Self-hosted listening parties use polling rather than realtime subscriptions, so sync is intentionally coarse compared with the PocketBase path.
 - Self-hosted party joins are limited to accepted contacts of the host; shareable public party links are not implemented.
 - Self-hosted party messages and requests are plaintext JSON in the self-hosted data directory.
+- The Ubuntu installer has syntax/lint/build validation but has not been smoke-tested in a real Ubuntu 26.04 VM/container in this session.
+- The installer writes an Nginx default port-80 site and only documents TLS/reverse-proxy hardening.
+- Update, backup, restore, and migration commands are still future checkpoints.
 
 ## Validation Commands
 
@@ -170,6 +178,12 @@ Preferred:
 
 Last known results:
 
+- `bash -n scripts/install-ubuntu.sh` passed.
+- ShellCheck is not installed in this environment, so installer ShellCheck was skipped.
+- `node --check vite-plugin-auth-gate.js` passed.
+- `npm exec -- eslint vite-plugin-auth-gate.js` passed.
+- `git diff --check` passed.
+- `npm run build` passed with existing chunk/dynamic-import and large chunk warnings.
 - `node --check js/auth-gate.js js/profile.js` passed.
 - `npm exec -- vitest run --config=vite.config.ts js/tests/auth-gate.test.js` passed: 4 tests.
 - `npm exec -- eslint js/auth-gate.js js/profile.js` passed.
@@ -233,16 +247,9 @@ Last known results:
 
 ## Next Recommended Milestone
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 22 - Add Ubuntu 26.04 Install Commands.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 23 - Add Simple Server Update Commands.
 
-For extra runtime confidence before YouTube association work, manually smoke uploaded music and radio surfaces:
-
-- Start `bun run dev` or `npm run dev`.
-- In another shell start `bun run dev:uploads` or `npm run dev:uploads`.
-- Sign in, open Library > Uploaded Music, upload a tagged real audio file, verify extracted metadata/artwork when available, edit its metadata from the row menu, search for edited title/tag, play it, like/unlike it, add/remove it from a playlist, reload, and verify it still lists, searches, and plays.
-- Recheck normal API playback after the upload smoke.
-- Use an approved self-hosted user to add a station from Library > Radio, verify filtering, play it, switch to another station if available, then switch back to normal API playback.
-- As admin, disable the station through `/api/admin/radios/:id` and verify it no longer appears in Library > Radio after refresh.
+Before implementing Checkpoint 23, inspect `scripts/install-ubuntu.sh`, `docs/SELF_HOSTING.md`, `.env.example`, package/build scripts, and the systemd/Nginx paths established in Checkpoint 22. The update command should back up `/etc/monochrome` and `/var/lib/monochrome` before pulling/copying code, installing dependencies, rebuilding, and restarting services.
 - Add a YouTube clip URL to an uploaded track from its row menu, refresh Uploaded Music, verify Track info shows the embed/link, and verify the Track page section appears if the associated track is opened there.
 - Add a YouTube clip URL to an external catalog track from its row menu, reload the page, and verify the local association still appears in Track info for the same browser.
 - With PocketBase unavailable or no PocketBase profile record, use an approved self-hosted user to open View My Profile, edit the profile, reload `/user/@<username>`, and verify another approved user can view it while a pending user cannot.

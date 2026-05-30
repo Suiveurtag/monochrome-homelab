@@ -822,6 +822,8 @@ Out of scope:
 
 ## Checkpoint 22 - Add Ubuntu 26.04 Install Commands
 
+Status: Complete
+
 Objective:
 
 Create simple server install commands for Ubuntu 26.04: dependencies, config, data directory, build, service setup, and optional reverse proxy notes.

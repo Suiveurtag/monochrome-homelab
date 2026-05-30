@@ -797,6 +797,33 @@ Required checks:
 - Targeted frontend lint.
 - Production build.
 
+### Self-Hosted Checkpoint 22 - Add Ubuntu 26.04 Install Commands
+
+Status: Complete
+
+Goal:
+
+- Provide a simple, explicit install path for Ubuntu 26.04 homelab servers.
+
+Scope:
+
+- Add an Ubuntu install script for dependencies, config, data directories, build, systemd services, and Nginx reverse proxy setup.
+- Document install commands, paths, service management, config edits, and reverse proxy expectations.
+- Inject the upload server URL into built frontend config for reverse-proxied deployments.
+
+Non-goals:
+
+- No Docker or Kubernetes changes.
+- No automatic update, backup, restore, or migration flow yet.
+- No replacement of Better Auth, PocketBase, or the current upload prototype boundary.
+
+Required checks:
+
+- Shell syntax check for the installer.
+- Targeted frontend syntax/lint check.
+- Production build.
+- Manual Ubuntu 26.04 VM/container install smoke when available.
+
 ### M6 - Player And Media Boundary
 
 Status: Planned

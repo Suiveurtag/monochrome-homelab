@@ -645,3 +645,33 @@ Affected areas:
 - `js/profile.js`
 - `js/tests/auth-gate.test.js`
 - `docs/ARCHITECTURE.md`
+- `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `docs/MILESTONES.md`
+
+## 2026-05-30 - Ubuntu Self-Hosting Uses Systemd And Nginx
+
+Status: Accepted
+
+Context:
+
+- The self-hosted roadmap needs a small install path for Ubuntu 26.04 servers before update and backup automation can be added.
+- The current homelab backend is split between the self-hosted API and the local upload API, while the browser app is still a Vite static build.
+
+Decision:
+
+- Install the app under `/opt/monochrome`, runtime config under `/etc/monochrome/monochrome.env`, and mutable data under `/var/lib/monochrome`.
+- Run `server/selfhosted/server.mjs` and `server/uploads/server.mjs` as separate systemd services.
+- Serve the static `dist/` build through Nginx and proxy `/api/`, `/health`, and `/uploads/` to the local Node services.
+
+Consequences:
+
+- Browser-injected self-hosted and upload server URLs must point at the public reverse-proxy origin for installed deployments.
+- Backup/update work can treat `/etc/monochrome` and `/var/lib/monochrome` as the important mutable state boundaries.
+- The upload server remains a separate prototype service until a later checkpoint merges or replaces that boundary.
+
+Affected areas:
+
+- `scripts/install-ubuntu.sh`
+- `docs/SELF_HOSTING.md`
+- `vite-plugin-auth-gate.js`
+- `.env.example`

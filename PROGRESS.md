@@ -9,35 +9,35 @@ For future Codex discussions, start with `HANDOFF.md` and `AGENTS.md`. Use this 
 - Date: 2026-05-30
 - Branch: main
 - Last known commit before current checkpoint: d850835
-- Current milestone: Self-Hosted Checkpoint 21 - Clarify Migration From Existing Services (complete)
+- Current milestone: Self-Hosted Checkpoint 22 - Add Ubuntu 26.04 Install Commands (complete)
 - Risk level: Medium
 
-The repo now has an additive hybrid track identity layer, a non-production local upload server prototype, mandatory self-hosted auth gating, server-side account approval, a basic in-app admin account management panel, a dedicated Uploaded Music tab, server-side search for uploaded music, shared server metadata editing for structured uploads, embedded audio metadata extraction on upload, a self-hosted radio backend model, a dedicated Library > Radio surface, YouTube clip associations visible from song UI, a self-hosted public profile fallback for approved users, internal self-hosted share links for songs and playlists, social contact invitations, minimal 1:1 chat between accepted contacts, self-hosted listening parties for accepted contacts, and an explicit frontend boundary for self-hosted-only service fallbacks. Existing `track.id` playback/route behavior is preserved, while persisted tracks can carry source-aware `trackKey` and `source` metadata for external API tracks, browser-local files, podcasts, tracker tracks, local server uploads, radio streams, and future YouTube video identities.
+The repo now has an additive hybrid track identity layer, a non-production local upload server prototype, mandatory self-hosted auth gating, server-side account approval, a basic in-app admin account management panel, a dedicated Uploaded Music tab, server-side search for uploaded music, shared server metadata editing for structured uploads, embedded audio metadata extraction on upload, a self-hosted radio backend model, a dedicated Library > Radio surface, YouTube clip associations visible from song UI, a self-hosted public profile fallback for approved users, internal self-hosted share links for songs and playlists, social contact invitations, minimal 1:1 chat between accepted contacts, self-hosted listening parties for accepted contacts, an explicit frontend boundary for self-hosted-only service fallbacks, and a first Ubuntu 26.04 install path using systemd plus Nginx. Existing `track.id` playback/route behavior is preserved, while persisted tracks can carry source-aware `trackKey` and `source` metadata for external API tracks, browser-local files, podcasts, tracker tracks, local server uploads, radio streams, and future YouTube video identities.
 
-Self-Hosted Checkpoints 1 through 21 are complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map"; `js/track-model.ts` has additive future source kinds for `server-library`, `radio`, and `youtube-video` plus exported source normalization helpers; `js/server-library.js` is now the app-facing client boundary for future self-hosted library operations; `server/selfhosted/server.mjs` is the minimal backend skeleton with config loading, data directories, `/health`, account/profile/radio/share/invitation/message/party endpoints, and auth placeholders; `server/storage/filesystem-library.mjs` now owns structured local filesystem storage, bounded search, shared metadata updates, extracted metadata defaults, and shared YouTube clip metadata for server-local uploads; `js/auth-gate.js` gates configured self-hosted browser sessions behind `/account` and exposes `shouldUseSelfHostedServices()` for self-hosted-only fallbacks; `server/selfhosted/accounts.mjs` provides self-hosted account approval state; `server/selfhosted/profiles.mjs` provides approved-user public profiles; `server/selfhosted/shares.mjs` provides approved-user internal sharing; `server/selfhosted/invitations.mjs` provides contact invitation state; `server/selfhosted/messages.mjs` provides accepted-contact 1:1 messaging; `server/selfhosted/parties.mjs` provides accepted-contact self-hosted listening parties; `js/selfhosted-admin.js` renders account management for approved admins; Library > Uploaded Music is the dedicated surface for server-local uploaded tracks; Library > Radio is the dedicated surface for self-hosted radio streams; and `js/youtube-clips.js` provides URL/ID normalization plus local external-track clip associations.
+Self-Hosted Checkpoints 1 through 22 are complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map"; `js/track-model.ts` has additive future source kinds for `server-library`, `radio`, and `youtube-video` plus exported source normalization helpers; `js/server-library.js` is now the app-facing client boundary for future self-hosted library operations; `server/selfhosted/server.mjs` is the minimal backend skeleton with config loading, data directories, `/health`, account/profile/radio/share/invitation/message/party endpoints, and auth placeholders; `server/storage/filesystem-library.mjs` now owns structured local filesystem storage, bounded search, shared metadata updates, extracted metadata defaults, and shared YouTube clip metadata for server-local uploads; `js/auth-gate.js` gates configured self-hosted browser sessions behind `/account` and exposes `shouldUseSelfHostedServices()` for self-hosted-only fallbacks; `server/selfhosted/accounts.mjs` provides self-hosted account approval state; `server/selfhosted/profiles.mjs` provides approved-user public profiles; `server/selfhosted/shares.mjs` provides approved-user internal sharing; `server/selfhosted/invitations.mjs` provides contact invitation state; `server/selfhosted/messages.mjs` provides accepted-contact 1:1 messaging; `server/selfhosted/parties.mjs` provides accepted-contact self-hosted listening parties; `js/selfhosted-admin.js` renders account management for approved admins; Library > Uploaded Music is the dedicated surface for server-local uploaded tracks; Library > Radio is the dedicated surface for self-hosted radio streams; `js/youtube-clips.js` provides URL/ID normalization plus local external-track clip associations; and `scripts/install-ubuntu.sh` plus `docs/SELF_HOSTING.md` provide the first Ubuntu 26.04 install command sequence.
 
 `HANDOFF.md` is now the recommended first-read summary for future sessions; read `AGENTS.md` next, then consult the larger docs only if more detail is needed.
 
 ## Last Completed Self-Hosted Checkpoint
 
-Self-Hosted Checkpoint 21 - Clarify Migration From Existing Services
+Self-Hosted Checkpoint 22 - Add Ubuntu 26.04 Install Commands
 
 Goal:
 
-- Document and enforce the boundary between Better Auth, PocketBase, Appwrite legacy pieces, and the additive self-hosted backend.
+- Create simple server install commands for Ubuntu 26.04: dependencies, config, data directory, build, service setup, and reverse proxy notes.
 
 Success criteria:
 
-- Better Auth remains the browser session authority and continues to expose normalized `$id`.
-- PocketBase remains the default/public sync, profile, public playlist, and listening-party service.
-- Appwrite remains legacy/residual configuration rather than an active account boundary.
-- Self-hosted-only profile/social fallbacks are attempted only when mandatory self-hosted auth is enabled.
+- An admin can install from a cloned checkout with `sudo MONOCHROME_PUBLIC_URL=https://music.example.com ./scripts/install-ubuntu.sh`.
+- The install path sets up explicit app/config/data directories, systemd units, and Nginx routes.
+- Browser clients can use public reverse-proxy URLs for both the self-hosted API and upload API.
 
 In scope:
 
-- `js/auth-gate.js`
-- `js/profile.js`
-- `js/tests/auth-gate.test.js`
+- `scripts/install-ubuntu.sh`
+- `docs/SELF_HOSTING.md`
+- `.env.example`
+- `vite-plugin-auth-gate.js`
 - `docs/ARCHITECTURE.md`
 - `docs/DECISIONS.md`
 - `docs/SELF_HOSTED_CHECKPOINTS.md`
@@ -47,21 +47,23 @@ In scope:
 
 Out of scope:
 
-- Removing Appwrite.
-- Replacing PocketBase sync/profile/public playlist data.
-- Replacing Better Auth.
-- Production install/update scripts.
+- Docker or Kubernetes.
+- Automatic update, backup, restore, or migration flow.
+- Replacing Better Auth, PocketBase, or the current upload prototype boundary.
 
 Changes:
 
-- Added `shouldUseSelfHostedServices()` in `js/auth-gate.js`, currently equivalent to mandatory self-hosted auth.
-- Added focused auth-gate coverage for the new self-hosted service boundary.
-- Gated `js/profile.js` self-hosted profile fallback, profile mirroring, contact invitation button display, and own-profile fallback navigation behind `shouldUseSelfHostedServices()`.
-- Documented the service ownership model in architecture and decision docs.
-- Marked Self-Hosted Checkpoint 21 complete in the checkpoint roadmap and milestones.
+- Added `scripts/install-ubuntu.sh`, a root-run Ubuntu 26.04 installer that installs apt dependencies, copies the app to `/opt/monochrome`, writes `/etc/monochrome/monochrome.env`, builds the frontend, creates `monochrome-selfhost.service` and `monochrome-uploads.service`, and writes an Nginx site.
+- Added `docs/SELF_HOSTING.md` with install commands, path/service references, config edit guidance, and reverse proxy requirements.
+- Added build-time injection for `MONOCHROME_UPLOAD_SERVER_URL` in `vite-plugin-auth-gate.js`, matching the existing self-hosted server URL injection.
+- Added `MONOCHROME_UPLOAD_SERVER_URL` to `.env.example`.
+- Documented the systemd/Nginx install boundary in architecture, decisions, milestones, and the checkpoint roadmap.
 
 Why:
 
+- Give homelab admins a concrete first install path before adding update and backup commands.
+- Keep mutable deployment state under explicit config/data directories for later backup/restore checkpoints.
+- Let remote browsers call upload endpoints through the public reverse proxy instead of defaulting to `localhost:8789`.
 - Avoid making the self-hosted backend a second source of truth during default/public app use.
 - Preserve PocketBase as the existing profile/sync/social boundary unless a deployment explicitly enables the self-hosted path.
 - Keep Appwrite legacy/residual pieces visible but non-authoritative until a dedicated migration/removal decision exists.
@@ -123,6 +125,16 @@ Why:
 
 Files touched:
 
+- `scripts/install-ubuntu.sh`
+- `docs/SELF_HOSTING.md`
+- `.env.example`
+- `vite-plugin-auth-gate.js`
+- `docs/ARCHITECTURE.md`
+- `docs/DECISIONS.md`
+- `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `docs/MILESTONES.md`
+- `HANDOFF.md`
+- `PROGRESS.md`
 - `js/auth-gate.js`
 - `js/profile.js`
 - `js/tests/auth-gate.test.js`
@@ -407,6 +419,11 @@ Verification:
 
 Known risks:
 
+- Checkpoint 22 was validated with syntax/lint/build checks in this environment, but not with a full Ubuntu 26.04 VM/container install smoke.
+- The installer writes an Nginx default port-80 site and removes the stock Ubuntu default symlink when present; deployments with an existing custom Nginx layout should review `/etc/nginx/sites-available/monochrome.conf` before running it.
+- TLS/certificate setup is intentionally documented as reverse-proxy follow-up, not automated by the checkpoint installer.
+- Update, backup, restore, and migration commands are still future checkpoints; `/etc/monochrome` and `/var/lib/monochrome` are now the expected mutable state boundaries.
+- The local upload API remains a separate prototype service behind Nginx `/uploads/`; it has not been merged into the self-hosted API.
 - `shouldUseSelfHostedServices()` is intentionally equivalent to mandatory auth for now. If a future deployment wants optional self-hosted services without mandatory auth, that helper is the migration point.
 - Checkpoint 21 did not migrate existing PocketBase or Appwrite data; it only documented and enforced the current ownership boundary.
 - Self-hosted listening parties use conservative polling rather than realtime subscriptions, so sync is coarse compared with the PocketBase party path.
@@ -459,9 +476,9 @@ Known risks:
 
 For future sessions, read `HANDOFF.md` and `AGENTS.md` first.
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 22 - Add Ubuntu 26.04 Install Commands.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 23 - Add Simple Server Update Commands.
 
-Before implementing Checkpoint 22, inspect `package.json`, `.env.example`, `server/selfhosted/config.mjs`, `server/selfhosted/server.mjs`, existing Docker/Nginx/deployment docs, and the Ubuntu/package-manager assumptions. Keep the installer conservative, explicit about paths, and non-destructive.
+Before implementing Checkpoint 23, inspect `scripts/install-ubuntu.sh`, `docs/SELF_HOSTING.md`, `.env.example`, package/build scripts, and the systemd/Nginx paths established in Checkpoint 22. The update path should back up `/etc/monochrome` and `/var/lib/monochrome` before pulling/copying code, installing dependencies, rebuilding, and restarting services.
 
 ## Open Questions / Blockers
 
@@ -490,6 +507,12 @@ Append new entries here.
 
 | Date | Command | Result | Notes |
 | --- | --- | --- | --- |
+| 2026-05-30 | `bash -n scripts/install-ubuntu.sh` | Pass | Shell syntax check passed for the Ubuntu 26.04 installer. |
+| 2026-05-30 | `command -v shellcheck >/dev/null && shellcheck scripts/install-ubuntu.sh || echo "shellcheck not installed"` | Skipped | ShellCheck is not installed in this environment. |
+| 2026-05-30 | `node --check vite-plugin-auth-gate.js` | Pass | Syntax check passed after adding upload server URL injection. |
+| 2026-05-30 | `npm exec -- eslint vite-plugin-auth-gate.js` | Pass | Targeted lint passed for the Vite config injection change. |
+| 2026-05-30 | `git diff --check` | Pass | No whitespace errors. |
+| 2026-05-30 | `npm run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import and large chunk warnings. |
 | 2026-05-30 | `node --check server/selfhosted/invitations.mjs server/selfhosted/invitations.test.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs js/selfhosted-invitations.js js/profile.js js/app.js` | Pass | Syntax checks for invitation store/API, client, profile Connect action, and app panel initialization. |
 | 2026-05-30 | `node --test server/selfhosted/invitations.test.mjs` | Pass | 2 tests passed; expected 409/403 errors were logged during duplicate and non-recipient rejection coverage. |
 | 2026-05-30 | `node --test server/selfhosted/accounts.test.mjs server/selfhosted/profiles.test.mjs server/selfhosted/radios.test.mjs server/selfhosted/shares.test.mjs server/selfhosted/invitations.test.mjs` | Pass | 11 tests passed across account, profile, radio, share, and invitation endpoint suites. |
@@ -636,3 +659,4 @@ Append completed milestones here.
 | Self-Hosted Checkpoint 19 - Add Minimal Chat | 2026-05-30 | Added JSON-backed 1:1 messages, accepted-contact message endpoints, and Account page chat UI. | Syntax checks, message/invitation/account/profile/radio/share endpoint tests, targeted frontend lint, diff check, and production build passed. |
 | Self-Hosted Checkpoint 20 - Add Self-Hosted Listening Parties | 2026-05-30 | Added JSON-backed self-hosted party rooms, accepted-contact joins, host playback state, party chat/requests, and self-hosted polling mode in the existing party UI. | Syntax checks, party/all self-hosted endpoint tests, targeted frontend lint, and diff check passed; production build passed after docs. |
 | Self-Hosted Checkpoint 21 - Clarify Migration From Existing Services | 2026-05-30 | Added an explicit self-hosted-service frontend boundary, gated profile fallback/social mirroring behind mandatory self-hosted auth, and documented Better Auth/PocketBase/Appwrite/self-hosted ownership. | Syntax checks, focused auth-gate tests, targeted frontend lint, diff check, and production build passed. |
+| Self-Hosted Checkpoint 22 - Add Ubuntu 26.04 Install Commands | 2026-05-30 | Added a conservative Ubuntu 26.04 installer, self-hosting docs, systemd/Nginx path conventions, and upload server URL build injection for reverse-proxied deployments. | Installer shell syntax, targeted Vite plugin syntax/lint, diff check, and production build passed; ShellCheck and Ubuntu VM smoke were not available. |
