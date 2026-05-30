@@ -572,6 +572,8 @@ Out of scope:
 
 ## Checkpoint 15 - Associate YouTube Clips With Songs
 
+Status: Complete
+
 Objective:
 
 Allow a YouTube video URL or ID to be associated with uploaded or external songs and displayed from the song UI.
@@ -598,12 +600,15 @@ Risks:
 Stop criteria:
 
 - Associated clips are visible and usable without disrupting audio playback.
+- Completed by adding shared YouTube clip metadata for `server-local` uploaded tracks, local per-track clip associations for external tracks, context-menu editing, track-info embeds, and a Track page YouTube Clip section.
 
 Out of scope:
 
 - Downloading or proxying YouTube video.
 
 ## Checkpoint 16 - Add Public User Profiles
+
+Status: Complete
 
 Objective:
 
@@ -624,11 +629,12 @@ Validations:
 
 Risks:
 
-- Conflict between PocketBase profile data and future self-hosted profile data.
+- Conflict between PocketBase profile data and self-hosted profile fallback data.
 
 Stop criteria:
 
 - Approved users have public profiles visible to other approved users.
+- Completed by adding a JSON-backed self-hosted profile store, approved-user profile endpoints, frontend self-hosted profile client, and PocketBase-compatible profile page fallback.
 
 Out of scope:
 
@@ -637,6 +643,8 @@ Out of scope:
 - Notifications.
 
 ## Checkpoint 17 - Add Song And Playlist Sharing
+
+Status: Complete
 
 Objective:
 
@@ -663,12 +671,15 @@ Risks:
 Stop criteria:
 
 - A user can receive and open a shared song or playlist.
+- Completed by adding a self-hosted share store/API, internal share links under `/share/:id`, a frontend share client, context-menu share creation, and a shared music page that can open or play shared snapshots.
 
 Out of scope:
 
 - Real-time chat.
 
 ## Checkpoint 18 - Add Social Invitations
+
+Status: Complete
 
 Objective:
 
@@ -693,6 +704,7 @@ Risks:
 Stop criteria:
 
 - Users can send, accept, reject, and view invitations.
+- Completed by adding a self-hosted invitation store/API, a profile Connect action, an Account page invitations panel, and endpoint tests for send/list/accept/reject/duplicate prevention.
 
 Out of scope:
 
@@ -700,6 +712,8 @@ Out of scope:
 - Chat rooms.
 
 ## Checkpoint 19 - Add Minimal Chat
+
+Status: Complete
 
 Objective:
 
@@ -726,6 +740,7 @@ Risks:
 Stop criteria:
 
 - Two accepted contacts can exchange persistent messages.
+- Completed by adding approved-user `/api/messages` list/send endpoints, a JSON-backed message store, accepted-contact authorization from invitations, Account page contact chat UI, and endpoint tests for accepted and blocked conversations.
 
 Out of scope:
 

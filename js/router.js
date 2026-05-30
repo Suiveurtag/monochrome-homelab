@@ -125,6 +125,9 @@ export function createRouter(ui) {
                     await loadProfile(decodeURIComponent(param.slice(1)));
                 }
                 break;
+            case 'share':
+                await ui.renderSharePage(decodeURIComponent(param));
+                break;
             default:
                 ui.showPage(page);
                 break;

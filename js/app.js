@@ -33,6 +33,8 @@ import { authManager } from './accounts/auth.js';
 import { shouldRedirectForAuth } from './auth-gate.js';
 import { uploadServerLibraryTrack } from './server-library.js';
 import { initializeSelfHostedAdminPanel, renderSelfHostedAdminPanel } from './selfhosted-admin.js';
+import { initializeSelfHostedChatPanel, renderSelfHostedChatPanel } from './selfhosted-chat.js';
+import { initializeSelfHostedInvitationsPanel, renderSelfHostedInvitationsPanel } from './selfhosted-invitations.js';
 import { createSelfHostedRadio, listSelfHostedRadios } from './selfhosted-radios.js';
 import { registerSW } from 'virtual:pwa-register';
 import { openEditProfile } from './profile.js';
@@ -419,6 +421,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     await authManager.ready;
     authManager.updateUI(authManager.user);
     renderSelfHostedAdminPanel().catch(console.error);
+    renderSelfHostedInvitationsPanel().catch(console.error);
+    renderSelfHostedChatPanel().catch(console.error);
 
     // Request persistent storage to reduce risk of browser wiping data on updates or cleanup
     if (navigator.storage && navigator.storage.persist) {
@@ -673,6 +677,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     );
     initializeUIInteractions(Player.instance, MusicAPI.instance, UIRenderer.instance);
     initializeSelfHostedAdminPanel();
+    initializeSelfHostedInvitationsPanel();
+    initializeSelfHostedChatPanel();
     initializeKeyboardShortcuts(Player.instance, audioPlayer);
 
     // Restore UI state for the current track (like button, theme)

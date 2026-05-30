@@ -29,6 +29,13 @@ import { MusicAPI } from './music-api.js';
 import { LyricsManager } from './lyrics.js';
 import { Player } from './player.js';
 import { updateServerLibraryTrackMetadata } from './server-library.js';
+import { createSelfHostedShare } from './selfhosted-shares.js';
+import {
+    getTrackYouTubeClip,
+    getYouTubeEmbedUrl,
+    parseYouTubeVideoId,
+    saveLocalTrackYouTubeClip,
+} from './youtube-clips.js';
 
 let currentTrackIdForWaveform = null;
 
@@ -123,6 +130,10 @@ function getServerTrackTagText(track) {
     return Array.isArray(tags) ? tags.join(', ') : '';
 }
 
+function getTrackYouTubeClipValue(track) {
+    return track?.youtubeClipUrl || track?.youtubeClip?.url || track?.youtubeVideoId || '';
+}
+
 async function showServerMetadataEditor(track, ui) {
     if (track?.source?.kind !== 'server-local') {
         showNotification('Metadata editing is only available for uploaded music');
@@ -159,6 +170,10 @@ async function showServerMetadataEditor(track, ui) {
                 <span>Tags</span>
                 <input name="tags" type="text" maxlength="1000" value="${escapeHtml(getServerTrackTagText(track))}" />
             </label>
+            <label>
+                <span>YouTube clip</span>
+                <input name="youtubeClipUrl" type="url" maxlength="1000" value="${escapeHtml(getTrackYouTubeClipValue(track))}" placeholder="https://www.youtube.com/watch?v=..." />
+            </label>
             <div class="server-metadata-actions">
                 <button type="button" class="btn-secondary server-metadata-cancel">Cancel</button>
                 <button type="submit" class="btn-primary">Save</button>
@@ -178,12 +193,17 @@ async function showServerMetadataEditor(track, ui) {
 
         try {
             const tagsValue = data.get('tags');
+            const youtubeClipUrl = data.get('youtubeClipUrl');
+            if (youtubeClipUrl && !parseYouTubeVideoId(youtubeClipUrl)) {
+                throw new Error('Enter a valid YouTube URL or video ID');
+            }
             await updateServerLibraryTrackMetadata(track, {
                 title: data.get('title'),
                 artist: data.get('artist'),
                 album: data.get('album'),
                 year: data.get('year'),
                 artworkUrl: data.get('artworkUrl'),
+                youtubeClipUrl,
                 tags: (typeof tagsValue === 'string' ? tagsValue : '')
                     .split(',')
                     .map((tag) => tag.trim())
@@ -201,6 +221,58 @@ async function showServerMetadataEditor(track, ui) {
     });
 
     document.body.appendChild(modal);
+}
+
+async function showYouTubeClipEditor(track, ui) {
+    const clip = getTrackYouTubeClip(track);
+    const modal = document.createElement('div');
+    modal.className = 'modal active youtube-clip-modal';
+    modal.innerHTML = `
+        <div class="modal-overlay"></div>
+        <form class="modal-content server-metadata-form">
+            <h3>YouTube clip</h3>
+            <label>
+                <span>Video URL or ID</span>
+                <input name="youtubeClipUrl" type="text" maxlength="1000" value="${escapeHtml(clip?.url || '')}" placeholder="https://www.youtube.com/watch?v=..." />
+            </label>
+            <div class="server-metadata-actions">
+                <button type="button" class="btn-secondary server-metadata-cancel">Cancel</button>
+                <button type="submit" class="btn-primary">Save</button>
+            </div>
+        </form>
+    `;
+
+    const close = () => modal.remove();
+    modal.querySelector('.modal-overlay')?.addEventListener('click', close);
+    modal.querySelector('.server-metadata-cancel')?.addEventListener('click', close);
+    modal.querySelector('form')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const value = new FormData(event.currentTarget).get('youtubeClipUrl');
+        try {
+            if (track?.source?.kind === 'server-local') {
+                await updateServerLibraryTrackMetadata(track, { youtubeClipUrl: value });
+                await ui?.renderServerUploads?.();
+            } else {
+                saveLocalTrackYouTubeClip(track, value);
+            }
+            showNotification(value ? 'YouTube clip saved' : 'YouTube clip removed');
+            close();
+        } catch (error) {
+            console.error('Failed to save YouTube clip:', error);
+            showNotification(error.message || 'Failed to save YouTube clip');
+        }
+    });
+
+    document.body.appendChild(modal);
+}
+
+async function createInternalShare(item, type) {
+    const contextMenu = document.getElementById('context-menu');
+    const href = contextMenu?._contextHref || '';
+    const share = await createSelfHostedShare(item, type, href);
+    const url = getShareUrl(`/share/${share.id}`);
+    await navigator.clipboard.writeText(url);
+    showNotification('Internal share link copied');
 }
 
 function getSelectedTracks() {
@@ -1743,6 +1815,13 @@ export async function handleTrackAction(
                 showNotification('Link copied to clipboard!');
             })
             .catch(console.error);
+    } else if (action === 'create-internal-share') {
+        try {
+            await createInternalShare(item, type);
+        } catch (error) {
+            console.error('Failed to create internal share:', error);
+            showNotification(error.message || 'Failed to create internal share');
+        }
     } else if (action === 'open-in-new-tab') {
         // Use stored href from card if available, otherwise construct URL
         const contextMenu = document.getElementById('context-menu');
@@ -1838,6 +1917,7 @@ export async function handleTrackAction(
             const dateDisplay = releaseDate ? new Date(releaseDate).toLocaleDateString() : 'Unknown';
             const quality = item.audioQuality || 'Unknown';
             const bitrate = item.bitrate ? `${item.bitrate} kbps` : '';
+            const youtubeClip = getTrackYouTubeClip(item);
 
             infoHTML = `
                 <div style="padding: 1.5rem; max-width: 500px; max-height: 80vh; overflow-y: auto;">
@@ -1855,6 +1935,20 @@ export async function handleTrackAction(
                             ${item.explicit ? `<p><strong style="color: var(--foreground);">Explicit:</strong> Yes</p>` : ''}
                             <p><strong style="color: var(--foreground);">Quality:</strong> ${escapeHtml(quality)} ${bitrate ? `(${escapeHtml(bitrate)})` : ''}</p>
                         </div>
+
+                        ${
+                            youtubeClip
+                                ? `
+                            <div style="margin-top: 1rem; padding: 0.75rem; background: var(--accent); border-radius: 8px;">
+                                <p style="color: var(--foreground); font-weight: 500; margin-bottom: 0.5rem;">YouTube Clip</p>
+                                <a href="${escapeHtml(youtubeClip.url)}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); word-break: break-all; font-size: 0.85rem; display: block; margin-bottom: 0.75rem; text-decoration: none;">
+                                    ${escapeHtml(youtubeClip.url)}
+                                </a>
+                                <iframe src="${escapeHtml(getYouTubeEmbedUrl(youtubeClip.videoId))}" title="YouTube clip" loading="lazy" allowfullscreen style="width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 8px;"></iframe>
+                            </div>
+                        `
+                                : ''
+                        }
 
                         ${
                             item.credits && item.credits.length > 0
@@ -1911,6 +2005,8 @@ export async function handleTrackAction(
         document.body.appendChild(modal);
     } else if (action === 'edit-server-metadata') {
         await showServerMetadataEditor(item, ui);
+    } else if (action === 'associate-youtube-clip') {
+        await showYouTubeClipEditor(item, ui);
     } else if (action === 'open-original-url') {
         // Open the original source URL for the track
         let url = null;
@@ -2070,7 +2166,6 @@ async function updateContextMenuLikeState(contextMenu, contextTrack) {
             'request-song',
             'go-to-artist',
             'go-to-album',
-            'copy-link',
             'open-in-new-tab',
             'open-in-harmony',
             'open-original-url',

@@ -9,38 +9,45 @@ For future Codex discussions, start with `HANDOFF.md` and `AGENTS.md`. Use this 
 - Date: 2026-05-30
 - Branch: main
 - Last known commit before current checkpoint: d850835
-- Current milestone: Self-Hosted Checkpoint 14 - Add A Dedicated Radio Tab (complete)
+- Current milestone: Self-Hosted Checkpoint 19 - Add Minimal Chat (complete)
 - Risk level: Medium
 
-The repo now has an additive hybrid track identity layer, a non-production local upload server prototype, mandatory self-hosted auth gating, server-side account approval, a basic in-app admin account management panel, a dedicated Uploaded Music tab, server-side search for uploaded music, shared server metadata editing for structured uploads, embedded audio metadata extraction on upload, a self-hosted radio backend model, and a dedicated Library > Radio surface. Existing `track.id` playback/route behavior is preserved, while persisted tracks can carry source-aware `trackKey` and `source` metadata for external API tracks, browser-local files, podcasts, tracker tracks, local server uploads, and radio streams.
+The repo now has an additive hybrid track identity layer, a non-production local upload server prototype, mandatory self-hosted auth gating, server-side account approval, a basic in-app admin account management panel, a dedicated Uploaded Music tab, server-side search for uploaded music, shared server metadata editing for structured uploads, embedded audio metadata extraction on upload, a self-hosted radio backend model, a dedicated Library > Radio surface, YouTube clip associations visible from song UI, a self-hosted public profile fallback for approved users, internal self-hosted share links for songs and playlists, social contact invitations, and minimal 1:1 chat between accepted contacts. Existing `track.id` playback/route behavior is preserved, while persisted tracks can carry source-aware `trackKey` and `source` metadata for external API tracks, browser-local files, podcasts, tracker tracks, local server uploads, radio streams, and future YouTube video identities.
 
-Self-Hosted Checkpoints 1 through 14 are complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map"; `js/track-model.ts` has additive future source kinds for `server-library`, `radio`, and `youtube-video` plus exported source normalization helpers; `js/server-library.js` is now the app-facing client boundary for future self-hosted library operations; `server/selfhosted/server.mjs` is the minimal backend skeleton with config loading, data directories, `/health`, auth placeholders, and radio endpoints; `server/storage/filesystem-library.mjs` now owns structured local filesystem storage, bounded search, shared metadata updates, and extracted metadata defaults for server-local uploads; `js/auth-gate.js` gates configured self-hosted browser sessions behind `/account`; `server/selfhosted/accounts.mjs` provides self-hosted account approval state; `js/selfhosted-admin.js` renders account management for approved admins; Library > Uploaded Music is the dedicated surface for server-local uploaded tracks; and Library > Radio is the dedicated surface for self-hosted radio streams.
+Self-Hosted Checkpoints 1 through 19 are complete: `docs/ARCHITECTURE.md` now contains a concise "Self-Hosted Contract Map"; `js/track-model.ts` has additive future source kinds for `server-library`, `radio`, and `youtube-video` plus exported source normalization helpers; `js/server-library.js` is now the app-facing client boundary for future self-hosted library operations; `server/selfhosted/server.mjs` is the minimal backend skeleton with config loading, data directories, `/health`, account/profile/radio/share/invitation/message endpoints, and auth placeholders; `server/storage/filesystem-library.mjs` now owns structured local filesystem storage, bounded search, shared metadata updates, extracted metadata defaults, and shared YouTube clip metadata for server-local uploads; `js/auth-gate.js` gates configured self-hosted browser sessions behind `/account`; `server/selfhosted/accounts.mjs` provides self-hosted account approval state; `server/selfhosted/profiles.mjs` provides approved-user public profiles; `server/selfhosted/shares.mjs` provides approved-user internal sharing; `server/selfhosted/invitations.mjs` provides contact invitation state; `server/selfhosted/messages.mjs` provides accepted-contact 1:1 messaging; `js/selfhosted-admin.js` renders account management for approved admins; Library > Uploaded Music is the dedicated surface for server-local uploaded tracks; Library > Radio is the dedicated surface for self-hosted radio streams; and `js/youtube-clips.js` provides URL/ID normalization plus local external-track clip associations.
 
 `HANDOFF.md` is now the recommended first-read summary for future sessions; read `AGENTS.md` next, then consult the larger docs only if more detail is needed.
 
 ## Last Completed Self-Hosted Checkpoint
 
-Self-Hosted Checkpoint 14 - Add A Dedicated Radio Tab
+Self-Hosted Checkpoint 19 - Add Minimal Chat
 
 Goal:
 
-- Add a dedicated playable radio tab with list, search/filter, play, and playback state.
+- Add persistent 1:1 text chat between accepted contacts.
 
 Success criteria:
 
-- Approved signed-in users can list enabled radios in Library > Radio.
-- Users can filter visible radios locally.
-- Users can add a radio station through the existing `/api/radios` endpoint.
-- Clicking a radio station loads a hybrid `source.kind === "radio"` track into the existing player.
+- Approved users can send and list messages with accepted contacts.
+- Users cannot send or list messages with pending contacts or strangers.
+- Messages persist in the self-hosted data directory.
+- Chat UI is available from Account for accepted contacts.
+- Pending/unapproved accounts cannot use message endpoints.
 
 In scope:
 
-- `js/selfhosted-radios.js`
-- `js/ui.js`
+- `server/selfhosted/messages.mjs`
+- `server/selfhosted/messages.test.mjs`
+- `server/selfhosted/invitations.mjs`
+- `server/selfhosted/server.mjs`
+- `server/selfhosted/config.mjs`
+- `js/selfhosted-chat.js`
+- `js/selfhosted-invitations.js`
 - `js/app.js`
 - `index.html`
 - `styles.css`
 - `docs/ARCHITECTURE.md`
+- `docs/DECISIONS.md`
 - `docs/SELF_HOSTED_CHECKPOINTS.md`
 - `docs/MILESTONES.md`
 - `HANDOFF.md`
@@ -48,14 +55,52 @@ In scope:
 
 Out of scope:
 
-- Radio recording.
-- ICY/live metadata.
-- Admin radio management UI beyond the existing backend endpoints.
+- Attachments.
+- End-to-end encryption.
+- Group chat.
+- Realtime push or automatic polling.
 
 ## Last Session Handoff
 
 Changes:
 
+- Added `server/selfhosted/messages.mjs`, a JSON-backed 1:1 message store with sender, recipient, body, and creation time.
+- Added approved-user message endpoints: `GET /api/messages?contactUserId=...` and `POST /api/messages`.
+- Added accepted-contact authorization for messages by reusing accepted invitation state from `server/selfhosted/invitations.mjs`.
+- Added `js/selfhosted-chat.js`, a frontend chat client and Account page Messages panel renderer.
+- Added Account page chat UI with contact selection, refresh, message history, and a small composer.
+- Added message endpoint coverage proving accepted contacts can exchange persistent messages and pending/stranger conversations are blocked.
+- Updated architecture, milestone, decision, handoff, and checkpoint roadmap docs for Self-Hosted Checkpoint 19.
+- Added `server/selfhosted/invitations.mjs`, a JSON-backed contact invitation store with sender, recipient, status, optional message, timestamps, and response time.
+- Added approved-user invitation endpoints: `GET /api/invitations`, `POST /api/invitations`, and `PATCH /api/invitations/:id`.
+- Added `js/selfhosted-invitations.js`, a frontend invitation client and Account page invitations panel renderer.
+- Added a profile `Connect` button for sending an invitation to another self-hosted profile.
+- Added an Account page Invitations panel with refresh, incoming/outgoing rows, and accept/reject controls for pending incoming invitations.
+- Added invitation endpoint coverage for send/list/accept/reject, duplicate prevention, and non-recipient rejection.
+- Updated architecture, milestone, decision, handoff, and checkpoint roadmap docs for Self-Hosted Checkpoint 18.
+- Added `server/selfhosted/shares.mjs`, a JSON-backed internal share store with short ids, target type, canonical href, minified track/playlist snapshots, creator user id, and timestamps.
+- Added approved-user `/api/shares` create and `/api/shares/:id` read endpoints to the self-hosted backend.
+- Added `js/selfhosted-shares.js`, a frontend client that creates share payloads for tracks and playlists and reads shared snapshots.
+- Added a `Share internally` context-menu action for tracks and playlists that creates a self-hosted share and copies a `/share/:id` URL.
+- Added `/share/:id` routing and a shared music page that can open canonical routes or play shared track/playlist snapshots.
+- Kept server-local uploaded-track shares snapshot-based instead of inventing non-portable `/track/:uploadId` routes.
+- Added share endpoint coverage for track shares, playlist snapshot shares, approved-user reads, and pending-user rejection.
+- Updated architecture, milestone, decision, handoff, and checkpoint roadmap docs for Self-Hosted Checkpoint 17.
+- Added `server/selfhosted/profiles.mjs`, a JSON-backed self-hosted public profile store with username, display name, avatar, banner, bio/about, website, stats, public playlists, privacy flags, and timestamps.
+- Added `/api/profiles/me` GET/PATCH and `/api/profiles/:username` GET to the self-hosted backend, gated by approved account state.
+- Added `js/selfhosted-profiles.js`, a frontend client for the self-hosted profile API.
+- Updated `js/profile.js` so existing `/user/@:username` pages keep PocketBase as the primary source and fall back to self-hosted profile data when PocketBase is unavailable.
+- Updated the View My Profile and edit-profile flows to use self-hosted profiles when no PocketBase profile data is available.
+- Added profile endpoint coverage for approved profile update/view, pending-user blocking, and duplicate username rejection.
+- Updated architecture, milestone, decision, handoff, and checkpoint roadmap docs for Self-Hosted Checkpoint 16.
+- Added `js/youtube-clips.js`, a small YouTube URL/ID normalization and association helper.
+- Added a track context-menu `YouTube clip` action for storing or removing clip associations.
+- Extended the existing uploaded-track metadata editor to include a YouTube clip URL field.
+- Persisted `server-local` uploaded-track clip associations as shared server metadata: `youtubeVideoId`, `youtubeClipUrl`, and `youtubeClip`.
+- Added local browser clip associations for external tracks, keyed by source-aware `trackKey`.
+- Displayed associated clips in Track info and on the Track page with a YouTube embed and external YouTube link.
+- Added storage coverage proving uploaded-track YouTube clip metadata is normalized and persisted.
+- Updated architecture, milestone, decision, handoff, and checkpoint roadmap docs for Self-Hosted Checkpoint 15.
 - Added `js/selfhosted-radios.js`, a self-hosted radio client that calls `/api/radios` with the current Better Auth user headers and normalizes radios into hybrid tracks.
 - Added Library > Radio with refresh, count, search/filter, add-station form, and a standard track-list rendering surface.
 - Routed radio refresh/search/create events through `js/app.js`.
@@ -133,6 +178,22 @@ Changes:
 
 Why:
 
+- Let accepted self-hosted contacts exchange text before adding richer listening-party or realtime social features.
+- Reuse accepted invitation state as the privacy boundary instead of introducing a parallel contact model.
+- Keep the first chat implementation persistent and manual-refresh so it does not add polling or websocket complexity yet.
+- Establish a user-controlled contact boundary before adding chat or more private social sharing flows.
+- Keep social relationships keyed by approved self-hosted account ids while still letting profile UI initiate invitations.
+- Keep invitations visible from Account without introducing a full notification system yet.
+- Let users send stable in-app links for songs and playlists before adding chat, contacts, or notifications.
+- Keep external catalog shares portable through canonical app hrefs while preserving server-local upload limitations through snapshots.
+- Reuse approved self-hosted account headers as the access boundary instead of exposing unauthenticated share records.
+- Give homelab deployments public profiles for approved users without requiring PocketBase to be available.
+- Preserve the existing mature PocketBase profile route/UI by treating self-hosted profiles as a compatible fallback rather than a replacement.
+- Keep profile authorization aligned with the self-hosted account approval boundary before adding sharing, invitations, or chat.
+- Let users attach music videos or related clips to songs without changing the app's audio playback path.
+- Reuse the existing shared uploaded-track metadata boundary for server-local music instead of adding a parallel uploaded-track store.
+- Keep external-track associations useful immediately through local `trackKey` storage until a later shared external metadata backend exists.
+- Normalize YouTube IDs at the edge so UI code can render embeds and links from a stable shape.
 - Make self-hosted radio discoverable and playable from its own music surface instead of requiring raw API calls.
 - Reuse hybrid track identity and the existing direct-audio player path so radio playback does not introduce a parallel player.
 - Keep the radio UI small and compatible with the backend approval boundary while leaving admin moderation and live metadata for later checkpoints.
@@ -170,6 +231,65 @@ Why:
 
 Files touched:
 
+- `server/selfhosted/messages.mjs`
+- `server/selfhosted/messages.test.mjs`
+- `server/selfhosted/invitations.mjs`
+- `server/selfhosted/invitations.test.mjs`
+- `server/selfhosted/server.mjs`
+- `server/selfhosted/config.mjs`
+- `js/selfhosted-chat.js`
+- `js/selfhosted-invitations.js`
+- `js/profile.js`
+- `js/app.js`
+- `index.html`
+- `styles.css`
+- `docs/ARCHITECTURE.md`
+- `docs/DECISIONS.md`
+- `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `docs/MILESTONES.md`
+- `HANDOFF.md`
+- `PROGRESS.md`
+- `server/selfhosted/shares.mjs`
+- `server/selfhosted/shares.test.mjs`
+- `server/selfhosted/server.mjs`
+- `server/selfhosted/config.mjs`
+- `js/selfhosted-shares.js`
+- `js/events.js`
+- `js/ui.js`
+- `js/router.js`
+- `index.html`
+- `docs/ARCHITECTURE.md`
+- `docs/DECISIONS.md`
+- `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `docs/MILESTONES.md`
+- `HANDOFF.md`
+- `PROGRESS.md`
+- `server/selfhosted/profiles.mjs`
+- `server/selfhosted/profiles.test.mjs`
+- `server/selfhosted/server.mjs`
+- `server/selfhosted/config.mjs`
+- `js/selfhosted-profiles.js`
+- `js/profile.js`
+- `docs/ARCHITECTURE.md`
+- `docs/DECISIONS.md`
+- `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `docs/MILESTONES.md`
+- `HANDOFF.md`
+- `PROGRESS.md`
+- `js/youtube-clips.js`
+- `js/events.js`
+- `js/ui.js`
+- `index.html`
+- `styles.css`
+- `server/storage/filesystem-library.mjs`
+- `server/storage/filesystem-library.test.mjs`
+- `server/uploads/server.mjs`
+- `docs/ARCHITECTURE.md`
+- `docs/DECISIONS.md`
+- `docs/SELF_HOSTED_CHECKPOINTS.md`
+- `docs/MILESTONES.md`
+- `HANDOFF.md`
+- `PROGRESS.md`
 - `js/selfhosted-radios.js`
 - `index.html`
 - `styles.css`
@@ -268,6 +388,33 @@ Files touched:
 
 Verification:
 
+- `node --check server/selfhosted/messages.mjs server/selfhosted/messages.test.mjs server/selfhosted/invitations.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs js/selfhosted-chat.js js/selfhosted-invitations.js js/profile.js js/app.js` passed.
+- `node --test server/selfhosted/messages.test.mjs server/selfhosted/invitations.test.mjs` passed: 4 tests. Expected 409/403 errors were logged during duplicate, non-recipient, pending-contact, and stranger rejection coverage.
+- `node --test server/selfhosted/accounts.test.mjs server/selfhosted/profiles.test.mjs server/selfhosted/radios.test.mjs server/selfhosted/shares.test.mjs server/selfhosted/invitations.test.mjs server/selfhosted/messages.test.mjs` passed: 13 tests. Expected 403/400/409 errors were logged during rejection coverage.
+- `npm exec -- eslint js/selfhosted-chat.js js/selfhosted-invitations.js js/profile.js` passed.
+- `git diff --check` passed.
+- `npm run build` passed with existing chunk/dynamic-import and large chunk warnings.
+- `node --check server/selfhosted/invitations.mjs server/selfhosted/invitations.test.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs js/selfhosted-invitations.js js/profile.js js/app.js` passed.
+- `node --test server/selfhosted/invitations.test.mjs` passed: 2 tests. Expected 409/403 errors were logged during duplicate and non-recipient rejection coverage.
+- `node --test server/selfhosted/accounts.test.mjs server/selfhosted/profiles.test.mjs server/selfhosted/radios.test.mjs server/selfhosted/shares.test.mjs server/selfhosted/invitations.test.mjs` passed: 11 tests. Expected 403/400/409 errors were logged during rejection coverage.
+- `npm exec -- eslint js/selfhosted-invitations.js js/profile.js` passed.
+- `npm exec -- eslint js/selfhosted-invitations.js js/profile.js js/app.js` failed on pre-existing `js/app.js` lint errors unrelated to this checkpoint (`no-empty`, `no-floating-promises`) plus existing warnings.
+- `npm run build` passed with existing chunk/dynamic-import warnings.
+- `node --check server/selfhosted/shares.mjs server/selfhosted/shares.test.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs js/selfhosted-shares.js js/events.js js/ui.js js/router.js` passed.
+- `node --test server/selfhosted/shares.test.mjs` passed: 2 tests. Expected 403 errors were logged during pending-user rejection coverage.
+- `node --test server/selfhosted/accounts.test.mjs server/selfhosted/profiles.test.mjs server/selfhosted/radios.test.mjs server/selfhosted/shares.test.mjs` passed: 9 tests. Expected 403/400/409 errors were logged during rejection coverage.
+- `npm exec -- eslint js/selfhosted-shares.js js/events.js js/ui.js js/router.js` passed with 5 pre-existing `js/ui.js` warnings and 0 errors.
+- `npm exec -- eslint js/selfhosted-shares.js` passed.
+- `npm run build` passed with existing chunk/dynamic-import warnings.
+- `node --check server/selfhosted/profiles.mjs server/selfhosted/profiles.test.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs js/selfhosted-profiles.js js/profile.js` passed.
+- `node --test server/selfhosted/profiles.test.mjs` passed: 2 tests. Expected 403/409 errors were logged during pending-user and duplicate-username rejection coverage.
+- `node --test server/selfhosted/accounts.test.mjs server/selfhosted/radios.test.mjs server/selfhosted/profiles.test.mjs` passed: 7 tests. Expected 403/400/409 errors were logged during rejection coverage.
+- `npm exec -- eslint js/selfhosted-profiles.js js/profile.js` passed.
+- `npm run build` passed with existing chunk/dynamic-import warnings.
+- `node --check js/youtube-clips.js js/events.js js/ui.js server/storage/filesystem-library.mjs server/uploads/server.mjs` passed.
+- `node --test server/storage/filesystem-library.test.mjs` passed: 5 tests.
+- `npm exec -- eslint js/youtube-clips.js js/events.js js/ui.js` passed with 5 pre-existing `js/ui.js` warnings and 0 errors.
+- `npm run build` passed with existing chunk/dynamic-import warnings.
 - `node --check js/selfhosted-radios.js js/ui.js js/app.js` passed.
 - `npm exec -- eslint js/selfhosted-radios.js` passed.
 - `node --test server/selfhosted/radios.test.mjs` passed: 2 tests. Expected 403/400 errors were logged during rejection coverage.
@@ -336,6 +483,21 @@ Verification:
 
 Known risks:
 
+- Chat rows currently display durable user ids rather than profile display names.
+- Chat has manual refresh/contact selection only; realtime push, notifications, typing indicators, unread counts, and pagination UI are out of scope.
+- Message records are plaintext JSON in the self-hosted data directory; end-to-end encryption is not implemented.
+- Invitation rows currently display durable user ids rather than rich profile display names; richer contact display can be added with a profile lookup layer.
+- Invitations are polled/rendered on Account page load/refresh only; realtime notifications are intentionally out of scope.
+- Rejected invitations can be recreated later, while pending and accepted relationships block duplicates.
+- Internal shares require approved self-hosted account headers to create and read; signed-out public sharing is not implemented.
+- Server-local uploaded-track shares depend on the original tokenized stream URL remaining valid on the same self-hosted server.
+- Playlist shares are snapshots and do not live-update when the original playlist changes.
+- Self-hosted profile fallback intentionally preserves PocketBase as the primary source, so mixed deployments may show PocketBase data first when both stores have a profile for the same username.
+- Self-hosted profile image fields are URL-only and validate URL shape, but do not upload or proxy avatar/banner assets.
+- Self-hosted profile public playlists and stats are stored as simple JSON fields; richer computed stats and playlist publication are left for sharing/social checkpoints.
+- External API track YouTube clip associations are local to the current browser and are not synced/shared until a future server-backed external metadata store exists.
+- YouTube embeds depend on YouTube availability, embed permissions, and browser/network policy; the app only stores and displays the association.
+- Uploaded-track YouTube clip validation normalizes common YouTube URL shapes and 11-character IDs, but does not verify that the remote video exists.
 - Radio playback uses browser support for direct stream URLs; HLS/ICY edge cases and Safari/mobile behavior still need real-device smoke.
 - Library > Radio currently has a basic add form and local filtering only; admin disable/edit still uses backend endpoints directly.
 - Radio rows intentionally hide the standard track menu because download/metadata actions are not yet radio-aware.
@@ -367,9 +529,9 @@ Known risks:
 
 For future sessions, read `HANDOFF.md` and `AGENTS.md` first.
 
-If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 15 - Associate YouTube Clips With Songs.
+If the user asks to continue the self-hosted roadmap, read `docs/SELF_HOSTED_CHECKPOINTS.md` and complete Checkpoint 20 - Add Self-Hosted Listening Parties.
 
-Before implementing Checkpoint 15, inspect `js/track-model.ts`, the uploaded-track metadata edit path in `server/storage/filesystem-library.mjs`, `server/uploads/server.mjs`, `js/server-library.js`, `js/events.js`, `js/ui.js`, `js/player.js`, and relevant track detail/page rendering so YouTube clip associations can be added without disrupting normal audio playback.
+Before implementing Checkpoint 20, inspect existing listening party modules, `js/player.js`, `js/events.js`, `server/selfhosted/messages.mjs`, and the accepted-contact semantics in `server/selfhosted/invitations.mjs`. Keep the first self-hosted listening-party implementation behavior-preserving for normal playback and prefer manual refresh or conservative polling unless a separate decision introduces realtime infrastructure.
 
 ## Open Questions / Blockers
 
@@ -398,6 +560,27 @@ Append new entries here.
 
 | Date | Command | Result | Notes |
 | --- | --- | --- | --- |
+| 2026-05-30 | `node --check server/selfhosted/invitations.mjs server/selfhosted/invitations.test.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs js/selfhosted-invitations.js js/profile.js js/app.js` | Pass | Syntax checks for invitation store/API, client, profile Connect action, and app panel initialization. |
+| 2026-05-30 | `node --test server/selfhosted/invitations.test.mjs` | Pass | 2 tests passed; expected 409/403 errors were logged during duplicate and non-recipient rejection coverage. |
+| 2026-05-30 | `node --test server/selfhosted/accounts.test.mjs server/selfhosted/profiles.test.mjs server/selfhosted/radios.test.mjs server/selfhosted/shares.test.mjs server/selfhosted/invitations.test.mjs` | Pass | 11 tests passed across account, profile, radio, share, and invitation endpoint suites. |
+| 2026-05-30 | `npm exec -- eslint js/selfhosted-invitations.js js/profile.js` | Pass | Targeted frontend lint passed for the new invitation client and profile Connect action. |
+| 2026-05-30 | `npm exec -- eslint js/selfhosted-invitations.js js/profile.js js/app.js` | Fail | `js/app.js` still has pre-existing lint errors (`no-empty`, `no-floating-promises`) and warnings unrelated to invitations. |
+| 2026-05-30 | `npm run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings. |
+| 2026-05-30 | `node --check server/selfhosted/shares.mjs server/selfhosted/shares.test.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs js/selfhosted-shares.js js/events.js js/ui.js js/router.js` | Pass | Syntax checks for internal sharing store/API, client, context-menu action, route, and shared page. |
+| 2026-05-30 | `node --test server/selfhosted/shares.test.mjs` | Pass | 2 tests passed; expected 403 errors were logged during pending-user rejection coverage. |
+| 2026-05-30 | `node --test server/selfhosted/accounts.test.mjs server/selfhosted/profiles.test.mjs server/selfhosted/radios.test.mjs server/selfhosted/shares.test.mjs` | Pass | 9 tests passed across account, profile, radio, and share endpoint suites. |
+| 2026-05-30 | `npm exec -- eslint js/selfhosted-shares.js js/events.js js/ui.js js/router.js` | Pass | 0 errors; 5 pre-existing `js/ui.js` unused-variable warnings remain. |
+| 2026-05-30 | `npm exec -- eslint js/selfhosted-shares.js` | Pass | Targeted lint passed for the new share client. |
+| 2026-05-30 | `npm run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings. |
+| 2026-05-30 | `node --check server/selfhosted/profiles.mjs server/selfhosted/profiles.test.mjs server/selfhosted/server.mjs server/selfhosted/config.mjs js/selfhosted-profiles.js js/profile.js` | Pass | Syntax checks for self-hosted profile store/API and profile page fallback client. |
+| 2026-05-30 | `node --test server/selfhosted/profiles.test.mjs` | Pass | 2 tests passed; expected 403/409 errors were logged during rejection coverage. |
+| 2026-05-30 | `node --test server/selfhosted/accounts.test.mjs server/selfhosted/radios.test.mjs server/selfhosted/profiles.test.mjs` | Pass | 7 tests passed across account, radio, and profile endpoint suites. |
+| 2026-05-30 | `npm exec -- eslint js/selfhosted-profiles.js js/profile.js` | Pass | Targeted frontend lint passed for the self-hosted profile client and profile page fallback. |
+| 2026-05-30 | `npm run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings. |
+| 2026-05-30 | `node --check js/youtube-clips.js js/events.js js/ui.js server/storage/filesystem-library.mjs server/uploads/server.mjs` | Pass | Syntax checks for YouTube clip helper, touched UI/action modules, and uploaded metadata server modules. |
+| 2026-05-30 | `node --test server/storage/filesystem-library.test.mjs` | Pass | 5 tests passed, including shared YouTube clip metadata persistence on uploaded tracks. |
+| 2026-05-30 | `npm exec -- eslint js/youtube-clips.js js/events.js js/ui.js` | Pass | 0 errors; 5 pre-existing `js/ui.js` unused-variable warnings remain. |
+| 2026-05-30 | `npm run build` | Pass | Production Vite build and bundle visualizer completed with existing chunk/dynamic-import warnings. |
 | 2026-05-24 | `git status --short --branch` | Pass | Only new documentation files are untracked. |
 | 2026-05-24 | `git diff --stat --cached` | Pass | No staged changes; no source behavior changes staged. |
 | 2026-05-24 | `git diff -- docs/ARCHITECTURE.md docs/MILESTONES.md docs/DECISIONS.md PROGRESS.md` | Pass | No output because the documentation files are untracked. |
@@ -516,3 +699,7 @@ Append completed milestones here.
 | Self-Hosted Checkpoint 12 - Extract Basic Audio Metadata On Upload | 2026-05-30 | Added server-side TagLib extraction for uploaded-track defaults and tokenized extracted artwork serving. | Syntax checks, Node storage fixture tests, HTTP extraction smoke, diff check, and production build passed. |
 | Self-Hosted Checkpoint 13 - Add A Radio Backend Model | 2026-05-30 | Added a JSON-backed self-hosted radio store plus approved-user and admin radio endpoints. | Syntax checks, radio API tests, existing account tests, diff check, and production build passed. |
 | Self-Hosted Checkpoint 14 - Add A Dedicated Radio Tab | 2026-05-30 | Added Library > Radio with self-hosted radio list/create/refresh/search and playback through hybrid radio tracks. | Frontend syntax checks, targeted radio client lint, existing radio API tests, Playwright radio tab smoke, diff check, and production build passed. |
+| Self-Hosted Checkpoint 15 - Associate YouTube Clips With Songs | 2026-05-30 | Added shared uploaded-track YouTube clip metadata, local external-track clip associations, context-menu editing, and Track page/Track info embeds. | Syntax checks, storage metadata tests, targeted frontend lint, and production build passed. |
+| Self-Hosted Checkpoint 16 - Add Public User Profiles | 2026-05-30 | Added JSON-backed self-hosted profiles, approved-user profile endpoints, frontend profile client, and PocketBase-compatible profile page fallback. | Syntax checks, profile/account/radio endpoint tests, targeted frontend lint, and production build passed. |
+| Self-Hosted Checkpoint 17 - Add Song And Playlist Sharing | 2026-05-30 | Added JSON-backed internal shares, approved-user share endpoints, context-menu share creation, `/share/:id` routing, and shared music playback/opening UI. | Syntax checks, share/account/profile/radio endpoint tests, targeted frontend lint, and production build passed. |
+| Self-Hosted Checkpoint 18 - Add Social Invitations | 2026-05-30 | Added JSON-backed contact invitations, approved-user invitation endpoints, profile Connect action, and Account page invitation management panel. | Syntax checks, invitation/account/profile/radio/share endpoint tests, targeted frontend lint, and production build passed. |

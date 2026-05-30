@@ -2,7 +2,11 @@ import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { createAccountStore, isAccountAllowed } from './accounts.mjs';
 import { ensureSelfHostedDataDirs, getSelfHostedConfig, loadEnvFile } from './config.mjs';
+import { createInvitationStore } from './invitations.mjs';
+import { createMessageStore } from './messages.mjs';
+import { createProfileStore } from './profiles.mjs';
 import { createRadioStore } from './radios.mjs';
+import { createShareStore } from './shares.mjs';
 
 function sendJson(res, status, payload) {
     const body = JSON.stringify(payload);
@@ -82,7 +86,14 @@ async function requireAllowedAccount(req, config, accountStore) {
     return account;
 }
 
-async function route(req, res, config, accountStore, radioStore) {
+async function requireAcceptedContact(invitationStore, ownUserId, contactUserId) {
+    if (await invitationStore.areContacts(ownUserId, contactUserId)) return;
+    const error = new Error('Accepted contact required');
+    error.statusCode = 403;
+    throw error;
+}
+
+async function route(req, res, config, accountStore, profileStore, radioStore, shareStore, invitationStore, messageStore) {
     setCors(res);
 
     if (req.method === 'OPTIONS') {
@@ -130,6 +141,31 @@ async function route(req, res, config, accountStore, radioStore) {
         return;
     }
 
+    if (url.pathname === '/api/profiles/me' && req.method === 'GET') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        sendJson(res, 200, { profile: await profileStore.getOwnProfile(account) });
+        return;
+    }
+
+    if (url.pathname === '/api/profiles/me' && req.method === 'PATCH') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const body = await readJsonBody(req);
+        sendJson(res, 200, { profile: await profileStore.updateOwnProfile(account, body) });
+        return;
+    }
+
+    const profileMatch = url.pathname.match(/^\/api\/profiles\/([^/]+)$/);
+    if (profileMatch && req.method === 'GET') {
+        await requireAllowedAccount(req, config, accountStore);
+        const profile = await profileStore.getProfile(decodeURIComponent(profileMatch[1]));
+        if (!profile) {
+            sendJson(res, 404, { error: 'Profile not found' });
+            return;
+        }
+        sendJson(res, 200, { profile });
+        return;
+    }
+
     if (url.pathname === '/api/radios' && req.method === 'GET') {
         await requireAllowedAccount(req, config, accountStore);
         sendJson(res, 200, { radios: await radioStore.listRadios() });
@@ -159,6 +195,90 @@ async function route(req, res, config, accountStore, radioStore) {
         return;
     }
 
+    if (url.pathname === '/api/shares' && req.method === 'POST') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const body = await readJsonBody(req);
+        const share = await shareStore.createShare(body, account.userId);
+        sendJson(res, 201, { share });
+        return;
+    }
+
+    const shareMatch = url.pathname.match(/^\/api\/shares\/([^/]+)$/);
+    if (shareMatch && req.method === 'GET') {
+        await requireAllowedAccount(req, config, accountStore);
+        const share = await shareStore.getShare(decodeURIComponent(shareMatch[1]));
+        if (!share) {
+            sendJson(res, 404, { error: 'Share not found' });
+            return;
+        }
+        sendJson(res, 200, { share });
+        return;
+    }
+
+    if (url.pathname === '/api/invitations' && req.method === 'GET') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        sendJson(res, 200, await invitationStore.listInvitations(account.userId));
+        return;
+    }
+
+    if (url.pathname === '/api/invitations' && req.method === 'POST') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const body = await readJsonBody(req);
+        let toUserId = body.toUserId ? String(body.toUserId) : '';
+        if (!toUserId && body.username) {
+            const profile = await profileStore.getProfile(String(body.username));
+            toUserId = profile?.userId || '';
+        }
+        const invitation = await invitationStore.createInvitation({
+            fromUserId: account.userId,
+            toUserId,
+            message: body.message,
+        });
+        sendJson(res, 201, { invitation });
+        return;
+    }
+
+    const invitationMatch = url.pathname.match(/^\/api\/invitations\/([^/]+)$/);
+    if (invitationMatch && req.method === 'PATCH') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const body = await readJsonBody(req);
+        const invitation = await invitationStore.updateInvitation({
+            invitationId: decodeURIComponent(invitationMatch[1]),
+            userId: account.userId,
+            status: body.status,
+        });
+        sendJson(res, 200, { invitation });
+        return;
+    }
+
+    if (url.pathname === '/api/messages' && req.method === 'GET') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const contactUserId = url.searchParams.get('contactUserId') || '';
+        await requireAcceptedContact(invitationStore, account.userId, contactUserId);
+        const messages = await messageStore.listConversation({
+            userId: account.userId,
+            contactUserId,
+            limit: url.searchParams.get('limit'),
+            before: url.searchParams.get('before'),
+        });
+        sendJson(res, 200, { messages });
+        return;
+    }
+
+    if (url.pathname === '/api/messages' && req.method === 'POST') {
+        const account = await requireAllowedAccount(req, config, accountStore);
+        const body = await readJsonBody(req);
+        const toUserId = String(body.toUserId || '');
+        await requireAcceptedContact(invitationStore, account.userId, toUserId);
+        const message = await messageStore.createMessage({
+            fromUserId: account.userId,
+            toUserId,
+            body: body.body,
+        });
+        sendJson(res, 201, { message });
+        return;
+    }
+
     if (url.pathname.startsWith('/api/auth/')) {
         sendJson(res, 501, {
             error: 'Self-hosted auth endpoints are not implemented yet',
@@ -178,15 +298,21 @@ export async function createSelfHostedServer(options = {}) {
     const config = getSelfHostedConfig(options);
     await ensureSelfHostedDataDirs(config);
     const accountStore = createAccountStore(config);
+    const profileStore = createProfileStore(config);
     const radioStore = createRadioStore(config);
+    const shareStore = createShareStore(config);
+    const invitationStore = createInvitationStore(config);
+    const messageStore = createMessageStore(config);
 
     return {
         config,
         server: createServer((req, res) => {
-            route(req, res, config, accountStore, radioStore).catch((error) => {
-                console.error(error);
-                sendJson(res, error.statusCode || 500, { error: error.message || 'Self-hosted server error' });
-            });
+            route(req, res, config, accountStore, profileStore, radioStore, shareStore, invitationStore, messageStore).catch(
+                (error) => {
+                    console.error(error);
+                    sendJson(res, error.statusCode || 500, { error: error.message || 'Self-hosted server error' });
+                },
+            );
         }),
     };
 }

@@ -176,6 +176,10 @@
                 <li data-action="go-to-artist" data-type-filter="track,album,video">Go to artist</li>
                 <li data-action="go-to-album" data-type-filter="track,video">Go to album</li>
                 <li data-action="edit-server-metadata" data-type-filter="track">Edit metadata</li>
+                <li data-action="associate-youtube-clip" data-type-filter="track">YouTube clip</li>
+                <li data-action="create-internal-share" data-type-filter="track,playlist,user-playlist">
+                    Share internally
+                </li>
                 <li data-action="copy-link">Copy link</li>
                 <li data-action="open-in-new-tab">Open in new tab</li>
                 <li data-action="open-in-harmony" data-type-filter="album">Open in Harmony</li>
@@ -2957,6 +2961,10 @@
                         <h2 class="section-title">More from Album</h2>
                         <div class="track-list" id="track-detail-album-tracks"></div>
                     </section>
+                    <section class="content-section" id="track-youtube-clip-section" style="display: none">
+                        <h2 class="section-title">YouTube Clip</h2>
+                        <div id="track-youtube-clip-container" class="youtube-clip-panel"></div>
+                    </section>
                     <section class="content-section" id="track-similar-section" style="display: none">
                         <h2 class="section-title">Similar Tracks</h2>
                         <div class="track-list" id="track-detail-similar-tracks"></div>
@@ -2996,6 +3004,9 @@
                                 <button id="profile-edit-btn" class="btn-secondary" style="display: none">
                                     Edit Profile
                                 </button>
+                                <button id="profile-invite-btn" class="btn-secondary" style="display: none">
+                                    Connect
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -3028,6 +3039,36 @@
                             <div class="track-list" id="profile-top-tracks-container"></div>
                         </div>
                     </div>
+                </div>
+
+                <div id="page-share" class="page">
+                    <header class="detail-header">
+                        <img
+                            id="share-detail-image"
+                            src="/assets/appicon.png"
+                            class="detail-header-image"
+                            alt="Shared Music"
+                        />
+                        <div class="detail-header-info">
+                            <div class="type" id="share-detail-type">Shared Music</div>
+                            <h1 class="title" id="share-detail-title"></h1>
+                            <div class="meta" id="share-detail-meta"></div>
+                            <div class="detail-header-actions">
+                                <button id="share-open-btn" class="btn-primary">
+                                    <use svg="!lucide/external-link.svg" size="20" />
+                                    <span>Open</span>
+                                </button>
+                                <button id="share-play-btn" class="btn-secondary" style="display: none">
+                                    <use svg="./images/play.svg" size="20" />
+                                    <span>Play</span>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+                    <section class="content-section" id="share-tracks-section" style="display: none">
+                        <h2 class="section-title">Tracks</h2>
+                        <div class="track-list" id="share-tracks-container"></div>
+                    </section>
                 </div>
 
                 <div id="page-settings" class="page">
@@ -6140,6 +6181,38 @@
                             <div id="selfhosted-admin-tools" style="display: none">
                                 <div id="selfhosted-admin-list" class="selfhosted-admin-list"></div>
                             </div>
+                        </div>
+                        <div id="selfhosted-invitations-panel" class="selfhosted-admin-panel" style="display: none">
+                            <div class="selfhosted-admin-header">
+                                <div>
+                                    <h3>Invitations</h3>
+                                    <div id="selfhosted-invitations-message" class="selfhosted-account-summary"></div>
+                                </div>
+                                <button id="refresh-selfhosted-invitations-btn" class="btn-secondary">Refresh</button>
+                            </div>
+                            <div id="selfhosted-invitations-list" class="selfhosted-admin-list"></div>
+                        </div>
+                        <div id="selfhosted-chat-panel" class="selfhosted-admin-panel" style="display: none">
+                            <div class="selfhosted-admin-header">
+                                <div>
+                                    <h3>Messages</h3>
+                                    <div id="selfhosted-chat-message" class="selfhosted-account-summary"></div>
+                                </div>
+                                <div class="admin-account-controls">
+                                    <select id="selfhosted-chat-contact-select" class="admin-account-role-select"></select>
+                                    <button id="refresh-selfhosted-chat-btn" class="btn-secondary">Refresh</button>
+                                </div>
+                            </div>
+                            <div id="selfhosted-chat-messages" class="selfhosted-chat-messages"></div>
+                            <form id="selfhosted-chat-composer" class="selfhosted-chat-composer" style="display: none">
+                                <textarea
+                                    id="selfhosted-chat-input"
+                                    class="selfhosted-chat-input"
+                                    maxlength="2000"
+                                    rows="2"
+                                ></textarea>
+                                <button type="submit" class="btn-primary">Send</button>
+                            </form>
                         </div>
                         <p style="padding-top: 50px; text-align: center; color: #8b8b93">
                             We only store music data and a randomized ID to find out which Google/Email account is

@@ -179,6 +179,7 @@ describe('filesystem library storage', () => {
             album: 'Shared Album',
             year: '2026',
             artworkUrl: 'https://example.test/cover.jpg',
+            youtubeClipUrl: 'https://youtu.be/dQw4w9WgXcQ',
             tags: ['demo', 'demo', 'self-hosted'],
         });
 
@@ -188,6 +189,12 @@ describe('filesystem library storage', () => {
         assert.equal(updated.album.title, 'Shared Album');
         assert.equal(updated.album.cover, 'https://example.test/cover.jpg');
         assert.equal(updated.year, 2026);
+        assert.equal(updated.youtubeVideoId, 'dQw4w9WgXcQ');
+        assert.equal(updated.youtubeClipUrl, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+        assert.deepEqual(updated.youtubeClip, {
+            videoId: 'dQw4w9WgXcQ',
+            url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        });
         assert.deepEqual(updated.tags, ['demo', 'self-hosted']);
         assert.equal(typeof updated.sharedMetadata.updatedAt, 'string');
 

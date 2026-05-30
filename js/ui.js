@@ -42,6 +42,8 @@ import { navigate } from './router.js';
 import { sidePanelManager } from './side-panel.js';
 import { getServerLibraryBaseUrl, listServerLibraryTracks, searchServerLibraryTracks } from './server-library.js';
 import { filterSelfHostedRadios, listSelfHostedRadios } from './selfhosted-radios.js';
+import { getSelfHostedShare } from './selfhosted-shares.js';
+import { getTrackYouTubeClip, getYouTubeEmbedUrl } from './youtube-clips.js';
 import {
     renderUnreleasedPage as renderUnreleasedTrackerPage,
     renderTrackerArtistPage as renderTrackerArtistContent,
@@ -6873,6 +6875,78 @@ export class UIRenderer {
             .catch(console.error);
     }
 
+    async renderSharePage(shareId) {
+        await this.showPage('share');
+
+        const imageEl = document.getElementById('share-detail-image');
+        const typeEl = document.getElementById('share-detail-type');
+        const titleEl = document.getElementById('share-detail-title');
+        const metaEl = document.getElementById('share-detail-meta');
+        const openBtn = document.getElementById('share-open-btn');
+        const playBtn = document.getElementById('share-play-btn');
+        const tracksSection = document.getElementById('share-tracks-section');
+        const tracksContainer = document.getElementById('share-tracks-container');
+
+        if (imageEl) imageEl.src = '/assets/appicon.png';
+        if (typeEl) typeEl.textContent = 'Shared Music';
+        if (titleEl) titleEl.textContent = 'Loading shared music...';
+        if (metaEl) metaEl.textContent = '';
+        if (tracksSection) tracksSection.style.display = 'none';
+        if (tracksContainer) tracksContainer.innerHTML = '';
+        if (openBtn) openBtn.disabled = true;
+        if (playBtn) playBtn.style.display = 'none';
+
+        try {
+            const share = await getSelfHostedShare(shareId);
+            const isPlaylist = share.type === 'playlist';
+            const track = share.track;
+            const playlist = share.playlist;
+            const tracks = isPlaylist ? playlist?.tracks || [] : track ? [track] : [];
+            const cover = playlist?.cover || track?.cover || track?.artworkUrl || track?.album?.cover || '/assets/appicon.png';
+
+            if (imageEl) imageEl.src = cover;
+            if (typeEl) typeEl.textContent = isPlaylist ? 'Shared Playlist' : 'Shared Song';
+            if (titleEl) titleEl.textContent = share.title || playlist?.name || track?.title || 'Shared Music';
+            if (metaEl) {
+                metaEl.textContent = isPlaylist
+                    ? `${tracks.length} track${tracks.length === 1 ? '' : 's'}`
+                    : getTrackArtists(track || {});
+            }
+
+            if (openBtn) {
+                openBtn.disabled = false;
+                openBtn.onclick = () => {
+                    if (share.href) {
+                        navigate(share.href);
+                    } else if (tracks.length > 0) {
+                        this.player.setQueue(tracks, 0);
+                        this.player.playTrackFromQueue();
+                    }
+                };
+            }
+
+            if (playBtn && tracks.length > 0) {
+                playBtn.style.display = 'inline-flex';
+                playBtn.onclick = () => {
+                    this.player.setQueue(tracks, 0);
+                    this.player.playTrackFromQueue();
+                };
+            }
+
+            if (tracksSection && tracksContainer && tracks.length > 0) {
+                tracksSection.style.display = 'block';
+                await this.renderListWithTracks(tracksContainer, tracks, true);
+            }
+
+            document.title = `${share.title || 'Shared Music'} - Monochrome Music`;
+        } catch (error) {
+            console.error('Failed to load shared music:', error);
+            if (titleEl) titleEl.textContent = 'Shared music not found';
+            if (metaEl) metaEl.textContent = error.message || 'Unable to load this share.';
+            if (openBtn) openBtn.disabled = true;
+        }
+    }
+
     async renderTrackPage(trackId, provider = null) {
         await this.showPage('track');
 
@@ -6889,6 +6963,8 @@ export class UIRenderer {
         const yearEl = document.getElementById('track-detail-year');
         const albumSection = document.getElementById('track-album-section');
         const albumTracksContainer = document.getElementById('track-detail-album-tracks');
+        const youtubeClipSection = document.getElementById('track-youtube-clip-section');
+        const youtubeClipContainer = document.getElementById('track-youtube-clip-container');
         const similarSection = document.getElementById('track-similar-section');
 
         const playBtn = document.getElementById('play-track-btn');
@@ -6902,6 +6978,8 @@ export class UIRenderer {
         yearEl.innerHTML = '';
         albumTracksContainer.innerHTML = this.createSkeletonTracks(5, false);
         albumSection.style.display = 'none';
+        if (youtubeClipSection) youtubeClipSection.style.display = 'none';
+        if (youtubeClipContainer) youtubeClipContainer.innerHTML = '';
         similarSection.style.display = 'none';
 
         if (!trackId || trackId === 'undefined' || trackId === 'null') {
@@ -7019,6 +7097,18 @@ export class UIRenderer {
                 if (!isNaN(date.getTime())) {
                     yearEl.textContent = date.getFullYear();
                 }
+            }
+
+            const youtubeClip = getTrackYouTubeClip(track);
+            if (youtubeClipSection && youtubeClipContainer && youtubeClip) {
+                youtubeClipSection.style.display = 'block';
+                youtubeClipContainer.innerHTML = `
+                    <iframe src="${escapeHtml(getYouTubeEmbedUrl(youtubeClip.videoId))}" title="YouTube clip for ${escapeHtml(track.title || 'track')}" loading="lazy" allowfullscreen></iframe>
+                    <a href="${escapeHtml(youtubeClip.url)}" target="_blank" rel="noopener noreferrer" class="btn-secondary">
+                        <use svg="!lucide/external-link.svg" size="16" />
+                        <span>Open on YouTube</span>
+                    </a>
+                `;
             }
 
             playBtn.onclick = () => {

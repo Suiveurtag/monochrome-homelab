@@ -5,12 +5,15 @@ import { MusicAPI } from './music-api.js';
 import { apiSettings } from './storage.js';
 import { debounce, escapeHtml } from './utils.js';
 import { Player } from './player.js';
+import { getSelfHostedOwnProfile, getSelfHostedProfile, updateSelfHostedProfile } from './selfhosted-profiles.js';
+import { renderSelfHostedInvitationsPanel, sendSelfHostedInvitation } from './selfhosted-invitations.js';
 
 // objects execution february 29th 2027
 
 const profilePage = document.getElementById('page-profile');
 const editProfileModal = document.getElementById('edit-profile-modal');
 const editProfileBtn = document.getElementById('profile-edit-btn');
+const profileInviteBtn = document.getElementById('profile-invite-btn');
 const viewMyProfileBtn = document.getElementById('view-my-profile-btn');
 
 const editUsername = document.getElementById('edit-profile-username');
@@ -132,6 +135,37 @@ function setupImageUploadControl(idPrefix) {
 
 const resetAvatarControl = setupImageUploadControl('edit-profile-avatar');
 const resetBannerControl = setupImageUploadControl('edit-profile-banner');
+let currentProfileUserId = null;
+let currentProfileUsername = null;
+
+async function getProfileForDisplay(username) {
+    const pocketbaseProfile = await syncManager.getProfile(username);
+    if (pocketbaseProfile) return pocketbaseProfile;
+    if (!authManager.user) return null;
+
+    try {
+        return await getSelfHostedProfile(username);
+    } catch (error) {
+        if (error.status !== 404 && error.status !== 403) console.warn('Failed to load self-hosted profile:', error);
+        return null;
+    }
+}
+
+async function getEditableProfileData() {
+    const data = await syncManager.getUserData();
+    if (data?.profile?.username) {
+        return { source: 'pocketbase', profile: data.profile };
+    }
+
+    if (!authManager.user) return null;
+    try {
+        const profile = await getSelfHostedOwnProfile();
+        return { source: 'self-hosted', profile };
+    } catch (error) {
+        console.warn('Failed to load self-hosted profile editor data:', error);
+        return null;
+    }
+}
 
 export async function loadProfile(username) {
     document.querySelectorAll('.page').forEach((p) => p.classList.remove('active'));
@@ -172,8 +206,11 @@ export async function loadProfile(username) {
     if (topTracksContainer) topTracksContainer.innerHTML = '';
 
     editProfileBtn.style.display = 'none';
+    if (profileInviteBtn) profileInviteBtn.style.display = 'none';
+    currentProfileUserId = null;
+    currentProfileUsername = username;
 
-    const profile = await syncManager.getProfile(username);
+    const profile = await getProfileForDisplay(username);
 
     if (!profile) {
         document.getElementById('profile-display-name').textContent = 'User not found';
@@ -181,6 +218,8 @@ export async function loadProfile(username) {
     }
 
     document.getElementById('profile-display-name').textContent = profile.display_name || username;
+    currentProfileUserId = profile.userId || null;
+    currentProfileUsername = profile.username || username;
     if (profile.banner) document.getElementById('profile-banner').style.backgroundImage = `url('${profile.banner}')`;
     if (profile.avatar_url) document.getElementById('profile-avatar').src = profile.avatar_url;
 
@@ -473,11 +512,13 @@ export async function loadProfile(username) {
             .catch(console.error);
     }
 
-    const currentUser = await syncManager.getUserData();
+    const currentUser = await getEditableProfileData();
     const isOwner = currentUser && currentUser.profile && currentUser.profile.username === username;
 
     if (isOwner) {
         editProfileBtn.style.display = 'inline-flex';
+    } else if (profileInviteBtn && authManager.user && profile.userId) {
+        profileInviteBtn.style.display = 'inline-flex';
     }
 
     if (profile.privacy?.playlists !== 'private' || isOwner) {
@@ -517,45 +558,44 @@ export async function loadProfile(username) {
 }
 
 export async function openEditProfile() {
-    await syncManager.getUserData().then((data) => {
-        if (!data || !data.profile) return;
-        const p = data.profile;
+    const data = await getEditableProfileData();
+    if (!data || !data.profile) return;
+    const p = data.profile;
 
-        editUsername.value = p.username || '';
-        editDisplayName.value = p.display_name || '';
-        resetAvatarControl(p.avatar_url);
-        resetBannerControl(p.banner);
+    editUsername.value = p.username || '';
+    editDisplayName.value = p.display_name || '';
+    resetAvatarControl(p.avatar_url);
+    resetBannerControl(p.banner);
 
-        editStatusJson.value = p.status || '';
-        editStatusSearch.value = '';
-        if (p.status) {
-            try {
-                const statusObj = JSON.parse(p.status);
-                showStatusPreview(statusObj);
-            } catch {
-                if (p.status.trim()) {
-                    editStatusSearch.value = p.status;
-                    hideStatusPreview();
-                }
+    editStatusJson.value = p.status || '';
+    editStatusSearch.value = '';
+    if (p.status) {
+        try {
+            const statusObj = JSON.parse(p.status);
+            showStatusPreview(statusObj);
+        } catch {
+            if (p.status.trim()) {
+                editStatusSearch.value = p.status;
+                hideStatusPreview();
             }
-        } else {
-            hideStatusPreview();
         }
+    } else {
+        hideStatusPreview();
+    }
 
-        currentFavoriteAlbums = p.favorite_albums || [];
-        renderEditFavoriteAlbums();
-        editFavoriteAlbumsSearch.value = '';
-        editFavoriteAlbumsResults.style.display = 'none';
+    currentFavoriteAlbums = p.favorite_albums || [];
+    renderEditFavoriteAlbums();
+    editFavoriteAlbumsSearch.value = '';
+    editFavoriteAlbumsResults.style.display = 'none';
 
-        editAbout.value = p.about || '';
-        editWebsite.value = p.website || '';
-        editLastfm.value = p.lastfm_username || '';
+    editAbout.value = p.about || '';
+    editWebsite.value = p.website || '';
+    editLastfm.value = p.lastfm_username || '';
 
-        privacyPlaylists.checked = p.privacy?.playlists !== 'private';
-        privacyLastfm.checked = p.privacy?.lastfm !== 'private';
+    privacyPlaylists.checked = p.privacy?.playlists !== 'private';
+    privacyLastfm.checked = p.privacy?.lastfm !== 'private';
 
-        editProfileModal.classList.add('active');
-    });
+    editProfileModal.classList.add('active');
 }
 
 async function saveProfile() {
@@ -566,8 +606,8 @@ async function saveProfile() {
         return;
     }
 
-    const currentUser = await syncManager.getUserData();
-    if (currentUser.profile.username !== newUsername) {
+    const currentUser = await getEditableProfileData();
+    if (currentUser?.source === 'pocketbase' && currentUser.profile.username !== newUsername) {
         const taken = await syncManager.isUsernameTaken(newUsername);
         if (taken) {
             usernameError.textContent = 'Username is already taken';
@@ -597,7 +637,12 @@ async function saveProfile() {
     };
 
     try {
-        await syncManager.updateProfile(data);
+        if (currentUser?.source === 'self-hosted') {
+            await updateSelfHostedProfile(data);
+        } else {
+            await syncManager.updateProfile(data);
+            updateSelfHostedProfile(data).catch(() => {});
+        }
         editProfileModal.classList.remove('active');
         await loadProfile(newUsername);
 
@@ -614,6 +659,21 @@ async function saveProfile() {
 }
 
 editProfileBtn.addEventListener('click', openEditProfile);
+profileInviteBtn?.addEventListener('click', async () => {
+    if (!currentProfileUserId) return;
+    profileInviteBtn.disabled = true;
+    try {
+        await sendSelfHostedInvitation({ toUserId: currentProfileUserId });
+        alert(`Invitation sent to @${currentProfileUsername || currentProfileUserId}`);
+        window.dispatchEvent(new CustomEvent('selfhosted-contacts-changed'));
+        await renderSelfHostedInvitationsPanel();
+    } catch (error) {
+        console.error('Failed to send invitation:', error);
+        alert(error.message || 'Failed to send invitation');
+    } finally {
+        profileInviteBtn.disabled = false;
+    }
+});
 cancelProfileBtn.addEventListener('click', () => editProfileModal.classList.remove('active'));
 saveProfileBtn.addEventListener('click', saveProfile);
 
@@ -622,7 +682,12 @@ viewMyProfileBtn.addEventListener('click', async () => {
     if (data && data.profile && data.profile.username) {
         navigate(`/user/@${data.profile.username}`);
     } else {
-        await openEditProfile();
+        try {
+            const profile = await getSelfHostedOwnProfile();
+            navigate(`/user/@${profile.username}`);
+        } catch {
+            await openEditProfile();
+        }
     }
 });
 

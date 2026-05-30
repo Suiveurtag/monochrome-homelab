@@ -95,7 +95,28 @@ function normalizeMetadataPatch(patch) {
     }
     if (Object.hasOwn(patch, 'artworkUrl')) normalized.artworkUrl = cleanMetadataText(patch.artworkUrl, 1000);
     if (Object.hasOwn(patch, 'tags')) normalized.tags = normalizeMetadataTags(patch.tags);
+    if (Object.hasOwn(patch, 'youtubeVideoId')) normalized.youtubeVideoId = normalizeYouTubeVideoId(patch.youtubeVideoId);
+    if (Object.hasOwn(patch, 'youtubeClipUrl')) {
+        const url = cleanMetadataText(patch.youtubeClipUrl, 1000);
+        normalized.youtubeVideoId = normalizeYouTubeVideoId(url);
+        normalized.youtubeClipUrl = normalized.youtubeVideoId ? getYouTubeWatchUrl(normalized.youtubeVideoId) : '';
+    }
     return normalized;
+}
+
+function normalizeYouTubeVideoId(value) {
+    const text = cleanMetadataText(value, 1000);
+    if (!text) return '';
+    const direct = text.match(/^[a-zA-Z0-9_-]{11}$/);
+    if (direct) return text;
+    const match = text.match(
+        /(?:youtube\.com\/(?:watch\?[^#]*v=|embed\/|shorts\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i,
+    );
+    return match ? match[1] : '';
+}
+
+function getYouTubeWatchUrl(videoId) {
+    return videoId ? `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}` : '';
 }
 
 function applySharedMetadata(track, patch, userId) {
@@ -127,6 +148,20 @@ function applySharedMetadata(track, patch, userId) {
     if (Object.hasOwn(patch, 'tags')) {
         next.tags = patch.tags;
         next.mediaMetadata = { ...(next.mediaMetadata || {}), tags: patch.tags };
+    }
+    if (Object.hasOwn(patch, 'youtubeVideoId') || Object.hasOwn(patch, 'youtubeClipUrl')) {
+        if (patch.youtubeVideoId) {
+            next.youtubeVideoId = patch.youtubeVideoId;
+            next.youtubeClipUrl = getYouTubeWatchUrl(patch.youtubeVideoId);
+            next.youtubeClip = {
+                videoId: patch.youtubeVideoId,
+                url: next.youtubeClipUrl,
+            };
+        } else {
+            delete next.youtubeVideoId;
+            delete next.youtubeClipUrl;
+            delete next.youtubeClip;
+        }
     }
 
     const updatedAt = new Date().toISOString();

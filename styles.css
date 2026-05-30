@@ -6223,6 +6223,62 @@ img[src=''] {
     font-size: 0.85rem;
 }
 
+.selfhosted-chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+    max-height: 360px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.selfhosted-chat-message {
+    max-width: min(78%, 620px);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.selfhosted-chat-message.own {
+    align-self: flex-end;
+    border-color: rgb(59 130 246 / 45%);
+}
+
+.selfhosted-chat-message-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--muted-foreground);
+    font-size: 0.78rem;
+}
+
+.selfhosted-chat-message-body {
+    margin-top: 6px;
+    color: var(--foreground);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.selfhosted-chat-composer {
+    gap: 10px;
+    margin-top: 12px;
+    align-items: flex-end;
+}
+
+.selfhosted-chat-input {
+    flex: 1;
+    min-height: 42px;
+    resize: vertical;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--foreground);
+    padding: 10px;
+}
+
 .admin-account-empty {
     color: var(--muted-foreground);
     padding: 12px;
@@ -6237,6 +6293,15 @@ img[src=''] {
 
     .admin-account-controls {
         width: 100%;
+    }
+
+    .selfhosted-chat-message {
+        max-width: 100%;
+    }
+
+    .selfhosted-chat-composer {
+        flex-direction: column;
+        align-items: stretch;
     }
 }
 
@@ -6748,6 +6813,24 @@ img[src=''] {
     color: var(--foreground);
     padding: 8px 10px;
     font: inherit;
+}
+
+.youtube-clip-panel {
+    display: grid;
+    gap: 1rem;
+    max-width: 720px;
+}
+
+.youtube-clip-panel iframe {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 0;
+    border-radius: 8px;
+    background: var(--muted);
+}
+
+.youtube-clip-panel .btn-secondary {
+    width: fit-content;
 }
 
 .server-metadata-actions {

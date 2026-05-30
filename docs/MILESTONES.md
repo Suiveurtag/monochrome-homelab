@@ -590,6 +590,152 @@ Required checks:
 - Playwright smoke for open tab, filter, and load a radio track into the player.
 - Production build.
 
+### Self-Hosted Checkpoint 15 - Associate YouTube Clips With Songs
+
+Status: Complete
+
+Goal:
+
+- Allow a YouTube video URL or ID to be associated with a song and surfaced without changing audio playback.
+
+Scope:
+
+- Store shared YouTube clip metadata for `server-local` uploaded tracks through the existing uploaded metadata update path.
+- Store local browser YouTube clip associations for external tracks by source-aware `trackKey`.
+- Add a track context-menu action for editing the YouTube clip association.
+- Display associated clips in Track info and on the Track page through a YouTube embed and external link.
+
+Non-goals:
+
+- No YouTube download or proxying.
+- No replacement of the existing audio/video player path.
+- No shared backend persistence for external API track clip associations yet.
+
+Required checks:
+
+- Syntax checks for touched frontend/server modules.
+- Uploaded storage metadata test coverage.
+- Targeted frontend lint.
+- Production build.
+
+### Self-Hosted Checkpoint 16 - Add Public User Profiles
+
+Status: Complete
+
+Goal:
+
+- Add a self-hosted public profile boundary for approved users while preserving the existing PocketBase profile UI.
+
+Scope:
+
+- Add JSON-backed self-hosted profile storage under the self-hosted data directory.
+- Add approved-user profile endpoints for current profile get/update and public profile lookup.
+- Add `js/selfhosted-profiles.js` as the browser client for self-hosted profiles.
+- Let the existing profile page fall back to self-hosted profiles when PocketBase profile data is unavailable.
+
+Non-goals:
+
+- No chat, invitations, or notifications.
+- No PocketBase profile removal.
+- No rich social graph or profile moderation.
+
+Required checks:
+
+- Syntax checks for touched frontend/server modules.
+- Self-hosted profile endpoint tests.
+- Existing account/radio endpoint tests.
+- Targeted frontend lint.
+- Production build.
+
+### Self-Hosted Checkpoint 17 - Add Song And Playlist Sharing
+
+Status: Complete
+
+Goal:
+
+- Let approved self-hosted users create stable internal links for songs and playlists.
+
+Scope:
+
+- Add JSON-backed self-hosted share storage under the self-hosted data directory.
+- Add approved-user share create/read endpoints.
+- Add `js/selfhosted-shares.js` as the browser client for internal share creation and lookup.
+- Add a `Share internally` context-menu action for tracks and playlists.
+- Add `/share/:id` routing and a shared music page that can open canonical links or play shared snapshots.
+
+Non-goals:
+
+- No real-time chat.
+- No public unauthenticated sharing.
+- No guarantee that server-local uploaded audio is portable outside the originating self-hosted server.
+
+Required checks:
+
+- Syntax checks for touched frontend/server modules.
+- Self-hosted share endpoint tests.
+- Existing account/profile/radio endpoint tests.
+- Targeted frontend lint.
+- Production build.
+
+### Self-Hosted Checkpoint 18 - Add Social Invitations
+
+Status: Complete
+
+Goal:
+
+- Let approved self-hosted users send, view, accept, and reject contact invitations.
+
+Scope:
+
+- Add JSON-backed self-hosted invitation storage under the self-hosted data directory.
+- Add approved-user invitation list/create/respond endpoints.
+- Add `js/selfhosted-invitations.js` as the browser client and Account page panel renderer.
+- Add a profile `Connect` action for sending an invitation to another self-hosted profile.
+
+Non-goals:
+
+- No groups.
+- No chat rooms.
+- No notifications beyond the Account page invitation panel.
+
+Required checks:
+
+- Syntax checks for touched frontend/server modules.
+- Self-hosted invitation endpoint tests.
+- Existing account/profile/radio/share endpoint tests.
+- Targeted frontend lint.
+- Production build.
+
+### Self-Hosted Checkpoint 19 - Add Minimal Chat
+
+Status: Complete
+
+Goal:
+
+- Let accepted self-hosted contacts exchange persistent 1:1 text messages.
+
+Scope:
+
+- Add JSON-backed self-hosted message storage under the self-hosted data directory.
+- Add approved-user message list/send endpoints.
+- Require an accepted invitation/contact relationship before listing or sending messages.
+- Add `js/selfhosted-chat.js` as the browser client and Account page chat panel renderer.
+
+Non-goals:
+
+- No attachments.
+- No end-to-end encryption.
+- No group chat.
+- No realtime push or automatic polling loop.
+
+Required checks:
+
+- Syntax checks for touched frontend/server modules.
+- Self-hosted message and invitation endpoint tests.
+- Existing account/profile/radio/share endpoint tests.
+- Targeted frontend lint.
+- Production build.
+
 ### M6 - Player And Media Boundary
 
 Status: Planned

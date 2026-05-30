@@ -80,8 +80,10 @@ Favorites and playlists:
 Social state:
 
 - Profiles, public playlists, theme store authorship, and listening parties currently use PocketBase-backed flows.
-- Listening parties still allow guest-like fallback ids in some paths; mandatory self-hosted auth and approval are future checkpoints.
-- There is no self-hosted account approval, admin management, chat, invitation, or server-side social store yet.
+- Self-hosted public profiles now have a JSON-backed fallback under the self-hosted data directory. `/api/profiles/me` lets approved users read/update their profile, and `/api/profiles/:username` lets approved users view other approved users' public profile data.
+- `js/selfhosted-profiles.js` is the frontend client for the self-hosted profile endpoints. The existing `js/profile.js` page keeps PocketBase as the primary profile source and falls back to self-hosted profiles when PocketBase data is unavailable.
+- Listening parties still allow guest-like fallback ids in some paths and have not yet moved to the self-hosted backend.
+- There is no self-hosted chat, invitation, notification, social graph, or listening-party store yet.
 
 Known limits:
 
@@ -157,7 +159,13 @@ API and media:
 - Library > Uploaded Music is the dedicated UI surface for server-local uploads. It lists uploaded tracks through `js/server-library.js`, sends non-empty search queries to server-side upload search, provides upload/refresh/search controls, offers context-menu metadata editing for server-local tracks, and reuses the standard track-list rendering so play, favorite, and playlist actions follow existing track behavior. Library > Local Files remains reserved for browser-selected folders.
 - `js/selfhosted-radios.js` is the browser client for self-hosted radios. It calls the self-hosted backend with the normalized Better Auth user id headers and normalizes enabled radio entries into hybrid tracks with `source.kind === "radio"` and direct stream URLs.
 - Library > Radio lists self-hosted radio stations, filters them locally, lets approved users add new station entries through `/api/radios`, and reuses the standard track-list click path so radio playback goes through the existing direct-audio player behavior.
+- `js/youtube-clips.js` normalizes YouTube clip URLs/IDs and resolves associated clips for song UI. `server-local` uploaded tracks persist shared clip associations through the existing `/uploads/:id/metadata` path as `youtubeVideoId`, `youtubeClipUrl`, and `youtubeClip`; external tracks currently use a browser-local `localStorage` map keyed by source-aware `trackKey`.
+- Associated YouTube clips are displayed as embeds and external YouTube links in Track info and on the Track page. They do not replace or interrupt the existing audio playback path.
 - `js/selfhosted-admin.js` is the browser client and renderer for self-hosted account approval/admin operations. It calls the self-hosted backend with the normalized Better Auth user id headers and treats the backend as the authorization authority.
+- `js/selfhosted-profiles.js` calls the self-hosted profile API with the same Better Auth user headers. It is used as a compatibility fallback by `js/profile.js` so existing `/user/@:username` profile routes can render self-hosted profile data without replacing PocketBase-backed profiles.
+- `js/selfhosted-shares.js` calls the self-hosted share API with the same Better Auth user headers. The track context menu can create stable internal `/share/:id` links for tracks and playlists, and `js/router.js` routes those links to `UIRenderer.renderSharePage()`.
+- `/share/:id` loads a stored share snapshot, shows a shared music page, and can open the canonical app route when one is portable or play the shared snapshot directly for server-local uploads and playlist snapshots.
+- `js/selfhosted-invitations.js` calls the self-hosted invitations API with the same Better Auth user headers. The profile page can send a contact invitation with the Connect button, and the Account page invitations panel lists incoming/outgoing invitations and lets recipients accept or reject pending requests.
 - `MusicAPI` is the app-facing facade. It currently routes most calls to `LosslessAPI`/TIDAL and podcast calls to `PodcastsAPI`.
 - `LosslessAPI.fetchWithRetry()` tries native `HiFiClient` routes for non-streaming requests, falls back to configured HiFi API instances, and uses configured streaming/Qobuz instances where appropriate.
 - `LosslessAPI.getStreamUrl()` resolves normal production audio through Qobuz by TIDAL ISRC. If no ISRC or Qobuz stream is available, playback reports a missing audio source.
@@ -237,6 +245,10 @@ Deployment:
 - `server/selfhosted/server.mjs` is the minimal self-hosted backend skeleton. It loads config/env values, prepares data directories, exposes `/health`, and reserves auth endpoint space with placeholder responses.
 - `server/selfhosted/accounts.mjs` is the self-hosted account approval store. It writes JSON account state under the configured self-hosted data directory and is separate from the existing Better Auth/PocketBase browser boundaries.
 - `server/selfhosted/radios.mjs` is the self-hosted radio store. It persists JSON radio entries under the self-hosted data directory with name, stream URL, genre, country, artwork URL, enabled status, creator, and timestamps. `/api/radios` lists enabled radios and lets approved users create radios; `/api/admin/radios` lets admins list disabled radios and update radio state/metadata.
+- `server/selfhosted/profiles.mjs` is the self-hosted profile store. It persists JSON profile entries under the self-hosted data directory with username, display name, avatar URL, banner URL, about/bio, website, simple stats, public playlists, privacy flags, and timestamps. Profile reads and writes require an approved self-hosted account.
+- `server/selfhosted/shares.mjs` is the self-hosted share store. It persists JSON share entries under the self-hosted data directory with a short share id, target type, title, canonical app href when available, minified track or playlist snapshots, creator user id, and timestamps. Share create/read endpoints require an approved self-hosted account.
+- `server/selfhosted/invitations.mjs` is the self-hosted contact invitation store. It persists JSON invitation entries under the self-hosted data directory with sender, recipient, status, optional message, timestamps, and response time. Invitation create/list/respond endpoints require an approved self-hosted account; only the recipient can accept or reject an invitation.
+- `server/selfhosted/messages.mjs` is the self-hosted 1:1 message store. It persists JSON message entries under the self-hosted data directory with sender, recipient, body, and creation time. Message list/send endpoints require approved accounts and an accepted invitation/contact relationship between the two users.
 - `server/uploads/server.mjs` is a separate local Node dev server for the `server-local` upload prototype. It now delegates filesystem layout, atomic blob/metadata writes, per-user indexes, and token stream lookup to `server/storage/filesystem-library.mjs`.
 - Frontend code should call `js/server-library.js` for self-hosted library behavior; `js/server-uploads.js` should remain the prototype transport adapter until the production backend replaces it.
 

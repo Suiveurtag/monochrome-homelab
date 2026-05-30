@@ -429,3 +429,157 @@ Affected areas:
 - `server/selfhosted/accounts.test.mjs`
 - `vite-plugin-auth-gate.js`
 - `.env.example`
+
+## 2026-05-30 - YouTube Clip Associations Are Non-Playback Metadata
+
+Status: Accepted
+
+Context:
+
+- Checkpoint 15 needs YouTube clips associated with songs without destabilizing audio playback, queue behavior, or the existing TIDAL/Qobuz stream path.
+- Uploaded tracks already have shared server metadata, while external API tracks do not yet have a self-hosted shared metadata backend.
+
+Decision:
+
+- Treat YouTube clip associations as metadata shown from song UI, not as replacements for the audio player.
+- Persist uploaded-track associations in shared server metadata through `/uploads/:id/metadata`.
+- Persist external-track associations locally in the browser, keyed by source-aware `trackKey`, until a later checkpoint adds shared metadata for external catalog tracks.
+
+Consequences:
+
+- Server-local upload clips are visible to users who can list that uploaded track from the same server.
+- External catalog clips are useful immediately on the current browser but are not synced or shared yet.
+- Future shared metadata work can migrate the local clip map into a server-backed external-track metadata store without changing the UI contract.
+
+Affected areas:
+
+- `js/youtube-clips.js`
+- `js/events.js`
+- `js/ui.js`
+- `server/storage/filesystem-library.mjs`
+- `server/uploads/server.mjs`
+
+## 2026-05-30 - Self-Hosted Profiles Are A PocketBase-Compatible Fallback
+
+Status: Accepted
+
+Context:
+
+- The app already has mature PocketBase-backed profile routes, editing UI, public playlists, and Last.fm profile sections.
+- The self-hosted roadmap needs approved users to have visible profiles even when PocketBase is unavailable or not desired for a homelab deployment.
+
+Decision:
+
+- Keep PocketBase as the primary profile source for existing public behavior.
+- Add a JSON-backed self-hosted profile store and approved-user profile API.
+- Use self-hosted profiles as a fallback in the existing profile page instead of replacing the current route/UI.
+
+Consequences:
+
+- Existing PocketBase profiles and public playlist behavior remain compatible.
+- Self-hosted deployments can view and edit basic profiles through the same `/user/@:username` surface after account approval.
+- Later social checkpoints can expand the self-hosted profile store without requiring a route redesign.
+
+Affected areas:
+
+- `server/selfhosted/profiles.mjs`
+- `server/selfhosted/server.mjs`
+- `server/selfhosted/config.mjs`
+- `js/selfhosted-profiles.js`
+- `js/profile.js`
+
+## 2026-05-30 - Internal Sharing Uses Server Snapshots Plus Canonical Links
+
+Status: Accepted
+
+Context:
+
+- External catalog tracks have portable route links, but server-local uploaded tracks may only be playable on the originating self-hosted server.
+- User playlists may be PocketBase-published, locally stored, or snapshot-only depending on the deployment.
+
+Decision:
+
+- Add self-hosted internal shares as approved-user JSON records with a stable `/share/:id` route.
+- Store a canonical app href when one is known and a minified track or playlist snapshot for display/playback fallback.
+- Do not make self-hosted shares public to signed-out users in this checkpoint.
+
+Consequences:
+
+- External catalog shares can open their canonical app routes.
+- Server-local upload shares can be received as snapshots and played when their stream URL/token remains valid on the same server.
+- Playlist shares can render snapshot tracks even when no public playlist publication exists.
+
+Affected areas:
+
+- `server/selfhosted/shares.mjs`
+- `server/selfhosted/server.mjs`
+- `server/selfhosted/config.mjs`
+- `js/selfhosted-shares.js`
+- `js/events.js`
+- `js/router.js`
+- `js/ui.js`
+- `index.html`
+
+## 2026-05-30 - Social Invitations Are Account-Scoped Contacts
+
+Status: Accepted
+
+Context:
+
+- Checkpoint 18 needs a contact boundary before chat and direct sharing workflows.
+- Self-hosted profiles expose public usernames, but authorization is still based on approved account user ids.
+
+Decision:
+
+- Store invitations by self-hosted account user id, while allowing the UI/API to target profiles by user id or username.
+- Require approved self-hosted accounts for listing, sending, accepting, and rejecting invitations.
+- Let only the invited recipient accept or reject an invitation.
+
+Consequences:
+
+- Invitation state remains independent from PocketBase contacts or public profile metadata.
+- Chat can later use accepted invitation/contact records as its access boundary.
+- Display names can improve later, but the durable relationship key is the self-hosted account user id.
+
+Affected areas:
+
+- `server/selfhosted/invitations.mjs`
+- `server/selfhosted/server.mjs`
+- `server/selfhosted/config.mjs`
+- `js/selfhosted-invitations.js`
+- `js/profile.js`
+- `js/app.js`
+- `index.html`
+
+## 2026-05-30 - Minimal Chat Uses Accepted Invitations As Its Access Boundary
+
+Status: Accepted
+
+Context:
+
+- Checkpoint 19 needs persistent 1:1 chat without introducing realtime infrastructure yet.
+- Checkpoint 18 already created accepted invitation/contact state keyed by self-hosted account user ids.
+
+Decision:
+
+- Store chat messages as self-hosted JSON records keyed by sender and recipient account user ids.
+- Require approved self-hosted accounts and an accepted invitation/contact relationship for both listing and sending messages.
+- Render the first chat surface from Account with manual refresh/contact selection instead of automatic polling or push.
+
+Consequences:
+
+- Message privacy depends on the accepted-contact check in the self-hosted backend.
+- Later realtime or notification work can reuse the same message records and contact boundary.
+- Chat currently displays durable user ids; richer display names can be layered in from profiles later.
+
+Affected areas:
+
+- `server/selfhosted/messages.mjs`
+- `server/selfhosted/invitations.mjs`
+- `server/selfhosted/server.mjs`
+- `server/selfhosted/config.mjs`
+- `js/selfhosted-chat.js`
+- `js/selfhosted-invitations.js`
+- `js/app.js`
+- `index.html`
+- `styles.css`
