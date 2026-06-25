@@ -1,0 +1,48 @@
+services:
+  monochrome:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        AUTH_ENABLED: "true"
+        POCKETBASE_URL: ""
+    image: monochrome-selfhost:latest
+    container_name: monochrome-app
+    restart: unless-stopped
+    depends_on:
+      - pocketbase
+      - selfhost-importer
+    ports:
+      - "3000:4173"
+    networks:
+      - monochrome
+
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:0.30.0
+    container_name: monochrome-pocketbase
+    restart: unless-stopped
+    command: ["serve", "--http=0.0.0.0:8090", "--dir=/pb_data", "--migrationsDir=/pb_migrations"]
+    volumes:
+      - ./pb_data:/pb_data
+      - ./pb_migrations:/pb_migrations
+    networks:
+      - monochrome
+
+  selfhost-importer:
+    image: python:3.14-alpine
+    container_name: monochrome-selfhost-importer
+    restart: unless-stopped
+    command: ["python", "/app/selfhost_importer.py"]
+    environment:
+      POCKETBASE_URL: "http://pocketbase:8090"
+      MAX_IMPORT_BYTES: "2147483648"
+    volumes:
+      - ./scripts/selfhost_importer.py:/app/selfhost_importer.py:ro
+    depends_on:
+      - pocketbase
+    networks:
+      - monochrome
+
+networks:
+  monochrome:
+    name: monochrome

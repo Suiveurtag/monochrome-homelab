@@ -1,0 +1,32 @@
+node_modules
+dist
+.DS_Store
+*.local
+.vite
+.claude
+# Docker
+.env
+
+# Local/self-host runtime data (do not commit DBs, uploads, or backups)
+pb_data/
+
+# Neutralino
+.tmp/
+.vitest-attachments/
+**/__screenshots__/*
+bin/
+*.log
+__pycache__/
+*.py[cod]
+.storage/
+auth_storage/
+www
+neutralino.js
+package-lock.json
+# Direnv
+.envrc
+# vim
+.lazy.lua
+# Q-DL Files
+qobuz-api
+Qobuz-DL
