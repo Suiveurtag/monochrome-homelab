@@ -4,3 +4,280 @@ Some vibe coded shit i'm doing for my homelab
 Do not install this unstable thing for now
 
 If the creators of Monochrome don't want this, I can remove the repository.
+
+<p align="center">
+  <strong>An open-source, privacy-respecting, ad-free music app.</strong>
+</p>
+
+<p align="center">
+  <a href="https://monochrome.tf">Website</a> -
+  <a href="#features">Features</a> -
+  <a href="#usage">Usage</a> -
+  <a href="#self-hosting">Self-Hosting</a> -
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/monochrome-music/monochrome/stargazers">
+    <img src="https://img.shields.io/github/stars/monochrome-music/monochrome?style=for-the-badge&color=ffffff&labelColor=000000" alt="GitHub stars">
+  </a>
+  <a href="https://github.com/monochrome-music/monochrome/forks">
+    <img src="https://img.shields.io/github/forks/monochrome-music/monochrome?style=for-the-badge&color=ffffff&labelColor=000000" alt="GitHub forks">
+  </a>
+  <a href="https://github.com/monochrome-music/monochrome/issues">
+    <img src="https://img.shields.io/github/issues/monochrome-music/monochrome?style=for-the-badge&color=ffffff&labelColor=000000" alt="GitHub issues">
+  </a>
+</p>
+
+---
+
+## What is Monochrome?
+
+**Monochrome Selfhost** is an open-source, privacy-respecting, ad-free music web app for your own homelab. This fork removes hosted streaming/API dependencies and uses your own server for accounts, sync data, and uploaded music files.
+
+[![Monochrome UI: NASIR by Nas](https://i.samidy.xyz/NASIR.png)](https://monochrome.tf/album/90502209)
+
+## [![Monochrome UI: Jump Out by Osamason](https://i.samidy.xyz/jumpout.png)](https://monochrome.tf/album/413189044)
+
+## Features
+
+### Audio Quality
+
+- High-quality High-Res/lossless audio streaming
+- Support for local music files
+- API caching for improved performance
+
+### Interface
+
+- Dark, minimalist interface optimized for focus
+- Animated Album Covers For Supported Albums
+- Customizable themes & Community Theme Store
+- Accurate and unique audio visualizer
+- Offline-capable Progressive Web App (PWA)
+- Media Session API integration for system controls
+
+### Library & Organization
+
+- Recently Played tracking for easy history access
+- Comprehensive Personal Library for favorites
+- Queue management with shuffle and repeat modes
+- Native Podcast support & organization
+- Playlist import from other platforms
+- Public playlists for social sharing
+- Smart recommendations for new songs, albums & artists
+- Infinite Recommendation Radio
+- Explore Page (Hot & New) for discovering newly added music and whats trending overall or within each genre
+
+### Lyrics & Metadata
+
+- Lyrics support with karaoke mode
+- Genius integration for lyrics
+- Track downloads with automatic metadata embedding
+
+### Integrations
+
+- Account system for cross-device syncing
+- Customizable & Public Profiles
+- Real-time Listening Parties for synced playback with friends
+- Last.fm and ListenBrainz integration for scrobbling
+- OAuth support (Google, Discord, GitHub, Spotify)
+- Dynamic Discord Embeds
+- Artist Biography + Social Links for learning more about your favorite artists
+- Multiple API instance support with failover
+
+### Power User Features
+
+- Keyboard shortcuts & Command Palette (CTRL+K) for power users
+
+---
+
+## Quick Start
+
+### Live Instance
+
+Our Recommended way to use monochrome is through our official instance:
+
+**[monochrome.tf](https://monochrome.tf)** / **[monochrome.samidy.com](https://monochrome.samidy.com)**
+
+For alternative instances, check [INSTANCES.md](INSTANCES.md).
+
+---
+
+## Self-Hosting
+
+This fork is designed to run fully self-hosted on a homelab:
+
+- no TIDAL/Appwrite/hosted Monochrome API is required for playback;
+- PocketBase stores email/password accounts, profile/sync data, playlists, and uploaded music metadata;
+- uploaded audio files are stored on the server under `pb_data/storage` and are private per account;
+- nginx serves the PWA and reverse-proxies `/api/*` and `/_/*` to PocketBase on the private Docker network.
+
+### Docker Compose
+
+```bash
+git clone https://github.com/monochrome-music/monochrome.git
+cd monochrome
+docker compose up -d --build
+```
+
+Visit `http://localhost:3000`.
+
+Create a normal app account from the Account page with email/password, then use the Upload page to upload your own music. You can either select local FLAC files or paste a direct `http(s)` URL to a FLAC file you own/are licensed to import; the `selfhost-importer` service downloads that file server-side and stores it privately in PocketBase. For administration, visit `http://localhost:3000/_/` and create the first PocketBase superuser when prompted.
+
+Persistent data lives in:
+
+- `pb_data/data.db` — PocketBase users, sync data, playlists, track metadata;
+- `pb_data/storage/` — uploaded music and cover files;
+- `pb_migrations/` — collection schema for accounts, playlists, and private music uploads.
+
+### Tailscale / LAN Access
+
+Visit `http://<tailscale_server_hostname_or_ip>:3000`
+
+By default, the app uses Vite preview, which restricts access to localhost.  
+To allow access over Tailscale:
+
+1. Open `vite.config.js`
+
+2. Uncomment and configure the `preview` section:
+
+```js
+preview: {
+    host: true,
+    allowedHosts: ['<your_tailscale_hostname>'], // e.g. pi5.tailf5f622.ts.net
+},
+```
+
+3. Restart with a fresh container (if already running):
+
+```bash
+docker compose down
+docker compose up -d
+```
+
+For development mode and advanced setups, see [DOCKER.md](DOCKER.md).
+
+### Option 2: Manual Installation
+
+#### Prerequisites
+
+- [Bun](https://bun.sh/) (Preferred) or [Node.js](https://nodejs.org/) (Version 20+ or 22+ recommended)
+
+#### Local Development
+
+1. **Clone the repository:**
+
+    ```bash
+    git clone https://github.com/monochrome-music/monochrome.git
+    cd monochrome
+    ```
+
+2. **Install dependencies:**
+
+    ```bash
+    bun install
+    # or
+    npm install # NPM is included with Node.js
+    ```
+
+3. **Start the development server:**
+
+    ```bash
+    bun run dev
+    # or
+    npm run dev
+    ```
+
+4. **Open your browser:**
+   Navigate to `http://localhost:5173/`
+
+#### Building for Production
+
+```bash
+bun run build
+# or
+npm run build
+```
+
+---
+
+## Usage
+
+### Basic Usage
+
+1. Visit the [Website](https://monochrome.tf) or your local development server
+2. Search for your favorite artists, albums, or tracks
+3. Click play to start streaming
+4. Use the media controls to manage playback, queue, and volume
+
+### Keyboard Shortcuts
+
+| Shortcut      | Action                       |
+| ------------- | ---------------------------- |
+| `Space`       | Play / Pause                 |
+| `→`           | Seek forward 10s             |
+| `←`           | Seek backward 10s            |
+| `Shift` + `→` | Next track                   |
+| `Shift` + `←` | Previous track               |
+| `↑`           | Volume up                    |
+| `↓`           | Volume down                  |
+| `M`           | Mute / Unmute                |
+| `S`           | Toggle shuffle               |
+| `R`           | Toggle repeat                |
+| `Q`           | Open queue                   |
+| `L`           | Toggle lyrics                |
+| `/`           | Focus search                 |
+| `Esc`         | Close modals                 |
+| `[`           | Previous visualizer preset   |
+| `]`           | Next visualizer preset       |
+| `\`           | Toggle visualizer auto-cycle |
+| `Ctrl` + `K`  | Command Palette              |
+
+### Account Features
+
+To sync your library, history, and playlists across devices:
+
+1. Click the "Accounts" Section
+2. Sign in with Google or Email
+3. Your data will automatically sync across all devices
+
+---
+
+## Contributing
+
+We welcome contributions from the community! Please see our [Contributing Guide](CONTRIBUTING.md) for:
+
+- Setting up your development environment
+- Code style and linting
+- Project structure
+- Before You Contribute
+- Commit message conventions
+- Deployment information
+
+---
+
+<p align="center">
+  <a href="https://fmhy.net/audio#streaming-sites">
+    <img src="https://raw.githubusercontent.com/monochrome-music/monochrome/refs/heads/main/public/assets/asseenonfmhy880x310.png" alt="As seen on FMHY" height="50">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://notbyai.fyi">
+    <img src="https://i.samidy.xyz/Developed-By-Humans-Not-By-AI-Badge-black%402x.png" alt="Developed by Humans" height="50">
+  </a>
+</p>
+
+<p align="center">
+  Made with ❤️ by the Monochrome team
+</p>
+
+## Star History
+
+<a href="https://www.star-history.com/#monochrome-music/monochrome&type=date&logscale&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=monochrome-music/monochrome&type=date&theme=dark&logscale&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=monochrome-music/monochrome&type=date&logscale&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=monochrome-music/monochrome&type=date&logscale&legend=top-left" />
+ </picture>
+</a>

@@ -2850,7 +2850,7 @@ function escapeHtml(text) {
 
 function trackNeedsEnrichment(track) {
     if (!track || !track.id) return false;
-    if (track.isPodcast || track.isTracker) return false;
+    if (track.isPodcast) return false;
     return !track.isrc || !track.album?.title || !track.album?.artist?.name || track.trackNumber == null;
 }
 

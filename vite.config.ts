@@ -148,7 +148,6 @@ export default defineConfig((_options) => {
                         },
                     ],
                 },
-                includeAssets: ['discord.html'],
                 manifest: false, // Use existing public/manifest.json
             }),
         ],

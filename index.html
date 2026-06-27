@@ -15,7 +15,7 @@
         <meta name="apple-mobile-web-app-title" content="Monochrome" />
         <meta
             name="description"
-            content="Stream and download millions of Hi-Res FLACs, unreleased songs and music videos, all for free on Monochrome."
+            content="Stream and download millions of Hi-Res FLACs and music videos, all for free on Monochrome."
         />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
         <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
@@ -25,7 +25,7 @@
         <meta property="og:title" content="Monochrome" />
         <meta
             property="og:description"
-            content="Stream and download millions of Hi-Res FLACs, unreleased songs and music videos, all for free on Monochrome."
+            content="Stream and download millions of Hi-Res FLACs and music videos, all for free on Monochrome."
         />
         <meta property="og:url" content="https://monochrome.tf/" />
         <meta property="og:image" content="https://monochrome.tf/assets/banner.jpg" />
@@ -36,7 +36,7 @@
         <meta name="twitter:title" content="Monochrome" />
         <meta
             name="twitter:description"
-            content="Stream and download millions of Hi-Res FLACs, unreleased songs and music videos, all for free on Monochrome."
+            content="Stream and download millions of Hi-Res FLACs and music videos, all for free on Monochrome."
         />
         <meta name="twitter:image" content="https://monochrome.tf/assets/banner-twitter.jpg" />
         <meta name="twitter:image:alt" content="Monochrome banner" />
@@ -46,7 +46,7 @@
                 "@type": "WebSite",
                 "name": "Monochrome",
                 "url": "https://monochrome.tf/",
-                "description": "Stream and download millions of Hi-Res FLACs, unreleased songs and music videos, all for free on Monochrome.",
+                "description": "Stream and download millions of Hi-Res FLACs and music videos, all for free on Monochrome.",
                 "potentialAction": {
                     "@type": "SearchAction",
                     "target": "https://monochrome.tf/search/{search_term_string}",
@@ -63,7 +63,7 @@
                 "applicationCategory": "MusicApplication",
                 "operatingSystem": "Web Browser",
                 "image": "https://monochrome.tf/assets/logo.svg",
-                "description": "Stream and download millions of Hi-Res FLACs, unreleased songs and music videos, all for free on Monochrome."
+                "description": "Stream and download millions of Hi-Res FLACs and music videos, all for free on Monochrome."
             }
         </script>
         <!-- bini's seo thing -->
@@ -1503,41 +1503,6 @@
 
         <div id="theme-preview-window" style="display: none"></div>
 
-        <div id="tracker-modal" class="modal tracker-modal">
-            <div class="modal-overlay"></div>
-            <div class="modal-content wide" style="max-height: 85vh; display: flex; flex-direction: column">
-                <header class="detail-header" style="margin-bottom: 1rem; padding-bottom: 0">
-                    <img
-                        id="tracker-header-image"
-                        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-                        class="detail-header-image"
-                        style="width: 140px; height: 140px; box-shadow: var(--shadow-md)"
-                        alt=""
-                    />
-                    <div class="detail-header-info">
-                        <div class="type">Unreleased Project</div>
-                        <h1 id="tracker-header-title" class="title" style="font-size: 2rem"></h1>
-                        <div id="tracker-header-meta" class="meta"></div>
-                        <div class="detail-header-actions">
-                            <button class="btn-secondary" id="close-tracker-modal">Close</button>
-                        </div>
-                    </div>
-                </header>
-                <div
-                    id="tracker-filters"
-                    style="padding: 0 2rem 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap"
-                ></div>
-                <div id="tracker-tracklist" class="track-list" style="overflow-y: auto; flex: 1">
-                    <div class="track-list-header">
-                        <span style="width: 40px; text-align: center">#</span>
-                        <span>Title</span>
-                        <span class="duration-header">Duration</span>
-                        <span style="display: flex; justify-content: flex-end; opacity: 0.8">Menu</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div id="epilepsy-warning-modal" class="modal">
             <div class="modal-overlay"></div>
             <div class="modal-content">
@@ -1694,18 +1659,6 @@
                                     <span>Recent</span>
                                 </a>
                             </li>
-                            <li class="nav-item" id="sidebar-nav-unreleased">
-                                <a href="/unreleased">
-                                    <use svg="./images/squares.svg" size="24" />
-                                    <span>Unreleased</span>
-                                </a>
-                            </li>
-                            <li class="nav-item" id="sidebar-nav-donate">
-                                <a id="sidebar-donate-link" href="/donate">
-                                    <use svg="!lucide/hand-heart.svg" size="24" />
-                                    <span>Donate</span>
-                                </a>
-                            </li>
                             <li class="nav-item" id="sidebar-nav-settings">
                                 <a href="/settings">
                                     <use svg="!lucide/settings.svg" size="24" />
@@ -1723,19 +1676,8 @@
                         </nav>
 
                         <div class="sidebar-nav-bottom">
-                            <nav class="sidebar-nav bottom">                                <ul>
-                                    <li class="nav-item" id="sidebar-nav-about-bottom">
-                                        <a href="/about">
-                                            <use svg="!lucide/info.svg" size="24" />
-                                            <span>About</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item" id="sidebar-nav-discordbtn">
-                                        <a href="discord.html" target="_blank">
-                                            <use svg="./images/discord.svg" size="64" />
-                                            <span>Discord</span>
-                                        </a>
-                                    </li>
+                            <nav class="sidebar-nav bottom">
+                                <ul>
                                     <li class="nav-item" id="sidebar-nav-party">
                                         <a href="/parties" id="sidebar-party-btn">
                                             <use svg="!lucide/users.svg" size="24" />
@@ -2344,10 +2286,6 @@
                     <div class="track-list" id="recent-tracks-container"></div>
                 </div>
 
-                <div id="page-unreleased" class="page">
-                    <div id="unreleased-content" style="padding: 1rem 0"></div>
-                </div>
-
                 <div id="page-podcasts" class="page">
                     <header class="detail-header">
                         <img
@@ -2386,33 +2324,6 @@
                     <div class="search-tab-content" id="podcasts-tab-recent">
                         <div class="card-grid" id="podcasts-recent-container"></div>
                     </div>
-                </div>
-
-                <div id="page-tracker-artist" class="page">
-                    <header class="detail-header">
-                        <img
-                            id="tracker-artist-detail-image"
-                            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-                            alt=""
-                            class="detail-header-image artist"
-                        />
-                        <div class="detail-header-info">
-                            <div class="type">Unreleased Artist</div>
-                            <h1 class="title" id="tracker-artist-detail-name"></h1>
-                            <div class="meta" id="tracker-artist-detail-meta"></div>
-                            <div class="detail-header-actions">
-                                <button id="play-tracker-artist-btn" class="btn-primary" title="Shuffle Play">
-                                    <use svg="./images/play.svg" size="20" />
-                                    <span>Shuffle Play</span>
-                                </button>
-                                <button id="download-tracker-artist-btn" class="btn-primary" title="Download">
-                                    <use svg="!lucide/download.svg" size="20" />
-                                    <span>Download All</span>
-                                </button>
-                            </div>
-                        </div>
-                    </header>
-                    <div id="tracker-artist-projects-container"></div>
                 </div>
 
                 <div id="page-album" class="page">
@@ -2739,17 +2650,6 @@
                         <h2 class="section-title">EPs and Singles</h2>
                         <div class="card-grid" id="artist-detail-eps"></div>
                     </section>
-                    <section
-                        class="content-section"
-                        id="artist-section-load-unreleased"
-                        style="display: none; margin: 1.5rem 0"
-                    >
-                        <button id="load-unreleased-btn" class="btn-primary">Load Unreleased Projects</button>
-                    </section>
-                    <section class="content-section" id="artist-section-unreleased" style="display: none">
-                        <h2 class="section-title">Unreleased Music</h2>
-                        <div class="card-grid" id="artist-detail-unreleased"></div>
-                    </section>
                     <section class="content-section" id="artist-section-similar" style="display: none">
                         <h2 class="section-title">Similar Artists</h2>
                         <div class="card-grid" id="artist-detail-similar"></div>
@@ -2913,6 +2813,7 @@
                         <button class="settings-tab" data-tab="downloads">Downloads</button>
                         <button class="settings-tab" data-tab="instances">Instances</button>
                         <button class="settings-tab" data-tab="system">System</button>
+                        <button class="settings-tab" data-tab="about">About</button>
                     </div>
                     <div class="settings-tab-content active" id="settings-tab-appearance">
                         <div class="settings-list">
@@ -3525,30 +3426,6 @@
                                     </div>
                                     <div class="setting-item">
                                         <div class="info">
-                                            <span class="label">Show Unreleased in Sidebar</span>
-                                            <span class="description"
-                                                >Display the Unreleased link in the sidebar navigation</span
-                                            >
-                                        </div>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="sidebar-show-unreleased-toggle" checked />
-                                            <span class="slider"></span>
-                                        </label>
-                                    </div>
-                                    <div class="setting-item">
-                                        <div class="info">
-                                            <span class="label">Show Donate in Sidebar</span>
-                                            <span class="description"
-                                                >Display the Donate link in the sidebar navigation</span
-                                            >
-                                        </div>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="sidebar-show-donate-toggle" checked />
-                                            <span class="slider"></span>
-                                        </label>
-                                    </div>
-                                    <div class="setting-item">
-                                        <div class="info">
                                             <span class="label">Show Settings in Sidebar</span>
                                             <span class="description"
                                                 >Display the Settings link in the sidebar navigation</span
@@ -3562,30 +3439,6 @@
                                 </div>
                                 <div class="sidebar-settings-section sidebar-settings-bottom">
                                     <span class="sidebar-settings-section-label">BOTTOM SECTION</span>
-                                    <div class="setting-item">
-                                        <div class="info">
-                                            <span class="label">Show About in Sidebar</span>
-                                            <span class="description"
-                                                >Display the About link in the sidebar navigation</span
-                                            >
-                                        </div>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="sidebar-show-about-bottom-toggle" checked />
-                                            <span class="slider"></span>
-                                        </label>
-                                    </div>
-                                    <div class="setting-item">
-                                        <div class="info">
-                                            <span class="label">Show Discord in Sidebar</span>
-                                            <span class="description"
-                                                >Display the Discord link in the sidebar navigation</span
-                                            >
-                                        </div>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="sidebar-show-discordbtn-toggle" checked />
-                                            <span class="slider"></span>
-                                        </label>
-                                    </div>
                                     <div class="setting-item">
                                         <div class="info">
                                             <span class="label">Show Parties in Sidebar</span>
@@ -5349,7 +5202,7 @@
                                     <select id="lossless-container-setting">
                                         <option value="nochange">Don't change</option>
                                     </select>
-                                </div>                            
+                                </div>
                             </div>
                             <div class="settings-group">
                                 <div class="setting-item">
@@ -5847,95 +5700,64 @@
                             ></p>
                         </div>
                     </div>
-                </div>
 
-                <div id="page-about" class="page">
-                    <h2 class="section-title" style="text-align: center">About Monochrome</h2>
-                    <div class="about-content">
-                        <p class="about-description">
-                            Monochrome is a lightweight, privacy-focused music streaming client designed for
-                            high-fidelity audio playback. Built with modern web technologies, it provides a clean,
-                            distraction-free listening experience.
-                            <br />
-                        </p>
-                        <div class="about-donate">
-                            <h2 class="section-title" style="text-align: center">Support Monochrome</h2>
-                            <p style="text-align: center" class="donate-description">
-                                If Monochrome has been useful to you and you're able to, consider making a donation.
+                    <div class="settings-tab-content" id="settings-tab-about">
+                        <h2 class="section-title" style="text-align: center">About Monochrome</h2>
+                        <div class="about-content">
+                            <p class="about-description">
+                                Monochrome is a lightweight, privacy-focused music streaming client designed for
+                                high-fidelity audio playback. Built with modern web technologies, it provides a clean,
+                                distraction-free listening experience.
                                 <br />
-                                It helps pay for the server and domain, and you get to support us :)
                             </p>
-                            <p style="text-align: center; color: var(--muted-foreground); margin-top: 1rem">
-                                If you cannot financially support us, please consider starring the project on GitHub and
-                                sharing with friends!
-                            </p>
-                            <div
-                                class="donate-button"
-                                id="donate-button-container"
-                                style="
-                                    display: flex;
-                                    gap: 20px;
-                                    align-items: center;
-                                    justify-content: center;
-                                    margin-top: 30px;
-                                    flex-wrap: wrap;
-                                "
-                            >
+                            <div class="about-links">
                                 <a
-                                    href="/donate"
+                                    href="https://forjero.com"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                     class="btn-secondary"
-                                    style="
-                                        text-decoration: none;
-                                        display: inline-flex;
-                                        align-items: center;
-                                        gap: 0.5rem;
-                                    "
                                 >
-                                    Donate to Monochrome
+                                    <use svg="./assets/fojero_gray.svg" size="24" />
+                                    <span>Forjero</span>
                                 </a>
                                 <a
                                     href="https://github.com/monochrome-music/monochrome"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     class="btn-secondary"
-                                    style="
-                                        text-decoration: none;
-                                        display: inline-flex;
-                                        align-items: center;
-                                        gap: 0.5rem;
-                                    "
                                 >
-                                    Star on GitHub
+                                    <use svg="./images/github.svg" size="24" />
+                                    <span>GitHub</span>
                                 </a>
                             </div>
-                        </div>
-                        <p style="text-align: center; color: grey">
-                            made with ‪‪❤︎‬ by
-                            <a href="https://prigoana.com/" style="text-decoration: underline">Edideaur</a> &
-                            <a href="https://samidy.com" style="text-decoration: underline">Samidy</a>
-                        </p>
-                        <br />
-                        <h3 style="text-align: center">Contributors List:</h3>
-                        <br />
-                        <div class="about-contributors"></div>
-                        <div class="about-contributors-failed"></div>
-                        <div class="about-footer">
-                            <p class="version">Version 2.5.0</p>
-                            <p class="version" id="about-commit-info"></p>
-                            <p class="disclaimer">
-                                This is an independent client and is not affiliated with or endorsed by TIDAL or any
-                                music streaming service.
+                            <p style="text-align: center; color: grey">
+                                made with ‪‪❤︎‬ by
+                                <a href="https://prigoana.com/" style="text-decoration: underline">Edideaur</a> &
+                                <a href="https://samidy.com" style="text-decoration: underline">Samidy</a>
                             </p>
-                            <p class="disclaimer">
-                                This application does not host, store, or distribute any media files. <br />
-                                All content displayed or accessed through this app is provided by third‑party services
-                                and APIs that are publicly available on the internet. <br />
-                                We do not control, operate, or maintain any external content sources and are not
-                                responsible for the accuracy, availability, or legality of any content provided by third
-                                parties. <br />
-                                Users are solely responsible for how they use this application and for ensuring that
-                                their use complies with applicable laws and regulations in their jurisdiction.
-                            </p>
+                            <br />
+                            <h3 style="text-align: center">Contributors List:</h3>
+                            <br />
+                            <div class="about-contributors"></div>
+                            <div class="about-contributors-failed"></div>
+                            <div class="about-footer">
+                                <p class="version">Version 2.5.0</p>
+                                <p class="version" id="about-commit-info"></p>
+                                <p class="disclaimer">
+                                    This is an independent client and is not affiliated with or endorsed by TIDAL or any
+                                    music streaming service.
+                                </p>
+                                <p class="disclaimer">
+                                    This application does not host, store, or distribute any media files. <br />
+                                    All content displayed or accessed through this app is provided by third‑party
+                                    services and APIs that are publicly available on the internet. <br />
+                                    We do not control, operate, or maintain any external content sources and are not
+                                    responsible for the accuracy, availability, or legality of any content provided by
+                                    third parties. <br />
+                                    Users are solely responsible for how they use this application and for ensuring that
+                                    their use complies with applicable laws and regulations in their jurisdiction.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -5992,45 +5814,6 @@
                             <a id="advanced-config-link" class="btn-secondary" href="/settings"
                                 >Advanced: Custom Configuration</a
                             >
-                        </div>
-                    </div>
-                </div>
-                <div id="page-donate" class="page">
-                    <div style="text-align: center; padding: 2rem; max-width: 500px; margin: 0 auto">
-                        <h2 class="section-title" style="margin-bottom: 1.5rem">Support Monochrome</h2>
-                        <p style="margin-bottom: 1.5rem; line-height: 1.6; color: var(--muted-foreground)">
-                            If Monochrome has been useful to you and you're able to, consider making a donation. It
-                            helps pay for the server and domain, and you get to support us :)
-                        </p>
-                        <a
-                            href="https://ko-fi.com/monochrometf"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="btn-primary"
-                            style="
-                                text-decoration: none;
-                                display: inline-flex;
-                                align-items: center;
-                                gap: 0.5rem;
-                                margin-bottom: 2rem;
-                            "
-                        >
-                            Donate on Ko-fi
-                        </a>
-                        <div style="padding-top: 1.5rem; border-top: 1px solid var(--border)">
-                            <p style="font-size: 0.9rem; color: var(--muted-foreground); margin-bottom: 1rem">
-                                If you cannot financially support us, please consider starring the project on GitHub and
-                                sharing with friends!
-                            </p>
-                            <a
-                                href="https://github.com/monochrome-music/monochrome"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="btn-secondary"
-                                style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem"
-                            >
-                                Star on GitHub
-                            </a>
                         </div>
                     </div>
                 </div>

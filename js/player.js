@@ -583,9 +583,8 @@ export class Player {
 
         for (const { track } of tracksToPreload) {
             if (this.preloadCache.has(track.id)) continue;
-            const isTracker = track.isTracker || (track.id && String(track.id).startsWith('tracker-'));
             const isPodcast = track.isPodcast || (track.id && String(track.id).startsWith('podcast_'));
-            if (track.isLocal || isTracker || isPodcast || (track.audioUrl && !track.isLocal)) continue;
+            if (track.isLocal || isPodcast || (track.audioUrl && !track.isLocal)) continue;
             try {
                 const streamInfo =
                     track.type == 'video'
@@ -1201,7 +1200,6 @@ export class Player {
         try {
             let streamUrl;
 
-            const isTracker = track.isTracker || (track.id && String(track.id).startsWith('tracker-'));
             const isPodcast = track.isPodcast || (track.id && String(track.id).startsWith('podcast_'));
 
             if (isPodcast) {
@@ -1229,7 +1227,7 @@ export class Player {
                 }
                 const played = await this.safePlay(activeElement);
                 if (!played) return;
-            } else if (isTracker || (track.audioUrl && !track.isLocal)) {
+            } else if (track.audioUrl && !track.isLocal) {
                 streamUrl = track.audioUrl;
 
                 if (
@@ -1244,18 +1242,6 @@ export class Player {
                     track.isUnavailable = true;
                     await this.playNext();
                     return;
-                }
-
-                if (isTracker && !streamUrl.startsWith('blob:') && streamUrl.startsWith('http')) {
-                    try {
-                        const response = await fetch(streamUrl);
-                        if (response.ok) {
-                            const blob = await response.blob();
-                            streamUrl = URL.createObjectURL(blob);
-                        }
-                    } catch (e) {
-                        console.warn('Failed to fetch tracker blob, trying direct link', e);
-                    }
                 }
 
                 if (this.playbackSequence !== currentSequence) return;

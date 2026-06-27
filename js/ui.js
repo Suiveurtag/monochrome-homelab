@@ -364,8 +364,7 @@ export class UIRenderer {
 
         if (track) {
             const isLocal = track.isLocal;
-            const isTracker = track.isTracker || (track.id && String(track.id).startsWith('tracker-'));
-            const shouldHideLikes = isLocal || isTracker;
+            const shouldHideLikes = isLocal;
 
             if (likeBtn) {
                 if (shouldHideLikes) {
@@ -4812,8 +4811,6 @@ export class UIRenderer {
         albumsContainer.innerHTML = this.createSkeletonCards(6, false);
         if (epsContainer) epsContainer.innerHTML = this.createSkeletonCards(6, false);
         if (epsSection) epsSection.style.display = 'none';
-        const loadUnreleasedSection = document.getElementById('artist-section-load-unreleased');
-        if (loadUnreleasedSection) loadUnreleasedSection.style.display = 'none';
         if (similarContainer) similarContainer.innerHTML = this.createSkeletonCards(6, true);
         if (similarSection) similarSection.style.display = 'block';
         if (inLibrarySection) inLibrarySection.style.display = 'none';
@@ -5384,15 +5381,6 @@ export class UIRenderer {
                 }
             }
 
-            const unreleasedSection = document.getElementById('artist-section-unreleased');
-            const unreleasedContainer = document.getElementById('artist-detail-unreleased');
-            const loadUnreleasedBtn = document.getElementById('load-unreleased-btn');
-            const loadUnreleasedSection = document.getElementById('artist-section-load-unreleased');
-            if (unreleasedSection && unreleasedContainer && loadUnreleasedBtn && loadUnreleasedSection) {
-                unreleasedSection.style.display = 'none';
-                loadUnreleasedSection.style.display = 'none';
-            }
-
             recentActivityManager.addArtist(artist);
 
             document.title = artist.name;
@@ -5526,30 +5514,6 @@ export class UIRenderer {
             container.innerHTML = createPlaceholder('Failed to load history.');
             if (clearBtn) clearBtn.style.display = 'none';
         }
-    }
-
-    async renderUnreleasedPage() {
-        await this.showPage('unreleased');
-        const container = document.getElementById('unreleased-content');
-        if (container) container.innerHTML = createPlaceholder('Unreleased tracker APIs are disabled in self-hosted mode.');
-    }
-
-    async renderTrackerArtistPage(_sheetId) {
-        await this.showPage('tracker-artist');
-        const container = document.getElementById('tracker-artist-projects-container');
-        if (container) container.innerHTML = createPlaceholder('Tracker APIs are disabled in self-hosted mode.');
-    }
-
-    async renderTrackerProjectPage(_sheetId, _projectName) {
-        await this.showPage('album'); // Use album page template
-        const container = document.getElementById('album-detail-tracklist');
-        if (container) container.innerHTML = createPlaceholder('Tracker APIs are disabled in self-hosted mode.');
-    }
-
-    async renderTrackerTrackPage(_trackId) {
-        await this.showPage('album'); // Use album page template
-        const container = document.getElementById('album-detail-tracklist');
-        if (container) container.innerHTML = createPlaceholder('Tracker APIs are disabled in self-hosted mode.');
     }
 
     /**

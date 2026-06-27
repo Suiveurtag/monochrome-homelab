@@ -7,11 +7,9 @@ import {
     SVG_HOUSE,
     SVG_LIBRARY,
     SVG_CLOCK,
-    SVG_CALENDAR,
     SVG_SETTINGS,
     SVG_INFO,
     SVG_DOWNLOAD,
-    SVG_HAND_HEART,
     SVG_PLAY,
     SVG_SKIP_FORWARD,
     SVG_SKIP_BACK,
@@ -54,11 +52,9 @@ const ICONS = {
     house: SVG_HOUSE,
     library: SVG_LIBRARY,
     clock: SVG_CLOCK,
-    calendar: SVG_CALENDAR,
     settings: SVG_SETTINGS,
     info: SVG_INFO,
     download: SVG_DOWNLOAD,
-    handHeart: SVG_HAND_HEART,
     play: SVG_PLAY,
     skipForward: SVG_SKIP_FORWARD,
     skipBack: SVG_SKIP_BACK,
@@ -157,16 +153,6 @@ class CommandPalette {
                 },
             },
             {
-                id: 'nav-unreleased',
-                group: 'Navigation',
-                icon: 'calendar',
-                label: 'Go to Unreleased',
-                keywords: ['unreleased', 'upcoming', 'tracker'],
-                action: () => {
-                    navigate('/unreleased');
-                },
-            },
-            {
                 id: 'nav-settings',
                 group: 'Navigation',
                 icon: 'settings',
@@ -197,17 +183,6 @@ class CommandPalette {
                     navigate('/download');
                 },
             },
-            {
-                id: 'nav-donate',
-                group: 'Navigation',
-                icon: 'handHeart',
-                label: 'Go to Donate',
-                keywords: ['donate', 'support', 'contribute'],
-                action: () => {
-                    navigate('/donate');
-                },
-            },
-
             {
                 id: 'play-pause',
                 group: 'Playback',

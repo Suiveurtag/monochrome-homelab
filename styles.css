@@ -5188,29 +5188,6 @@ input:checked + .slider::before {
     margin: 0 auto;
 }
 
-.about-donate {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 2rem;
-    margin: 2rem 0;
-    text-align: center;
-}
-
-.about-donate .section-title {
-    margin-bottom: 1rem;
-}
-
-.donate-description {
-    color: var(--muted-foreground);
-    line-height: 1.6;
-}
-
-.about-donate .btn-secondary {
-    padding: 0.75rem 1.5rem;
-    font-size: 0.95rem;
-}
-
 .about-description {
     color: var(--foreground);
     line-height: 1.8;
@@ -5281,6 +5258,13 @@ input:checked + .slider::before {
     margin: 1.5rem 0;
     flex-wrap: wrap;
     justify-content: center;
+}
+
+.about-links .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
 }
 
 .github-link {
@@ -7936,84 +7920,6 @@ body:has(#fullscreen-cover-overlay:not([style*='display: none'])) .now-playing-b
 
     #page-track .detail-header-info .title {
         font-size: 1.75rem;
-    }
-}
-
-.tracker-modal .track-item.loading {
-    opacity: 0.7;
-    pointer-events: none;
-}
-
-.tracker-modal .track-item.loading .track-number {
-    color: var(--highlight);
-}
-
-@media (max-width: 768px) {
-    .tracker-modal .modal-content {
-        height: 90vh !important;
-        max-height: 90vh !important;
-        padding: 1rem !important;
-    }
-
-    .tracker-modal .detail-header {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        gap: 0.5rem;
-        margin-bottom: 0.5rem !important;
-    }
-
-    .tracker-modal .detail-header-image {
-        width: 80px !important;
-        height: 80px !important;
-    }
-
-    .tracker-modal .detail-header-info .title {
-        font-size: 1.25rem !important;
-        margin-bottom: 0.25rem;
-    }
-
-    .tracker-modal .detail-header-info .meta {
-        max-height: 60px;
-        overflow-y: auto;
-        display: block;
-        font-size: 0.85rem;
-    }
-
-    .tracker-modal .detail-header-actions .btn-secondary {
-        width: auto !important;
-        height: auto !important;
-        padding: 0.5rem 1.5rem !important;
-        border-radius: 2rem !important;
-    }
-
-    #tracker-filters {
-        padding: 0 0 0.5rem !important;
-        justify-content: center;
-    }
-}
-
-@media (max-width: 768px) {
-    .tracker-modal .detail-header {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        gap: 0.75rem;
-    }
-
-    .tracker-modal .detail-header-image {
-        width: 100px !important;
-        height: 100px !important;
-    }
-
-    .tracker-modal .detail-header-info .title {
-        font-size: 1.5rem !important;
-    }
-
-    .tracker-modal .detail-header-info .meta {
-        max-height: 80px;
-        overflow-y: auto;
-        display: block;
     }
 }
 

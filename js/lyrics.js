@@ -64,23 +64,6 @@ function trackIsJapanese(track) {
     return containsJapaneseKana(title) || containsJapaneseKana(artist);
 }
 
-function cleanTrackerSearch(text) {
-    if (!text) return '';
-    // chud emojis will NOT be tolerated in my precious genius lyrics worker
-    let cleaned = text.replace(
-        /[\p{Extended_Pictographic}\p{Emoji_Component}\p{Emoji_Presentation}\p{Emoji_Modifier}\p{Emoji_Modifier_Base}\p{Symbol}]/gu,
-        ''
-    );
-
-    cleaned = cleaned.replace(/[\u2600-\u27BF\u2B50\u2B06\u2194\u21AA\u2934\u203C\u2049\u3030\u303D\u3297\u3299]/g, '');
-
-    cleaned = cleaned.replace(/\[v\s*\d+\s*\]/gi, '');
-
-    cleaned = cleaned.replace(/\s+/g, ' ');
-
-    return cleaned.trim();
-}
-
 class GeniusManager {
     constructor() {
         this.cache = new Map();
@@ -1105,22 +1088,13 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
         const durationMs = track.duration ? Math.round(track.duration * 1000) : undefined;
         const isrc = (track.isrc || track.mediaMetadata?.isrc || track.audioQuality?.isrc || '').trim();
 
-        const isTracker = track.isTracker || (track.id && String(track.id).startsWith('tracker-'));
-        let queryTitle = title;
-        let queryArtist = artist;
-
-        if (isTracker) {
-            queryTitle = cleanTrackerSearch(title);
-            queryArtist = cleanTrackerSearch(artist);
-        }
-
         container.innerHTML = '';
         const amLyrics = document.createElement('am-lyrics');
-        amLyrics.setAttribute('song-title', queryTitle);
-        amLyrics.setAttribute('song-artist', queryArtist);
+        amLyrics.setAttribute('song-title', title);
+        amLyrics.setAttribute('song-artist', artist);
         if (album) amLyrics.setAttribute('song-album', album);
         if (durationMs) amLyrics.setAttribute('song-duration', durationMs);
-        amLyrics.setAttribute('query', `${queryTitle} ${queryArtist}`.trim());
+        amLyrics.setAttribute('query', `${title} ${artist}`.trim());
         if (isrc) amLyrics.setAttribute('isrc', isrc);
 
         amLyrics.setAttribute('highlight-color', getLyricsHighlightColor());

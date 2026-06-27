@@ -2291,11 +2291,7 @@ export const sidebarSectionSettings = {
     SHOW_HOME_KEY: 'sidebar-show-home',
     SHOW_LIBRARY_KEY: 'sidebar-show-library',
     SHOW_RECENT_KEY: 'sidebar-show-recent',
-    SHOW_UNRELEASED_KEY: 'sidebar-show-unreleased',
-    SHOW_DONATE_KEY: 'sidebar-show-donate',
     SHOW_SETTINGS_KEY: 'sidebar-show-settings',
-    SHOW_ABOUT_KEY: 'sidebar-show-about',
-    SHOW_DISCORD_KEY: 'sidebar-show-discord',
     SHOW_GITHUB_KEY: 'sidebar-show-github',
     SHOW_PARTY_KEY: 'sidebar-show-party',
     ORDER_KEY: 'sidebar-menu-order',
@@ -2303,11 +2299,7 @@ export const sidebarSectionSettings = {
         'sidebar-nav-home',
         'sidebar-nav-library',
         'sidebar-nav-recent',
-        'sidebar-nav-unreleased',
-        'sidebar-nav-donate',
         'sidebar-nav-settings',
-        'sidebar-nav-about-bottom',
-        'sidebar-nav-discordbtn',
         'sidebar-nav-party',
         'sidebar-nav-githubbtn',
     ],
@@ -2357,32 +2349,6 @@ export const sidebarSectionSettings = {
         localStorage.setItem(this.SHOW_RECENT_KEY, enabled ? 'true' : 'false');
     },
 
-    shouldShowUnreleased() {
-        try {
-            const val = localStorage.getItem(this.SHOW_UNRELEASED_KEY);
-            return val === null ? true : val === 'true';
-        } catch {
-            return true;
-        }
-    },
-
-    setShowUnreleased(enabled) {
-        localStorage.setItem(this.SHOW_UNRELEASED_KEY, enabled ? 'true' : 'false');
-    },
-
-    shouldShowDonate() {
-        try {
-            const val = localStorage.getItem(this.SHOW_DONATE_KEY);
-            return val === null ? true : val === 'true';
-        } catch {
-            return true;
-        }
-    },
-
-    setShowDonate(enabled) {
-        localStorage.setItem(this.SHOW_DONATE_KEY, enabled ? 'true' : 'false');
-    },
-
     shouldShowSettings() {
         return true;
     },
@@ -2393,32 +2359,6 @@ export const sidebarSectionSettings = {
         } else {
             localStorage.removeItem(this.SHOW_SETTINGS_KEY);
         }
-    },
-
-    shouldShowAbout() {
-        try {
-            const val = localStorage.getItem(this.SHOW_ABOUT_KEY);
-            return val === null ? true : val === 'true';
-        } catch {
-            return true;
-        }
-    },
-
-    setShowAbout(enabled) {
-        localStorage.setItem(this.SHOW_ABOUT_KEY, enabled ? 'true' : 'false');
-    },
-
-    shouldShowDiscord() {
-        try {
-            const val = localStorage.getItem(this.SHOW_DISCORD_KEY);
-            return val === null ? true : val === 'true';
-        } catch {
-            return true;
-        }
-    },
-
-    setShowDiscord(enabled) {
-        localStorage.setItem(this.SHOW_DISCORD_KEY, enabled ? 'true' : 'false');
     },
 
     shouldShowGithub() {
@@ -2501,11 +2441,7 @@ export const sidebarSectionSettings = {
             { id: 'sidebar-nav-home', check: this.shouldShowHome() },
             { id: 'sidebar-nav-library', check: this.shouldShowLibrary() },
             { id: 'sidebar-nav-recent', check: this.shouldShowRecent() },
-            { id: 'sidebar-nav-unreleased', check: this.shouldShowUnreleased() },
-            { id: 'sidebar-nav-donate', check: this.shouldShowDonate() },
             { id: 'sidebar-nav-settings', check: this.shouldShowSettings() },
-            { id: 'sidebar-nav-about-bottom', check: this.shouldShowAbout() },
-            { id: 'sidebar-nav-discordbtn', check: this.shouldShowDiscord() },
             { id: 'sidebar-nav-party', check: this.shouldShowParty() },
             { id: 'sidebar-nav-githubbtn', check: this.shouldShowGithub() },
         ];
@@ -2959,7 +2895,6 @@ export const modalSettings = {
             'sleep-timer-modal',
             'discography-download-modal',
             'custom-db-modal',
-            'tracker-modal',
             'epilepsy-warning-modal',
         ];
         for (const id of modalIds) {
@@ -2992,7 +2927,6 @@ export const modalSettings = {
             'sleep-timer-modal',
             'discography-download-modal',
             'custom-db-modal',
-            'tracker-modal',
             'epilepsy-warning-modal',
         ];
 
