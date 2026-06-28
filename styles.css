@@ -1224,6 +1224,13 @@ body.site-intro-active {
     box-shadow: inset 0 1px rgb(255 255 255 / 0.08);
 }
 
+.access-card-icon img {
+    width: 24px;
+    height: 24px;
+    display: block;
+    filter: brightness(0) invert(1);
+}
+
 .access-card-heading h1 {
     margin: 0;
     color: #fff;
@@ -1634,6 +1641,10 @@ body.site-intro-active {
 @media (max-width: 560px) {
     .site-intro-lockup {
         width: min(84vw, 390px);
+    }
+
+    .site-intro-lockup svg {
+        transform: translateX(10px);
     }
 
     .access-gate-header {

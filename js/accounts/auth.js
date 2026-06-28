@@ -36,12 +36,20 @@ export class AuthManager {
 
         try {
             this.user = await auth.get();
+            this.normalizeAuthRoute();
             this.startAccessMonitor();
             this.updateUI(this.user);
             this.authListeners.forEach((listener) => listener(this.user));
         } catch {
             this.user = null;
+            this.normalizeAuthRoute();
             this.updateUI(null);
+        }
+    }
+
+    normalizeAuthRoute() {
+        if (window.location.pathname === '/login' || window.location.pathname === '/login.html') {
+            window.history.replaceState({}, '', '/');
         }
     }
 
@@ -100,7 +108,7 @@ export class AuthManager {
             auth.createOAuth2Session(
                 'google',
                 window.location.origin + '/index.html?oauth=1',
-                window.location.origin + '/login.html'
+                window.location.origin + '/'
             );
         } catch (error) {
             console.error('Login failed:', error);
@@ -113,7 +121,7 @@ export class AuthManager {
             auth.createOAuth2Session(
                 'github',
                 window.location.origin + '/index.html?oauth=1',
-                window.location.origin + '/login.html'
+                window.location.origin + '/'
             );
         } catch (error) {
             console.error('Login failed:', error);
@@ -126,7 +134,7 @@ export class AuthManager {
             auth.createOAuth2Session(
                 'spotify',
                 window.location.origin + '/index.html?oauth=1',
-                window.location.origin + '/login.html'
+                window.location.origin + '/'
             );
         } catch (error) {
             console.error('Login failed:', error);
@@ -139,7 +147,7 @@ export class AuthManager {
             auth.createOAuth2Session(
                 'discord',
                 window.location.origin + '/index.html?oauth=1',
-                window.location.origin + '/login.html'
+                window.location.origin + '/'
             );
         } catch (error) {
             console.error('Login failed:', error);
@@ -206,7 +214,7 @@ export class AuthManager {
             this.authListeners.forEach((listener) => listener(null));
 
             if (window.__AUTH_GATE__) {
-                window.location.href = '/login';
+                window.location.href = '/';
             } else {
                 window.location.reload();
             }

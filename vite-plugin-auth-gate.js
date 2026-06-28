@@ -74,15 +74,7 @@ export default function authGatePlugin() {
                 indexHtml = indexHtml.replace('</head>', `${configScript}\n</head>`);
             }
 
-            let loginHtml = null;
             const AUTH_ENABLED = (env.AUTH_ENABLED ?? 'false') !== 'false';
-            if (AUTH_ENABLED) {
-                const loginPath = join(distDir, 'login.html');
-                if (existsSync(loginPath)) {
-                    loginHtml = readFileSync(loginPath, 'utf-8');
-                    if (configScript) loginHtml = loginHtml.replace('</head>', `${configScript}\n</head>`);
-                }
-            }
 
             // --- /health (always available) ---
 
@@ -121,19 +113,8 @@ export default function authGatePlugin() {
                     const url = req.url.split('?')[0];
 
                     if (url === '/login' || url === '/login.html') {
-                        if (req.session && req.session.uid) {
-                            res.writeHead(302, { Location: '/' });
-                            res.end();
-                            return;
-                        }
-                        if (loginHtml) {
-                            res.setHeader('Content-Type', 'text/html');
-                            res.setHeader('Cache-Control', 'no-store');
-                            res.end(loginHtml);
-                        } else {
-                            res.statusCode = 404;
-                            res.end('Login page not found');
-                        }
+                        res.writeHead(302, { Location: '/' });
+                        res.end();
                         return;
                     }
 
@@ -174,7 +155,7 @@ export default function authGatePlugin() {
                             res.statusCode = 401;
                             res.end('Unauthorized');
                         } else {
-                            res.writeHead(302, { Location: '/login' });
+                            res.writeHead(302, { Location: '/' });
                             res.end();
                         }
                         return;
