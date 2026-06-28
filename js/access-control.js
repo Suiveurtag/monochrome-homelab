@@ -30,6 +30,33 @@ function applyAnnouncement(config) {
     banner.hidden = !config.announcement;
 }
 
+function wait(duration) {
+    return new Promise((resolve) => window.setTimeout(resolve, duration));
+}
+
+async function playAccessGrantedAnimation(card, message) {
+    if (!card) return;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const icon = card.querySelector('.access-card-icon');
+    if (icon) {
+        const cardRect = card.getBoundingClientRect();
+        const iconRect = icon.getBoundingClientRect();
+        icon.style.setProperty(
+            '--access-success-x',
+            `${cardRect.left + cardRect.width / 2 - iconRect.left - iconRect.width / 2}px`
+        );
+        icon.style.setProperty(
+            '--access-success-y',
+            `${cardRect.top + cardRect.height / 2 - iconRect.top - iconRect.height / 2}px`
+        );
+    }
+    setMessage(message, 'Access granted', 'success');
+    card.setAttribute('aria-busy', 'true');
+    card.classList.add('is-auth-success');
+    await wait(reducedMotion ? 250 : 1650);
+    card.removeAttribute('aria-busy');
+}
+
 export async function enforceAccessGate({ onReady } = {}) {
     await authManager.ready;
     const config = await loadAppConfig();
@@ -49,6 +76,7 @@ export async function enforceAccessGate({ onReady } = {}) {
     const message = document.getElementById('access-message');
     const maintenance = document.getElementById('access-maintenance');
     const maintenanceSignout = document.getElementById('access-maintenance-signout');
+    const card = gate?.querySelector('.access-card');
 
     const canEnter =
         authManager.user?.access_status === 'active' &&
@@ -99,6 +127,7 @@ export async function enforceAccessGate({ onReady } = {}) {
             try {
                 const user = await authManager.signInWithEmail(email.value.trim(), password.value, { silent: true });
                 if (user.access_status !== 'active') throw new Error('Account not active');
+                await playAccessGrantedAnimation(card, message);
                 gate.hidden = true;
                 document.body.classList.remove('access-gated');
                 resolve();

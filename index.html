@@ -97,11 +97,15 @@
                         mask="url(#site-intro-mark-mask)"
                         d="M39.5 10H86.5V57H63V33.5H39.5ZM16 33.5H39.5V57H63V80.5H16Z"
                     />
-                    <path
-                        class="site-intro-mark-fill"
-                        d="M39.5 10H86.5V57H63V33.5H39.5ZM16 33.5H39.5V57H63V80.5H16Z"
-                    />
-                    <text class="site-intro-wordmark site-intro-word-outline" x="112" y="76" mask="url(#site-intro-word-mask)">Monochrome</text>
+                    <path class="site-intro-mark-fill" d="M39.5 10H86.5V57H63V33.5H39.5ZM16 33.5H39.5V57H63V80.5H16Z" />
+                    <text
+                        class="site-intro-wordmark site-intro-word-outline"
+                        x="112"
+                        y="76"
+                        mask="url(#site-intro-word-mask)"
+                    >
+                        Monochrome
+                    </text>
                     <text class="site-intro-wordmark site-intro-word-fill" x="112" y="76">Monochrome</text>
                 </svg>
             </div>
@@ -118,12 +122,26 @@
             </header>
             <main class="access-gate-main">
                 <section class="access-card" aria-labelledby="access-title">
+                    <div class="access-border-beam" aria-hidden="true"></div>
                     <div class="access-card-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" role="presentation" focusable="false">
-                            <path
-                                d="M12 14.5V16.5M7 10.0288C7.47142 10 8.05259 10 8.8 10H15.2C15.9474 10 16.5286 10 17 10.0288M7 10.0288C6.41168 10.0647 5.99429 10.1455 5.63803 10.327C5.07354 10.6146 4.6146 11.0735 4.32698 11.638C4 12.2798 4 13.1198 4 14.8V16.2C4 17.8802 4 18.7202 4.32698 19.362C4.6146 19.9265 5.07354 20.3854 5.63803 20.673C6.27976 21 7.11984 21 8.8 21H15.2C16.8802 21 17.7202 21 18.362 20.673C18.9265 20.3854 19.3854 19.9265 19.673 19.362C20 18.7202 20 17.8802 20 16.2V14.8C20 13.1198 20 12.2798 19.673 11.638C19.3854 11.0735 18.9265 10.6146 18.362 10.327C18.0057 10.1455 17.5883 10.0647 17 10.0288M7 10.0288V8C7 5.23858 9.23858 3 12 3C14.7614 3 17 5.23858 17 8V10.0288"
-                            />
+                            <path class="access-lock-shackle" d="M7 10V8a5 5 0 0 1 10 0v2" />
+                            <rect class="access-lock-body" x="4" y="10" width="16" height="11" rx="3" />
+                            <path class="access-lock-keyhole" d="M12 14.5v2" />
                         </svg>
+                        <span class="access-success-ring access-success-ring-one"></span>
+                        <span class="access-success-ring access-success-ring-two"></span>
+                        <span class="access-success-sparks">
+                            <span class="access-success-spark" style="--spark-angle: 0deg; --spark-delay: 0ms"></span>
+                            <span class="access-success-spark" style="--spark-angle: 40deg; --spark-delay: 80ms"></span>
+                            <span class="access-success-spark" style="--spark-angle: 80deg; --spark-delay: 30ms"></span>
+                            <span class="access-success-spark" style="--spark-angle: 120deg; --spark-delay: 110ms"></span>
+                            <span class="access-success-spark" style="--spark-angle: 160deg; --spark-delay: 55ms"></span>
+                            <span class="access-success-spark" style="--spark-angle: 200deg; --spark-delay: 120ms"></span>
+                            <span class="access-success-spark" style="--spark-angle: 240deg; --spark-delay: 20ms"></span>
+                            <span class="access-success-spark" style="--spark-angle: 280deg; --spark-delay: 95ms"></span>
+                            <span class="access-success-spark" style="--spark-angle: 320deg; --spark-delay: 45ms"></span>
+                        </span>
                     </div>
                     <div class="access-card-heading">
                         <h1 id="access-title">Welcome back</h1>
@@ -132,15 +150,32 @@
                     <div id="access-maintenance" class="access-maintenance" hidden>
                         <strong>Maintenance in progress</strong>
                         <p>The homelab is temporarily reserved for administrators.</p>
-                        <button id="access-maintenance-signout" type="button" class="btn-secondary">Use another account</button>
+                        <button id="access-maintenance-signout" type="button" class="btn-secondary">
+                            Use another account
+                        </button>
                     </div>
                     <form id="access-gate-form" class="access-form">
                         <div class="access-input-group">
-                            <input id="access-email" class="access-input" type="email" autocomplete="email" placeholder=" " required />
+                            <input
+                                id="access-email"
+                                class="access-input"
+                                type="email"
+                                autocomplete="email"
+                                placeholder=" "
+                                required
+                            />
                             <label for="access-email">Email address</label>
                         </div>
                         <div class="access-input-group">
-                            <input id="access-password" class="access-input" type="password" autocomplete="current-password" placeholder=" " minlength="8" required />
+                            <input
+                                id="access-password"
+                                class="access-input"
+                                type="password"
+                                autocomplete="current-password"
+                                placeholder=" "
+                                minlength="8"
+                                required
+                            />
                             <label for="access-password">Password</label>
                         </div>
                         <div class="access-actions">
@@ -2351,7 +2386,8 @@
                             <div class="settings-group" style="margin: 0">
                                 <h3 style="margin-bottom: 0.5rem">Direct FLAC import</h3>
                                 <p style="color: var(--muted-foreground); margin-bottom: 0.75rem">
-                                    Paste a direct http(s) URL to a FLAC file you own or are allowed to import. The server downloads it and stores it privately in PocketBase.
+                                    Paste a direct http(s) URL to a FLAC file you own or are allowed to import. The
+                                    server downloads it and stores it privately in PocketBase.
                                 </p>
                                 <div style="display: flex; gap: 0.5rem; align-items: center">
                                     <input
@@ -2360,7 +2396,9 @@
                                         type="url"
                                         placeholder="https://your-server.example/music/song.flac"
                                     />
-                                    <button id="selfhost-flac-import-btn" class="btn-primary" type="button">Import</button>
+                                    <button id="selfhost-flac-import-btn" class="btn-primary" type="button">
+                                        Import
+                                    </button>
                                 </div>
                             </div>
                             <div class="settings-group" style="margin: 0">
@@ -2848,7 +2886,12 @@
                         <aside class="social-directory">
                             <label class="social-search">
                                 <use svg="!lucide/search.svg" size="17" />
-                                <input id="social-user-search" type="search" placeholder="Search people" autocomplete="off" />
+                                <input
+                                    id="social-user-search"
+                                    type="search"
+                                    placeholder="Search people"
+                                    autocomplete="off"
+                                />
                             </label>
                             <div class="social-directory-label">
                                 <span>People</span><span id="social-people-count">0</span>
@@ -2867,7 +2910,12 @@
 
                             <div id="social-thread" class="social-thread" hidden>
                                 <header class="social-thread-header">
-                                    <button id="social-thread-back" class="btn-icon social-thread-back" type="button" aria-label="Back to people">
+                                    <button
+                                        id="social-thread-back"
+                                        class="btn-icon social-thread-back"
+                                        type="button"
+                                        aria-label="Back to people"
+                                    >
                                         <use svg="!lucide/arrow-left.svg" size="20" />
                                     </button>
                                     <a id="social-thread-profile" class="social-thread-person" href="#">
@@ -2875,7 +2923,10 @@
                                             <img id="social-thread-avatar" src="/assets/appicon.png" alt="" />
                                             <span id="social-thread-presence-dot" class="social-presence-dot"></span>
                                         </span>
-                                        <span><strong id="social-thread-name">Member</strong><small id="social-thread-status">Offline</small></span>
+                                        <span
+                                            ><strong id="social-thread-name">Member</strong
+                                            ><small id="social-thread-status">Offline</small></span
+                                        >
                                     </a>
                                     <a id="social-open-profile" class="btn-secondary" href="#">View profile</a>
                                 </header>
@@ -2884,24 +2935,53 @@
 
                                 <div id="social-share-panel" class="social-share-panel" hidden>
                                     <div class="social-share-panel-head">
-                                        <div><strong>Share music</strong><small>Tracks, albums and artists from your library</small></div>
-                                        <button id="social-share-close" class="btn-icon" type="button" aria-label="Close sharing panel">
+                                        <div>
+                                            <strong>Share music</strong
+                                            ><small>Tracks, albums and artists from your library</small>
+                                        </div>
+                                        <button
+                                            id="social-share-close"
+                                            class="btn-icon"
+                                            type="button"
+                                            aria-label="Close sharing panel"
+                                        >
                                             <use svg="!lucide/x.svg" size="18" />
                                         </button>
                                     </div>
                                     <label class="social-share-search">
                                         <use svg="!lucide/search.svg" size="17" />
-                                        <input id="social-share-search" type="search" placeholder="Search your music" autocomplete="off" />
+                                        <input
+                                            id="social-share-search"
+                                            type="search"
+                                            placeholder="Search your music"
+                                            autocomplete="off"
+                                        />
                                     </label>
-                                    <button id="social-share-now-playing" class="social-share-now-playing" type="button" hidden></button>
+                                    <button
+                                        id="social-share-now-playing"
+                                        class="social-share-now-playing"
+                                        type="button"
+                                        hidden
+                                    ></button>
                                     <div id="social-share-results" class="social-share-results"></div>
                                 </div>
 
                                 <form id="social-composer" class="social-composer">
-                                    <button id="social-share-toggle" class="btn-icon social-share-toggle" type="button" title="Share music" aria-label="Share music">
+                                    <button
+                                        id="social-share-toggle"
+                                        class="btn-icon social-share-toggle"
+                                        type="button"
+                                        title="Share music"
+                                        aria-label="Share music"
+                                    >
                                         <use svg="!lucide/music-2.svg" size="20" />
                                     </button>
-                                    <textarea id="social-message-input" rows="1" maxlength="4096" placeholder="Write a message…"></textarea>
+                                    <textarea
+                                        id="social-message-input"
+                                        rows="1"
+                                        maxlength="4096"
+                                        placeholder="Write a message…"
+                                    ></textarea>
                                     <button class="social-send-button" type="submit" aria-label="Send message">
                                         <use svg="!lucide/arrow-up.svg" size="19" />
                                     </button>
@@ -2941,7 +3021,9 @@
                                 </div>
                             </div>
                             <div class="profile-actions">
-                                <a id="profile-message-btn" class="btn-secondary" href="#" style="display: none">Message</a>
+                                <a id="profile-message-btn" class="btn-secondary" href="#" style="display: none"
+                                    >Message</a
+                                >
                                 <button id="profile-edit-btn" class="btn-secondary" style="display: none">
                                     Edit Profile
                                 </button>
@@ -2982,20 +3064,54 @@
 
                 <div id="page-admin" class="page">
                     <div class="admin-page-header">
-                        <div><span class="admin-eyebrow">HOMELAB CONTROL</span><h1>Administration</h1><p>Approve members, restrict accounts and control server access.</p></div>
+                        <div>
+                            <span class="admin-eyebrow">HOMELAB CONTROL</span>
+                            <h1>Administration</h1>
+                            <p>Approve members, restrict accounts and control server access.</p>
+                        </div>
                         <div class="admin-count"><strong id="admin-users-count">0</strong><span>accounts</span></div>
                     </div>
                     <div class="admin-layout">
                         <section class="admin-panel admin-users-panel">
-                            <div class="admin-panel-title"><div><span>01</span><h2>Members</h2></div><p>New accounts remain pending until approved.</p></div>
+                            <div class="admin-panel-title">
+                                <div>
+                                    <span>01</span>
+                                    <h2>Members</h2>
+                                </div>
+                                <p>New accounts remain pending until approved.</p>
+                            </div>
                             <div id="admin-users-list" class="admin-users-list"></div>
                         </section>
                         <section class="admin-panel">
-                            <div class="admin-panel-title"><div><span>02</span><h2>Application</h2></div><p>Global controls take effect for everyone.</p></div>
+                            <div class="admin-panel-title">
+                                <div>
+                                    <span>02</span>
+                                    <h2>Application</h2>
+                                </div>
+                                <p>Global controls take effect for everyone.</p>
+                            </div>
                             <form id="admin-config-form" class="admin-config-form">
-                                <label class="admin-toggle-row"><span><strong>Open registrations</strong><small>Allow new access requests</small></span><input id="admin-registrations-open" type="checkbox" /></label>
-                                <label class="admin-toggle-row"><span><strong>Maintenance mode</strong><small>Only administrators can enter</small></span><input id="admin-maintenance-mode" type="checkbox" /></label>
-                                <label class="admin-text-row"><strong>Announcement</strong><textarea id="admin-announcement" maxlength="1000" rows="5" placeholder="Message displayed across the application"></textarea></label>
+                                <label class="admin-toggle-row"
+                                    ><span
+                                        ><strong>Open registrations</strong
+                                        ><small>Allow new access requests</small></span
+                                    ><input id="admin-registrations-open" type="checkbox"
+                                /></label>
+                                <label class="admin-toggle-row"
+                                    ><span
+                                        ><strong>Maintenance mode</strong
+                                        ><small>Only administrators can enter</small></span
+                                    ><input id="admin-maintenance-mode" type="checkbox"
+                                /></label>
+                                <label class="admin-text-row"
+                                    ><strong>Announcement</strong
+                                    ><textarea
+                                        id="admin-announcement"
+                                        maxlength="1000"
+                                        rows="5"
+                                        placeholder="Message displayed across the application"
+                                    ></textarea>
+                                </label>
                                 <button type="submit" class="btn-primary">Save settings</button>
                                 <p id="admin-feedback" class="admin-feedback" aria-live="polite"></p>
                             </form>
@@ -5677,7 +5793,8 @@
                                     <div class="info">
                                         <span class="label" style="color: #f59e0b">Self-host hooks</span>
                                         <span class="description"
-                                            >Optional local endpoints for future server-side download and metadata tools.</span
+                                            >Optional local endpoints for future server-side download and metadata
+                                            tools.</span
                                         >
                                     </div>
                                     <label class="toggle-switch">
@@ -5956,10 +6073,10 @@
                                 </a>
                             </div>
                             <p style="text-align: center; color: grey">
-                                Original version made by 
+                                Original version made by
                                 <a href="https://prigoana.com/" style="text-decoration: underline">Edideaur</a> &
                                 <a href="https://samidy.com" style="text-decoration: underline">Samidy</a>
-                                Self hosted & Revamped version by 
+                                Self hosted & Revamped version by
                                 <a href="https://brighter-builds.com" style="text-decoration: underline">Suiveurtag</a>
                             </p>
                             <br />
@@ -5970,10 +6087,10 @@
                                     music streaming service.
                                 </p>
                                 <p class="disclaimer">
-                                    All audio files are hosted on your own server. 
-                                    You are solely responsible for how you use this application and for ensuring that
-                                    your use complies with applicable laws and regulations in your jurisdiction.
-                                    You must have rights to the audio files you are hosting.
+                                    All audio files are hosted on your own server. You are solely responsible for how
+                                    you use this application and for ensuring that your use complies with applicable
+                                    laws and regulations in your jurisdiction. You must have rights to the audio files
+                                    you are hosting.
                                 </p>
                             </div>
                         </div>
