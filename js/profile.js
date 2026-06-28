@@ -1,5 +1,6 @@
 import { syncManager } from './accounts/pocketbase.js';
 import { authManager } from './accounts/auth.js';
+import { socialManager } from './social.js';
 import { navigate } from './router.js';
 import { MusicAPI } from './music-api.js';
 import { apiSettings } from './storage.js';
@@ -132,6 +133,106 @@ function setupImageUploadControl(idPrefix) {
 
 const resetAvatarControl = setupImageUploadControl('edit-profile-avatar');
 const resetBannerControl = setupImageUploadControl('edit-profile-banner');
+const PROFILE_STATUS_MAX_LENGTH = 1900;
+
+function normalizeString(value, fallback = '') {
+    if (value == null) return fallback;
+    if (typeof value === 'string') return value.trim();
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value).trim();
+    return fallback;
+}
+
+function normalizeStatusLink(type, id, link) {
+    const fallback = type && id ? `/${type}/${encodeURIComponent(id)}` : '';
+    const raw = normalizeString(link);
+    if (!raw) return fallback;
+    if (raw.startsWith('/')) return raw;
+    try {
+        const url = new URL(raw);
+        if (['/track/', '/album/', '/artist/'].some((prefix) => url.pathname.startsWith(prefix))) {
+            return `${url.pathname}${url.search}${url.hash}`;
+        }
+    } catch {
+        return fallback || raw;
+    }
+    return fallback || raw;
+}
+
+function normalizeProfileStatus(rawStatus) {
+    const raw = typeof rawStatus === 'string' ? rawStatus.trim() : rawStatus;
+    if (!raw) return '';
+
+    if (typeof raw === 'string') {
+        try {
+            return normalizeProfileStatus(JSON.parse(raw));
+        } catch {
+            return raw.slice(0, PROFILE_STATUS_MAX_LENGTH);
+        }
+    }
+
+    if (typeof raw !== 'object') {
+        return normalizeString(raw).slice(0, PROFILE_STATUS_MAX_LENGTH);
+    }
+
+    const type = raw.type === 'album' ? 'album' : 'track';
+    const id = normalizeString(raw.id || raw.trackId || raw.albumId);
+    const title = normalizeString(raw.title || raw.name || raw.text?.split(' - ')[0]);
+    const subtitle = normalizeString(raw.subtitle || raw.artist || raw.artistName || raw.text?.split(' - ').slice(1).join(' - '));
+    const image = normalizeString(raw.image || raw.cover || raw.artwork);
+    const link = normalizeStatusLink(type, id, raw.link || raw.href || raw.url);
+
+    const base = {
+        type,
+        id,
+        title,
+        subtitle,
+        text: normalizeString(raw.text || [title, subtitle].filter(Boolean).join(' - ')),
+        image,
+        link,
+    };
+
+    const compact = (status) => JSON.stringify(Object.fromEntries(Object.entries(status).filter(([, value]) => value)));
+    let serialized = compact(base);
+    if (serialized.length <= PROFILE_STATUS_MAX_LENGTH) return serialized;
+
+    const withoutImage = { ...base, image: '' };
+    serialized = compact(withoutImage);
+    if (serialized.length <= PROFILE_STATUS_MAX_LENGTH) return serialized;
+
+    const minimal = { type, id, title, subtitle, link };
+    serialized = compact(minimal);
+    return serialized.slice(0, PROFILE_STATUS_MAX_LENGTH);
+}
+
+function normalizeFavoriteAlbum(album) {
+    if (!album || typeof album !== 'object') return null;
+    const id = normalizeString(album.id || album.uuid || album.album?.id || album.title || album.name);
+    const title = normalizeString(album.title || album.name || album.album?.title);
+    if (!id && !title) return null;
+    const artist =
+        normalizeString(album.artist) ||
+        normalizeString(album.artist?.name) ||
+        normalizeString(album.album?.artist) ||
+        normalizeString(album.album?.artist?.name) ||
+        'Unknown Artist';
+    const cover =
+        normalizeString(album.cover) ||
+        normalizeString(album.image) ||
+        normalizeString(album.album?.cover) ||
+        normalizeString(album.artwork);
+    return {
+        id: id || title,
+        title: title || 'Untitled Album',
+        artist,
+        cover,
+        description: normalizeString(album.description),
+    };
+}
+
+function normalizeFavoriteAlbums(albums) {
+    if (!Array.isArray(albums)) return [];
+    return albums.map((album) => normalizeFavoriteAlbum(album)).filter(Boolean).slice(0, 5);
+}
 
 export async function loadProfile(username) {
     document.querySelectorAll('.page').forEach((p) => p.classList.remove('active'));
@@ -172,6 +273,10 @@ export async function loadProfile(username) {
     if (topTracksContainer) topTracksContainer.innerHTML = '';
 
     editProfileBtn.style.display = 'none';
+    const messageButton = document.getElementById('profile-message-btn');
+    if (messageButton) messageButton.style.display = 'none';
+    const nowPlaying = document.getElementById('profile-now-playing');
+    if (nowPlaying) nowPlaying.style.display = 'none';
 
     const profile = await syncManager.getProfile(username);
 
@@ -180,14 +285,17 @@ export async function loadProfile(username) {
         return;
     }
 
+    const favoriteAlbums = normalizeFavoriteAlbums(profile.favorite_albums);
+    const normalizedStatus = normalizeProfileStatus(profile.status);
+
     document.getElementById('profile-display-name').textContent = profile.display_name || username;
     if (profile.banner) document.getElementById('profile-banner').style.backgroundImage = `url('${profile.banner}')`;
     if (profile.avatar_url) document.getElementById('profile-avatar').src = profile.avatar_url;
 
-    if (profile.status) {
+    if (normalizedStatus) {
         const statusEl = document.getElementById('profile-status');
         try {
-            const statusObj = JSON.parse(profile.status);
+            const statusObj = JSON.parse(normalizedStatus);
 
             statusEl.replaceChildren();
 
@@ -197,11 +305,14 @@ export async function loadProfile(username) {
 
             const img = document.createElement('img');
             img.src = statusObj.image;
+            img.onerror = () => {
+                img.src = '/assets/appicon.png';
+            };
             img.style.cssText =
                 'width: 20px; height: 20px; border-radius: 2px; vertical-align: middle; margin-right: 0.5rem;';
 
             const link = document.createElement('a');
-            if (statusObj.link.startsWith('/')) {
+            if (statusObj.link?.startsWith('/')) {
                 link.href = statusObj.link;
             }
             link.className = 'status-link';
@@ -214,7 +325,7 @@ export async function loadProfile(username) {
                 navigate(statusObj.link);
             };
         } catch {
-            statusEl.textContent = `Listening to: ${profile.status}`;
+            statusEl.textContent = `Listening to: ${normalizedStatus}`;
         }
         statusEl.style.display = 'inline-flex';
     }
@@ -229,17 +340,19 @@ export async function loadProfile(username) {
         webEl.style.display = 'inline-block';
     }
 
-    if (profile.favorite_albums && profile.favorite_albums.length > 0) {
+    socialManager.renderProfilePresence(username).catch(console.error);
+
+    if (favoriteAlbums.length > 0) {
         if (favAlbumsSection && favAlbumsContainer) {
             favAlbumsSection.style.display = 'block';
-            favAlbumsContainer.innerHTML = profile.favorite_albums
+            favAlbumsContainer.innerHTML = favoriteAlbums
                 .map((album) => {
                     const image = api.getCoverUrl(album.cover);
                     return `
                     <div class="favorite-album-item" style="display: flex; gap: 1rem; margin-bottom: 1rem; background: var(--card); padding: 1rem; border-radius: var(--radius); border: 1px solid var(--border);">
                         <div class="card" style="width: 120px; flex-shrink: 0; padding: 0; border: none; background: transparent; cursor: pointer;" onclick="window.location.hash='/album/${album.id}'">
                             <div class="card-image-wrapper" style="margin-bottom: 0.5rem;">
-                                <img src="${image}" class="card-image" loading="lazy" style="border-radius: var(--radius);">
+                                <img src="${image}" class="card-image" loading="lazy" style="border-radius: var(--radius);" onerror="this.src='/assets/appicon.png'">
                             </div>
                             <div class="card-info">
                                 <div class="card-title" style="font-size: 0.9rem;">${escapeHtml(album.title)}</div>
@@ -478,6 +591,9 @@ export async function loadProfile(username) {
 
     if (isOwner) {
         editProfileBtn.style.display = 'inline-flex';
+    } else if (authManager.user && messageButton) {
+        messageButton.href = `/social/@${encodeURIComponent(username)}`;
+        messageButton.style.display = 'inline-flex';
     }
 
     if (profile.privacy?.playlists !== 'private' || isOwner) {
@@ -521,15 +637,16 @@ export async function openEditProfile() {
         resetAvatarControl(p.avatar_url);
         resetBannerControl(p.banner);
 
-        editStatusJson.value = p.status || '';
+        const normalizedStatus = normalizeProfileStatus(p.status);
+        editStatusJson.value = normalizedStatus || '';
         editStatusSearch.value = '';
-        if (p.status) {
+        if (normalizedStatus) {
             try {
-                const statusObj = JSON.parse(p.status);
+                const statusObj = JSON.parse(normalizedStatus);
                 showStatusPreview(statusObj);
             } catch {
-                if (p.status.trim()) {
-                    editStatusSearch.value = p.status;
+                if (normalizedStatus.trim()) {
+                    editStatusSearch.value = normalizedStatus;
                     hideStatusPreview();
                 }
             }
@@ -537,7 +654,7 @@ export async function openEditProfile() {
             hideStatusPreview();
         }
 
-        currentFavoriteAlbums = p.favorite_albums || [];
+        currentFavoriteAlbums = normalizeFavoriteAlbums(p.favorite_albums);
         renderEditFavoriteAlbums();
         editFavoriteAlbumsSearch.value = '';
         editFavoriteAlbumsResults.style.display = 'none';
@@ -580,10 +697,10 @@ async function saveProfile() {
         display_name: editDisplayName.value.trim(),
         avatar_url: editAvatar.value.trim(),
         banner: editBanner.value.trim(),
-        status: editStatusJson.value.trim() || (editStatusSearch.value.trim() ? editStatusSearch.value.trim() : ''),
+        status: normalizeProfileStatus(editStatusJson.value.trim() || editStatusSearch.value.trim()),
         about: editAbout.value.trim(),
         website: editWebsite.value.trim(),
-        favorite_albums: currentFavoriteAlbums,
+        favorite_albums: normalizeFavoriteAlbums(currentFavoriteAlbums),
         lastfm_username: editLastfm.value.trim(),
         privacy: {
             playlists: privacyPlaylists.checked ? 'public' : 'private',
@@ -714,7 +831,7 @@ function renderEditFavoriteAlbums() {
             (album, index) => `
         <div class="edit-favorite-album-item" style="background: var(--secondary); padding: 0.5rem; border-radius: var(--radius); border: 1px solid var(--border);">
             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                <img src="${api.getCoverUrl(album.cover)}" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover;">
+                <img src="${api.getCoverUrl(album.cover)}" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover;" onerror="this.src='/assets/appicon.png'">
                 <div style="flex: 1; min-width: 0;">
                     <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(album.title)}</div>
                     <div style="font-size: 0.8rem; color: var(--muted-foreground);">${escapeHtml(album.artist)}</div>

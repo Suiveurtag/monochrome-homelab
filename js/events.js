@@ -1134,6 +1134,13 @@ export async function handleTrackAction(
 ) {
     if (!item) return;
 
+    if (action === 'edit-metadata') {
+        if (ui && item.isLocal && typeof ui.openMetadataEditor === 'function') {
+            ui.openMetadataEditor(type, item);
+        }
+        return;
+    }
+
     // Actions not allowed for unavailable tracks
     const forbiddenForUnavailable = [
         'add-to-queue',

@@ -80,6 +80,90 @@
     </head>
 
     <body>
+        <div id="site-intro" class="site-intro" role="status" aria-label="Loading Monochrome" hidden>
+            <div class="site-intro-veil" aria-hidden="true"></div>
+            <div class="site-intro-lockup" aria-hidden="true">
+                <svg viewBox="0 0 650 112" role="presentation">
+                    <defs>
+                        <mask id="site-intro-mark-mask">
+                            <rect class="site-intro-mark-reveal" x="12" y="7" width="0" height="78" fill="white" />
+                        </mask>
+                        <mask id="site-intro-word-mask">
+                            <rect class="site-intro-word-reveal" x="108" y="7" width="0" height="82" fill="white" />
+                        </mask>
+                    </defs>
+                    <path
+                        class="site-intro-mark-outline"
+                        mask="url(#site-intro-mark-mask)"
+                        d="M39.5 10H86.5V57H63V33.5H39.5ZM16 33.5H39.5V57H63V80.5H16Z"
+                    />
+                    <path
+                        class="site-intro-mark-fill"
+                        d="M39.5 10H86.5V57H63V33.5H39.5ZM16 33.5H39.5V57H63V80.5H16Z"
+                    />
+                    <text class="site-intro-wordmark site-intro-word-outline" x="112" y="76" mask="url(#site-intro-word-mask)">Monochrome</text>
+                    <text class="site-intro-wordmark site-intro-word-fill" x="112" y="76">Monochrome</text>
+                </svg>
+            </div>
+        </div>
+        <div id="access-gate" class="access-gate" hidden>
+            <div id="access-dot-field" class="dot-field-container" aria-hidden="true"></div>
+            <div class="access-gate-shade" aria-hidden="true"></div>
+            <header class="access-gate-header">
+                <a href="/" class="access-brand" aria-label="Monochrome home">
+                    <img src="/images/monochrome-logo.svg" alt="" />
+                    <span>Monochrome</span>
+                </a>
+                <span class="access-instance-badge">Private homelab</span>
+            </header>
+            <main class="access-gate-main">
+                <section class="access-card" aria-labelledby="access-title">
+                    <div class="access-card-icon" aria-hidden="true">
+                        <use svg="!lucide/headphones.svg" size="24" />
+                    </div>
+                    <div class="access-card-heading">
+                        <h1 id="access-title">Welcome back</h1>
+                        <p>Sign in to continue listening on this Monochrome instance.</p>
+                    </div>
+                    <div id="access-maintenance" class="access-maintenance" hidden>
+                        <strong>Maintenance in progress</strong>
+                        <p>The homelab is temporarily reserved for administrators.</p>
+                        <button id="access-maintenance-signout" type="button" class="btn-secondary">Use another account</button>
+                    </div>
+                    <form id="access-gate-form" class="access-form">
+                        <div class="access-input-group">
+                            <input id="access-email" class="access-input" type="email" autocomplete="email" placeholder=" " required />
+                            <label for="access-email">Email address</label>
+                        </div>
+                        <div class="access-input-group">
+                            <input id="access-password" class="access-input" type="password" autocomplete="current-password" placeholder=" " minlength="8" required />
+                            <label for="access-password">Password</label>
+                        </div>
+                        <div class="access-actions">
+                            <button id="access-signin" type="submit" class="access-rainbow-button">
+                                <span>Sign in</span>
+                                <use svg="!lucide/arrow-right.svg" size="18" />
+                            </button>
+                        </div>
+                        <p id="access-message" class="access-message" aria-live="polite"></p>
+                        <div class="access-divider"><span>New to this instance?</span></div>
+                        <button id="access-signup" type="button" class="access-signup access-request-button">
+                            Request an account
+                        </button>
+                    </form>
+                    <p class="access-approval-note">
+                        <use svg="!lucide/shield-check.svg" size="15" />
+                        New accounts require administrator approval.
+                    </p>
+                </section>
+            </main>
+            <footer class="access-gate-footer">
+                <span>Monochrome Music</span>
+                <span aria-hidden="true">&middot;</span>
+                <span>Self-hosted</span>
+            </footer>
+        </div>
+        <div id="global-admin-announcement" class="global-admin-announcement" hidden></div>
         <audio id="audio-player" crossorigin="anonymous" style="display: none"></audio>
         <video id="video-player" crossorigin="anonymous" style="display: none"></video>
 
@@ -1653,6 +1737,13 @@
                                     <span>Upload</span>
                                 </a>
                             </li>
+                            <li class="nav-item" id="sidebar-nav-social">
+                                <a href="/social">
+                                    <use svg="!lucide/messages-square.svg" size="24" />
+                                    <span>Social</span>
+                                    <span id="social-unread-badge" class="social-unread-badge" hidden>0</span>
+                                </a>
+                            </li>
                             <li class="nav-item" id="sidebar-nav-recent">
                                 <a href="/recent">
                                     <use svg="./images/recent.svg" size="24" />
@@ -1663,6 +1754,12 @@
                                 <a href="/settings">
                                     <use svg="!lucide/settings.svg" size="24" />
                                     <span>Settings</span>
+                                </a>
+                            </li>
+                            <li class="nav-item" id="sidebar-nav-admin" hidden>
+                                <a href="/admin">
+                                    <use svg="!lucide/shield-check.svg" size="24" />
+                                    <span>Admin</span>
                                 </a>
                             </li>
                         </ul>
@@ -2373,6 +2470,17 @@
                                     <span>Save</span>
                                 </button>
                                 <button
+                                    id="edit-album-metadata-btn"
+                                    class="btn-secondary track-action-btn metadata-header-edit-btn"
+                                    data-action="edit-metadata"
+                                    data-type="album"
+                                    title="Edit metadata"
+                                    aria-label="Edit album metadata"
+                                    style="display: none"
+                                >
+                                    <span>Edit</span>
+                                </button>
+                                <button
                                     id="album-menu-btn"
                                     class="btn-secondary"
                                     data-action="card-menu"
@@ -2605,6 +2713,17 @@
                                     <use svg="!lucide/heart.svg" class="heart-icon" size="20" />
                                     <span>Save</span>
                                 </button>
+                                <button
+                                    id="edit-artist-metadata-btn"
+                                    class="btn-secondary track-action-btn metadata-header-edit-btn"
+                                    data-action="edit-metadata"
+                                    data-type="artist"
+                                    title="Edit metadata"
+                                    aria-label="Edit artist metadata"
+                                    style="display: none"
+                                >
+                                    <span>Edit</span>
+                                </button>
                             </div>
                         </div>
                     </header>
@@ -2711,6 +2830,83 @@
                     </section>
                 </div>
 
+                <div id="page-social" class="page">
+                    <div class="social-page-header">
+                        <div>
+                            <span class="social-eyebrow">HOMELAB NETWORK</span>
+                            <h1>Social</h1>
+                            <p>See what everyone is listening to and share music privately.</p>
+                        </div>
+                        <div class="social-live-pill"><span></span>Live</div>
+                    </div>
+
+                    <div class="social-shell">
+                        <aside class="social-directory">
+                            <label class="social-search">
+                                <use svg="!lucide/search.svg" size="17" />
+                                <input id="social-user-search" type="search" placeholder="Search people" autocomplete="off" />
+                            </label>
+                            <div class="social-directory-label">
+                                <span>People</span><span id="social-people-count">0</span>
+                            </div>
+                            <div id="social-people-list" class="social-people-list"></div>
+                        </aside>
+
+                        <section id="social-conversation" class="social-conversation">
+                            <div id="social-empty-state" class="social-empty-state">
+                                <div class="social-empty-orbit">
+                                    <use svg="!lucide/message-circle.svg" size="32" />
+                                </div>
+                                <h2>Start a conversation</h2>
+                                <p>Select someone to send a message, track, album or artist.</p>
+                            </div>
+
+                            <div id="social-thread" class="social-thread" hidden>
+                                <header class="social-thread-header">
+                                    <button id="social-thread-back" class="btn-icon social-thread-back" type="button" aria-label="Back to people">
+                                        <use svg="!lucide/arrow-left.svg" size="20" />
+                                    </button>
+                                    <a id="social-thread-profile" class="social-thread-person" href="#">
+                                        <span class="social-avatar-wrap">
+                                            <img id="social-thread-avatar" src="/assets/appicon.png" alt="" />
+                                            <span id="social-thread-presence-dot" class="social-presence-dot"></span>
+                                        </span>
+                                        <span><strong id="social-thread-name">Member</strong><small id="social-thread-status">Offline</small></span>
+                                    </a>
+                                    <a id="social-open-profile" class="btn-secondary" href="#">View profile</a>
+                                </header>
+
+                                <div id="social-messages" class="social-messages" aria-live="polite"></div>
+
+                                <div id="social-share-panel" class="social-share-panel" hidden>
+                                    <div class="social-share-panel-head">
+                                        <div><strong>Share music</strong><small>Tracks, albums and artists from your library</small></div>
+                                        <button id="social-share-close" class="btn-icon" type="button" aria-label="Close sharing panel">
+                                            <use svg="!lucide/x.svg" size="18" />
+                                        </button>
+                                    </div>
+                                    <label class="social-share-search">
+                                        <use svg="!lucide/search.svg" size="17" />
+                                        <input id="social-share-search" type="search" placeholder="Search your music" autocomplete="off" />
+                                    </label>
+                                    <button id="social-share-now-playing" class="social-share-now-playing" type="button" hidden></button>
+                                    <div id="social-share-results" class="social-share-results"></div>
+                                </div>
+
+                                <form id="social-composer" class="social-composer">
+                                    <button id="social-share-toggle" class="btn-icon social-share-toggle" type="button" title="Share music" aria-label="Share music">
+                                        <use svg="!lucide/music-2.svg" size="20" />
+                                    </button>
+                                    <textarea id="social-message-input" rows="1" maxlength="4096" placeholder="Write a message…"></textarea>
+                                    <button class="social-send-button" type="submit" aria-label="Send message">
+                                        <use svg="!lucide/arrow-up.svg" size="19" />
+                                    </button>
+                                </form>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
                 <div id="page-profile" class="page">
                     <div class="profile-header-container">
                         <div class="profile-banner" id="profile-banner"></div>
@@ -2741,6 +2937,7 @@
                                 </div>
                             </div>
                             <div class="profile-actions">
+                                <a id="profile-message-btn" class="btn-secondary" href="#" style="display: none">Message</a>
                                 <button id="profile-edit-btn" class="btn-secondary" style="display: none">
                                     Edit Profile
                                 </button>
@@ -2748,6 +2945,7 @@
                         </div>
                     </div>
                     <div class="profile-content">
+                        <div id="profile-now-playing" class="profile-now-playing" style="display: none"></div>
                         <h2 class="section-title">Public Playlists</h2>
                         <div class="card-grid" id="profile-playlists-container"></div>
                         <div id="profile-favorite-albums-section" style="display: none; margin-top: 3rem">
@@ -2775,6 +2973,29 @@
                             <h2 class="section-title">Top Tracks</h2>
                             <div class="track-list" id="profile-top-tracks-container"></div>
                         </div>
+                    </div>
+                </div>
+
+                <div id="page-admin" class="page">
+                    <div class="admin-page-header">
+                        <div><span class="admin-eyebrow">HOMELAB CONTROL</span><h1>Administration</h1><p>Approve members, restrict accounts and control server access.</p></div>
+                        <div class="admin-count"><strong id="admin-users-count">0</strong><span>accounts</span></div>
+                    </div>
+                    <div class="admin-layout">
+                        <section class="admin-panel admin-users-panel">
+                            <div class="admin-panel-title"><div><span>01</span><h2>Members</h2></div><p>New accounts remain pending until approved.</p></div>
+                            <div id="admin-users-list" class="admin-users-list"></div>
+                        </section>
+                        <section class="admin-panel">
+                            <div class="admin-panel-title"><div><span>02</span><h2>Application</h2></div><p>Global controls take effect for everyone.</p></div>
+                            <form id="admin-config-form" class="admin-config-form">
+                                <label class="admin-toggle-row"><span><strong>Open registrations</strong><small>Allow new access requests</small></span><input id="admin-registrations-open" type="checkbox" /></label>
+                                <label class="admin-toggle-row"><span><strong>Maintenance mode</strong><small>Only administrators can enter</small></span><input id="admin-maintenance-mode" type="checkbox" /></label>
+                                <label class="admin-text-row"><strong>Announcement</strong><textarea id="admin-announcement" maxlength="1000" rows="5" placeholder="Message displayed across the application"></textarea></label>
+                                <button type="submit" class="btn-primary">Save settings</button>
+                                <p id="admin-feedback" class="admin-feedback" aria-live="polite"></p>
+                            </form>
+                        </section>
                     </div>
                 </div>
 

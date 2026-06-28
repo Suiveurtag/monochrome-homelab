@@ -506,7 +506,11 @@ const syncManager = {
                 favorite_albums: this.safeParseInternal(record.favorite_albums, 'favorite_albums', []),
             };
         } catch {
-            return null;
+            try {
+                return await this.pb.collection('social_profiles').getFirstListItem(`username="${username}"`);
+            } catch {
+                return null;
+            }
         }
     },
 
@@ -520,6 +524,9 @@ const syncManager = {
 
         const updated = await this.pb.collection('DB_users').update(record.id, updateData, { f_id: user.$id });
         this._userRecordCache = updated;
+        import('../social.js')
+            .then(({ syncSocialProfile }) => syncSocialProfile(updated))
+            .catch((error) => console.warn('[Social] Could not sync public profile:', error));
     },
 
     async isUsernameTaken(username) {

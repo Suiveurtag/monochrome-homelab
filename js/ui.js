@@ -15,7 +15,6 @@ import {
     escapeHtml,
     decodeHtml,
     getShareUrl,
-    createModal,
 } from './utils.js';
 import { openLyricsPanel, renderLyricsInFullscreen, clearFullscreenLyricsSync } from './lyrics.js';
 import {
@@ -41,6 +40,8 @@ import { audioContextManager } from './audio-context.js';
 import { navigate } from './router.js';
 import { sidePanelManager } from './side-panel.js';
 import { deleteSelfHostedTrack, listSelfHostedTracks } from './selfhost-server-api.js';
+import { openMetadataEditor } from './metadata-editor.js';
+import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
 
 let _isBlockedCopyright = (_c) => false;
 import('./content-filter.ts')
@@ -131,7 +132,7 @@ function fileToDataUrl(file) {
     if (!file) return Promise.resolve('');
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
         reader.onerror = () => reject(reader.error);
         reader.readAsDataURL(file);
     });
@@ -516,9 +517,13 @@ export class UIRenderer {
         const actionsHTML = isUnavailable
             ? ''
             : `
-            <button class="track-menu-btn" type="button" title="More options" ${track.isLocal ? 'style="display:none"' : ''}>
-                ${SVG_MENU(20)}
-            </button>
+            ${
+                track.isLocal
+                    ? `<button class="track-action-btn metadata-track-edit-btn" type="button" data-action="edit-metadata" data-type="track" title="Edit metadata" aria-label="Edit metadata">
+                        ${EDIT_METADATA_ICON}
+                    </button>`
+                    : `<button class="track-menu-btn" type="button" title="More options">${SVG_MENU(20)}</button>`
+            }
         `;
 
         const blockedTitle = isBlocked
@@ -2818,80 +2823,34 @@ export class UIRenderer {
                 event.stopPropagation();
                 if (!confirm('Delete this uploaded track from the server?')) return;
                 await deleteSelfHostedTrack(button.dataset.id);
+                await db.deleteUploadedTrack(button.dataset.id).catch(() => {});
                 window.dispatchEvent(new CustomEvent('local-library-updated'));
             });
         });
     }
 
-    async openSelfHostedMetadataEditor(trackId) {
-        const track = await db.getUploadedTrack(trackId);
-        if (!track) return;
-
-        const content = document.createElement('form');
-        content.innerHTML = `
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-                <label>Title<input class="template-input" name="title" value="${escapeHtml(track.title || '')}" /></label>
-                <label>Artist<input class="template-input" name="artist" value="${escapeHtml(track.artist?.name || '')}" /></label>
-                <label>Album<input class="template-input" name="album" value="${escapeHtml(track.album?.title || '')}" /></label>
-                <label>Release date<input class="template-input" name="releaseDate" type="date" value="${escapeHtml((track.releaseDate || track.album?.releaseDate || '').slice(0, 10))}" /></label>
-                <label>Track number<input class="template-input" name="trackNumber" type="number" min="0" value="${escapeHtml(track.trackNumber || '')}" /></label>
-                <label>Play count<input class="template-input" name="playCount" type="number" min="0" value="${escapeHtml(track.playCount || 0)}" /></label>
-                <label>Cover<input class="template-input" name="cover" type="file" accept="image/*" /></label>
-                <label>Artist image<input class="template-input" name="artistPicture" type="file" accept="image/*" /></label>
-                <label>Artist banner<input class="template-input" name="artistBanner" type="file" accept="image/*" /></label>
-            </div>
-            <label style="display: block; margin-top: 1rem;">Artist bio<textarea class="template-input" name="artistBio" rows="3">${escapeHtml(track.artist?.biography || '')}</textarea></label>
-            <label style="display: block; margin-top: 1rem;">Album description<textarea class="template-input" name="albumDescription" rows="3">${escapeHtml(track.album?.description || '')}</textarea></label>
-            <label style="display: block; margin-top: 1rem;">Lyrics<textarea class="template-input" name="lyrics" rows="8">${escapeHtml(track.lyrics || '')}</textarea></label>
-            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
-                <button type="submit" class="btn-primary">Save</button>
-            </div>
-        `;
-
-        const { close } = createModal({ title: 'Edit Track Metadata', content, className: 'metadata-editor-modal' });
-        content.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const form = new FormData(content);
-            const artist = {
-                ...(track.artist || {}),
-                name: String(form.get('artist') || 'Unknown Artist').trim() || 'Unknown Artist',
-                biography: String(form.get('artistBio') || '').trim(),
-            };
-            const coverFile = form.get('cover');
-            const artistPictureFile = form.get('artistPicture');
-            const artistBannerFile = form.get('artistBanner');
-            if (artistPictureFile?.size) artist.picture = await fileToDataUrl(artistPictureFile);
-            if (artistBannerFile?.size) artist.banner = await fileToDataUrl(artistBannerFile);
-
-            const album = {
-                ...(track.album || {}),
-                title: String(form.get('album') || 'Unknown Album').trim() || 'Unknown Album',
-                releaseDate: String(form.get('releaseDate') || ''),
-                description: String(form.get('albumDescription') || '').trim(),
-                artist,
-            };
-            if (coverFile?.size) album.cover = await fileToDataUrl(coverFile);
-
-            const updated = {
-                ...track,
-                title: String(form.get('title') || 'Unknown Title').trim() || 'Unknown Title',
-                artist,
-                artists: [artist],
-                album,
-                releaseDate: album.releaseDate,
-                trackNumber: Number(form.get('trackNumber') || 0) || null,
-                playCount: Number(form.get('playCount') || 0) || 0,
-                lyrics: String(form.get('lyrics') || ''),
-                updatedAt: Date.now(),
-            };
-
-            await db.putUploadedTrack(updated);
-            await db.putLocalArtist(artist);
-            await db.putLocalAlbum(album);
-            close();
-            await this.renderUploadedTracks();
-            showNotification('Metadata saved.');
+    openMetadataEditor(type, entity) {
+        const tracks =
+            type === 'album' ? this.currentAlbumTracks || [] : type === 'artist' ? this.currentArtistTracks || [] : [];
+        return openMetadataEditor({
+            type,
+            entity,
+            tracks,
+            onSaved: async () => {
+                if (type === 'album') await this.renderAlbumPage(entity.id);
+                else if (type === 'artist') await this.renderArtistPage(entity.id);
+                else if (this.currentPage === 'album' && entity.album?.id) await this.renderAlbumPage(entity.album.id);
+                else if (this.currentPage === 'artist' && entity.artist?.id) await this.renderArtistPage(entity.artist.id);
+                else if (this.currentPage === 'library')
+                    await this.renderLocalFiles(document.getElementById('library-local-container'));
+                else if (this.currentPage === 'upload') await this.renderUploadedTracks();
+            },
         });
+    }
+
+    async openSelfHostedMetadataEditor(trackId) {
+        const track = await this.api.getTrackMetadata(trackId).catch(() => db.getUploadedTrack(trackId));
+        if (track) this.openMetadataEditor('track', track);
     }
 
     async renderHomePage() {
@@ -3843,6 +3802,8 @@ export class UIRenderer {
         if (dlBtn) dlBtn.innerHTML = `${SVG_DOWNLOAD(20)}<span>Download Album</span>`;
         const mixBtn = document.getElementById('album-mix-btn');
         if (mixBtn) mixBtn.style.display = 'none';
+        const albumEditBtn = document.getElementById('edit-album-metadata-btn');
+        if (albumEditBtn) albumEditBtn.style.display = 'none';
 
         imageEl.src = '';
         imageEl.style.backgroundColor = 'var(--muted)';
@@ -3864,6 +3825,8 @@ export class UIRenderer {
         try {
             const { album, tracks } = await this.api.getAlbum(albumId, provider);
             this.currentAlbumId = albumId;
+            this.currentAlbum = album;
+            this.currentAlbumTracks = tracks;
 
             if (_isBlockedCopyright(album.copyright)) {
                 imageEl.src = '';
@@ -4012,6 +3975,13 @@ export class UIRenderer {
             if (albumMenuBtn) {
                 albumMenuBtn.dataset.id = album.id;
                 trackDataStore.set(albumMenuBtn, album);
+            }
+
+            const albumEditBtn = document.getElementById('edit-album-metadata-btn');
+            if (albumEditBtn) {
+                albumEditBtn.style.display = album.isLocal ? 'flex' : 'none';
+                albumEditBtn.innerHTML = `${EDIT_METADATA_ICON}<span>Edit</span>`;
+                trackDataStore.set(albumEditBtn, album);
             }
 
             document.title = `${album.title} - ${album.artist.name}`;
@@ -4796,6 +4766,8 @@ export class UIRenderer {
         const inLibrarySection = document.getElementById('artist-section-in-library');
         const dlBtn = document.getElementById('download-discography-btn');
         if (dlBtn) dlBtn.innerHTML = `${SVG_DOWNLOAD(20)}<span>Download Discography</span>`;
+        const artistEditBtn = document.getElementById('edit-artist-metadata-btn');
+        if (artistEditBtn) artistEditBtn.style.display = 'none';
 
         imageEl.src = '';
         imageEl.style.backgroundColor = 'var(--muted)';
@@ -4826,6 +4798,15 @@ export class UIRenderer {
 
         try {
             const artist = await this.api.getArtist(artistId, provider);
+            this.currentArtist = artist;
+            this.currentArtistTracks = artist.tracks || [];
+
+            const artistEditBtn = document.getElementById('edit-artist-metadata-btn');
+            if (artistEditBtn) {
+                artistEditBtn.style.display = artist.isLocal ? 'flex' : 'none';
+                artistEditBtn.innerHTML = `${EDIT_METADATA_ICON}<span>Edit</span>`;
+                trackDataStore.set(artistEditBtn, artist);
+            }
 
             const currentId = this.currentArtistId;
             this.api

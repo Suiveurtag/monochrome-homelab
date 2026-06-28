@@ -67,6 +67,7 @@ export function mapPocketBaseTrack(record, client = pb) {
         serverAudioUrl: audioUrl,
         serverCoverUrl: coverUrl,
         mediaMetadata: { tags: ['Self-hosted'] },
+        lyrics: record.lyrics || '',
     };
 }
 
@@ -84,6 +85,7 @@ export function createTrackFormData(track, file, ownerId, coverFile = null) {
     formData.set('track_number', String(track?.trackNumber || track?.track || ''));
     formData.set('duration', String(Number(track?.duration || 0)));
     formData.set('explicit', String(Boolean(track?.explicit)));
+    formData.set('lyrics', track?.lyrics || '');
     formData.set('audio', file);
     if (coverFile) formData.set('cover', coverFile);
     return formData;
@@ -126,6 +128,26 @@ export async function uploadSelfHostedTrack(track, file, coverFile = null, clien
     const record = await client
         .collection(SELFHOST_TRACKS_COLLECTION)
         .create(createTrackFormData(track, file, ownerId, coverFile));
+    return mapPocketBaseTrack(record, client);
+}
+
+export async function updateSelfHostedTrack(id, track, coverFile = null, client = pb) {
+    if (!client?.authStore?.isValid) throw new Error('You must be signed in to edit music.');
+    if (!id) throw new Error('Missing track id.');
+
+    const formData = new FormData();
+    formData.set('title', track?.title || 'Unknown Title');
+    formData.set('artist', firstArtistName(track));
+    formData.set('album', track?.album?.title || 'Unknown Album');
+    formData.set('album_artist', albumArtistName(track));
+    formData.set('release_date', track?.album?.releaseDate || track?.releaseDate || '');
+    formData.set('track_number', String(track?.trackNumber || track?.track || ''));
+    formData.set('duration', String(Number(track?.duration || 0)));
+    formData.set('explicit', String(Boolean(track?.explicit)));
+    formData.set('lyrics', track?.lyrics || '');
+    if (coverFile) formData.set('cover', coverFile);
+
+    const record = await client.collection(SELFHOST_TRACKS_COLLECTION).update(id, formData);
     return mapPocketBaseTrack(record, client);
 }
 

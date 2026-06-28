@@ -10,6 +10,7 @@ import {
     SVG_GLOBE,
 } from './icons.js';
 import { sidePanelManager } from './side-panel.js';
+import { isTtml, lyricsToTtml, parseLrc } from './lyrics-format.js';
 
 const loadAmLyrics = () => {
     const images = Array.from(document.images).filter((img) => !img.complete);
@@ -23,7 +24,9 @@ const loadAmLyrics = () => {
                         img.onload = img.onerror = res;
                     })
             )
-        ).then(() => import('@uimaxbai/am-lyrics/am-lyrics.js').catch(console.error));
+        )
+            .then(() => import('@uimaxbai/am-lyrics/am-lyrics.js').catch(console.error))
+            .catch(console.error);
     }
 };
 
@@ -204,6 +207,9 @@ export class LyricsManager {
         this.isGeniusMode = false;
         this.currentGeniusData = null;
         this.timingOffset = 0; // Offset in milliseconds (positive = delay lyrics, negative = advance lyrics)
+        window.addEventListener('track-metadata-updated', (event) => {
+            if (event.detail?.trackId != null) this.lyricsCache.delete(event.detail.trackId);
+        });
     }
 
     static async initialize(api) {
@@ -432,6 +438,24 @@ export class LyricsManager {
 
     async fetchLyrics(trackId, track = null) {
         if (track) {
+            if (isTtml(track.lyrics)) {
+                const lyricsData = {
+                    ttml: track.lyrics,
+                    lyricsProvider: 'Local',
+                };
+                this.lyricsCache.set(trackId, lyricsData);
+                return lyricsData;
+            }
+
+            if (parseLrc(track.lyrics).length) {
+                const lyricsData = {
+                    subtitles: track.lyrics,
+                    lyricsProvider: 'Local',
+                };
+                this.lyricsCache.set(trackId, lyricsData);
+                return lyricsData;
+            }
+
             if (this.lyricsCache.has(trackId)) {
                 return this.lyricsCache.get(trackId);
             }
@@ -1090,6 +1114,8 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
 
         container.innerHTML = '';
         const amLyrics = document.createElement('am-lyrics');
+        const localTtml = lyricsToTtml(track.lyrics, track.duration);
+        if (localTtml) amLyrics.ttml = localTtml;
         amLyrics.setAttribute('song-title', title);
         amLyrics.setAttribute('song-artist', artist);
         if (album) amLyrics.setAttribute('song-album', album);

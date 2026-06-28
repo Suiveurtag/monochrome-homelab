@@ -1,7 +1,10 @@
 export class MusicDatabase {
     constructor() {
         this.dbName = 'MonochromeDB';
-        this.version = 12;
+        // v13 adds the self-hosted library stores. The store definitions were
+        // previously shipped without a version bump, so existing v12 databases
+        // never ran the upgrade handler.
+        this.version = 13;
         this.db = null;
     }
 

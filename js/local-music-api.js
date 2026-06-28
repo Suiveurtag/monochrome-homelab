@@ -165,8 +165,28 @@ export class LocalMusicAPI {
             db.getUploadedTracks().catch(() => []),
         ]);
         const localFiles = Array.isArray(window.localFilesCache) ? window.localFilesCache : [];
+        const uploadedById = new Map(uploadedTracks.map((track) => [String(track.id), track]));
+        const serverWithLocalMetadata = serverTracks.map((track) => {
+            const local = uploadedById.get(String(track.id));
+            if (!local) return track;
+            return {
+                ...track,
+                ...local,
+                serverAudioUrl: track.serverAudioUrl,
+                serverCoverUrl: track.serverCoverUrl,
+                artist: { ...track.artist, ...local.artist },
+                artists: local.artists?.length ? local.artists : track.artists,
+                album: {
+                    ...track.album,
+                    ...local.album,
+                    artist: { ...track.album?.artist, ...local.album?.artist },
+                },
+            };
+        });
         return uniqueBy(
-            mergeById(serverTracks, mergeById(uploadedTracks, localFiles)).map((track) => this.normalizeTrack(track)).filter(Boolean),
+            mergeById(serverWithLocalMetadata, mergeById(uploadedTracks, localFiles))
+                .map((track) => this.normalizeTrack(track))
+                .filter(Boolean),
             (track) => track.id || getLocalTrackKey(track)
         );
     }
@@ -176,7 +196,8 @@ export class LocalMusicAPI {
         const customAlbums = await db.getLocalAlbums().catch(() => []);
         const grouped = new Map();
         for (const track of tracks) {
-            const key = track.album?.id || `local-album-${hashString(`${getArtistName(track)}|${getAlbumTitle(track)}`)}`;
+            const key =
+                track.album?.id || `local-album-${hashString(`${getArtistName(track)}|${getAlbumTitle(track)}`)}`;
             if (!grouped.has(key)) grouped.set(key, []);
             grouped.get(key).push(track);
         }
@@ -216,7 +237,8 @@ export class LocalMusicAPI {
             uuid: playlist.uuid || playlist.id,
             title: playlist.title || playlist.name,
             numberOfTracks: playlist.numberOfTracks || playlist.tracks?.length || 0,
-            image: playlist.image || playlist.cover || playlist.tracks?.find((track) => track.album?.cover)?.album?.cover,
+            image:
+                playlist.image || playlist.cover || playlist.tracks?.find((track) => track.album?.cover)?.album?.cover,
             isUserPlaylist: true,
         }));
     }
@@ -300,8 +322,10 @@ export class LocalMusicAPI {
     async getAlbum(id) {
         const tracks = (await this.getTracks()).filter((track) => String(track.album?.id) === String(id));
         if (tracks.length === 0) throw new Error('Local album not found');
+        const customAlbums = await db.getLocalAlbums().catch(() => []);
+        const custom = customAlbums.find((album) => String(album.id) === String(id));
         return {
-            album: this.normalizeAlbum(tracks[0].album, tracks),
+            album: this.normalizeAlbum({ ...tracks[0].album, ...custom }, tracks),
             tracks: tracks.sort((a, b) => (a.trackNumber || 0) - (b.trackNumber || 0)),
         };
     }
@@ -312,12 +336,19 @@ export class LocalMusicAPI {
         );
         if (tracks.length === 0) throw new Error('Local artist not found');
 
-        const artist = this.normalizeArtist(
-            tracks.flatMap((track) => track.artists || [track.artist]).find((item) => String(item?.id) === String(id)),
-            tracks
-        );
+        const customArtists = await db.getLocalArtists().catch(() => []);
+        const custom = customArtists.find((item) => String(item.id) === String(id));
+        const sourceArtist = tracks
+            .flatMap((track) => track.artists || [track.artist])
+            .find((item) => String(item?.id) === String(id));
+        const artist = this.normalizeArtist({ ...sourceArtist, ...custom }, tracks);
         const albums = uniqueBy(
-            tracks.map((track) => this.normalizeAlbum(track.album, tracks.filter((t) => t.album?.id === track.album?.id))),
+            tracks.map((track) =>
+                this.normalizeAlbum(
+                    track.album,
+                    tracks.filter((t) => t.album?.id === track.album?.id)
+                )
+            ),
             (album) => album.id
         );
 

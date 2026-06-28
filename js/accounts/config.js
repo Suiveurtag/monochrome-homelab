@@ -35,13 +35,19 @@ const account = {
         }
     },
 
-    async create(id, email, password) {
-        const username = email.split('@')[0].replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32) || undefined;
+    async create(_id, email, password) {
+        const username =
+            email
+                .split('@')[0]
+                .replace(/[^a-zA-Z0-9_-]/g, '')
+                .slice(0, 32) || undefined;
         const record = await pb.collection('users').create({
             email,
             password,
             passwordConfirm: password,
             name: username,
+            access_status: 'pending',
+            role: 'member',
         });
         return normalizeUser(record);
     },

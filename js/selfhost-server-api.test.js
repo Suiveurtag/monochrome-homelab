@@ -6,6 +6,7 @@ import {
     listSelfHostedTracks,
     mapPocketBaseTrack,
     pocketBaseFileUrl,
+    updateSelfHostedTrack,
 } from './selfhost-server-api.js';
 
 describe('selfhost-server-api helpers', () => {
@@ -25,6 +26,7 @@ describe('selfhost-server-api helpers', () => {
             track_number: 7,
             release_date: '2026-06-24',
             explicit: true,
+            lyrics: '[00:01.00] Local lyrics',
             audio: 'song.flac',
             cover: 'cover.jpg',
             created: '2026-06-24 10:00:00Z',
@@ -41,6 +43,7 @@ describe('selfhost-server-api helpers', () => {
             duration: 123,
             trackNumber: 7,
             explicit: true,
+            lyrics: '[00:01.00] Local lyrics',
             artist: { name: 'Artist' },
             album: {
                 title: 'Album',
@@ -77,6 +80,53 @@ describe('selfhost-server-api helpers', () => {
         expect(formData.get('audio')).toBe(file);
     });
 
+    test('updates editable metadata and an optional cover without replacing audio', async () => {
+        const update = vi.fn().mockResolvedValue({
+            id: 'track1',
+            title: 'New title',
+            artist: 'New artist',
+            album: 'New album',
+            album_artist: 'New artist',
+            track_number: 4,
+            duration: 180,
+            cover: 'new-cover.webp',
+            audio: 'song.flac',
+        });
+        const client = {
+            authStore: { isValid: true },
+            collection: vi.fn(() => ({ update })),
+            files: { getURL: vi.fn((_record, filename) => `/files/${filename}`) },
+        };
+        const cover = new File(['cover'], 'cover.webp', { type: 'image/webp' });
+
+        const result = await updateSelfHostedTrack(
+            'track1',
+            {
+                title: 'New title',
+                artist: { name: 'New artist' },
+                album: { title: 'New album', artist: { name: 'New artist' }, releaseDate: '2026-06-27' },
+                trackNumber: 4,
+                duration: 180,
+                explicit: true,
+                lyrics: '[00:01.00] Local lyrics',
+            },
+            cover,
+            client
+        );
+
+        const [, formData] = update.mock.calls[0];
+        expect(client.collection).toHaveBeenCalledWith(SELFHOST_TRACKS_COLLECTION);
+        expect(formData.get('title')).toBe('New title');
+        expect(formData.get('artist')).toBe('New artist');
+        expect(formData.get('album')).toBe('New album');
+        expect(formData.get('release_date')).toBe('2026-06-27');
+        expect(formData.get('explicit')).toBe('true');
+        expect(formData.get('lyrics')).toBe('[00:01.00] Local lyrics');
+        expect(formData.get('cover')).toBe(cover);
+        expect(formData.has('audio')).toBe(false);
+        expect(result).toMatchObject({ id: 'track1', title: 'New title', serverAudioUrl: '/files/song.flac' });
+    });
+
     test('supports both PocketBase getURL and getUrl client versions', () => {
         const record = { audio: 'song.flac' };
         const modern = { files: { getURL: vi.fn(() => 'modern-url') } };
@@ -90,7 +140,9 @@ describe('selfhost-server-api helpers', () => {
         const fetchMock = vi.fn().mockResolvedValue({
             ok: true,
             json: async () => ({
-                items: [{ id: 'server1', title: 'Server Song', artist: 'Artist', album: 'Album', audio: 'server.flac' }],
+                items: [
+                    { id: 'server1', title: 'Server Song', artist: 'Artist', album: 'Album', audio: 'server.flac' },
+                ],
             }),
         });
         const client = {
@@ -104,7 +156,11 @@ describe('selfhost-server-api helpers', () => {
             headers: { Authorization: 'Bearer ' + 'token123' },
         });
         expect(tracks).toHaveLength(1);
-        expect(tracks[0]).toMatchObject({ id: 'server1', title: 'Server Song', serverAudioUrl: '/api/files/server.flac' });
+        expect(tracks[0]).toMatchObject({
+            id: 'server1',
+            title: 'Server Song',
+            serverAudioUrl: '/api/files/server.flac',
+        });
     });
 
     test('exposes the private per-user tracks collection name', () => {
@@ -147,8 +203,8 @@ describe('selfhost-server-api helpers', () => {
     });
 
     test('rejects remote imports when the user is not signed in', async () => {
-        await expect(importRemoteSelfHostedTrack({ url: 'https://example.test/import.flac' }, { authStore: {} })).rejects.toThrow(
-            'signed in'
-        );
+        await expect(
+            importRemoteSelfHostedTrack({ url: 'https://example.test/import.flac' }, { authStore: {} })
+        ).rejects.toThrow('signed in');
     });
 });

@@ -2298,6 +2298,8 @@ export const sidebarSectionSettings = {
     DEFAULT_ORDER: [
         'sidebar-nav-home',
         'sidebar-nav-library',
+        'sidebar-nav-upload',
+        'sidebar-nav-social',
         'sidebar-nav-recent',
         'sidebar-nav-settings',
         'sidebar-nav-party',
@@ -2391,8 +2393,13 @@ export const sidebarSectionSettings = {
         const baseOrder = this.DEFAULT_ORDER;
         const safeOrder = Array.isArray(order) ? order.filter((id) => baseOrder.includes(id)) : [];
         const uniqueOrder = [...new Set(safeOrder)];
-        const missing = baseOrder.filter((id) => !uniqueOrder.includes(id));
-        return [...uniqueOrder, ...missing];
+        baseOrder.forEach((id, index) => {
+            if (uniqueOrder.includes(id)) return;
+            const nextKnown = baseOrder.slice(index + 1).find((candidate) => uniqueOrder.includes(candidate));
+            if (nextKnown) uniqueOrder.splice(uniqueOrder.indexOf(nextKnown), 0, id);
+            else uniqueOrder.push(id);
+        });
+        return uniqueOrder;
     },
 
     getOrder() {

@@ -2,6 +2,8 @@
 import { getTrackArtists } from './utils.js';
 import { loadProfile } from './profile.js';
 import { settingsUiState } from './storage.js';
+import { socialManager } from './social.js';
+import { adminManager } from './admin.js';
 
 export function navigate(path) {
     if (path === window.location.pathname) {
@@ -41,6 +43,9 @@ export function createRouter(ui) {
         };
 
         switch (page) {
+            case 'admin':
+                await adminManager.renderPage(ui);
+                break;
             case 'parties':
                 await ui.renderPartiesPage();
                 break;
@@ -86,6 +91,10 @@ export function createRouter(ui) {
                 break;
             case 'upload':
                 await ui.renderUploadPage();
+                break;
+            case 'social':
+                await ui.showPage('social');
+                await socialManager.renderPage(param);
                 break;
             case 'recent':
                 await ui.renderRecentPage();

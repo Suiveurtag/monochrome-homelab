@@ -3,6 +3,7 @@ import discordSvg from '../images/discord.svg?svg&size=22';
 import googleSvg from '../images/google.svg?svg&size=22';
 import githubSvg from '../images/github.svg?svg&size=22';
 import spotifySvg from '../images/spotify.svg?svg&size=22';
+import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
 import { isIos, isSafari } from './platform-detection.js';
 import { hapticLight } from './haptics.js';
 import { MusicAPI } from './music-api.js';
@@ -30,6 +31,14 @@ import { db } from './db.js';
 import { showNotification } from './downloads.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { authManager } from './accounts/auth.js';
+import { enforceAccessGate } from './access-control.js';
+import {
+    beginSiteIntro,
+    initializeSiteIntroActivityTracking,
+    resolveSiteIntroTarget,
+    revealAccessGate,
+} from './site-intro.js';
+import { adminManager } from './admin.js';
 import {
     deleteSelfHostedTrack,
     importRemoteSelfHostedTrack,
@@ -40,6 +49,7 @@ import { uploadSelfHostedFilesBatch } from './selfhost-upload-batch.js';
 import { registerSW } from 'virtual:pwa-register';
 import { openEditProfile } from './profile.js';
 import { ThemeStore } from './themeStore.js';
+import { socialManager } from './social.js';
 import './commandPalette.js';
 import {
     parseCSV,
@@ -151,6 +161,9 @@ async function initializeSelfHostedUploads() {
                                 <div class="track-title">${escapeHtml(track.title)}</div>
                                 <div class="track-artist">${escapeHtml(track.artist?.name)} • ${escapeHtml(track.album?.title)} • ${formatDuration(track.duration)}</div>
                             </div>
+                            <button class="icon-btn selfhost-edit-track" data-edit-track="${escapeHtml(track.id)}" title="Edit metadata" aria-label="Edit metadata">
+                                ${EDIT_METADATA_ICON}
+                            </button>
                             <button class="icon-btn selfhost-delete-track" data-delete-track="${escapeHtml(track.id)}" title="Delete from server">
                                 ${SVG_CLOSE(18)}
                             </button>
@@ -218,12 +231,19 @@ async function initializeSelfHostedUploads() {
     });
 
     list.addEventListener('click', async (event) => {
+        const editButton = event.target.closest('[data-edit-track]');
+        if (editButton) {
+            const track = await MusicAPI.instance.getTrackMetadata(editButton.dataset.editTrack).catch(() => null);
+            if (track) UIRenderer.instance.openMetadataEditor('track', track);
+            return;
+        }
         const button = event.target.closest('[data-delete-track]');
         if (!button) return;
         const trackId = button.dataset.deleteTrack;
         if (!trackId) return;
         if (!confirm('Delete this track from the server?')) return;
         await deleteSelfHostedTrack(trackId);
+        await db.deleteUploadedTrack(trackId).catch(() => {});
         await render();
         window.dispatchEvent(new CustomEvent('local-library-updated'));
         window.dispatchEvent(new CustomEvent('library-changed'));
@@ -482,6 +502,15 @@ async function uploadCoverImage(file) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    const siteIntro = beginSiteIntro();
+    initializeSiteIntroActivityTracking();
+    await enforceAccessGate({
+        onReady: async ({ gateVisible }) => {
+            await siteIntro.finish(resolveSiteIntroTarget());
+            if (gateVisible) revealAccessGate();
+        },
+    });
+    adminManager.updateVisibility();
     await modernSettings.waitPending();
 
     // Request persistent storage to reduce risk of browser wiping data on updates or cleanup
@@ -698,6 +727,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     await initializePlayerEvents(Player.instance, audioPlayer, scrobbler, UIRenderer.instance);
+    authManager.onAuthStateChanged((user) => {
+        if (user) socialManager.initialize(MusicAPI.instance, Player.instance).catch(console.error);
+    });
     initializeTrackInteractions(
         Player.instance,
         MusicAPI.instance,

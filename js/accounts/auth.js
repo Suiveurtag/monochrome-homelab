@@ -1,11 +1,16 @@
 // js/accounts/auth.js
-import { auth } from './config.js';
+import { auth, pb } from './config.js';
 
 export class AuthManager {
     constructor() {
         this.user = null;
         this.authListeners = [];
-        this.init().catch(console.error);
+        this.accessCheckInterval = null;
+        this.accessSubscription = null;
+        this.ready = this.init().catch((error) => {
+            console.error(error);
+            this.user = null;
+        });
     }
 
     async init() {
@@ -31,6 +36,7 @@ export class AuthManager {
 
         try {
             this.user = await auth.get();
+            this.startAccessMonitor();
             this.updateUI(this.user);
             this.authListeners.forEach((listener) => listener(this.user));
         } catch {
@@ -45,6 +51,48 @@ export class AuthManager {
         if (this.user !== null) {
             callback(this.user);
         }
+    }
+
+    startAccessMonitor() {
+        if (!window.__AUTH_GATE__ || !this.user) return;
+        this.stopAccessMonitor();
+
+        const userId = this.user.$id;
+        const revokeAccess = () => {
+            this.stopAccessMonitor();
+            pb.authStore.clear();
+            this.user = null;
+            window.location.reload();
+        };
+        const validateAccess = async () => {
+            try {
+                const user = await auth.get();
+                if (user.access_status !== 'active') revokeAccess();
+            } catch {
+                revokeAccess();
+            }
+        };
+
+        pb.collection('users')
+            .subscribe(userId, (event) => {
+                if (event.record?.access_status !== 'active') revokeAccess();
+            })
+            .then((unsubscribe) => {
+                this.accessSubscription = unsubscribe;
+            })
+            .catch((error) => console.warn('Unable to monitor account status:', error));
+
+        this.accessCheckInterval = window.setInterval(validateAccess, 60_000);
+        document.addEventListener('visibilitychange', validateAccess, { signal: this.accessMonitorAbort.signal });
+    }
+
+    stopAccessMonitor() {
+        if (this.accessCheckInterval) window.clearInterval(this.accessCheckInterval);
+        this.accessCheckInterval = null;
+        void this.accessSubscription?.();
+        this.accessSubscription = null;
+        this.accessMonitorAbort?.abort();
+        this.accessMonitorAbort = new AbortController();
     }
 
     async signInWithGoogle() {
@@ -99,31 +147,29 @@ export class AuthManager {
         }
     }
 
-    async signInWithEmail(email, password) {
+    async signInWithEmail(email, password, { silent = false } = {}) {
         try {
             await auth.createEmailPasswordSession(email, password);
             this.user = await auth.get();
+            this.startAccessMonitor();
             this.updateUI(this.user);
             this.authListeners.forEach((listener) => listener(this.user));
             return this.user;
         } catch (error) {
             console.error('Email Login failed:', error);
-            alert(`Login failed: ${error.message}`);
+            if (!silent) alert(`Login failed: ${error.message}`);
             throw error;
         }
     }
 
-    async signUpWithEmail(email, password) {
+    async signUpWithEmail(email, password, { silent = false } = {}) {
         try {
-            await auth.create('unique()', email, password);
-            await auth.createEmailPasswordSession(email, password);
-            this.user = await auth.get();
-            this.updateUI(this.user);
-            this.authListeners.forEach((listener) => listener(this.user));
-            return this.user;
+            const user = await auth.create('unique()', email, password);
+            if (!silent) alert('Account request created. An administrator must approve it before you can sign in.');
+            return user;
         } catch (error) {
             console.error('Sign Up failed:', error);
-            alert(`Sign Up failed: ${error.message}`);
+            if (!silent) alert(`Sign Up failed: ${error.message}`);
             throw error;
         }
     }
@@ -153,6 +199,7 @@ export class AuthManager {
 
     async signOut() {
         try {
+            this.stopAccessMonitor();
             await auth.deleteSession('current');
             this.user = null;
             this.updateUI(null);
