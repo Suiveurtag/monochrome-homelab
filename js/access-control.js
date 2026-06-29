@@ -34,6 +34,29 @@ function wait(duration) {
     return new Promise((resolve) => window.setTimeout(resolve, duration));
 }
 
+function initializeLockClickAnimation(card) {
+    const icon = card?.querySelector('.access-card-icon');
+    if (!icon) return;
+
+    let animationTimer = null;
+    const triggerAnimation = () => {
+        if (animationTimer) {
+            window.clearTimeout(animationTimer);
+            animationTimer = null;
+        }
+        icon.classList.remove('is-lock-clicked');
+        window.requestAnimationFrame(() => {
+            icon.classList.add('is-lock-clicked');
+            animationTimer = window.setTimeout(() => {
+                icon.classList.remove('is-lock-clicked');
+                animationTimer = null;
+            }, 560);
+        });
+    };
+
+    icon.addEventListener('click', triggerAnimation);
+}
+
 async function playAccessGrantedAnimation(card, message) {
     if (!card) return;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -103,6 +126,7 @@ export async function enforceAccessGate({ onReady } = {}) {
         gradientTo: '#B497CF',
         glowColor: '#120F17',
     });
+    initializeLockClickAnimation(card);
     signup.disabled = !config.registrations_open;
     signup.title = config.registrations_open ? '' : 'Registrations are closed';
 
