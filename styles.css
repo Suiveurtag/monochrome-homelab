@@ -1672,6 +1672,7 @@ body.site-intro-active {
     cursor: pointer;
     animation: access-rainbow 2s linear infinite;
     transition:
+        transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
         box-shadow 180ms ease,
         filter 180ms ease,
         color 180ms ease;
@@ -1680,7 +1681,7 @@ body.site-intro-active {
 .access-rainbow-button::before {
     position: absolute;
     bottom: -14%;
-    left: 20%;
+    left: 50%;
     z-index: 0;
     width: 60%;
     height: 24%;
@@ -1697,6 +1698,7 @@ body.site-intro-active {
     content: '';
     filter: blur(0.75rem);
     opacity: 0.72;
+    transform: translateX(-50%);
     animation: access-rainbow 2s linear infinite;
     transition:
         transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -1729,6 +1731,7 @@ body.site-intro-active {
         inset 0 0 18px rgb(255 255 255 / 0.46),
         0 14px 34px rgb(0 0 0 / 0.2);
     filter: brightness(1.04);
+    transform: scale(1.025);
 }
 
 .access-rainbow-button:hover::before {
@@ -1748,6 +1751,7 @@ body.site-intro-active {
         inset 0 0 20px rgb(255 255 255 / 0.28),
         0 8px 20px rgb(0 0 0 / 0.16);
     filter: brightness(0.94) saturate(1.16);
+    transform: scale(0.985);
 }
 
 .access-rainbow-button:active::before {
