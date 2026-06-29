@@ -1640,22 +1640,41 @@ body.site-intro-active {
 }
 
 .access-rainbow-button {
+    --access-rainbow-1: 0 100% 63%;
+    --access-rainbow-2: 270 100% 63%;
+    --access-rainbow-3: 210 100% 63%;
+    --access-rainbow-4: 195 100% 63%;
+    --access-rainbow-5: 90 100% 63%;
+
     position: relative;
     isolation: isolate;
     overflow: visible;
-    border: 1px solid rgb(255 255 255 / 0.82);
+    border: 2px solid transparent;
     color: #121213;
-    background: linear-gradient(180deg, #ffffff, #f1f1f3);
+    background:
+        linear-gradient(#ffffff, #ffffff),
+        linear-gradient(#ffffff 50%, rgb(255 255 255 / 0.6) 80%, rgb(255 255 255 / 0)),
+        linear-gradient(
+                90deg,
+                hsl(var(--access-rainbow-1)),
+                hsl(var(--access-rainbow-5)),
+                hsl(var(--access-rainbow-3)),
+                hsl(var(--access-rainbow-4)),
+                hsl(var(--access-rainbow-2)),
+                hsl(var(--access-rainbow-1))
+            );
+    background-clip: padding-box, border-box, border-box;
+    background-origin: border-box;
+    background-size: 200% 100%;
     box-shadow:
-        inset 0 1px rgb(255 255 255 / 0.92),
-        0 14px 34px rgb(255 255 255 / 0.08);
+        inset 0 1px rgb(255 255 255 / 0.96),
+        0 12px 30px rgb(0 0 0 / 0.18);
     cursor: pointer;
+    animation: access-rainbow 2s linear infinite;
     transition:
-        transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
         box-shadow 180ms ease,
         filter 180ms ease,
-        background 180ms ease,
-        border-color 180ms ease;
+        color 180ms ease;
 }
 
 .access-rainbow-button::before {
@@ -1666,13 +1685,37 @@ body.site-intro-active {
     width: 60%;
     height: 24%;
     border-radius: 999px;
-    background: linear-gradient(90deg, rgb(255 255 255 / 0), rgb(255 255 255 / 0.95), rgb(255 255 255 / 0));
+    background: linear-gradient(
+        90deg,
+        hsl(var(--access-rainbow-1)),
+        hsl(var(--access-rainbow-5)),
+        hsl(var(--access-rainbow-3)),
+        hsl(var(--access-rainbow-4)),
+        hsl(var(--access-rainbow-2))
+    );
+    background-size: 200% 100%;
     content: '';
     filter: blur(0.75rem);
     opacity: 0.72;
+    animation: access-rainbow 2s linear infinite;
     transition:
+        transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
         opacity 180ms ease,
         filter 180ms ease;
+}
+
+.access-rainbow-button::after {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background: linear-gradient(110deg, transparent 22%, rgb(255 255 255 / 0.72) 46%, transparent 70%);
+    background-size: 250% 100%;
+    background-position: 150% 0;
+    content: '';
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 160ms ease;
 }
 
 .access-rainbow-button > * {
@@ -1682,22 +1725,61 @@ body.site-intro-active {
 
 .access-rainbow-button:hover {
     box-shadow:
-        inset 0 1px rgb(255 255 255 / 0.96),
-        0 0 0 1px rgb(255 255 255 / 0.45),
-        0 18px 40px rgb(255 255 255 / 0.12);
-    filter: brightness(1.08);
-    border-color: #fff;
-    background: linear-gradient(180deg, #ffffff, #fafafd);
-    transform: translateY(-1px) scale(1.025);
+        inset 0 1px rgb(255 255 255),
+        inset 0 0 18px rgb(255 255 255 / 0.46),
+        0 14px 34px rgb(0 0 0 / 0.2);
+    filter: brightness(1.04);
 }
 
 .access-rainbow-button:hover::before {
-    opacity: 0.82;
-    filter: blur(0.9rem);
+    opacity: 0.92;
+    filter: blur(0.9rem) saturate(1.18);
+    transform: translateX(-50%) scaleX(1.12);
+}
+
+.access-rainbow-button:hover::after {
+    opacity: 1;
+    animation: access-rainbow-button-sheen 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .access-rainbow-button:active {
-    transform: translateY(0) scale(0.985);
+    box-shadow:
+        inset 0 2px 8px rgb(18 18 19 / 0.2),
+        inset 0 0 20px rgb(255 255 255 / 0.28),
+        0 8px 20px rgb(0 0 0 / 0.16);
+    filter: brightness(0.94) saturate(1.16);
+}
+
+.access-rainbow-button:active::before {
+    opacity: 1;
+    filter: blur(0.68rem) saturate(1.35);
+    transform: translateX(-50%) scaleX(0.88);
+}
+
+.access-rainbow-button:active::after {
+    background: rgb(18 18 19 / 0.08);
+    opacity: 1;
+    animation: none;
+}
+
+@keyframes access-rainbow {
+    0% {
+        background-position: 0%;
+    }
+
+    100% {
+        background-position: 200%;
+    }
+}
+
+@keyframes access-rainbow-button-sheen {
+    from {
+        background-position: 150% 0;
+    }
+
+    to {
+        background-position: -80% 0;
+    }
 }
 
 .access-request-button {
@@ -2172,6 +2254,7 @@ body.site-intro-active {
 
     .access-rainbow-button,
     .access-rainbow-button::before,
+    .access-rainbow-button::after,
     .access-border-beam::before,
     .access-border-beam::after,
     .access-card-icon.is-lock-clicked svg,
