@@ -2870,9 +2870,10 @@ export class UIRenderer {
             const favorites = await db.getFavorites('track');
             const playlists = await db.getPlaylists(true);
             const uploadedTracks = await db.getUploadedTracks().catch(() => []);
+            const globalTracks = await this.api.getAPI().getTracks().catch(() => []);
 
             const hasActivity =
-                uploadedTracks.length > 0 || history.length > 0 || favorites.length > 0 || playlists.length > 0;
+                globalTracks.length > 0 || uploadedTracks.length > 0 || history.length > 0 || favorites.length > 0 || playlists.length > 0;
 
             // Handle Editor's Picks visibility based on settings
             if (!homePageSettings.shouldShowEditorsPicks()) {
@@ -3088,6 +3089,7 @@ export class UIRenderer {
         const favorites = await db.getFavorites('track');
         const playlists = await db.getPlaylists(true);
         const playlistTracks = playlists.flatMap((p) => p.tracks || []);
+        const globalTracks = await this.api.getAPI().getTracks().catch(() => []);
 
         const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
 
@@ -3095,6 +3097,7 @@ export class UIRenderer {
             ...shuffle(playlistTracks).slice(0, 20),
             ...shuffle(favorites).slice(0, 20),
             ...shuffle(history).slice(0, 10),
+            ...shuffle(globalTracks).slice(0, 30),
         ];
 
         const seenIds = new Set();

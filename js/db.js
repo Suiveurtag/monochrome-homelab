@@ -268,6 +268,17 @@ export class MusicDatabase {
         }
     }
 
+    async addFavorite(type, item, addedAt = Date.now()) {
+        const plural = type === 'mix' ? 'mixes' : `${type}s`;
+        const storeName = `favorites_${plural}`;
+        const key = type === 'playlist' ? item.uuid : item.id;
+        if (!key) throw new Error('Favorite item is missing an id');
+        const minified = this._minifyItem(type, item);
+        await this.performTransaction(storeName, 'readwrite', (store) => store.put({ ...minified, addedAt }));
+        window.dispatchEvent(new CustomEvent('favorites-changed'));
+        return true;
+    }
+
     async isFavorite(type, id) {
         const plural = type === 'mix' ? 'mixes' : `${type}s`;
         const storeName = `favorites_${plural}`;

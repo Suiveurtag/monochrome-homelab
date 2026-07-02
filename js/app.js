@@ -41,10 +41,12 @@ import {
 import { adminManager } from './admin.js';
 import {
     deleteSelfHostedTrack,
-    importRemoteSelfHostedTrack,
+    createSpotifyImport,
     listSelfHostedTracks,
     uploadSelfHostedTrack,
 } from './selfhost-server-api.js';
+import { spotifyImportManager } from './spotify-import-manager.js';
+import { spotifyLikesImporter } from './spotify-likes-importer.js';
 import { uploadSelfHostedFilesBatch } from './selfhost-upload-batch.js';
 import { registerSW } from 'virtual:pwa-register';
 import { openEditProfile } from './profile.js';
@@ -116,20 +118,21 @@ async function loadDownloadsModule() {
 
 async function fetchcontributors() {}
 
-function formatDuration(seconds = 0) {
-    const total = Math.max(0, Math.round(Number(seconds) || 0));
-    const mins = Math.floor(total / 60);
-    const secs = String(total % 60).padStart(2, '0');
-    return `${mins}:${secs}`;
-}
-
 async function initializeSelfHostedUploads() {
     const input = document.getElementById('selfhost-upload-input');
-    const importInput = document.getElementById('selfhost-flac-url');
-    const importButton = document.getElementById('selfhost-flac-import-btn');
+    const spotifyForm = document.getElementById('spotify-import-form');
+    const spotifyInput = document.getElementById('spotify-import-url');
+    const spotifyButton = document.getElementById('spotify-import-btn');
+    const spotifyHint = document.getElementById('spotify-import-hint');
+    const localModal = document.getElementById('local-upload-modal');
+    const localDropzone = document.getElementById('local-upload-dropzone');
+    const searchInput = document.getElementById('selfhost-track-search');
+    const sortInput = document.getElementById('selfhost-track-sort');
     const list = document.getElementById('selfhost-uploaded-tracks');
     const stats = document.getElementById('selfhost-upload-stats');
     if (!input || !list || !stats) return;
+
+    let allTracks = [];
 
     const escapeHtml = (value) =>
         String(value || '')
@@ -141,36 +144,48 @@ async function initializeSelfHostedUploads() {
 
     const render = async () => {
         if (!authManager.user) {
-            stats.textContent = 'Sign in with email/password to upload music to this server.';
-            list.innerHTML = '<p style="color: var(--muted-foreground)">Server uploads are private per account.</p>';
+            stats.title = 'Sign in to contribute music to this server.';
+        }
+        const query = searchInput?.value?.trim().toLowerCase() || '';
+        const tracks = allTracks
+            .filter((track) => !query || `${track.title} ${track.artist?.name} ${track.album?.title}`.toLowerCase().includes(query))
+            .sort((a, b) => {
+                if (sortInput?.value === 'title') return a.title.localeCompare(b.title);
+                if (sortInput?.value === 'artist') return a.artist.name.localeCompare(b.artist.name);
+                if (sortInput?.value === 'album') return a.album.title.localeCompare(b.album.title);
+                return Number(b.uploadedAt || 0) - Number(a.uploadedAt || 0);
+            });
+        stats.textContent = `${allTracks.length} server track${allTracks.length === 1 ? '' : 's'}`;
+        if (!tracks.length) {
+            list.innerHTML = '<p style="color: var(--muted-foreground)">No uploaded music yet.</p>';
             return;
         }
 
-        const tracks = await listSelfHostedTracks().catch((error) => {
+        // Use the same rows and data bindings as every other Monochrome music list.
+        // This makes uploaded tracks directly playable through the global track handlers.
+        await UIRenderer.instance.renderListWithTracks(list, tracks, true);
+        const currentUserId = authManager.user?.id || authManager.user?.$id;
+        tracks.forEach((track) => {
+            if (!track.ownerId || track.ownerId !== currentUserId) return;
+            const row = Array.from(list.querySelectorAll('.track-item')).find(
+                (element) => element.dataset.trackId === String(track.id)
+            );
+            const actions = row?.querySelector('.track-item-actions');
+            if (!actions) return;
+            actions.insertAdjacentHTML(
+                'afterbegin',
+                `<button class="btn-icon" data-edit-track="${escapeHtml(track.id)}" title="Edit metadata" aria-label="Edit metadata">${EDIT_METADATA_ICON}</button>
+                 <button class="btn-icon" data-delete-track="${escapeHtml(track.id)}" title="Delete from server" aria-label="Delete from server">${SVG_CLOSE(18)}</button>`
+            );
+        });
+    };
+
+    const refreshTracks = async () => {
+        allTracks = await listSelfHostedTracks().catch((error) => {
             console.warn('[SelfHost] Failed to list tracks:', error);
             return [];
         });
-        stats.textContent = `${tracks.length} server track${tracks.length === 1 ? '' : 's'}`;
-        list.innerHTML = tracks.length
-            ? tracks
-                  .map(
-                      (track) => `
-                        <div class="track-item" data-track-id="${escapeHtml(track.id)}">
-                            <img class="track-cover" src="${escapeHtml(track.album?.cover || '/assets/appicon.png')}" alt="" />
-                            <div class="track-info">
-                                <div class="track-title">${escapeHtml(track.title)}</div>
-                                <div class="track-artist">${escapeHtml(track.artist?.name)} • ${escapeHtml(track.album?.title)} • ${formatDuration(track.duration)}</div>
-                            </div>
-                            <button class="icon-btn selfhost-edit-track" data-edit-track="${escapeHtml(track.id)}" title="Edit metadata" aria-label="Edit metadata">
-                                ${EDIT_METADATA_ICON}
-                            </button>
-                            <button class="icon-btn selfhost-delete-track" data-delete-track="${escapeHtml(track.id)}" title="Delete from server">
-                                ${SVG_CLOSE(18)}
-                            </button>
-                        </div>`
-                  )
-                  .join('')
-            : '<p style="color: var(--muted-foreground)">No uploaded music yet.</p>';
+        await render();
     };
 
     input.addEventListener('change', async (event) => {
@@ -188,7 +203,7 @@ async function initializeSelfHostedUploads() {
         input.value = '';
 
         if (result.successCount > 0) {
-            await render();
+            await refreshTracks();
             window.dispatchEvent(new CustomEvent('local-library-updated'));
             window.dispatchEvent(new CustomEvent('library-changed'));
         }
@@ -196,38 +211,84 @@ async function initializeSelfHostedUploads() {
         if (result.finalMessage) {
             showNotification(result.finalMessage);
         }
+        localModal.hidden = true;
     });
 
-    const importFromUrl = async () => {
-        const url = importInput?.value?.trim();
+    const importFromSpotify = async () => {
+        const url = spotifyInput?.value?.trim();
         if (!url) return;
         if (!authManager.user) {
             showNotification('Sign in before importing music to the server.', 'error');
             return;
         }
         try {
-            if (importButton) importButton.disabled = true;
-            showNotification('Importing remote FLAC on the server…', 'info');
-            await importRemoteSelfHostedTrack({ url });
-            if (importInput) importInput.value = '';
-            await render();
-            window.dispatchEvent(new CustomEvent('local-library-updated'));
-            window.dispatchEvent(new CustomEvent('library-changed'));
-            showNotification('Remote FLAC imported.', 'success');
+            spotifyButton.disabled = true;
+            spotifyHint.classList.remove('is-error');
+            spotifyHint.textContent = 'Starting lossless import…';
+            await createSpotifyImport(url);
+            spotifyInput.value = '';
+            spotifyHint.textContent = 'Import started — you can leave this page.';
+            await spotifyImportManager.refresh();
         } catch (error) {
-            console.error('[SelfHost] Remote import failed:', error);
-            showNotification(`Remote import failed: ${error.message}`, 'error');
+            console.error('[SelfHost] Spotify import failed:', error);
+            spotifyHint.classList.add('is-error');
+            spotifyHint.textContent = error.message;
         } finally {
-            if (importButton) importButton.disabled = false;
+            spotifyButton.disabled = false;
         }
     };
 
-    importButton?.addEventListener('click', importFromUrl);
-    importInput?.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
+    spotifyForm?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        void importFromSpotify();
+    });
+
+    document.getElementById('open-local-upload')?.addEventListener('click', () => {
+        localModal.hidden = false;
+        input.focus();
+    });
+    document.querySelectorAll('[data-close-local-upload]').forEach((button) =>
+        button.addEventListener('click', () => {
+            localModal.hidden = true;
+        })
+    );
+    ['dragenter', 'dragover'].forEach((type) =>
+        localDropzone?.addEventListener(type, (event) => {
             event.preventDefault();
-            importFromUrl();
+            localDropzone.classList.add('is-dragging');
+        })
+    );
+    ['dragleave', 'drop'].forEach((type) =>
+        localDropzone?.addEventListener(type, (event) => {
+            event.preventDefault();
+            localDropzone.classList.remove('is-dragging');
+        })
+    );
+    localDropzone?.addEventListener('drop', (event) => {
+        const files = Array.from(event.dataTransfer?.files || []).filter(
+            (file) => file.type === 'audio/flac' || file.name.toLowerCase().endsWith('.flac')
+        );
+        if (!files.length) {
+            showNotification('Drop one or more FLAC files.');
+            return;
         }
+        const transfer = new DataTransfer();
+        files.forEach((file) => transfer.items.add(file));
+        input.files = transfer.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    searchInput?.addEventListener('input', debounce(render, 160));
+    sortInput?.addEventListener('change', render);
+    const completedImportIds = new Set();
+    let importJobsInitialized = false;
+    window.addEventListener('spotify-import-jobs', async (event) => {
+        renderImportJobs(event.detail || []);
+        const completed = (event.detail || []).filter((job) => ['completed', 'partial'].includes(job.status));
+        const hasNewCompletion = importJobsInitialized && completed.some((job) => !completedImportIds.has(job.id));
+        completed.forEach((job) => completedImportIds.add(job.id));
+        importJobsInitialized = true;
+        if (hasNewCompletion) await refreshTracks();
     });
 
     list.addEventListener('click', async (event) => {
@@ -244,13 +305,48 @@ async function initializeSelfHostedUploads() {
         if (!confirm('Delete this track from the server?')) return;
         await deleteSelfHostedTrack(trackId);
         await db.deleteUploadedTrack(trackId).catch(() => {});
-        await render();
+        await refreshTracks();
         window.dispatchEvent(new CustomEvent('local-library-updated'));
         window.dispatchEvent(new CustomEvent('library-changed'));
     });
 
-    authManager.onAuthStateChanged(() => render());
-    await render();
+    authManager.onAuthStateChanged(() => refreshTracks());
+    spotifyImportManager.start();
+    spotifyLikesImporter.init();
+    const spotifyRedirect = document.getElementById('spotify-redirect-uri');
+    if (spotifyRedirect) spotifyRedirect.textContent = `${window.location.origin}/upload`;
+    await refreshTracks();
+}
+
+function renderImportJobs(jobs) {
+    const section = document.getElementById('upload-active-section');
+    const container = document.getElementById('upload-active-jobs');
+    const summary = document.getElementById('upload-active-summary');
+    if (!section || !container) return;
+    const active = jobs.filter((job) => ['queued', 'resolving', 'downloading'].includes(job.status));
+    section.hidden = active.length === 0;
+    if (!active.length) return;
+    summary.textContent = `${active.length} running`;
+    container.innerHTML = active
+        .map((job) => {
+            const total = Number(job.total || 0);
+            const done = Number(job.completed || 0) + Number(job.failed || 0);
+            const percent = total ? Math.round((done / total) * 100) : 6;
+            const cover = escapeImportHtml(job.cover || '/assets/appicon.png');
+            const title = escapeImportHtml(job.title || 'Spotify import');
+            const current = escapeImportHtml(job.current_track || 'Reading Spotify metadata…');
+            return `<article class="upload-job-card"><div class="upload-job-top"><img class="upload-job-cover" src="${cover}" alt=""><div class="upload-job-copy"><strong>${title}</strong><span>${current}</span></div></div><div class="upload-job-progress"><span style="width:${percent}%"></span></div></article>`;
+        })
+        .join('');
+}
+
+function escapeImportHtml(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 async function loadMetadataModule() {

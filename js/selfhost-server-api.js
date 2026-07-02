@@ -49,12 +49,19 @@ export function mapPocketBaseTrack(record, client = pb) {
         type: 'track',
         isLocal: true,
         isSelfHosted: true,
+        ownerId: typeof record.owner === 'string' ? record.owner : record.owner?.id || null,
         title,
         duration: Number(record.duration || 0),
         explicit: Boolean(record.explicit),
         uploadedAt: record.created ? Date.parse(record.created) : Date.now(),
         updatedAt: record.updated ? Date.parse(record.updated) : Date.now(),
         trackNumber: Number(record.track_number || 0) || null,
+        discNumber: Number(record.disc_number || 0) || null,
+        totalTracks: Number(record.total_tracks || 0) || null,
+        totalDiscs: Number(record.total_discs || 0) || null,
+        spotifyId: record.spotify_id || null,
+        spotifyUrl: record.spotify_url || null,
+        isrc: record.isrc || null,
         artist,
         artists: [artist],
         album: {
@@ -68,7 +75,57 @@ export function mapPocketBaseTrack(record, client = pb) {
         serverCoverUrl: coverUrl,
         mediaMetadata: { tags: ['Self-hosted'] },
         lyrics: record.lyrics || '',
+        importSource: record.source_provider || null,
     };
+}
+
+async function authenticatedImportRequest(path, options = {}, client = pb, fetchImpl = fetch) {
+    if (!client?.authStore?.isValid || !client?.authStore?.token) {
+        throw new Error('You must be signed in to import music.');
+    }
+    const response = await fetchImpl(path, {
+        ...options,
+        headers: {
+            Authorization: `Bearer ${client.authStore.token}`,
+            ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+            ...options.headers,
+        },
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || result.message || 'Spotify import request failed');
+    return result;
+}
+
+export async function createSpotifyImport(url, client = pb, fetchImpl = fetch) {
+    return authenticatedImportRequest(
+        '/api/selfhost/imports',
+        { method: 'POST', body: JSON.stringify({ url }) },
+        client,
+        fetchImpl
+    );
+}
+
+export async function createSpotifyLikesImport(tracks, spotifyUserId, client = pb, fetchImpl = fetch) {
+    return authenticatedImportRequest(
+        '/api/selfhost/imports',
+        { method: 'POST', body: JSON.stringify({ tracks, spotify_user_id: spotifyUserId }) },
+        client,
+        fetchImpl
+    );
+}
+
+export async function listSpotifyImports(client = pb, fetchImpl = fetch) {
+    const result = await authenticatedImportRequest('/api/selfhost/imports', {}, client, fetchImpl);
+    return result.items || [];
+}
+
+export async function cancelSpotifyImport(id, client = pb, fetchImpl = fetch) {
+    return authenticatedImportRequest(`/api/selfhost/imports/${encodeURIComponent(id)}/cancel`, { method: 'POST' }, client, fetchImpl);
+}
+
+export async function markSpotifyImportPlaylistCreated(id, client = pb) {
+    if (!client?.authStore?.isValid) throw new Error('You must be signed in.');
+    return client.collection('music_import_jobs').update(id, { playlist_created: true });
 }
 
 export function createTrackFormData(track, file, ownerId, coverFile = null) {
@@ -92,15 +149,22 @@ export function createTrackFormData(track, file, ownerId, coverFile = null) {
 }
 
 export async function listSelfHostedTracks(client = pb, fetchImpl = fetch) {
-    if (!client?.authStore?.isValid || !client?.authStore?.token) return [];
-
-    const response = await fetchImpl(`/api/collections/${SELFHOST_TRACKS_COLLECTION}/records?perPage=500`, {
-        headers: { Authorization: `Bearer ${client.authStore.token}` },
-    });
+    const headers = client?.authStore?.token ? { Authorization: `Bearer ${client.authStore.token}` } : {};
+    const response = await fetchImpl(`/api/collections/${SELFHOST_TRACKS_COLLECTION}/records?perPage=500`, { headers });
 
     if (!response.ok) throw new Error('Failed to list server uploads');
     const data = await response.json();
-    return (data.items || []).map((record) => mapPocketBaseTrack(record, client));
+    const records = [...(data.items || [])];
+    for (let page = 2; page <= Number(data.totalPages || 1); page++) {
+        const next = await fetchImpl(
+            `/api/collections/${SELFHOST_TRACKS_COLLECTION}/records?perPage=500&page=${page}`,
+            { headers }
+        );
+        if (!next.ok) throw new Error('Failed to list the complete server catalogue');
+        const nextData = await next.json();
+        records.push(...(nextData.items || []));
+    }
+    return records.map((record) => mapPocketBaseTrack(record, client));
 }
 
 export async function importRemoteSelfHostedTrack(payload, client = pb, fetchImpl = fetch) {

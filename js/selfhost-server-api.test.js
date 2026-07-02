@@ -2,6 +2,9 @@ import { describe, expect, test, vi } from 'vitest';
 import {
     SELFHOST_TRACKS_COLLECTION,
     createTrackFormData,
+    createSpotifyImport,
+    createSpotifyLikesImport,
+    listSpotifyImports,
     importRemoteSelfHostedTrack,
     listSelfHostedTracks,
     mapPocketBaseTrack,
@@ -206,5 +209,45 @@ describe('selfhost-server-api helpers', () => {
         await expect(
             importRemoteSelfHostedTrack({ url: 'https://example.test/import.flac' }, { authStore: {} })
         ).rejects.toThrow('signed in');
+    });
+
+    test('starts a Spotify import with bearer authentication', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'job1', status: 'queued' }) });
+        const client = { authStore: { isValid: true, token: 'token123' } };
+
+        const job = await createSpotifyImport('https://open.spotify.com/playlist/abc', client, fetchMock);
+
+        expect(fetchMock).toHaveBeenCalledWith('/api/selfhost/imports', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer token123', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: 'https://open.spotify.com/playlist/abc' }),
+        });
+        expect(job).toMatchObject({ id: 'job1', status: 'queued' });
+    });
+
+    test('lists persisted Spotify import jobs', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ items: [{ id: 'job1' }] }) });
+        const jobs = await listSpotifyImports({ authStore: { isValid: true, token: 'token123' } }, fetchMock);
+        expect(jobs).toEqual([{ id: 'job1' }]);
+    });
+
+    test('submits Spotify likes as one dated background job', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'likes-job' }) });
+        const client = { authStore: { isValid: true, token: 'token123' } };
+        const tracks = [{ url: 'https://open.spotify.com/track/abc', added_at: '2020-01-02T03:04:05Z' }];
+
+        await createSpotifyLikesImport(tracks, 'spotify-user', client, fetchMock);
+
+        expect(fetchMock).toHaveBeenCalledWith('/api/selfhost/imports', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer token123', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tracks, spotify_user_id: 'spotify-user' }),
+        });
+    });
+
+    test('lists the global server catalogue without requiring a Monochrome session', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ items: [] }) });
+        await listSelfHostedTracks({ authStore: {} }, fetchMock);
+        expect(fetchMock).toHaveBeenCalledWith('/api/collections/music_tracks/records?perPage=500', { headers: {} });
     });
 });

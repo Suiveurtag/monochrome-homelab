@@ -2356,60 +2356,100 @@
                 </div>
 
                 <div id="page-upload" class="page">
-                    <section class="content-section">
-                        <div class="section-header-row">
-                            <h2 class="section-title">Upload</h2>
-                            <label class="btn-primary" for="selfhost-upload-input" style="cursor: pointer">
-                                <use svg="!lucide/upload.svg" size="18" />
-                                <span>Upload FLAC</span>
-                            </label>
-                            <input
-                                id="selfhost-upload-input"
-                                type="file"
-                                accept=".flac,audio/flac"
-                                multiple
-                                style="display: none"
-                            />
-                        </div>
-                        <div
-                            style="
-                                display: grid;
-                                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-                                gap: 1rem;
-                                margin: 1rem 0 1.5rem;
-                            "
-                        >
-                            <div class="settings-group" style="margin: 0">
-                                <h3 style="margin-bottom: 0.5rem">Library</h3>
-                                <p id="selfhost-upload-stats" style="color: var(--muted-foreground)">0 tracks</p>
+                    <section class="content-section upload-studio">
+                        <header class="upload-hero">
+                            <div>
+                                <p class="upload-eyebrow">Monochrome lossless catalogue</p>
+                                <h2 class="section-title">Bring your music home.</h2>
+                                <p class="upload-lead">Import music for everyone on this Monochrome server, from Spotify or your computer.</p>
                             </div>
-                            <div class="settings-group" style="margin: 0">
-                                <h3 style="margin-bottom: 0.5rem">Direct FLAC import</h3>
-                                <p style="color: var(--muted-foreground); margin-bottom: 0.75rem">
-                                    Paste a direct http(s) URL to a FLAC file you own or are allowed to import. The
-                                    server downloads it and stores it privately in PocketBase.
-                                </p>
-                                <div style="display: flex; gap: 0.5rem; align-items: center">
-                                    <input
-                                        id="selfhost-flac-url"
-                                        class="template-input"
-                                        type="url"
-                                        placeholder="https://your-server.example/music/song.flac"
-                                    />
-                                    <button id="selfhost-flac-import-btn" class="btn-primary" type="button">
-                                        Import
+                            <p id="selfhost-upload-stats" class="upload-library-count">0 tracks</p>
+                        </header>
+
+                        <div class="upload-source-grid">
+                            <article class="upload-source-card upload-source-spotify">
+                                <div class="upload-source-icon"><img src="/images/spotify.svg" alt="" /></div>
+                                <div class="upload-source-copy">
+                                    <span class="upload-source-kicker">Spotify → lossless</span>
+                                    <h3>Paste. Import. Listen.</h3>
+                                    <p>Tracks, full albums and playlists are matched with the best available FLAC.</p>
+                                </div>
+                                <form id="spotify-import-form" class="spotify-import-form">
+                                    <label class="sr-only" for="spotify-import-url">Spotify link</label>
+                                    <input id="spotify-import-url" class="template-input" type="url" autocomplete="off" placeholder="https://open.spotify.com/album/…" required />
+                                    <button id="spotify-import-btn" class="btn-primary" type="submit">
+                                        <use svg="!lucide/sparkles.svg" size="18" />
+                                        <span>Import</span>
                                     </button>
+                                </form>
+                                <p id="spotify-import-hint" class="upload-input-hint">Spotify track, album or playlist link</p>
+                                <div class="spotify-likes-entry">
+                                    <button id="open-spotify-likes" class="spotify-likes-toggle" type="button">
+                                        <use svg="!lucide/heart.svg" size="16" />
+                                        <span>Transfer my Spotify Liked Songs</span>
+                                        <use svg="!lucide/chevron-down.svg" size="15" />
+                                    </button>
+                                    <div id="spotify-likes-panel" class="spotify-likes-panel" hidden>
+                                        <p>Connect Spotify with <code>user-library-read</code>. Every saved track will be downloaded once and liked in Monochrome with its original date.</p>
+                                        <div class="spotify-likes-fields">
+                                            <label><span>Spotify Client ID</span><input id="spotify-client-id" class="template-input" autocomplete="off" placeholder="From developer.spotify.com" /></label>
+                                            <label><span>Download order</span><select id="spotify-likes-order" class="template-input"><option value="oldest">Oldest first</option><option value="newest">Newest first</option></select></label>
+                                        </div>
+                                        <p class="spotify-redirect-help">Add <strong id="spotify-redirect-uri">this site’s /upload URL</strong> as a Redirect URI in your Spotify app.</p>
+                                        <button id="spotify-likes-connect" class="btn-secondary" type="button"><img src="/images/spotify.svg" alt="" />Connect Spotify</button>
+                                        <p id="spotify-likes-status" class="upload-input-hint" aria-live="polite"></p>
+                                    </div>
+                                </div>
+                            </article>
+
+                            <button id="open-local-upload" class="upload-source-card upload-source-local" type="button">
+                                <span class="upload-source-icon"><use svg="!lucide/folder-up.svg" size="28" /></span>
+                                <span class="upload-source-copy">
+                                    <span class="upload-source-kicker">From this device</span>
+                                    <strong>Add your own FLACs</strong>
+                                    <span>Choose files or drag them into the animated folder.</span>
+                                </span>
+                                <span class="upload-source-arrow"><use svg="!lucide/arrow-up-right.svg" size="20" /></span>
+                            </button>
+                        </div>
+
+                        <section class="upload-active-section" id="upload-active-section" hidden>
+                            <div class="upload-section-heading"><div><span class="upload-live-dot"></span><h3>Active imports</h3></div><span id="upload-active-summary"></span></div>
+                            <div id="upload-active-jobs" class="upload-job-grid"></div>
+                        </section>
+
+                        <section class="upload-library-section">
+                            <div class="upload-section-heading">
+                                <div><h3>Server catalogue</h3><span>Available everywhere in Monochrome</span></div>
+                                <div class="upload-library-tools">
+                                    <label class="upload-search"><use svg="!lucide/search.svg" size="16" /><input id="selfhost-track-search" type="search" placeholder="Search tracks, artists, albums" /></label>
+                                    <select id="selfhost-track-sort" class="template-input" aria-label="Sort server library"><option value="newest">Newest</option><option value="title">Title</option><option value="artist">Artist</option><option value="album">Album</option></select>
                                 </div>
                             </div>
-                            <div class="settings-group" style="margin: 0">
-                                <h3 style="margin-bottom: 0.5rem">Metadata creator</h3>
-                                <p style="color: var(--muted-foreground)">
-                                    Edit title, lyrics, cover, artist, album, play count and dates with the pencil icon.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="track-list" id="selfhost-uploaded-tracks"></div>
+                            <div class="track-list upload-track-list" id="selfhost-uploaded-tracks"></div>
+                            <div id="selfhost-upload-pagination" class="upload-pagination"></div>
+                        </section>
                     </section>
+
+                    <div id="local-upload-modal" class="upload-modal" hidden>
+                        <button class="upload-modal-backdrop" data-close-local-upload aria-label="Close upload dialog"></button>
+                        <section class="upload-modal-panel" role="dialog" aria-modal="true" aria-labelledby="local-upload-title">
+                            <button class="icon-btn upload-modal-close" data-close-local-upload aria-label="Close"><use svg="!lucide/x.svg" size="20" /></button>
+                            <div id="local-upload-dropzone" class="folder-upload-container">
+                                <div class="folder-upload-art" aria-hidden="true">
+                                    <div class="folder-upload-back"><div class="folder-upload-tip"></div><div class="folder-upload-cover"></div></div>
+                                    <div class="folder-upload-files"><span></span><span></span><span></span></div>
+                                    <div class="folder-upload-front"><div class="folder-upload-cover"></div></div>
+                                </div>
+                                <div class="folder-upload-copy">
+                                    <h3 id="local-upload-title">Drop your FLACs here</h3>
+                                    <p>or choose one or more files from your computer</p>
+                                    <label class="custom-file-upload" for="selfhost-upload-input">Choose FLAC files</label>
+                                    <input id="selfhost-upload-input" type="file" accept=".flac,audio/flac" multiple />
+                                </div>
+                            </div>
+                        </section>
+                    </div>
                 </div>
 
                 <div id="page-recent" class="page">
