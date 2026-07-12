@@ -43,6 +43,7 @@ import {
     fullscreenCoverTiltSpeedSettings,
     devModeSettings,
     serverDisruptionSettings,
+    playerBarEffectsSettings,
 } from './storage.js';
 import { audioContextManager, getPresetsForBandCount } from './audio-context.js';
 import { calculateBiquadResponse, interpolate, getNormalizationOffset, runAutoEqAlgorithm } from './autoeq-engine.js';
@@ -77,6 +78,14 @@ export async function initializeSettings(scrobbler, player, api, ui) {
 
     // Initialize account system UI & Settings
     authManager.updateUI(authManager.user);
+
+    const playerBarEffectSelect = document.getElementById('player-bar-effect-select');
+    if (playerBarEffectSelect) {
+        playerBarEffectSelect.value = playerBarEffectsSettings.getEffect();
+        playerBarEffectSelect.addEventListener('change', (event) => {
+            playerBarEffectsSettings.setEffect(event.target.value);
+        });
+    }
 
     // ========================================
     // Dev Mode

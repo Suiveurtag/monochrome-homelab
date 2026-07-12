@@ -2436,6 +2436,169 @@ body.site-intro-active {
     transition: all var(--transition-normal) var(--ease-out-back);
     height: var(--player-bar-height-desktop);
     animation: slide-up var(--transition-slow) var(--ease-out-back);
+    isolation: isolate;
+    overflow: visible;
+
+    --player-glow: rgb(var(--highlight-rgb, 167 139 250) / 0.9);
+}
+
+.now-playing-bar::before {
+    content: '';
+    position: absolute;
+    z-index: 4;
+    inset: 0;
+    border: 2px solid transparent;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+        linear-gradient(transparent 0 100%) padding-box,
+        conic-gradient(from var(--player-glow-angle, 0deg), transparent 0 32%, var(--player-glow) 45%, white 49%, var(--player-glow) 53%, transparent 66%) border-box;
+    filter: drop-shadow(0 0 5px rgb(var(--highlight-rgb, 167 139 250) / 0.85)) drop-shadow(0 0 14px rgb(var(--highlight-rgb, 167 139 250) / 0.45));
+    opacity: 1;
+}
+
+@property --player-glow-angle {
+    syntax: '<angle>';
+    inherits: false;
+    initial-value: 0deg;
+}
+
+@keyframes player-border-orbit {
+    to {
+        --player-glow-angle: 360deg;
+    }
+}
+
+.now-playing-bar > :not(.player-shader-stage, .player-magic-rings, .edge-light) {
+    position: relative;
+    z-index: 2;
+}
+
+.player-shader-stage,
+.player-magic-rings {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 250ms ease;
+}
+
+.player-shader-stage {
+    z-index: 0;
+    mix-blend-mode: screen;
+    clip-path: inset(0 round var(--radius));
+}
+
+.now-playing-bar.is-playing .player-shader-stage,
+.player-magic-rings.is-active {
+    opacity: 1;
+}
+
+.player-shader-stage canvas,
+.player-magic-rings canvas,
+.player-cover-blur-effect {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    opacity: 0;
+    transition: opacity 220ms ease;
+    transform-origin: center;
+}
+
+.now-playing-bar[data-player-effect='soft-aurora'] .player-shader-stage canvas {
+    transform: scale(1.25, 3.6);
+}
+
+.now-playing-bar[data-player-effect='side-rays'] .player-shader-stage canvas {
+    transform: none;
+    transform-origin: top left;
+}
+
+.now-playing-bar[data-player-effect='silk'] .player-shader-stage canvas {
+    transform: scale(1.08, 2.75);
+}
+
+.now-playing-bar[data-player-effect='strands'] .player-shader-stage canvas {
+    transform: none;
+}
+
+.player-cover-blur-effect {
+    --blur-accent: var(--highlight-rgb, 167 139 250);
+    --blur-pulse: 0.35;
+
+    background-image:
+        radial-gradient(circle at 18% 22%, rgb(var(--blur-accent) / var(--blur-pulse)), transparent 43%),
+        var(--cover-image);
+    background-position: center;
+    background-size: cover;
+    filter: blur(34px) saturate(1.35) brightness(0.7);
+    opacity: 0;
+    transform: scale(1.2);
+    animation: player-cover-drift 14s ease-in-out infinite alternate;
+}
+
+.player-cover-blur-effect::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 20% 20%, rgb(var(--highlight-rgb, 167 139 250) / 0.22), transparent 42%),
+        linear-gradient(180deg, rgb(0 0 0 / 0.18), rgb(0 0 0 / 0.52));
+    animation: player-cover-flash 5.5s ease-in-out infinite;
+}
+
+@keyframes player-cover-drift {
+    from {
+        background-position: 45% 48%;
+        transform: scale(1.2) rotate(-1.2deg);
+    }
+
+    to {
+        background-position: 56% 52%;
+        transform: scale(1.3) rotate(1.2deg);
+    }
+}
+
+@keyframes player-cover-flash {
+    0%, 100% {
+        opacity: 0.55;
+    }
+
+    42% {
+        opacity: 0.72;
+    }
+
+    48% {
+        opacity: 0.9;
+    }
+
+    54% {
+        opacity: 0.64;
+    }
+}
+
+.player-magic-rings canvas {
+    opacity: 1;
+    transform: none;
+}
+
+.now-playing-bar > .edge-light {
+    position: absolute;
+    z-index: 5;
+    inset: -18px;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow:
+        inset 0 0 0 1px rgb(var(--highlight-rgb, 167 139 250) / 0.9),
+        inset 0 0 14px rgb(var(--highlight-rgb, 167 139 250) / 0.32),
+        0 0 7px rgb(var(--highlight-rgb, 167 139 250) / 0.72),
+        0 0 22px rgb(var(--highlight-rgb, 167 139 250) / 0.36);
+    mask-image: conic-gradient(from var(--player-glow-angle) at center, black 2%, transparent 12%, transparent 88%, black 98%);
 }
 
 :root[data-theme='white'] .now-playing-bar {
@@ -4122,7 +4285,8 @@ body.multi-select-mode .track-item:hover {
 }
 
 .social-link:hover {
-    background-color: var(--highlight);
+    background-color: rgb(245 245 245);
+    background-color: rgba(var(--highlight-rgb), 1);
     color: var(--background);
     transform: translateY(-2px);
 }
@@ -5031,6 +5195,71 @@ input:checked + .slider::before {
     height: 36px;
 }
 
+.morph-play-icon {
+    width: 21px;
+    height: 21px;
+    overflow: visible;
+    fill: currentcolor;
+}
+
+.morph-play-icon path {
+    transform-box: fill-box;
+    transform-origin: center;
+    transition: opacity 220ms ease, transform 440ms var(--ease-out-back);
+}
+
+.morph-pause-left,
+.morph-pause-right {
+    opacity: 0;
+    transform: scaleX(.2) rotate(-12deg);
+}
+
+.play-pause-btn.is-paused-icon .morph-play-triangle {
+    opacity: 0;
+    transform: scale(.45) rotate(90deg);
+}
+
+.play-pause-btn.is-paused-icon .morph-pause-left,
+.play-pause-btn.is-paused-icon .morph-pause-right {
+    opacity: 1;
+    transform: scaleX(1) rotate(0);
+}
+
+.now-playing-bar button svg,
+.now-playing-bar button use {
+    transform-origin: center;
+}
+
+.now-playing-bar button.icon-activated svg { animation: player-icon-pop 420ms var(--ease-out-back); }
+#prev-btn.icon-activated svg { animation-name: player-icon-left; }
+#next-btn.icon-activated svg { animation-name: player-icon-right; }
+#shuffle-btn.icon-activated svg { animation-name: player-icon-shuffle; }
+#repeat-btn.icon-activated svg { animation-name: player-icon-spin; }
+#volume-btn.icon-activated svg { animation-name: player-icon-volume; }
+.like-btn.icon-activated svg { animation-name: player-icon-heart; }
+#download-current-btn.icon-activated svg { animation-name: player-icon-download; }
+#cast-btn.icon-activated svg { animation-name: player-icon-cast; }
+#queue-btn.icon-activated svg,
+#now-playing-add-playlist-btn.icon-activated svg,
+#mobile-add-playlist-btn.icon-activated svg { animation-name: player-icon-lines; }
+#toggle-lyrics-btn.icon-activated svg { animation-name: player-icon-mic; }
+#sleep-timer-btn.icon-activated svg { animation-name: player-icon-clock; }
+#now-playing-mix-btn.icon-activated svg { animation-name: player-icon-mix; }
+
+@keyframes player-icon-pop { 45% { transform: scale(1.28) rotate(-7deg); } }
+@keyframes player-icon-left { 45% { transform: translateX(-5px); opacity: .55; } }
+@keyframes player-icon-right { 45% { transform: translateX(5px); opacity: .55; } }
+@keyframes player-icon-shuffle { 40% { transform: skewX(-18deg) scaleX(1.15); } }
+@keyframes player-icon-spin { to { transform: rotate(360deg); } }
+@keyframes player-icon-volume { 35% { transform: scale(.78); } 65% { transform: scale(1.22); } }
+@keyframes player-icon-heart { 35% { transform: scale(1.38); } 60% { transform: scale(.9); } }
+@keyframes player-icon-download { 45% { transform: translateY(5px); } }
+@keyframes player-icon-cast { 45% { transform: scale(1.18); filter: drop-shadow(0 0 5px currentcolor); } }
+@keyframes player-icon-lines { 45% { transform: translateX(4px) scaleX(1.08); } }
+@keyframes player-icon-mic { 35% { transform: rotate(-10deg); } 70% { transform: rotate(9deg); } }
+@keyframes player-icon-clock { to { transform: rotate(360deg); } }
+@keyframes player-icon-mix { 50% { transform: rotate(180deg) scale(1.12); } }
+
 @media (hover: hover) {
     .player-controls .buttons .play-pause-btn:hover {
         transform: scale(1.05);
@@ -5135,7 +5364,7 @@ input:checked + .slider::before {
     align-items: flex-end !important;
     gap: 0.5rem !important;
     flex-direction: column !important;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .volume-controls button {
@@ -5166,10 +5395,53 @@ input:checked + .slider::before {
 }
 
 .volume-controls .volume-bar {
-    width: 100px;
-    height: 4px;
-    background-color: var(--secondary);
-    border-radius: var(--radius-xs);
+    width: 110px;
+    height: 6px;
+    background-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent);
+    border-radius: var(--radius-full);
+}
+
+.elastic-volume {
+    transform-origin: center;
+    touch-action: none;
+    user-select: none;
+    overflow: visible;
+    transition: height 180ms ease;
+}
+
+.elastic-volume.is-stretched {
+    height: 12px;
+}
+
+.elastic-volume #volume-slider {
+    position: absolute;
+    inset: -10px 0;
+    width: 100%;
+    height: 24px;
+    margin: 0;
+    opacity: 0;
+    cursor: grab;
+}
+
+.elastic-volume #volume-slider:active { cursor: grabbing; }
+
+.elastic-volume .volume-fill::after {
+    display: none !important;
+}
+
+.player-effects-settings-group {
+    border-color: rgb(var(--highlight-rgb, 167 139 250) / 0.35);
+    box-shadow: inset 3px 0 0 rgb(var(--highlight-rgb, 167 139 250) / 0.85);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .now-playing-bar::before,
+    .now-playing-bar button.icon-activated svg,
+    .player-magic-rings { transition: none !important; }
+    .morph-play-icon path,
+    .player-shader-stage,
+    .elastic-volume { transition-duration: 0ms !important; }
+    .now-playing-bar::before { --player-glow-angle: 45deg; }
 }
 
 .volume-controls .volume-bar:hover {
@@ -5179,15 +5451,25 @@ input:checked + .slider::before {
 .volume-controls .volume-bar .volume-fill {
     width: var(--volume-level, 70%);
     height: 100%;
-    background-color: var(--muted-foreground);
-    border-radius: var(--radius-xs);
+    background-color: rgb(245 245 245);
+    border-radius: var(--radius-full);
     transition: background-color 0.2s ease;
     position: relative;
     pointer-events: none;
+    box-shadow: 0 0 12px rgb(245 245 245 / 0.35);
+}
+
+:root[data-theme] .volume-controls .volume-bar .volume-fill {
+    background-color: rgba(var(--highlight-rgb), 1);
+    box-shadow: 0 0 12px rgba(var(--highlight-rgb), 0.35);
 }
 
 .volume-controls .volume-bar:hover .volume-fill {
-    background-color: var(--highlight);
+    background-color: rgb(245 245 245);
+}
+
+:root[data-theme] .volume-controls .volume-bar:hover .volume-fill {
+    background-color: rgba(var(--highlight-rgb), 1);
 }
 
 .volume-controls .volume-bar:hover .volume-fill::after,

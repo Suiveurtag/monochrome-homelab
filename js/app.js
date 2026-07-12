@@ -2651,8 +2651,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Gone offline');
     });
 
-    document.querySelector('.now-playing-bar .play-pause-btn').innerHTML = SVG_PLAY(20);
-
     const router = createRouter(UIRenderer.instance);
 
     const handleRouteChange = async (event) => {

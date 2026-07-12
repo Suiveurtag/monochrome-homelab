@@ -3198,6 +3198,22 @@
                     </div>
                     <div class="settings-tab-content active" id="settings-tab-appearance">
                         <div class="settings-list">
+                            <div class="settings-group player-effects-settings-group">
+                                <h3>Player Effects</h3>
+                                <div class="setting-item">
+                                    <div class="info">
+                                        <span class="label">Animated Background</span>
+                                        <span class="description">Effect displayed inside the player while music is playing</span>
+                                    </div>
+                                    <select id="player-bar-effect-select">
+                                        <option value="soft-aurora">Soft Aurora</option>
+                                        <option value="side-rays">Side Rays</option>
+                                        <option value="silk">Silk</option>
+                                        <option value="strands">Strands</option>
+                                        <option value="dark-veil">Blur</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div class="settings-group">
                                 <div class="setting-item">
                                     <div class="info">
@@ -6299,7 +6315,10 @@
                 </div>
             </main>
 
-            <footer class="now-playing-bar">
+            <footer class="now-playing-bar" data-player-effect="dark-veil">
+                <div class="player-shader-stage" aria-hidden="true"></div>
+                <div class="player-magic-rings" aria-hidden="true"></div>
+                <div class="edge-light" aria-hidden="true"></div>
                 <div class="track-info">
                     <img src="/assets/appicon.png" alt="Current Track Cover" class="cover" fetchpriority="high" />
                     <div class="details">
@@ -6320,7 +6339,13 @@
                         <button id="prev-btn" title="Previous">
                             <use svg="!lucide/arrow-left-to-line.svg" size="24" />
                         </button>
-                        <button class="play-pause-btn" title="Play"></button>
+                        <button class="play-pause-btn" title="Play" aria-label="Play" aria-pressed="false">
+                            <svg class="morph-play-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path class="morph-play-triangle" d="M8 5.5L19 12L8 18.5Z"></path>
+                                <path class="morph-pause-left" d="M7 5.5H10.5V18.5H7Z"></path>
+                                <path class="morph-pause-right" d="M13.5 5.5H17V18.5H13.5Z"></path>
+                            </svg>
+                        </button>
                         <button id="next-btn" title="Next">
                             <use svg="!lucide/arrow-right-to-line.svg" size="24" />
                         </button>
@@ -6390,8 +6415,17 @@
                     </div>
                     <div class="volume-slider-row desktop-only">
                         <button id="volume-btn" title="Mute"></button>
-                        <div id="volume-bar" class="volume-bar">
+                        <div id="volume-bar" class="volume-bar elastic-volume">
                             <div id="volume-fill" class="volume-fill"></div>
+                            <input
+                                id="volume-slider"
+                                type="range"
+                                min="0"
+                                max="100"
+                                step="1"
+                                value="70"
+                                aria-label="Volume"
+                            />
                         </div>
                         <button id="sleep-timer-btn-desktop" title="Sleep Timer">
                             <use svg="!lucide/clock.svg" size="20" />

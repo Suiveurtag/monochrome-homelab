@@ -362,6 +362,27 @@ export const nowPlayingSettings = {
     },
 };
 
+const PLAYER_BAR_EFFECTS = new Set(['soft-aurora', 'side-rays', 'silk', 'strands', 'dark-veil']);
+
+export const playerBarEffectsSettings = {
+    STORAGE_KEY: 'player-bar-background-effect',
+
+    getEffect() {
+        try {
+            const effect = localStorage.getItem(this.STORAGE_KEY) || 'dark-veil';
+            return PLAYER_BAR_EFFECTS.has(effect) ? effect : 'dark-veil';
+        } catch {
+            return 'dark-veil';
+        }
+    },
+
+    setEffect(effect) {
+        const safeEffect = PLAYER_BAR_EFFECTS.has(effect) ? effect : 'dark-veil';
+        localStorage.setItem(this.STORAGE_KEY, safeEffect);
+        window.dispatchEvent(new CustomEvent('player-bar-effect-changed', { detail: { effect: safeEffect } }));
+    },
+};
+
 export const gaplessPlaybackSettings = {
     STORAGE_KEY: 'gapless-playback-enabled',
 

@@ -23,11 +23,12 @@ import { syncManager } from './accounts/pocketbase.js';
 import { waveformGenerator } from './waveform.js';
 import { audioContextManager } from './audio-context.js';
 import { hapticLongPress, hapticMedium, hapticLight } from './haptics.js';
-import { SVG_BIN, SVG_MUTE, SVG_PAUSE, SVG_PLAY, SVG_VOLUME, SVG_CHECKBOX, SVG_CHECKBOX_CHECKED } from './icons.js';
+import { SVG_BIN, SVG_MUTE, SVG_VOLUME, SVG_CHECKBOX, SVG_CHECKBOX_CHECKED } from './icons.js';
 import { partyManager } from './listening-party.js';
 import { MusicAPI } from './music-api.js';
 import { LyricsManager } from './lyrics.js';
 import { Player } from './player.js';
+import { playerBarEffects } from './player-bar-effects.js';
 
 let currentTrackIdForWaveform = null;
 
@@ -270,6 +271,9 @@ const updateVolumeUI = () => {
     const effectiveVolume = muted ? 0 : volume * 100;
     volumeFill.style.setProperty('--volume-level', `${effectiveVolume}%`);
     volumeFill.style.width = `${effectiveVolume}%`;
+    _volumeBar?.style.setProperty('--volume-level', `${effectiveVolume}%`);
+    const slider = document.getElementById('volume-slider');
+    if (slider) slider.value = String(effectiveVolume);
 };
 
 function clearSelection() {
@@ -376,6 +380,7 @@ async function handleSelectionAction(action) {
 }
 
 export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui) {
+    playerBarEffects.init();
     if (homeStartRadioBtn) {
         homeStartRadioBtn.addEventListener('click', async () => {
             await player.enableRadio();
@@ -434,7 +439,7 @@ export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui)
                 await updateWaveform();
             }
 
-            playPauseBtn.innerHTML = SVG_PAUSE(20);
+            playerBarEffects.setPlaying(true);
             player.updateMediaSessionPlaybackState();
             player.updateMediaSessionPositionState();
             updateTabTitle(player);
@@ -448,7 +453,7 @@ export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui)
 
         element.addEventListener('pause', () => {
             if (player.activeElement !== element) return;
-            playPauseBtn.innerHTML = SVG_PLAY(20);
+            playerBarEffects.setPlaying(false);
             player.updateMediaSessionPlaybackState();
             player.updateMediaSessionPositionState();
         });
@@ -524,7 +529,7 @@ export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui)
             }
 
             console.error(`Media playback error (${element.id}):`, errorMsg, e);
-            playPauseBtn.innerHTML = SVG_PLAY(20);
+            playerBarEffects.setPlaying(false);
 
             const canFallback =
                 player.quality === 'HI_RES_LOSSLESS' &&
@@ -558,7 +563,9 @@ export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui)
     }
 
     playPauseBtn.addEventListener('click', async () => {
+        const startsPlayback = player.activeElement.paused;
         await hapticMedium();
+        if (startsPlayback) playerBarEffects.setPlaying(true, { userInitiated: true });
         player.handlePlayPause();
     });
     nextBtn.addEventListener('click', async () => {
@@ -744,11 +751,61 @@ function initializeSmoothSliders(player) {
     const volumeBar = document.getElementById('volume-bar');
     const volumeFill = document.getElementById('volume-fill');
     const volumeBtn = document.getElementById('volume-btn');
+    const volumeSlider = document.getElementById('volume-slider');
 
     let isSeeking = false;
     let wasPlaying = false;
     let isAdjustingVolume = false;
     let lastSeekPosition = 0;
+
+    if (volumeSlider) {
+        const MAX_OVERFLOW = 50;
+        const decayOverflow = (value) => 2 * (1 / (1 + Math.exp(-(value / MAX_OVERFLOW))) - 0.5) * MAX_OVERFLOW;
+        const updateElasticShape = (clientX) => {
+            const rect = volumeBar.getBoundingClientRect();
+            const raw = clientX < rect.left ? clientX - rect.left : clientX > rect.right ? clientX - rect.right : 0;
+            const overflow = decayOverflow(Math.abs(raw));
+            const direction = raw < 0 ? -1 : raw > 0 ? 1 : 0;
+            const scaleX = 1 + overflow / rect.width;
+            const scaleY = 1 - (overflow / MAX_OVERFLOW) * 0.2;
+            volumeBar.style.transformOrigin = direction < 0 ? 'right' : 'left';
+            volumeBar.style.transform = `translateX(${direction * overflow * 0.5}px) scale(${scaleX}, ${scaleY})`;
+        };
+        const releaseElasticShape = () => {
+            volumeBar.classList.remove('is-stretched');
+            volumeBar.animate(
+                [{ transform: volumeBar.style.transform }, { transform: 'translateX(0) scale(1)' }],
+                { duration: 520, easing: 'cubic-bezier(.34, 1.56, .64, 1)' }
+            );
+            volumeBar.style.transform = '';
+        };
+        const setElasticVolume = () => {
+            const position = Number(volumeSlider.value) / 100;
+            const activeEl = player.activeElement;
+            if (activeEl.muted) {
+                activeEl.muted = false;
+                const inactiveEl = player.currentTrack?.type === 'video' ? player.audio : player.video;
+                if (inactiveEl) inactiveEl.muted = false;
+                localStorage.setItem('muted', 'false');
+            }
+            player.setVolume(position);
+            volumeFill.style.width = `${position * 100}%`;
+            volumeBar.style.setProperty('--volume-level', `${position * 100}%`);
+        };
+        volumeSlider.value = String(player.userVolume * 100);
+        volumeSlider.addEventListener('input', setElasticVolume);
+        volumeSlider.addEventListener('pointerdown', (event) => {
+            event.stopPropagation();
+            volumeSlider.setPointerCapture(event.pointerId);
+            volumeBar.classList.add('is-stretched');
+        });
+        volumeSlider.addEventListener('pointermove', (event) => {
+            if (event.buttons > 0) updateElasticShape(event.clientX);
+        });
+        volumeSlider.addEventListener('pointerup', releaseElasticShape);
+        volumeSlider.addEventListener('pointercancel', releaseElasticShape);
+        volumeSlider.addEventListener('click', (event) => event.stopPropagation());
+    }
 
     const seek = (bar, event, setter) => {
         const rect = bar.getBoundingClientRect();
