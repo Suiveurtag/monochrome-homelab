@@ -214,20 +214,20 @@ uniform float iOpacity;
 
 void main() {
     vec2 p = vec2(vUv.x, 1.0 - vUv.y);
-    float distanceFromOrigin = length(p * vec2(0.72, 1.0));
-    float drift = sin(iTime * iSpeed * 0.32) * 0.045;
-    float rayOne = exp(-abs(p.y - (0.18 + drift) * p.x) * 5.5);
-    float rayTwo = exp(-abs(p.y - (0.52 - drift * 0.6) * p.x - 0.035) * 4.2);
+    float distanceFromOrigin = length(p * vec2(0.68, 1.0));
+    float drift = sin(iTime * iSpeed * 0.24) * 0.018;
+    float rayOne = exp(-abs(p.y - (0.2 + drift) * p.x) * 7.8);
+    float rayTwo = exp(-abs(p.y - (0.5 - drift * 0.45) * p.x - 0.035) * 6.4);
     float angle = atan(p.y, max(p.x, 0.001));
-    float fineRays = 0.68 + 0.32 * sin(angle * 34.0 - iTime * iSpeed);
-    float falloff = 0.38 + 0.62 * exp(-distanceFromOrigin * 0.55);
+    float fineRays = 0.86 + 0.14 * sin(angle * 30.0 - iTime * iSpeed * 0.45);
+    float falloff = 0.12 + 0.88 * exp(-distanceFromOrigin * 1.15);
     vec3 color = iRayColor1 * rayOne * (1.0 - iBlend) + iRayColor2 * rayTwo * iBlend;
-    color *= fineRays * falloff * iIntensity * 1.45;
-    color += mix(iRayColor1, iRayColor2, 0.5) * exp(-length(p * vec2(3.2, 1.6)) * 3.5) * 1.4;
+    color *= fineRays * falloff * iIntensity * 0.52;
+    color += mix(iRayColor1, iRayColor2, 0.5) * exp(-length(p * vec2(4.8, 2.2)) * 5.2) * 0.14;
     float gray = dot(color, vec3(0.299, 0.587, 0.114));
     color = mix(vec3(gray), color, iSaturation);
-    color *= iOpacity;
-    gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+    float alpha = clamp(max(color.r, max(color.g, color.b)) * iOpacity, 0.0, 0.42);
+    gl_FragColor = vec4(clamp(color, 0.0, 1.0), alpha);
 }`;
 
 export class SideRaysRenderer extends OglEffect {
@@ -239,18 +239,18 @@ export class SideRaysRenderer extends OglEffect {
             uniforms: {
                 iTime: { value: 0 },
                 iResolution: { value: [1, 1] },
-                iSpeed: { value: 2.5 },
+                iSpeed: { value: 0.65 },
                 iRayColor1: { value: [1, 1, 1] },
                 iRayColor2: { value: [0.6, 0.78, 1] },
-                iIntensity: { value: 2 },
+                iIntensity: { value: 0.55 },
                 iSpread: { value: 2 },
                 iFlipX: { value: 1 },
                 iFlipY: { value: 1 },
                 iTilt: { value: 0 },
-                iSaturation: { value: 1.5 },
-                iBlend: { value: 0.75 },
+                iSaturation: { value: 0.82 },
+                iBlend: { value: 0.62 },
                 iFalloff: { value: 1.6 },
-                iOpacity: { value: 1 },
+                iOpacity: { value: 0.48 },
             },
         });
         this.mesh = new Mesh(this.gl, { geometry: new Triangle(this.gl), program: this.program });
@@ -264,9 +264,9 @@ export class SideRaysRenderer extends OglEffect {
 
     render(time, color) {
         this.program.uniforms.iTime.value = time * 0.001;
-        this.program.uniforms.iRayColor1.value = rgb01(color, 1.25, 0.08);
-        this.program.uniforms.iRayColor2.value = rgb01(color, 0.75, 0.18);
-        this.program.uniforms.iIntensity.value = 2;
+        this.program.uniforms.iRayColor1.value = rgb01(color, 0.92, 0.025);
+        this.program.uniforms.iRayColor2.value = rgb01(color, 0.68, 0.08);
+        this.program.uniforms.iIntensity.value = 0.55;
         this.program.uniforms.iSpread.value = 2;
         this.program.uniforms.iFlipX.value = 1;
         // top-left, matching SideRays' originToFlip('top-left') mapping.
