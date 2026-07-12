@@ -753,7 +753,7 @@ export class MagicRingsRenderer {
             uFadeIn: { value: 0.7 },
             uFadeOut: { value: 0.5 },
             uMouse: { value: new THREE.Vector2() },
-            uMouseInfluence: { value: 0 },
+            uMouseInfluence: { value: 0.16 },
             uHoverAmount: { value: 0 },
             uHoverScale: { value: 1.2 },
             uParallax: { value: 0.05 },
@@ -761,6 +761,10 @@ export class MagicRingsRenderer {
         };
         this.material = new THREE.ShaderMaterial({ vertexShader: RING_VERTEX, fragmentShader: RING_FRAGMENT, uniforms: this.uniforms, transparent: true, blending: THREE.AdditiveBlending });
         this.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.material));
+        this.pointer = new THREE.Vector2();
+        this.smoothPointer = new THREE.Vector2();
+        this.hoverTarget = 0;
+        this.lastFrame = 0;
         this.resize();
     }
 
@@ -779,25 +783,41 @@ export class MagicRingsRenderer {
         this.uniforms.uColorTwo.value.set('#ffffff');
         this.started = performance.now();
         this.burstValue = 1;
+        this.lastFrame = this.started;
         this.container.classList.add('is-active');
         cancelAnimationFrame(this.frame);
         this.tick();
     }
 
     tick = () => {
-        const elapsed = performance.now() - this.started;
+        const now = performance.now();
+        const elapsed = now - this.started;
         if (elapsed > 3450) {
             this.container.classList.remove('is-active');
             this.renderer.clear();
             return;
         }
+        const delta = Math.min(50, now - this.lastFrame) / 1000;
+        this.lastFrame = now;
         this.uniforms.uTime.value = elapsed * 0.001;
-        this.burstValue *= 0.95;
+        const smoothing = 1 - Math.exp(-delta * 8);
+        this.smoothPointer.lerp(this.pointer, smoothing);
+        this.uniforms.uMouse.value.copy(this.smoothPointer);
+        this.uniforms.uHoverAmount.value += (this.hoverTarget - this.uniforms.uHoverAmount.value) * smoothing;
+        this.burstValue *= Math.exp(-delta * 3.2);
         if (this.burstValue < 0.001) this.burstValue = 0;
         this.uniforms.uBurst.value = this.burstValue;
+        const fadeIn = Math.min(1, elapsed / 180);
+        const fadeOut = Math.min(1, Math.max(0, (3450 - elapsed) / 720));
+        this.uniforms.uOpacity.value = fadeIn * fadeOut;
         this.renderer.render(this.scene, this.camera);
         this.frame = requestAnimationFrame(this.tick);
     };
+
+    setPointer(x, y, hovered) {
+        this.pointer.set(x, y);
+        this.hoverTarget = hovered ? 1 : 0;
+    }
 
     stop() {
         cancelAnimationFrame(this.frame);

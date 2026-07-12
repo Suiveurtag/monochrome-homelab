@@ -5251,6 +5251,7 @@ input:checked + .slider::before {
 #toggle-lyrics-btn.icon-activated svg { animation-name: player-icon-mic; }
 #sleep-timer-btn.icon-activated svg { animation-name: player-icon-clock; }
 #now-playing-mix-btn.icon-activated svg { animation-name: player-icon-mix; }
+#equalizer-player-btn.icon-activated svg { animation-name: player-icon-equalizer; }
 
 @keyframes player-icon-pop { 45% { transform: scale(1.28) rotate(-7deg); } }
 @keyframes player-icon-left { 45% { transform: translateX(-5px); opacity: .55; } }
@@ -5265,6 +5266,11 @@ input:checked + .slider::before {
 @keyframes player-icon-mic { 35% { transform: rotate(-10deg); } 70% { transform: rotate(9deg); } }
 @keyframes player-icon-clock { to { transform: rotate(360deg); } }
 @keyframes player-icon-mix { 50% { transform: rotate(180deg) scale(1.12); } }
+@keyframes player-icon-equalizer {
+    30% { transform: scaleY(.7); }
+    55% { transform: scaleY(1.22); filter: drop-shadow(0 0 5px currentcolor); }
+    78% { transform: scaleY(.88); }
+}
 
 @media (hover: hover) {
     .player-controls .buttons .play-pause-btn:hover {
@@ -5412,11 +5418,16 @@ input:checked + .slider::before {
     touch-action: none;
     user-select: none;
     overflow: visible;
-    transition: height 180ms ease;
+    transition: height 220ms cubic-bezier(.22, 1, .36, 1), opacity 220ms ease;
+    will-change: height, transform;
+    opacity: .72;
 }
 
+.elastic-volume:hover,
+.elastic-volume:focus-within,
 .elastic-volume.is-stretched {
     height: 12px;
+    opacity: 1;
 }
 
 .elastic-volume #volume-slider {
@@ -5431,6 +5442,13 @@ input:checked + .slider::before {
 
 .elastic-volume #volume-slider:active { cursor: grabbing; }
 
+.elastic-volume #volume-slider:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--highlight);
+    outline-offset: 4px;
+    border-radius: var(--radius-full);
+}
+
 .elastic-volume .volume-fill::after {
     display: none !important;
 }
@@ -5438,6 +5456,157 @@ input:checked + .slider::before {
 .player-effects-settings-group {
     border-color: rgb(var(--highlight-rgb, 167 139 250) / 0.35);
     box-shadow: inset 3px 0 0 rgb(var(--highlight-rgb, 167 139 250) / 0.85);
+}
+
+.equalizer-player-icon {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentcolor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.player-action-user-hidden {
+    display: none !important;
+}
+
+.now-playing-bar .player-action-user-hidden {
+    display: none !important;
+}
+
+.player-layout-settings-group {
+    overflow: hidden;
+}
+
+.player-layout-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.player-layout-heading h3 { margin: 0 0 .35rem; }
+.player-layout-heading p { margin: 0; color: var(--muted-foreground); font-size: .88rem; }
+.player-layout-heading .btn-secondary { flex: 0 0 auto; }
+
+.player-action-editor {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 1rem;
+}
+
+.player-action-zone-card {
+    min-width: 0;
+    padding: .9rem;
+    border: 1px solid rgb(var(--highlight-rgb, 167 139 250) / .3);
+    border-radius: var(--radius-lg);
+    background: rgb(var(--highlight-rgb, 167 139 250) / .045);
+}
+
+.player-action-zone-card.is-hidden-zone {
+    border-style: dashed;
+    border-color: var(--border);
+    background: rgb(128 128 128 / .035);
+}
+
+.player-action-zone-title {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .75rem;
+    color: var(--muted-foreground);
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.player-zone-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted-foreground);
+}
+
+.player-zone-status.is-visible {
+    background: rgb(var(--highlight-rgb, 167 139 250));
+    box-shadow: 0 0 9px rgb(var(--highlight-rgb, 167 139 250) / .75);
+}
+
+.player-action-zone {
+    display: flex;
+    align-content: flex-start;
+    flex-wrap: wrap;
+    gap: .55rem;
+    min-height: 94px;
+    padding: .25rem;
+    border-radius: var(--radius);
+    transition: background 160ms ease, box-shadow 160ms ease;
+}
+
+.player-action-zone.is-drag-over {
+    background: rgb(var(--highlight-rgb, 167 139 250) / .09);
+    box-shadow: inset 0 0 0 1px rgb(var(--highlight-rgb, 167 139 250) / .25);
+}
+
+.player-action-card {
+    display: grid;
+    grid-template-columns: 28px auto 14px;
+    align-items: center;
+    gap: .55rem;
+    min-width: 150px;
+    padding: .55rem .6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--card) 90%, var(--highlight) 10%);
+    color: var(--foreground);
+    cursor: grab;
+    font: inherit;
+    font-size: .82rem;
+    text-align: left;
+    box-shadow: 0 5px 15px rgb(0 0 0 / .08);
+    transition: transform 180ms var(--ease-out-back), border-color 180ms ease, opacity 180ms ease;
+}
+
+.player-action-card:hover,
+.player-action-card:focus-visible {
+    transform: translateY(-2px);
+    border-color: rgb(var(--highlight-rgb, 167 139 250) / .7);
+    outline: none;
+}
+
+.player-action-card:active { cursor: grabbing; transform: scale(.97); }
+.player-action-card.is-dragging { opacity: .35; }
+
+.player-action-card-icon {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    color: rgb(var(--highlight-rgb, 167 139 250));
+    background: rgb(var(--highlight-rgb, 167 139 250) / .12);
+}
+
+.player-action-card-icon svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentcolor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.player-action-grip { color: var(--muted-foreground); font-size: 1rem; }
+
+@media (max-width: 768px) {
+    .player-action-editor { grid-template-columns: 1fr; }
+    .player-layout-heading { align-items: stretch; flex-direction: column; }
+    .player-layout-heading .btn-secondary { align-self: flex-start; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -5452,6 +5621,12 @@ input:checked + .slider::before {
 
 .volume-controls .volume-bar:hover {
     height: 6px;
+}
+
+.volume-controls .elastic-volume:hover,
+.volume-controls .elastic-volume:focus-within,
+.volume-controls .elastic-volume.is-stretched {
+    height: 12px;
 }
 
 .volume-controls .volume-bar .volume-fill {

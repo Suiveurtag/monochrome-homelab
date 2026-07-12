@@ -397,6 +397,60 @@ export const playerBarEffectsSettings = {
     },
 };
 
+const DEFAULT_PLAYER_ACTION_ORDER = [
+    'favorite',
+    'playlist',
+    'mix',
+    'lyrics',
+    'download',
+    'cast',
+    'equalizer',
+    'sleep-timer',
+    'queue',
+];
+
+export const playerBarLayoutSettings = {
+    STORAGE_KEY: 'player-bar-action-layout',
+    DEFAULT_ORDER: DEFAULT_PLAYER_ACTION_ORDER,
+
+    getLayout() {
+        const fallback = { visible: [...this.DEFAULT_ORDER], hidden: [] };
+        try {
+            const saved = JSON.parse(localStorage.getItem(this.STORAGE_KEY));
+            const known = new Set(this.DEFAULT_ORDER);
+            const visible = Array.isArray(saved?.visible) ? saved.visible.filter((id) => known.has(id)) : [];
+            const hidden = Array.isArray(saved?.hidden) ? saved.hidden.filter((id) => known.has(id)) : [];
+            const used = new Set([...visible, ...hidden]);
+            this.DEFAULT_ORDER.forEach((id) => {
+                if (!used.has(id)) visible.push(id);
+            });
+            return { visible: [...new Set(visible)], hidden: [...new Set(hidden)] };
+        } catch {
+            return fallback;
+        }
+    },
+
+    setLayout(layout) {
+        const known = new Set(this.DEFAULT_ORDER);
+        const visible = (layout.visible || []).filter((id) => known.has(id));
+        const hidden = (layout.hidden || []).filter((id) => known.has(id) && !visible.includes(id));
+        this.DEFAULT_ORDER.forEach((id) => {
+            if (!visible.includes(id) && !hidden.includes(id)) visible.push(id);
+        });
+        const safeLayout = { visible, hidden };
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(safeLayout));
+        window.dispatchEvent(new CustomEvent('player-bar-layout-changed', { detail: safeLayout }));
+        return safeLayout;
+    },
+
+    reset() {
+        localStorage.removeItem(this.STORAGE_KEY);
+        const layout = this.getLayout();
+        window.dispatchEvent(new CustomEvent('player-bar-layout-changed', { detail: layout }));
+        return layout;
+    },
+};
+
 export const gaplessPlaybackSettings = {
     STORAGE_KEY: 'gapless-playback-enabled',
 

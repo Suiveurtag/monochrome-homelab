@@ -29,6 +29,7 @@ import { MusicAPI } from './music-api.js';
 import { LyricsManager } from './lyrics.js';
 import { Player } from './player.js';
 import { playerBarEffects } from './player-bar-effects.js';
+import { initializePlayerActionLayout } from './player-bar-layout.js';
 
 let currentTrackIdForWaveform = null;
 
@@ -262,6 +263,8 @@ const sleepTimerBtnDesktop = document.getElementById('sleep-timer-btn-desktop');
 const _volumeBar = document.getElementById('volume-bar');
 const volumeFill = document.getElementById('volume-fill');
 const volumeBtn = document.getElementById('volume-btn');
+
+initializePlayerActionLayout();
 
 const updateVolumeUI = () => {
     const activeEl = Player.instance.activeElement;
@@ -758,6 +761,10 @@ function initializeSmoothSliders(player) {
 
     if (volumeSlider) {
         const MAX_OVERFLOW = 50;
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        let volumeFrame = 0;
+        let pendingVolume = player.userVolume;
+        let returnAnimation = null;
         const decayOverflow = (value) => 2 * (1 / (1 + Math.exp(-(value / MAX_OVERFLOW))) - 0.5) * MAX_OVERFLOW;
         const updateElasticShape = (clientX) => {
             const rect = volumeBar.getBoundingClientRect();
@@ -767,18 +774,24 @@ function initializeSmoothSliders(player) {
             const scaleX = 1 + overflow / rect.width;
             const scaleY = 1 - (overflow / MAX_OVERFLOW) * 0.2;
             volumeBar.style.transformOrigin = direction < 0 ? 'right' : 'left';
-            volumeBar.style.transform = `translateX(${direction * overflow * 0.5}px) scale(${scaleX}, ${scaleY})`;
+            volumeBar.style.transform = reduceMotion.matches
+                ? 'none'
+                : `translateX(${direction * overflow * 0.5}px) scale(${scaleX}, ${scaleY})`;
         };
         const releaseElasticShape = () => {
             volumeBar.classList.remove('is-stretched');
-            volumeBar.animate(
-                [{ transform: volumeBar.style.transform }, { transform: 'translateX(0) scale(1)' }],
-                { duration: 520, easing: 'cubic-bezier(.34, 1.56, .64, 1)' }
-            );
+            returnAnimation?.cancel();
+            if (!reduceMotion.matches) {
+                returnAnimation = volumeBar.animate(
+                    [{ transform: volumeBar.style.transform || 'none' }, { transform: 'translateX(0) scale(1)' }],
+                    { duration: 520, easing: 'cubic-bezier(.22, 1.45, .36, 1)' }
+                );
+            }
             volumeBar.style.transform = '';
         };
-        const setElasticVolume = () => {
-            const position = Number(volumeSlider.value) / 100;
+        const commitVolume = () => {
+            volumeFrame = 0;
+            const position = pendingVolume;
             const activeEl = player.activeElement;
             if (activeEl.muted) {
                 activeEl.muted = false;
@@ -790,18 +803,29 @@ function initializeSmoothSliders(player) {
             volumeFill.style.width = `${position * 100}%`;
             volumeBar.style.setProperty('--volume-level', `${position * 100}%`);
         };
+        const setElasticVolume = () => {
+            pendingVolume = Number(volumeSlider.value) / 100;
+            volumeFill.style.width = `${pendingVolume * 100}%`;
+            volumeBar.style.setProperty('--volume-level', `${pendingVolume * 100}%`);
+            if (!volumeFrame) volumeFrame = requestAnimationFrame(commitVolume);
+        };
         volumeSlider.value = String(player.userVolume * 100);
         volumeSlider.addEventListener('input', setElasticVolume);
         volumeSlider.addEventListener('pointerdown', (event) => {
             event.stopPropagation();
+            returnAnimation?.cancel();
             volumeSlider.setPointerCapture(event.pointerId);
             volumeBar.classList.add('is-stretched');
         });
         volumeSlider.addEventListener('pointermove', (event) => {
-            if (event.buttons > 0) updateElasticShape(event.clientX);
+            if (volumeSlider.hasPointerCapture(event.pointerId)) updateElasticShape(event.clientX);
         });
-        volumeSlider.addEventListener('pointerup', releaseElasticShape);
+        volumeSlider.addEventListener('pointerup', (event) => {
+            event.stopPropagation();
+            releaseElasticShape();
+        });
         volumeSlider.addEventListener('pointercancel', releaseElasticShape);
+        volumeSlider.addEventListener('lostpointercapture', releaseElasticShape);
         volumeSlider.addEventListener('click', (event) => event.stopPropagation());
     }
 
@@ -954,59 +978,6 @@ function initializeSmoothSliders(player) {
         }
     });
 
-    volumeBar.addEventListener('mousedown', (e) => {
-        isAdjustingVolume = true;
-        seek(volumeBar, e, (position) => {
-            const activeEl = player.activeElement;
-            if (activeEl.muted) {
-                activeEl.muted = false;
-                localStorage.setItem('muted', false);
-
-                const inactiveEl = player.currentTrack?.type === 'video' ? player.audio : player.video;
-                if (inactiveEl) inactiveEl.muted = false;
-            }
-            player.setVolume(position);
-            volumeFill.style.width = `${position * 100}%`;
-            volumeBar.style.setProperty('--volume-level', `${position * 100}%`);
-        });
-    });
-
-    volumeBar.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        isAdjustingVolume = true;
-        const touch = e.touches[0];
-        const rect = volumeBar.getBoundingClientRect();
-        const position = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
-        const activeEl = player.activeElement;
-        if (activeEl.muted) {
-            activeEl.muted = false;
-            localStorage.setItem('muted', false);
-
-            const inactiveEl = player.currentTrack?.type === 'video' ? player.audio : player.video;
-            if (inactiveEl) inactiveEl.muted = false;
-        }
-        player.setVolume(position);
-        volumeFill.style.width = `${position * 100}%`;
-        volumeBar.style.setProperty('--volume-level', `${position * 100}%`);
-    });
-
-    volumeBar.addEventListener('click', (e) => {
-        if (!isAdjustingVolume) {
-            seek(volumeBar, e, (position) => {
-                const activeEl = player.activeElement;
-                if (activeEl.muted) {
-                    activeEl.muted = false;
-                    localStorage.setItem('muted', false);
-
-                    const inactiveEl = player.currentTrack?.type === 'video' ? player.audio : player.video;
-                    if (inactiveEl) inactiveEl.muted = false;
-                }
-                player.setVolume(position);
-                volumeFill.style.width = `${position * 100}%`;
-                volumeBar.style.setProperty('--volume-level', `${position * 100}%`);
-            });
-        }
-    });
     volumeBar.addEventListener(
         'wheel',
         (e) => {

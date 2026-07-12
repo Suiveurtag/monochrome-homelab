@@ -52,7 +52,13 @@ class PlayerBarEffects {
             const rect = this.bar.getBoundingClientRect();
             const angle = Math.atan2(event.clientY - rect.top - rect.height / 2, event.clientX - rect.left - rect.width / 2);
             this.bar.style.setProperty('--cursor-angle', `${angle * 180 / Math.PI + 90}deg`);
+            this.magicRings?.setPointer(
+                (event.clientX - rect.left) / rect.width - 0.5,
+                -((event.clientY - rect.top) / rect.height - 0.5),
+                true
+            );
         });
+        this.bar.addEventListener('pointerleave', () => this.magicRings?.setPointer(0, 0, false));
         window.addEventListener('player-bar-effect-changed', (event) => this.setEffect(event.detail.effect));
         window.addEventListener('player-magic-rings-changed', (event) => {
             this.magicRingsEnabled = event.detail.enabled;

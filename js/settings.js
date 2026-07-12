@@ -46,6 +46,7 @@ import {
     playerBarEffectsSettings,
 } from './storage.js';
 import { audioContextManager, getPresetsForBandCount } from './audio-context.js';
+import { initializePlayerLayoutEditor } from './player-bar-layout.js';
 import { calculateBiquadResponse, interpolate, getNormalizationOffset, runAutoEqAlgorithm } from './autoeq-engine.js';
 import { parseRawData, TARGETS, SPEAKER_TARGETS } from './autoeq-data.js';
 import { fetchAutoEqIndex, fetchHeadphoneData, searchHeadphones, POPULAR_HEADPHONES } from './autoeq-importer.js';
@@ -94,6 +95,7 @@ export async function initializeSettings(scrobbler, player, api, ui) {
             playerBarEffectsSettings.setMagicRingsEnabled(event.target.checked);
         });
     }
+    initializePlayerLayoutEditor();
 
     // ========================================
     // Dev Mode

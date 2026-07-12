@@ -3188,6 +3188,7 @@
                     </form>
                     <div class="settings-tabs">
                         <button class="settings-tab active" data-tab="appearance">Appearance</button>
+                        <button class="settings-tab" data-tab="player">Player</button>
                         <button class="settings-tab" data-tab="interface">Interface</button>
                         <button class="settings-tab" data-tab="scrobbling">Scrobbling</button>
                         <button class="settings-tab" data-tab="audio">Audio</button>
@@ -3198,33 +3199,6 @@
                     </div>
                     <div class="settings-tab-content active" id="settings-tab-appearance">
                         <div class="settings-list">
-                            <div class="settings-group player-effects-settings-group">
-                                <h3>Player Effects</h3>
-                                <div class="setting-item">
-                                    <div class="info">
-                                        <span class="label">Animated Background</span>
-                                        <span class="description">Effect displayed inside the player while music is playing</span>
-                                    </div>
-                                    <select id="player-bar-effect-select">
-                                        <option value="none">None</option>
-                                        <option value="soft-aurora">Soft Aurora</option>
-                                        <option value="side-rays">Side Rays</option>
-                                        <option value="silk">Silk</option>
-                                        <option value="strands">Strands</option>
-                                        <option value="dark-veil">Blur</option>
-                                    </select>
-                                </div>
-                                <div class="setting-item">
-                                    <div class="info">
-                                        <span class="label">Magic Rings</span>
-                                        <span class="description">Show rings whenever audio starts playing</span>
-                                    </div>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="player-magic-rings-toggle" checked />
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
-                            </div>
                             <div class="settings-group">
                                 <div class="setting-item">
                                     <div class="info">
@@ -3667,6 +3641,56 @@
                                     />
                                     <span class="slider"></span>
                                 </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-tab-content" id="settings-tab-player">
+                        <div class="settings-list">
+                            <div class="settings-group player-effects-settings-group">
+                                <h3>Player Effects</h3>
+                                <div class="setting-item">
+                                    <div class="info">
+                                        <span class="label">Animated Background</span>
+                                        <span class="description">Effect displayed inside the player while music is playing</span>
+                                    </div>
+                                    <select id="player-bar-effect-select">
+                                        <option value="none">None</option>
+                                        <option value="soft-aurora">Soft Aurora</option>
+                                        <option value="side-rays">Side Rays</option>
+                                        <option value="silk">Silk</option>
+                                        <option value="strands">Strands</option>
+                                        <option value="dark-veil">Blur</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="info">
+                                        <span class="label">Echo Rings</span>
+                                        <span class="description">Show responsive rings whenever audio starts playing</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="player-magic-rings-toggle" checked />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="settings-group player-layout-settings-group">
+                                <div class="player-layout-heading">
+                                    <div>
+                                        <h3>Player Actions</h3>
+                                        <p>Drag actions to choose what appears in the player and in which order.</p>
+                                    </div>
+                                    <button type="button" id="player-layout-reset" class="btn-secondary">Restore default</button>
+                                </div>
+                                <div id="player-action-editor" class="player-action-editor">
+                                    <section class="player-action-zone-card">
+                                        <div class="player-action-zone-title"><span class="player-zone-status is-visible"></span>Visible</div>
+                                        <div class="player-action-zone" data-player-action-zone="visible"></div>
+                                    </section>
+                                    <section class="player-action-zone-card is-hidden-zone">
+                                        <div class="player-action-zone-title"><span class="player-zone-status"></span>Hidden</div>
+                                        <div class="player-action-zone" data-player-action-zone="hidden"></div>
+                                    </section>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -6376,6 +6400,7 @@
                     <div class="player-actions-row">
                         <button
                             id="now-playing-like-btn"
+                            data-player-action="favorite"
                             class="like-btn"
                             data-action="toggle-like"
                             title="Save to Favorites"
@@ -6383,6 +6408,7 @@
                         ></button>
                         <button
                             id="now-playing-add-playlist-btn"
+                            data-player-action="playlist"
                             title="Add to playlist"
                             class="desktop-only"
                             aria-label="Add to playlist"
@@ -6392,6 +6418,7 @@
 
                         <button
                             id="now-playing-mix-btn"
+                            data-player-action="mix"
                             class="mix-btn"
                             data-action="track-mix"
                             title="Track Mix"
@@ -6399,28 +6426,37 @@
                         >
                             <use svg="./images/mix.svg" size="20" />
                         </button>
-                        <button id="toggle-lyrics-btn" title="Lyrics" style="display: none" aria-label="Lyrics">
+                        <button id="toggle-lyrics-btn" data-player-action="lyrics" title="Lyrics" style="display: none" aria-label="Lyrics">
                             <use svg="!lucide/mic-vocal.svg" size="20" />
                         </button>
-                        <button id="download-current-btn" title="Download current track" class="desktop-only">
+                        <button id="download-current-btn" data-player-action="download" title="Download current track" class="desktop-only">
                             <use svg="!lucide/download.svg" size="20" />
                         </button>
-                        <button id="cast-btn" title="Cast">
+                        <button id="cast-btn" data-player-action="cast" title="Cast">
                             <use svg="!lucide/cast.svg" size="20" />
                         </button>
 
                         <button
                             id="mobile-add-playlist-btn"
+                            data-player-action="playlist"
                             class="mobile-only"
                             title="Add to playlist"
                             aria-label="Add to playlist"
                         >
                             <use svg="!lucide/list-plus.svg" size="20" />
                         </button>
-                        <button id="sleep-timer-btn" title="Sleep Timer" class="mobile-only">
+                        <button id="equalizer-player-btn" data-player-action="equalizer" title="Equalizer" aria-label="Equalizer">
+                            <svg class="equalizer-player-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 18v-5m0-4V4m8 14v-8m0-4V4m8 14v-3m0-4V4M2 13h4M10 6h4m4 9h4" />
+                            </svg>
+                        </button>
+                        <button id="sleep-timer-btn" data-player-action="sleep-timer" title="Sleep Timer" class="mobile-only">
                             <use svg="!lucide/clock.svg" size="20" />
                         </button>
-                        <button id="queue-btn" title="Queue">
+                        <button id="sleep-timer-btn-desktop" data-player-action="sleep-timer" title="Sleep Timer" class="desktop-only">
+                            <use svg="!lucide/clock.svg" size="20" />
+                        </button>
+                        <button id="queue-btn" data-player-action="queue" title="Queue">
                             <use svg="!lucide/list.svg" size="24" />
                         </button>
                     </div>
@@ -6438,9 +6474,6 @@
                                 aria-label="Volume"
                             />
                         </div>
-                        <button id="sleep-timer-btn-desktop" title="Sleep Timer">
-                            <use svg="!lucide/clock.svg" size="20" />
-                        </button>
                     </div>
                 </div>
             </footer>
