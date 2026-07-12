@@ -32,17 +32,17 @@ class PlayerBarEffects {
         if (!this.bar || this.bar.dataset.effectsReady === 'true') return;
         this.bar.dataset.effectsReady = 'true';
         this.stage = this.bar.querySelector('.player-shader-stage');
-        this.renderers = {
-            'soft-aurora': new SoftAuroraRenderer(this.stage),
-            'side-rays': new SideRaysRenderer(this.stage),
-            silk: new SilkRenderer(this.stage),
-            strands: new StrandsRenderer(this.stage),
-            'dark-veil': new DarkVeilRenderer(this.stage),
+        this.rendererFactories = {
+            'soft-aurora': SoftAuroraRenderer,
+            'side-rays': SideRaysRenderer,
+            silk: SilkRenderer,
+            strands: StrandsRenderer,
+            'dark-veil': DarkVeilRenderer,
         };
         this.magicRings = new MagicRingsRenderer(this.bar.querySelector('.player-magic-rings'));
+        this.magicRingsEnabled = playerBarEffectsSettings.areMagicRingsEnabled();
         this.setEffect(playerBarEffectsSettings.getEffect());
         this.installMorphIcon();
-        this.installPlayBurstFallback();
         this.animateButtons();
         this.resizeObserver = new ResizeObserver(() => this.resize());
         this.resizeObserver.observe(this.bar);
@@ -54,6 +54,10 @@ class PlayerBarEffects {
             this.bar.style.setProperty('--cursor-angle', `${angle * 180 / Math.PI + 90}deg`);
         });
         window.addEventListener('player-bar-effect-changed', (event) => this.setEffect(event.detail.effect));
+        window.addEventListener('player-magic-rings-changed', (event) => {
+            this.magicRingsEnabled = event.detail.enabled;
+            if (!this.magicRingsEnabled) this.magicRings?.stop();
+        });
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) this.stopFrame();
             else if (this.playing) this.startFrame();
@@ -66,15 +70,16 @@ class PlayerBarEffects {
         button.innerHTML = PLAY_PAUSE_ICON;
     }
 
-    installPlayBurstFallback() {
-        this.bar.addEventListener('pointerdown', (event) => {
-            if (!event.target.closest?.('.play-pause-btn')) return;
-            if (!this.playing) this.playMagicRings();
-        }, { capture: true });
-    }
-
     setEffect(effect) {
         if (!this.bar) return;
+        if (effect !== this.activeEffect) {
+            this.stopFrame();
+            this.activeRenderer?.destroy?.();
+            this.activeRenderer = null;
+            this.activeEffect = effect;
+            const RendererClass = this.rendererFactories?.[effect];
+            if (RendererClass) this.activeRenderer = new RendererClass(this.stage);
+        }
         this.bar.dataset.playerEffect = effect;
         this.stage?.querySelectorAll('canvas, .player-cover-blur-effect').forEach((element) => {
             element.style.opacity = element.parentElement === this.stage ? '0' : '';
@@ -85,7 +90,7 @@ class PlayerBarEffects {
         }
     }
 
-    setPlaying(playing, { userInitiated = false } = {}) {
+    setPlaying(playing) {
         if (!this.bar) this.init();
         this.playing = playing;
         this.bar?.classList.toggle('is-playing', playing);
@@ -96,14 +101,16 @@ class PlayerBarEffects {
             button.setAttribute('aria-label', playing ? 'Pause' : 'Play');
             button.setAttribute('aria-pressed', String(playing));
         }
-        if (playing && userInitiated) this.playMagicRings();
+        // This method is called by the media element's real `play` event, so it
+        // also covers keyboard shortcuts, autoplay, track changes and resumes.
+        if (playing) this.playMagicRings();
         if (playing && !document.hidden) this.startFrame();
         else this.stopFrame();
         if (!playing) this.clearRenderers();
     }
 
     playMagicRings() {
-        this.magicRings?.burst(this.getColorRgb());
+        if (this.magicRingsEnabled) this.magicRings?.burst(this.getColorRgb());
     }
 
     animateButtons() {
@@ -118,7 +125,7 @@ class PlayerBarEffects {
 
     resize() {
         if (!this.stage || !this.bar) return;
-        Object.values(this.renderers || {}).forEach((renderer) => renderer.resize?.());
+        this.activeRenderer?.resize?.();
         this.magicRings?.resize();
     }
 
@@ -134,7 +141,7 @@ class PlayerBarEffects {
     }
 
     clearRenderers() {
-        Object.values(this.renderers || {}).forEach((renderer) => renderer.clear?.());
+        this.activeRenderer?.clear?.();
         this.stage?.querySelectorAll('canvas, .player-cover-blur-effect').forEach((element) => { element.style.opacity = '0'; });
     }
 
@@ -151,7 +158,7 @@ class PlayerBarEffects {
         this.bar.style.setProperty('--player-glow-angle', `${(t * 55) % 360}deg`);
         const effect = this.bar.dataset.playerEffect;
         this.stage?.querySelectorAll('canvas, .player-cover-blur-effect').forEach((element) => { element.style.opacity = '0'; });
-        const renderer = this.renderers?.[effect] || this.renderers?.['dark-veil'];
+        const renderer = effect === 'none' ? null : this.activeRenderer;
         renderer?.render(now, this.getColorRgb());
         if (renderer?.gl?.canvas) renderer.gl.canvas.style.opacity = '1';
         if (renderer?.renderer?.domElement) renderer.renderer.domElement.style.opacity = '1';

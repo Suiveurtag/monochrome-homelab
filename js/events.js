@@ -563,9 +563,7 @@ export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui)
     }
 
     playPauseBtn.addEventListener('click', async () => {
-        const startsPlayback = player.activeElement.paused;
         await hapticMedium();
-        if (startsPlayback) playerBarEffects.setPlaying(true, { userInitiated: true });
         player.handlePlayPause();
     });
     nextBtn.addEventListener('click', async () => {

@@ -87,6 +87,14 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
+    const playerMagicRingsToggle = document.getElementById('player-magic-rings-toggle');
+    if (playerMagicRingsToggle) {
+        playerMagicRingsToggle.checked = playerBarEffectsSettings.areMagicRingsEnabled();
+        playerMagicRingsToggle.addEventListener('change', (event) => {
+            playerBarEffectsSettings.setMagicRingsEnabled(event.target.checked);
+        });
+    }
+
     // ========================================
     // Dev Mode
     // ========================================

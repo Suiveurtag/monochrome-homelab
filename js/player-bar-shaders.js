@@ -196,6 +196,7 @@ export class SoftAuroraRenderer extends OglEffect {
 }
 
 const SIDE_RAYS_FRAGMENT = `precision highp float;
+varying vec2 vUv;
 uniform float iTime;
 uniform vec2 iResolution;
 uniform float iSpeed;
@@ -211,44 +212,29 @@ uniform float iBlend;
 uniform float iFalloff;
 uniform float iOpacity;
 
-float rayStrength(vec2 raySource, vec2 rayRefDirection, vec2 coord, float seedA, float seedB, float speed) {
-    vec2 sourceToCoord = coord - raySource;
-    float cosAngle = dot(normalize(sourceToCoord), rayRefDirection);
-    return clamp((0.45 + 0.15 * sin(cosAngle * seedA + iTime * speed)) + (0.3 + 0.2 * cos(-cosAngle * seedB + iTime * speed)), 0.0, 1.0) *
-    clamp((iResolution.x - length(sourceToCoord)) / iResolution.x, 0.5, 1.0);
-}
-
 void main() {
-    vec2 fragCoord = gl_FragCoord.xy;
-    if (iFlipX > 0.5) fragCoord.x = iResolution.x - fragCoord.x;
-    if (iFlipY > 0.5) fragCoord.y = iResolution.y - fragCoord.y;
-    vec2 coord = vec2(fragCoord.x, iResolution.y - fragCoord.y);
-    vec2 rayPos = vec2(iResolution.x * 1.1, -0.5 * iResolution.y);
-    float tiltRad = iTilt * 3.14159265 / 180.0;
-    float cs = cos(tiltRad);
-    float sn = sin(tiltRad);
-    vec2 rel = coord - rayPos;
-    vec2 tiltedCoord = vec2(rel.x * cs - rel.y * sn, rel.x * sn + rel.y * cs) + rayPos;
-    float halfSpread = iSpread * 0.275;
-    vec2 rayRefDir1 = normalize(vec2(cos(0.785398 + halfSpread), sin(0.785398 + halfSpread)));
-    vec2 rayRefDir2 = normalize(vec2(cos(0.785398 - halfSpread), sin(0.785398 - halfSpread)));
-    vec4 rays1 = vec4(iRayColor1, 1.0) * rayStrength(rayPos, rayRefDir1, tiltedCoord, 36.2214, 21.11349, iSpeed);
-    vec4 rays2 = vec4(iRayColor2, 1.0) * rayStrength(rayPos, rayRefDir2, tiltedCoord, 22.3991, 18.0234, iSpeed * 0.2);
-    vec4 color = rays1 * (1.0 - iBlend) * 0.9 + rays2 * iBlend * 0.9;
-    float distanceToLight = length(fragCoord.xy - vec2(rayPos.x, iResolution.y - rayPos.y)) / iResolution.y;
-    float brightness = iIntensity * 0.4 / pow(max(distanceToLight, 0.001), iFalloff);
-    color.rgb *= brightness;
-    float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
-    color.rgb = mix(vec3(gray), color.rgb, iSaturation);
-    color.a = max(color.r, max(color.g, color.b)) * iOpacity;
-    gl_FragColor = color;
+    vec2 p = vec2(vUv.x, 1.0 - vUv.y);
+    float distanceFromOrigin = length(p * vec2(0.72, 1.0));
+    float drift = sin(iTime * iSpeed * 0.32) * 0.045;
+    float rayOne = exp(-abs(p.y - (0.18 + drift) * p.x) * 5.5);
+    float rayTwo = exp(-abs(p.y - (0.52 - drift * 0.6) * p.x - 0.035) * 4.2);
+    float angle = atan(p.y, max(p.x, 0.001));
+    float fineRays = 0.68 + 0.32 * sin(angle * 34.0 - iTime * iSpeed);
+    float falloff = 0.38 + 0.62 * exp(-distanceFromOrigin * 0.55);
+    vec3 color = iRayColor1 * rayOne * (1.0 - iBlend) + iRayColor2 * rayTwo * iBlend;
+    color *= fineRays * falloff * iIntensity * 1.45;
+    color += mix(iRayColor1, iRayColor2, 0.5) * exp(-length(p * vec2(3.2, 1.6)) * 3.5) * 1.4;
+    float gray = dot(color, vec3(0.299, 0.587, 0.114));
+    color = mix(vec3(gray), color, iSaturation);
+    color *= iOpacity;
+    gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }`;
 
 export class SideRaysRenderer extends OglEffect {
     constructor(container) {
         super(container);
         this.program = new Program(this.gl, {
-            vertex: `attribute vec2 position; void main() { gl_Position = vec4(position, 0.0, 1.0); }`,
+            vertex: `attribute vec2 position; attribute vec2 uv; varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 0.0, 1.0); }`,
             fragment: SIDE_RAYS_FRAGMENT,
             uniforms: {
                 iTime: { value: 0 },
@@ -373,6 +359,14 @@ export class SilkRenderer {
 
     clear() {
         this.renderer.clear();
+    }
+
+    destroy() {
+        this.clear();
+        this.material.dispose();
+        this.renderer.dispose();
+        this.renderer.forceContextLoss();
+        this.renderer.domElement.remove();
     }
 }
 
@@ -671,6 +665,11 @@ export class DarkVeilRenderer extends OglEffect {
         super.clear();
         this.element.style.opacity = '0';
     }
+
+    destroy() {
+        super.destroy();
+        this.element.remove();
+    }
 }
 
 const RING_VERTEX = `void main(){gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
@@ -705,10 +704,8 @@ float ring(vec2 p, float ri, float cut, float t0, float px) {
 }
 
 void main() {
-  // Use each axis' full extent so the rings become wide ellipses that travel
-  // across the complete player instead of a height-sized circle in its centre.
   float px = 1.0 / min(uResolution.x, uResolution.y);
-  vec2 p = (gl_FragCoord.xy - 0.5 * uResolution.xy) / uResolution.xy;
+  vec2 p = (gl_FragCoord.xy - 0.5 * uResolution.xy) * px;
   float cr = cos(uRotation), sr = sin(uRotation);
   p = mat2(cr, -sr, sr, cr) * p;
   p -= uMouse * uMouseInfluence;
@@ -745,9 +742,9 @@ export class MagicRingsRenderer {
             uColor: { value: new THREE.Color('#ffffff') },
             uColorTwo: { value: new THREE.Color('#8b5cf6') },
             uLineThickness: { value: 2 },
-            uBaseRadius: { value: 0.16 },
-            uRadiusStep: { value: 0.065 },
-            uScaleRate: { value: 0.32 },
+            uBaseRadius: { value: 0.28 },
+            uRadiusStep: { value: 0.09 },
+            uScaleRate: { value: 1 },
             uRingCount: { value: 6 },
             uOpacity: { value: 1 },
             uNoiseAmount: { value: 0.1 },
@@ -774,6 +771,7 @@ export class MagicRingsRenderer {
         this.renderer.setPixelRatio(dpr);
         this.renderer.setSize(width, height, false);
         this.uniforms.uResolution.value.set(width * dpr, height * dpr);
+        this.uniforms.uScaleRate.value = Math.min(5, Math.max(0.9, width / height * 0.48));
     }
 
     burst(color) {
@@ -800,4 +798,11 @@ export class MagicRingsRenderer {
         this.renderer.render(this.scene, this.camera);
         this.frame = requestAnimationFrame(this.tick);
     };
+
+    stop() {
+        cancelAnimationFrame(this.frame);
+        this.frame = 0;
+        this.container.classList.remove('is-active');
+        this.renderer.clear();
+    }
 }

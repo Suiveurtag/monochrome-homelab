@@ -362,10 +362,11 @@ export const nowPlayingSettings = {
     },
 };
 
-const PLAYER_BAR_EFFECTS = new Set(['soft-aurora', 'side-rays', 'silk', 'strands', 'dark-veil']);
+const PLAYER_BAR_EFFECTS = new Set(['none', 'soft-aurora', 'side-rays', 'silk', 'strands', 'dark-veil']);
 
 export const playerBarEffectsSettings = {
     STORAGE_KEY: 'player-bar-background-effect',
+    MAGIC_RINGS_KEY: 'player-magic-rings-enabled',
 
     getEffect() {
         try {
@@ -380,6 +381,19 @@ export const playerBarEffectsSettings = {
         const safeEffect = PLAYER_BAR_EFFECTS.has(effect) ? effect : 'dark-veil';
         localStorage.setItem(this.STORAGE_KEY, safeEffect);
         window.dispatchEvent(new CustomEvent('player-bar-effect-changed', { detail: { effect: safeEffect } }));
+    },
+
+    areMagicRingsEnabled() {
+        try {
+            return localStorage.getItem(this.MAGIC_RINGS_KEY) !== 'false';
+        } catch {
+            return true;
+        }
+    },
+
+    setMagicRingsEnabled(enabled) {
+        localStorage.setItem(this.MAGIC_RINGS_KEY, String(enabled));
+        window.dispatchEvent(new CustomEvent('player-magic-rings-changed', { detail: { enabled } }));
     },
 };
 

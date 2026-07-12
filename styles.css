@@ -2497,6 +2497,12 @@ body.site-intro-active {
     opacity: 1;
 }
 
+.now-playing-bar[data-player-effect='none']::before,
+.now-playing-bar[data-player-effect='none'] > .edge-light,
+.now-playing-bar[data-player-effect='none'] .player-shader-stage {
+    opacity: 0;
+}
+
 .player-shader-stage canvas,
 .player-magic-rings canvas,
 .player-cover-blur-effect {
