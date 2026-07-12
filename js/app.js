@@ -3,7 +3,6 @@ import discordSvg from '../images/discord.svg?svg&size=22';
 import googleSvg from '../images/google.svg?svg&size=22';
 import githubSvg from '../images/github.svg?svg&size=22';
 import spotifySvg from '../images/spotify.svg?svg&size=22';
-import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
 import { isIos, isSafari } from './platform-detection.js';
 import { hapticLight } from './haptics.js';
 import { MusicAPI } from './music-api.js';
@@ -28,7 +27,7 @@ import { initializeUIInteractions } from './ui-interactions.js';
 import { debounce, getShareUrl, sanitizeForFilename } from './utils.js';
 import { sidePanelManager } from './side-panel.js';
 import { db } from './db.js';
-import { showNotification } from './downloads.js';
+import { downloadTracks, showNotification } from './downloads.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { authManager } from './accounts/auth.js';
 import { enforceAccessGate } from './access-control.js';
@@ -44,7 +43,9 @@ import {
     createSpotifyImport,
     listSelfHostedTracks,
     uploadSelfHostedTrack,
+    updateSelfHostedTrack,
 } from './selfhost-server-api.js';
+import { groupTracksByUploadDay, patchTrackMetadata, uploadDayLabel } from './upload-gallery.js';
 import { spotifyImportManager } from './spotify-import-manager.js';
 import { spotifyLikesImporter } from './spotify-likes-importer.js';
 import { uploadSelfHostedFilesBatch } from './selfhost-upload-batch.js';
@@ -126,13 +127,15 @@ async function initializeSelfHostedUploads() {
     const spotifyHint = document.getElementById('spotify-import-hint');
     const localModal = document.getElementById('local-upload-modal');
     const localDropzone = document.getElementById('local-upload-dropzone');
-    const searchInput = document.getElementById('selfhost-track-search');
-    const sortInput = document.getElementById('selfhost-track-sort');
     const list = document.getElementById('selfhost-uploaded-tracks');
     const stats = document.getElementById('selfhost-upload-stats');
+    const selectModeButton = document.getElementById('upload-select-mode');
     if (!input || !list || !stats) return;
 
     let allTracks = [];
+    const selectedIds = new Set();
+    let selecting = false;
+    let lastSelectedId = null;
 
     const escapeHtml = (value) =>
         String(value || '')
@@ -142,42 +145,66 @@ async function initializeSelfHostedUploads() {
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
 
+    const formatTrackDuration = (seconds) => {
+        const value = Math.max(0, Math.round(Number(seconds) || 0));
+        return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}`;
+    };
+
+    const selectedTracks = () => allTracks.filter((track) => selectedIds.has(String(track.id)));
+
+    const updateSelectionUI = () => {
+        document.body.classList.toggle('upload-is-selecting', selecting);
+        list.querySelectorAll('.upload-gallery-card').forEach((card) => {
+            const checked = selectedIds.has(card.dataset.trackId);
+            card.classList.toggle('is-selected', checked);
+            card.setAttribute('aria-checked', String(checked));
+        });
+        const bar = document.getElementById('upload-selection-bar');
+        if (!bar) return;
+        bar.hidden = !selecting;
+        bar.querySelector('[data-upload-selection-count]').textContent = `${selectedIds.size} selected`;
+        bar.querySelectorAll('[data-requires-selection]').forEach((button) => (button.disabled = selectedIds.size === 0));
+        selectModeButton?.classList.toggle('active', selecting);
+        selectModeButton?.querySelector('span')?.replaceChildren(document.createTextNode(selecting ? 'Done' : 'Select'));
+    };
+
+    const leaveSelectionMode = () => {
+        selectedIds.clear();
+        selecting = false;
+        lastSelectedId = null;
+        updateSelectionUI();
+    };
+
     const render = async () => {
         if (!authManager.user) {
             stats.title = 'Sign in to contribute music to this server.';
         }
-        const query = searchInput?.value?.trim().toLowerCase() || '';
-        const tracks = allTracks
-            .filter((track) => !query || `${track.title} ${track.artist?.name} ${track.album?.title}`.toLowerCase().includes(query))
-            .sort((a, b) => {
-                if (sortInput?.value === 'title') return a.title.localeCompare(b.title);
-                if (sortInput?.value === 'artist') return a.artist.name.localeCompare(b.artist.name);
-                if (sortInput?.value === 'album') return a.album.title.localeCompare(b.album.title);
-                return Number(b.uploadedAt || 0) - Number(a.uploadedAt || 0);
-            });
         stats.textContent = `${allTracks.length} server track${allTracks.length === 1 ? '' : 's'}`;
-        if (!tracks.length) {
-            list.innerHTML = '<p style="color: var(--muted-foreground)">No uploaded music yet.</p>';
+        if (!allTracks.length) {
+            list.innerHTML = '<div class="upload-gallery-empty"><strong>Your shared gallery is ready.</strong><span>Upload the first FLAC to start the timeline.</span></div>';
             return;
         }
-
-        // Use the same rows and data bindings as every other Monochrome music list.
-        // This makes uploaded tracks directly playable through the global track handlers.
-        await UIRenderer.instance.renderListWithTracks(list, tracks, true);
-        const currentUserId = authManager.user?.id || authManager.user?.$id;
-        tracks.forEach((track) => {
-            if (!track.ownerId || track.ownerId !== currentUserId) return;
-            const row = Array.from(list.querySelectorAll('.track-item')).find(
-                (element) => element.dataset.trackId === String(track.id)
-            );
-            const actions = row?.querySelector('.track-item-actions');
-            if (!actions) return;
-            actions.insertAdjacentHTML(
-                'afterbegin',
-                `<button class="btn-icon" data-edit-track="${escapeHtml(track.id)}" title="Edit metadata" aria-label="Edit metadata">${EDIT_METADATA_ICON}</button>
-                 <button class="btn-icon" data-delete-track="${escapeHtml(track.id)}" title="Delete from server" aria-label="Delete from server">${SVG_CLOSE(18)}</button>`
-            );
-        });
+        list.innerHTML = groupTracksByUploadDay(allTracks)
+            .map(
+                (group, groupIndex) => `<section class="upload-day-group" style="--group-index:${groupIndex}">
+                    <header class="upload-day-header"><h4>${escapeHtml(uploadDayLabel(group.key))}</h4><span>${group.tracks.length} song${group.tracks.length === 1 ? '' : 's'}</span></header>
+                    <div class="upload-gallery-grid">${group.tracks
+                        .map(
+                            (track, index) => `<button class="upload-gallery-card${selectedIds.has(String(track.id)) ? ' is-selected' : ''}" type="button"
+                                data-track-id="${escapeHtml(track.id)}" role="checkbox" aria-checked="${selectedIds.has(String(track.id))}" style="--card-index:${index}">
+                                <span class="upload-card-art"><img src="${escapeHtml(track.album?.cover || track.serverCoverUrl || '/assets/appicon.png')}" alt="" loading="lazy" />
+                                    <span class="upload-card-play"><use svg="!lucide/play.svg" size="21" /></span>
+                                    <span class="upload-card-check"><use svg="!lucide/check.svg" size="18" /></span>
+                                    <span class="upload-card-duration">${formatTrackDuration(track.duration)}</span>
+                                </span>
+                                <span class="upload-card-copy"><strong>${escapeHtml(track.title || 'Unknown title')}</strong><span>${escapeHtml(track.artist?.name || 'Unknown artist')}</span></span>
+                            </button>`
+                        )
+                        .join('')}</div>
+                </section>`
+            )
+            .join('');
+        updateSelectionUI();
     };
 
     const refreshTracks = async () => {
@@ -185,8 +212,105 @@ async function initializeSelfHostedUploads() {
             console.warn('[SelfHost] Failed to list tracks:', error);
             return [];
         });
+        allTracks.sort((a, b) => Number(b.uploadedAt || 0) - Number(a.uploadedAt || 0));
         await render();
     };
+
+    const selectionBar = document.createElement('aside');
+    selectionBar.id = 'upload-selection-bar';
+    selectionBar.className = 'upload-selection-bar';
+    selectionBar.hidden = true;
+    selectionBar.setAttribute('aria-label', 'Selected uploads actions');
+    selectionBar.innerHTML = `<strong data-upload-selection-count>0 selected</strong>
+        <div class="upload-selection-actions">
+            <button type="button" data-upload-action="all"><use svg="!lucide/list-checks.svg" size="18" /><span>All</span></button>
+            <button type="button" data-upload-action="play" data-requires-selection><use svg="!lucide/play.svg" size="18" /><span>Play</span></button>
+            <button type="button" data-upload-action="queue" data-requires-selection><use svg="!lucide/list-plus.svg" size="18" /><span>Queue</span></button>
+            <button type="button" data-upload-action="download" data-requires-selection><use svg="!lucide/download.svg" size="18" /><span>Download</span></button>
+            <button type="button" data-upload-action="edit" data-requires-selection><use svg="!lucide/pencil.svg" size="18" /><span>Edit</span></button>
+            <button type="button" class="is-danger" data-upload-action="delete" data-requires-selection><use svg="!lucide/trash-2.svg" size="18" /><span>Delete</span></button>
+        </div>
+        <button type="button" class="upload-selection-close" data-upload-action="close" aria-label="Leave selection mode"><use svg="!lucide/x.svg" size="20" /></button>`;
+    document.body.appendChild(selectionBar);
+
+    const bulkEditor = document.createElement('div');
+    bulkEditor.className = 'upload-modal upload-bulk-editor';
+    bulkEditor.hidden = true;
+    bulkEditor.innerHTML = `<button class="upload-modal-backdrop" type="button" data-close-bulk-editor aria-label="Close bulk editor"></button>
+        <section class="upload-modal-panel upload-bulk-panel" role="dialog" aria-modal="true" aria-labelledby="upload-bulk-title">
+            <button class="icon-btn upload-modal-close" type="button" data-close-bulk-editor aria-label="Close"><use svg="!lucide/x.svg" size="20" /></button>
+            <div class="upload-bulk-heading"><span>Community catalogue</span><h3 id="upload-bulk-title">Edit selected tracks</h3><p>Enable only the fields you want to replace across the selection.</p></div>
+            <form id="upload-bulk-form">
+                <label class="upload-bulk-field"><input type="checkbox" name="applyArtist" /><span>Artist</span><input type="text" name="artist" placeholder="Shared artist name" disabled /></label>
+                <label class="upload-bulk-field"><input type="checkbox" name="applyAlbum" /><span>Album</span><input type="text" name="album" placeholder="Shared album title" disabled /></label>
+                <label class="upload-bulk-field"><input type="checkbox" name="applyReleaseDate" /><span>Release date</span><input type="date" name="releaseDate" disabled /></label>
+                <label class="upload-bulk-field"><input type="checkbox" name="applyExplicit" /><span>Explicit</span><select name="explicit" disabled><option value="true">Yes</option><option value="false">No</option></select></label>
+                <label class="upload-bulk-field is-wide"><input type="checkbox" name="applyLyrics" /><span>Lyrics</span><textarea name="lyrics" rows="4" placeholder="Replace lyrics on every selected track" disabled></textarea></label>
+                <label class="upload-bulk-field is-wide"><input type="checkbox" name="applyCover" /><span>Artwork</span><input type="file" name="cover" accept="image/png,image/jpeg,image/webp,image/avif" disabled /></label>
+                <div class="upload-bulk-footer"><span data-bulk-progress aria-live="polite"></span><button class="btn-primary" type="submit">Apply changes</button></div>
+            </form>
+        </section>`;
+    document.body.appendChild(bulkEditor);
+
+    bulkEditor.querySelectorAll('.upload-bulk-field > input[type="checkbox"]').forEach((checkbox) => {
+        checkbox.addEventListener('change', () => {
+            const control = checkbox.parentElement.querySelector('input:not([type="checkbox"]),select,textarea');
+            if (control) control.disabled = !checkbox.checked;
+        });
+    });
+    bulkEditor.querySelectorAll('[data-close-bulk-editor]').forEach((button) =>
+        button.addEventListener('click', () => (bulkEditor.hidden = true))
+    );
+
+    const runTrackOperation = async (tracks, operation, progressLabel) => {
+        const failures = [];
+        for (let index = 0; index < tracks.length; index++) {
+            selectionBar.querySelector('[data-upload-selection-count]').textContent = `${progressLabel} ${index + 1}/${tracks.length}`;
+            try {
+                await operation(tracks[index]);
+                selectedIds.delete(String(tracks[index].id));
+            } catch (error) {
+                console.error(`[SelfHost] ${progressLabel} failed for ${tracks[index].id}:`, error);
+                failures.push(tracks[index]);
+            }
+        }
+        await refreshTracks();
+        window.dispatchEvent(new CustomEvent('local-library-updated'));
+        window.dispatchEvent(new CustomEvent('library-changed'));
+        if (failures.length) {
+            showNotification(`${tracks.length - failures.length} succeeded · ${failures.length} failed`, 'error');
+            selecting = true;
+        } else {
+            showNotification(`${tracks.length} track${tracks.length === 1 ? '' : 's'} updated.`);
+            leaveSelectionMode();
+        }
+        updateSelectionUI();
+    };
+
+    bulkEditor.querySelector('#upload-bulk-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!authManager.user) return showNotification('Sign in to edit the community catalogue.', 'error');
+        const form = new FormData(event.currentTarget);
+        const formText = (name) => {
+            const entry = form.get(name);
+            return typeof entry === 'string' ? entry : '';
+        };
+        const changes = {};
+        if (form.has('applyArtist')) changes.artist = formText('artist').trim() || 'Unknown Artist';
+        if (form.has('applyAlbum')) changes.album = formText('album').trim() || 'Unknown Album';
+        if (form.has('applyReleaseDate')) changes.releaseDate = formText('releaseDate');
+        if (form.has('applyExplicit')) changes.explicit = form.get('explicit') === 'true';
+        if (form.has('applyLyrics')) changes.lyrics = formText('lyrics');
+        const coverEntry = form.get('cover');
+        const cover = form.has('applyCover') && coverEntry instanceof File && coverEntry.size ? coverEntry : null;
+        if (!Object.keys(changes).length && !cover) return showNotification('Choose at least one field to update.', 'error');
+        const tracks = selectedTracks();
+        bulkEditor.hidden = true;
+        await runTrackOperation(tracks, async (track) => {
+            const updated = await updateSelfHostedTrack(track.id, patchTrackMetadata(track, changes), cover);
+            await db.putUploadedTrack(updated);
+        }, 'Editing');
+    });
 
     input.addEventListener('change', async (event) => {
         const files = Array.from(event.target.files || []);
@@ -278,8 +402,6 @@ async function initializeSelfHostedUploads() {
         input.dispatchEvent(new Event('change', { bubbles: true }));
     });
 
-    searchInput?.addEventListener('input', debounce(render, 160));
-    sortInput?.addEventListener('change', render);
     const completedImportIds = new Set();
     let importJobsInitialized = false;
     window.addEventListener('spotify-import-jobs', async (event) => {
@@ -291,26 +413,123 @@ async function initializeSelfHostedUploads() {
         if (hasNewCompletion) await refreshTracks();
     });
 
+    const toggleGalleryTrack = (card, range = false) => {
+        const id = card.dataset.trackId;
+        const cards = [...list.querySelectorAll('.upload-gallery-card')];
+        if (range && lastSelectedId) {
+            const from = cards.findIndex((item) => item.dataset.trackId === lastSelectedId);
+            const to = cards.indexOf(card);
+            if (from >= 0 && to >= 0) cards.slice(Math.min(from, to), Math.max(from, to) + 1).forEach((item) => selectedIds.add(item.dataset.trackId));
+        } else if (selectedIds.has(id)) selectedIds.delete(id);
+        else selectedIds.add(id);
+        lastSelectedId = id;
+        selecting = true;
+        updateSelectionUI();
+        void hapticLight();
+    };
+
     list.addEventListener('click', async (event) => {
-        const editButton = event.target.closest('[data-edit-track]');
-        if (editButton) {
-            const track = await MusicAPI.instance.getTrackMetadata(editButton.dataset.editTrack).catch(() => null);
-            if (track) UIRenderer.instance.openMetadataEditor('track', track);
+        const card = event.target.closest('.upload-gallery-card');
+        if (!card) return;
+        if (selecting || event.ctrlKey || event.metaKey || event.shiftKey) {
+            toggleGalleryTrack(card, event.shiftKey);
             return;
         }
-        const button = event.target.closest('[data-delete-track]');
-        if (!button) return;
-        const trackId = button.dataset.deleteTrack;
-        if (!trackId) return;
-        if (!confirm('Delete this track from the server?')) return;
-        await deleteSelfHostedTrack(trackId);
-        await db.deleteUploadedTrack(trackId).catch(() => {});
-        await refreshTracks();
-        window.dispatchEvent(new CustomEvent('local-library-updated'));
-        window.dispatchEvent(new CustomEvent('library-changed'));
+        const index = allTracks.findIndex((track) => String(track.id) === card.dataset.trackId);
+        if (index < 0) return;
+        await Player.instance.setQueue(allTracks, index);
+        document.getElementById('shuffle-btn')?.classList.remove('active');
+        await Player.instance.playTrackFromQueue();
+    });
+    list.addEventListener('contextmenu', (event) => {
+        const card = event.target.closest('.upload-gallery-card');
+        if (!card) return;
+        event.preventDefault();
+        toggleGalleryTrack(card, event.shiftKey);
+    });
+    let longPressTimer = null;
+    let suppressNextGalleryClick = false;
+    list.addEventListener('click', (event) => {
+        if (!suppressNextGalleryClick) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        suppressNextGalleryClick = false;
+    }, true);
+    list.addEventListener('pointerdown', (event) => {
+        const card = event.target.closest('.upload-gallery-card');
+        if (!card || event.pointerType === 'mouse') return;
+        longPressTimer = setTimeout(() => {
+            longPressTimer = null;
+            suppressNextGalleryClick = true;
+            toggleGalleryTrack(card);
+        }, 480);
+    });
+    ['pointerup', 'pointercancel', 'pointermove'].forEach((name) =>
+        list.addEventListener(name, () => {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        })
+    );
+
+    selectModeButton?.addEventListener('click', () => {
+        if (selecting) leaveSelectionMode();
+        else {
+            selecting = true;
+            updateSelectionUI();
+        }
+    });
+
+    selectionBar.addEventListener('click', async (event) => {
+        const action = event.target.closest('[data-upload-action]')?.dataset.uploadAction;
+        if (!action) return;
+        if (action === 'close') return leaveSelectionMode();
+        if (action === 'all') {
+            if (selectedIds.size === allTracks.length) selectedIds.clear();
+            else allTracks.forEach((track) => selectedIds.add(String(track.id)));
+            updateSelectionUI();
+            return;
+        }
+        const tracks = selectedTracks();
+        if (!tracks.length) return;
+        if (action === 'play') {
+            await Player.instance.setQueue(tracks, 0);
+            document.getElementById('shuffle-btn')?.classList.remove('active');
+            await Player.instance.playTrackFromQueue();
+            return;
+        }
+        if (action === 'queue') {
+            await Player.instance.addToQueue(tracks);
+            if (window.renderQueueFunction) await window.renderQueueFunction();
+            showNotification(`Added ${tracks.length} tracks to queue`);
+            return;
+        }
+        if (action === 'download') {
+            await downloadTracks(tracks, MusicAPI.instance, downloadQualitySettings.getQuality(), LyricsManager.instance);
+            return;
+        }
+        if (!authManager.user) return showNotification('Sign in to manage the community catalogue.', 'error');
+        if (action === 'edit') {
+            if (tracks.length === 1) {
+                UIRenderer.instance.openMetadataEditor('track', tracks[0]);
+                return;
+            }
+            bulkEditor.querySelector('#upload-bulk-form').reset();
+            bulkEditor.querySelectorAll('.upload-bulk-field input:not([type="checkbox"]),.upload-bulk-field select,.upload-bulk-field textarea').forEach((control) => (control.disabled = true));
+            bulkEditor.querySelector('#upload-bulk-title').textContent = `Edit ${tracks.length} selected track${tracks.length === 1 ? '' : 's'}`;
+            bulkEditor.hidden = false;
+            return;
+        }
+        if (action === 'delete') {
+            if (!confirm(`Permanently delete ${tracks.length} selected track${tracks.length === 1 ? '' : 's'} from the community server?`)) return;
+            await runTrackOperation(tracks, async (track) => {
+                await deleteSelfHostedTrack(track.id);
+                await db.deleteUploadedTrack(track.id).catch(() => {});
+            }, 'Deleting');
+        }
     });
 
     authManager.onAuthStateChanged(() => refreshTracks());
+    window.addEventListener('track-metadata-updated', () => void refreshTracks());
     spotifyImportManager.start();
     spotifyLikesImporter.init();
     const spotifyRedirect = document.getElementById('spotify-redirect-uri');

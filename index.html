@@ -2420,14 +2420,10 @@
 
                         <section class="upload-library-section">
                             <div class="upload-section-heading">
-                                <div><h3>Server catalogue</h3><span>Available everywhere in Monochrome</span></div>
-                                <div class="upload-library-tools">
-                                    <label class="upload-search"><use svg="!lucide/search.svg" size="16" /><input id="selfhost-track-search" type="search" placeholder="Search tracks, artists, albums" /></label>
-                                    <select id="selfhost-track-sort" class="template-input" aria-label="Sort server library"><option value="newest">Newest</option><option value="title">Title</option><option value="artist">Artist</option><option value="album">Album</option></select>
-                                </div>
+                                <div><h3>Recent uploads</h3><span>A shared timeline for everyone on this server</span></div>
+                                <button id="upload-select-mode" class="btn-secondary upload-select-mode" type="button"><use svg="!lucide/circle-check-big.svg" size="17" /><span>Select</span></button>
                             </div>
-                            <div class="track-list upload-track-list" id="selfhost-uploaded-tracks"></div>
-                            <div id="selfhost-upload-pagination" class="upload-pagination"></div>
+                            <div class="upload-gallery" id="selfhost-uploaded-tracks" aria-live="polite"></div>
                         </section>
                     </section>
 
