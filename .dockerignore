@@ -30,3 +30,5 @@ docker-compose*.yml
 
 # Other
 *.log
+pb_data
+spotiflac_data
