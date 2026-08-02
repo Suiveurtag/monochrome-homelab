@@ -11,6 +11,7 @@ import {
 } from './icons.js';
 import { sidePanelManager } from './side-panel.js';
 import { isTtml, lyricsToTtml, parseLrc } from './lyrics-format.js';
+import { applySpicyLyricsShadowTheme, applySpicyLyricsSurface } from './spicy-lyrics-theme.js';
 
 const loadAmLyrics = () => {
     const images = Array.from(document.images).filter((img) => !img.complete);
@@ -997,7 +998,8 @@ export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = f
     sidePanelManager.open('lyrics', 'Lyrics', renderControls, renderContent, forceOpen);
 }
 
-function getLyricsHighlightColor() {
+function getLyricsHighlightColor(element = null) {
+    if (element?.dataset?.spicyLyricsView) return '#fff';
     // Check if the current theme is light
     const isLight = getComputedStyle(document.documentElement).colorScheme === 'light';
     return isLight ? '#000' : '#fff';
@@ -1006,7 +1008,7 @@ function getLyricsHighlightColor() {
 function updateLyricsTheme() {
     const highlightColor = getLyricsHighlightColor();
     document.querySelectorAll('am-lyrics').forEach((el) => {
-        el.setAttribute('highlight-color', highlightColor);
+        el.setAttribute('highlight-color', getLyricsHighlightColor(el) || highlightColor);
     });
 }
 
@@ -1019,82 +1021,6 @@ themeObserver.observe(document.documentElement, {
     attributes: true,
     attributeFilter: ['data-theme', 'style'],
 });
-
-function applyFullscreenLyricsShadowTweaks(amLyrics, container) {
-    if (!amLyrics || container?.id !== 'fullscreen-lyrics-content') return;
-
-    const injectStyle = () => {
-        const root = amLyrics.shadowRoot;
-        if (!root) return false;
-
-        let styleEl = root.getElementById('monochrome-fullscreen-lyrics-tweaks');
-        if (!styleEl) {
-            styleEl = document.createElement('style');
-            styleEl.id = 'monochrome-fullscreen-lyrics-tweaks';
-            root.appendChild(styleEl);
-        }
-
-        styleEl.textContent = `
-            .lyrics-container {
-                scrollbar-width: none !important;
-                -ms-overflow-style: none !important;
-            }
-
-            .lyrics-container::-webkit-scrollbar {
-                width: 0 !important;
-                height: 0 !important;
-                display: none !important;
-                background: transparent !important;
-            }
-
-            .lyrics-line {
-                transform-origin: left center;
-                transition:
-                    opacity 0.42s ease,
-                    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1) var(--lyrics-line-delay, 0ms),
-                    filter 0.48s cubic-bezier(0.22, 1, 0.36, 1) !important;
-            }
-
-            .lyrics-line:not(.active):not(.pre-active) {
-                opacity: 0.44;
-            }
-            .lyrics-line-container {
-                transition:
-                    transform 0.72s cubic-bezier(0.22, 1, 0.36, 1),
-                    background-color 0.3s ease,
-                    color 0.3s ease !important;
-            }
-
-            .lyrics-line.active .lyrics-line-container,
-            .lyrics-line.pre-active .lyrics-line-container {
-                transition:
-                    transform 0.56s cubic-bezier(0.22, 1, 0.36, 1),
-                    background-color 0.22s ease,
-                    color 0.22s ease !important;
-            }
-
-            .lyrics-line.active .lyrics-line-container {
-                transform: scale(1.015);
-            }
-        `;
-
-        return true;
-    };
-
-    if (injectStyle()) return;
-
-    let attempts = 0;
-    const maxAttempts = 24;
-    const tryInject = () => {
-        if (injectStyle()) return;
-        attempts += 1;
-        if (attempts < maxAttempts) {
-            requestAnimationFrame(tryInject);
-        }
-    };
-
-    requestAnimationFrame(tryInject);
-}
 
 async function renderLyricsComponent(container, track, audioPlayer, lyricsManager) {
     container.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
@@ -1132,7 +1058,8 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
         amLyrics.style.width = '100%';
 
         container.appendChild(amLyrics);
-        applyFullscreenLyricsShadowTweaks(amLyrics, container);
+        applySpicyLyricsSurface(container, track, lyricsManager.api);
+        applySpicyLyricsShadowTheme(amLyrics, container);
 
         lyricsManager.setupLyricsObserver(amLyrics);
 
