@@ -42,6 +42,7 @@ import { sidePanelManager } from './side-panel.js';
 import { deleteSelfHostedTrack, listSelfHostedTracks } from './selfhost-server-api.js';
 import { openMetadataEditor } from './metadata-editor.js';
 import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
+import { setArtworkBackground } from './artwork-media.js';
 
 let _isBlockedCopyright = (_c) => false;
 import('./content-filter.ts')
@@ -1096,7 +1097,7 @@ export class UIRenderer {
     setPageBackground(imageUrl) {
         const bgElement = document.getElementById('page-background');
         if (backgroundSettings.isEnabled() && imageUrl) {
-            bgElement.style.backgroundImage = `url('${imageUrl}')`;
+            setArtworkBackground(bgElement, imageUrl);
             bgElement.classList.add('active');
             document.body.classList.add('has-page-background');
         } else {
@@ -1105,7 +1106,7 @@ export class UIRenderer {
             // Delay clearing the image to allow transition
             setTimeout(() => {
                 if (!bgElement.classList.contains('active')) {
-                    bgElement.style.backgroundImage = '';
+                    setArtworkBackground(bgElement, '');
                 }
             }, 500);
         }
@@ -4812,37 +4813,43 @@ export class UIRenderer {
             }
 
             const currentId = this.currentArtistId;
-            this.api
-                .getArtistBanner(artist.name)
-                .then(async (banner) => {
-                    if (this.currentArtistId !== currentId) return;
+            if (artist.banner && bannerContainer) {
+                setArtworkBackground(bannerContainer, artist.banner);
+                bannerContainer.style.opacity = '1';
+            }
+            if (!artist.banner) {
+                this.api
+                    .getArtistBanner(artist.name)
+                    .then(async (banner) => {
+                        if (this.currentArtistId !== currentId) return;
 
-                    if (banner && banner.hlsUrl && bannerContainer) {
-                        const video = document.createElement('video');
-                        video.autoplay = true;
-                        video.loop = true;
-                        video.muted = true;
-                        video.playsInline = true;
-                        video.setAttribute('muted', '');
-                        video.setAttribute('autoplay', '');
-                        video.setAttribute('playsinline', '');
-                        video.style.opacity = '1';
+                        if (banner && banner.hlsUrl && bannerContainer) {
+                            const video = document.createElement('video');
+                            video.autoplay = true;
+                            video.loop = true;
+                            video.muted = true;
+                            video.playsInline = true;
+                            video.setAttribute('muted', '');
+                            video.setAttribute('autoplay', '');
+                            video.setAttribute('playsinline', '');
+                            video.style.opacity = '1';
 
-                        try {
-                            await this.setupHlsVideo(video, banner, null);
-                            if (this.currentArtistId === currentId) {
-                                bannerContainer.appendChild(video);
-                                bannerContainer.style.opacity = '1';
-                                video.play().catch(() => {});
+                            try {
+                                await this.setupHlsVideo(video, banner, null);
+                                if (this.currentArtistId === currentId) {
+                                    bannerContainer.appendChild(video);
+                                    bannerContainer.style.opacity = '1';
+                                    video.play().catch(() => {});
+                                }
+                            } catch (e) {
+                                console.warn('Failed to setup artist banner video:', e);
                             }
-                        } catch (e) {
-                            console.warn('Failed to setup artist banner video:', e);
                         }
-                    }
-                })
-                .catch((e) => {
-                    console.warn('Failed to fetch artist banner:', e);
-                });
+                    })
+                    .catch((e) => {
+                        console.warn('Failed to fetch artist banner:', e);
+                    });
+            }
 
             // Handle Biography
             if (bioEl) {

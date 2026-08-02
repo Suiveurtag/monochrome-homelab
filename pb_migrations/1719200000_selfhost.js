@@ -85,7 +85,7 @@ migrate((app) => {
             name: 'cover',
             maxSelect: 1,
             maxSize: 10485760,
-            mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+            mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'video/mp4'],
         })
     );
     tracks.indexes = [

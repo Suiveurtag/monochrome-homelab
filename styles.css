@@ -8432,7 +8432,7 @@ img[src=''] {
     border-radius: 50%;
 }
 
-.metadata-artwork-preview > img {
+.metadata-artwork-preview > :is(img, video) {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -8463,7 +8463,7 @@ img[src=''] {
     opacity: 1;
 }
 
-.metadata-artwork-picker:hover .metadata-artwork-preview > img {
+.metadata-artwork-picker:hover .metadata-artwork-preview > :is(img, video) {
     transform: scale(1.08);
     filter: saturate(0.7);
 }
@@ -12026,6 +12026,16 @@ body:has(#side-panel.active) #close-fullscreen-cover-btn {
     left: 0;
     z-index: 0;
     mask-image: linear-gradient(to bottom, rgb(0, 0, 0, 1) 50%, rgb(0, 0, 0, 0));
+}
+
+.artwork-background-video {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
 }
 
 .profile-info-section {

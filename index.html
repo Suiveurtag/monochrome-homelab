@@ -490,10 +490,15 @@
                         type="url"
                         id="playlist-cover-input"
                         class="template-input"
-                        placeholder="Cover image URL"
+                        placeholder="Cover image, GIF or MP4 URL"
                         style="flex: 1; margin: 0; display: none"
                     />
-                    <input type="file" id="playlist-cover-file-input" accept="image/*" style="display: none" />
+                    <input
+                        type="file"
+                        id="playlist-cover-file-input"
+                        accept="image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4"
+                        style="display: none"
+                    />
                     <button
                         type="button"
                         id="playlist-cover-upload-btn"
@@ -846,7 +851,12 @@
                             placeholder="Avatar URL"
                             style="flex: 1; margin: 0; display: none"
                         />
-                        <input type="file" id="edit-profile-avatar-file" accept="image/*" style="display: none" />
+                        <input
+                            type="file"
+                            id="edit-profile-avatar-file"
+                            accept="image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4"
+                            style="display: none"
+                        />
                         <button
                             type="button"
                             id="edit-profile-avatar-upload-btn"
@@ -903,7 +913,12 @@
                             placeholder="Banner URL"
                             style="flex: 1; margin: 0; display: none"
                         />
-                        <input type="file" id="edit-profile-banner-file" accept="image/*" style="display: none" />
+                        <input
+                            type="file"
+                            id="edit-profile-banner-file"
+                            accept="image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4"
+                            style="display: none"
+                        />
                         <button
                             type="button"
                             id="edit-profile-banner-upload-btn"

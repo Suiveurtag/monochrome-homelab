@@ -4,6 +4,7 @@ import { updateSelfHostedTrack } from './selfhost-server-api.js';
 import { createModal, escapeHtml } from './utils.js';
 import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
 import { isTtml, parseLrc } from './lyrics-format.js';
+import { isSupportedArtworkFile, setArtworkSource } from './artwork-media.js';
 
 function fileToDataUrl(file) {
     if (!file?.size) return Promise.resolve('');
@@ -22,12 +23,12 @@ function value(form, name, fallback = '') {
 function artworkPicker(name, label, src, round = false) {
     return `
         <label class="metadata-artwork-picker${round ? ' is-round' : ''}" data-artwork-picker="${name}">
-            <input type="file" name="${name}" accept="image/png,image/jpeg,image/webp,image/avif" />
+            <input type="file" name="${name}" accept="image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4" />
             <span class="metadata-artwork-preview">
                 <img src="${escapeHtml(src || '/assets/appicon.png')}" alt="" data-artwork-preview="${name}" />
                 <span class="metadata-artwork-overlay">${EDIT_METADATA_ICON}Replace</span>
             </span>
-            <span class="metadata-artwork-copy"><strong>${label}</strong><small>PNG, JPG, WebP or AVIF</small></span>
+            <span class="metadata-artwork-copy"><strong>${label}</strong><small>PNG, JPG, WebP, AVIF, GIF or MP4</small></span>
         </label>`;
 }
 
@@ -235,11 +236,16 @@ async function saveArtist(artist, tracks, form) {
 function setupArtworkPreviews(form) {
     form.querySelectorAll('[data-artwork-picker]').forEach((picker) => {
         const input = picker.querySelector('input[type="file"]');
-        const preview = picker.querySelector('[data-artwork-preview]');
+        let preview = picker.querySelector('[data-artwork-preview]');
         const update = () => {
             const file = input.files?.[0];
             if (!file) return;
-            preview.src = URL.createObjectURL(file);
+            if (!isSupportedArtworkFile(file)) {
+                showNotification('Choose a PNG, JPG, WebP, AVIF, GIF or MP4 file.', 'error');
+                input.value = '';
+                return;
+            }
+            preview = setArtworkSource(preview, URL.createObjectURL(file), file.type);
             picker.classList.add('has-new-file');
         };
         input.addEventListener('change', update);
@@ -256,7 +262,7 @@ function setupArtworkPreviews(form) {
             })
         );
         picker.addEventListener('drop', (event) => {
-            const file = [...(event.dataTransfer?.files || [])].find((item) => item.type.startsWith('image/'));
+            const file = [...(event.dataTransfer?.files || [])].find(isSupportedArtworkFile);
             if (!file) return;
             const transfer = new DataTransfer();
             transfer.items.add(file);

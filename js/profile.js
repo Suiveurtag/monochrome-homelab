@@ -6,6 +6,7 @@ import { MusicAPI } from './music-api.js';
 import { apiSettings } from './storage.js';
 import { debounce, escapeHtml } from './utils.js';
 import { Player } from './player.js';
+import { isSupportedArtworkFile, setArtworkBackground } from './artwork-media.js';
 
 // objects execution february 29th 2027
 
@@ -96,8 +97,8 @@ function setupImageUploadControl(idPrefix) {
         const file = e.target.files[0];
         if (!file) return;
 
-        if (!file.type.startsWith('image/')) {
-            alert('Please select an image file');
+        if (!isSupportedArtworkFile(file)) {
+            alert('Please select a PNG, JPG, WebP, AVIF, GIF or MP4 file');
             return;
         }
 
@@ -238,7 +239,7 @@ export async function loadProfile(username) {
     document.querySelectorAll('.page').forEach((p) => p.classList.remove('active'));
     profilePage.classList.add('active');
 
-    document.getElementById('profile-banner').style.backgroundImage = '';
+    setArtworkBackground(document.getElementById('profile-banner'), '');
     document.getElementById('profile-avatar').src = '/assets/appicon.png';
     document.getElementById('profile-display-name').textContent = 'Loading...';
     document.getElementById('profile-username').textContent = '@' + username;
@@ -289,7 +290,7 @@ export async function loadProfile(username) {
     const normalizedStatus = normalizeProfileStatus(profile.status);
 
     document.getElementById('profile-display-name').textContent = profile.display_name || username;
-    if (profile.banner) document.getElementById('profile-banner').style.backgroundImage = `url('${profile.banner}')`;
+    if (profile.banner) setArtworkBackground(document.getElementById('profile-banner'), profile.banner);
     if (profile.avatar_url) document.getElementById('profile-avatar').src = profile.avatar_url;
 
     if (normalizedStatus) {

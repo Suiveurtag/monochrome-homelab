@@ -65,6 +65,7 @@ import {
 } from './playlist-importer.js';
 import { generateFullCSV, generateFullJSON } from './playlist-generator.js';
 import { modernSettings } from './ModernSettings.js';
+import { isSupportedArtworkFile } from './artwork-media.js';
 import {
     SVG_OFFLINE,
     SVG_RIGHT_ARROW,
@@ -246,7 +247,7 @@ async function initializeSelfHostedUploads() {
                 <label class="upload-bulk-field"><input type="checkbox" name="applyReleaseDate" /><span>Release date</span><input type="date" name="releaseDate" disabled /></label>
                 <label class="upload-bulk-field"><input type="checkbox" name="applyExplicit" /><span>Explicit</span><select name="explicit" disabled><option value="true">Yes</option><option value="false">No</option></select></label>
                 <label class="upload-bulk-field is-wide"><input type="checkbox" name="applyLyrics" /><span>Lyrics</span><textarea name="lyrics" rows="4" placeholder="Replace lyrics on every selected track" disabled></textarea></label>
-                <label class="upload-bulk-field is-wide"><input type="checkbox" name="applyCover" /><span>Artwork</span><input type="file" name="cover" accept="image/png,image/jpeg,image/webp,image/avif" disabled /></label>
+                <label class="upload-bulk-field is-wide"><input type="checkbox" name="applyCover" /><span>Artwork</span><input type="file" name="cover" accept="image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4" disabled /></label>
                 <div class="upload-bulk-footer"><span data-bulk-progress aria-live="polite"></span><button class="btn-primary" type="submit">Apply changes</button></div>
             </form>
         </section>`;
@@ -1311,8 +1312,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!file) return;
 
         // Validate file type
-        if (!file.type.startsWith('image/')) {
-            alert('Please select an image file');
+        if (!isSupportedArtworkFile(file)) {
+            alert('Please select a PNG, JPG, WebP, AVIF, GIF or MP4 file');
             return;
         }
 
