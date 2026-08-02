@@ -135,12 +135,30 @@
                             <span class="access-success-spark" style="--spark-angle: 0deg; --spark-delay: 0ms"></span>
                             <span class="access-success-spark" style="--spark-angle: 40deg; --spark-delay: 80ms"></span>
                             <span class="access-success-spark" style="--spark-angle: 80deg; --spark-delay: 30ms"></span>
-                            <span class="access-success-spark" style="--spark-angle: 120deg; --spark-delay: 110ms"></span>
-                            <span class="access-success-spark" style="--spark-angle: 160deg; --spark-delay: 55ms"></span>
-                            <span class="access-success-spark" style="--spark-angle: 200deg; --spark-delay: 120ms"></span>
-                            <span class="access-success-spark" style="--spark-angle: 240deg; --spark-delay: 20ms"></span>
-                            <span class="access-success-spark" style="--spark-angle: 280deg; --spark-delay: 95ms"></span>
-                            <span class="access-success-spark" style="--spark-angle: 320deg; --spark-delay: 45ms"></span>
+                            <span
+                                class="access-success-spark"
+                                style="--spark-angle: 120deg; --spark-delay: 110ms"
+                            ></span>
+                            <span
+                                class="access-success-spark"
+                                style="--spark-angle: 160deg; --spark-delay: 55ms"
+                            ></span>
+                            <span
+                                class="access-success-spark"
+                                style="--spark-angle: 200deg; --spark-delay: 120ms"
+                            ></span>
+                            <span
+                                class="access-success-spark"
+                                style="--spark-angle: 240deg; --spark-delay: 20ms"
+                            ></span>
+                            <span
+                                class="access-success-spark"
+                                style="--spark-angle: 280deg; --spark-delay: 95ms"
+                            ></span>
+                            <span
+                                class="access-success-spark"
+                                style="--spark-angle: 320deg; --spark-delay: 45ms"
+                            ></span>
                         </span>
                     </div>
                     <div class="access-card-heading">
@@ -2376,7 +2394,9 @@
                             <div>
                                 <p class="upload-eyebrow">Monochrome lossless catalogue</p>
                                 <h2 class="section-title">Bring your music home.</h2>
-                                <p class="upload-lead">Import music for everyone on this Monochrome server, from Spotify or your computer.</p>
+                                <p class="upload-lead">
+                                    Import music for everyone on this Monochrome server, from Spotify or your computer.
+                                </p>
                             </div>
                             <p id="selfhost-upload-stats" class="upload-library-count">0 tracks</p>
                         </header>
@@ -2391,13 +2411,22 @@
                                 </div>
                                 <form id="spotify-import-form" class="spotify-import-form">
                                     <label class="sr-only" for="spotify-import-url">Spotify link</label>
-                                    <input id="spotify-import-url" class="template-input" type="url" autocomplete="off" placeholder="https://open.spotify.com/album/…" required />
+                                    <input
+                                        id="spotify-import-url"
+                                        class="template-input"
+                                        type="url"
+                                        autocomplete="off"
+                                        placeholder="https://open.spotify.com/album/…"
+                                        required
+                                    />
                                     <button id="spotify-import-btn" class="btn-primary" type="submit">
                                         <use svg="!lucide/sparkles.svg" size="18" />
                                         <span>Import</span>
                                     </button>
                                 </form>
-                                <p id="spotify-import-hint" class="upload-input-hint">Spotify track, album or playlist link</p>
+                                <p id="spotify-import-hint" class="upload-input-hint">
+                                    Spotify track, album or playlist link
+                                </p>
                                 <div class="spotify-likes-entry">
                                     <button id="open-spotify-likes" class="spotify-likes-toggle" type="button">
                                         <use svg="!lucide/heart.svg" size="16" />
@@ -2405,13 +2434,34 @@
                                         <use svg="!lucide/chevron-down.svg" size="15" />
                                     </button>
                                     <div id="spotify-likes-panel" class="spotify-likes-panel" hidden>
-                                        <p>Connect Spotify with <code>user-library-read</code>. Every saved track will be downloaded once and liked in Monochrome with its original date.</p>
+                                        <p>
+                                            Connect Spotify with <code>user-library-read</code>. Every saved track will
+                                            be downloaded once and liked in Monochrome with its original date.
+                                        </p>
                                         <div class="spotify-likes-fields">
-                                            <label><span>Spotify Client ID</span><input id="spotify-client-id" class="template-input" autocomplete="off" placeholder="From developer.spotify.com" /></label>
-                                            <label><span>Download order</span><select id="spotify-likes-order" class="template-input"><option value="oldest">Oldest first</option><option value="newest">Newest first</option></select></label>
+                                            <label
+                                                ><span>Spotify Client ID</span
+                                                ><input
+                                                    id="spotify-client-id"
+                                                    class="template-input"
+                                                    autocomplete="off"
+                                                    placeholder="From developer.spotify.com"
+                                            /></label>
+                                            <label
+                                                ><span>Download order</span
+                                                ><select id="spotify-likes-order" class="template-input">
+                                                    <option value="oldest">Oldest first</option>
+                                                    <option value="newest">Newest first</option>
+                                                </select></label
+                                            >
                                         </div>
-                                        <p class="spotify-redirect-help">Add <strong id="spotify-redirect-uri">this site’s /upload URL</strong> as a Redirect URI in your Spotify app.</p>
-                                        <button id="spotify-likes-connect" class="btn-secondary" type="button"><img src="/images/spotify.svg" alt="" />Connect Spotify</button>
+                                        <p class="spotify-redirect-help">
+                                            Add <strong id="spotify-redirect-uri">this site’s /upload URL</strong> as a
+                                            Redirect URI in your Spotify app.
+                                        </p>
+                                        <button id="spotify-likes-connect" class="btn-secondary" type="button">
+                                            <img src="/images/spotify.svg" alt="" />Connect Spotify
+                                        </button>
                                         <p id="spotify-likes-status" class="upload-input-hint" aria-live="polite"></p>
                                     </div>
                                 </div>
@@ -2424,38 +2474,67 @@
                                     <strong>Add your own FLACs</strong>
                                     <span>Choose files or drag them into the animated folder.</span>
                                 </span>
-                                <span class="upload-source-arrow"><use svg="!lucide/arrow-up-right.svg" size="20" /></span>
+                                <span class="upload-source-arrow"
+                                    ><use svg="!lucide/arrow-up-right.svg" size="20"
+                                /></span>
                             </button>
                         </div>
 
                         <section class="upload-active-section" id="upload-active-section" hidden>
-                            <div class="upload-section-heading"><div><span class="upload-live-dot"></span><h3>Active imports</h3></div><span id="upload-active-summary"></span></div>
+                            <div class="upload-section-heading">
+                                <div>
+                                    <span class="upload-live-dot"></span>
+                                    <h3>Active imports</h3>
+                                </div>
+                                <span id="upload-active-summary"></span>
+                            </div>
                             <div id="upload-active-jobs" class="upload-job-grid"></div>
                         </section>
 
                         <section class="upload-library-section">
                             <div class="upload-section-heading">
-                                <div><h3>Recent uploads</h3><span>A shared timeline for everyone on this server</span></div>
-                                <button id="upload-select-mode" class="btn-secondary upload-select-mode" type="button"><use svg="!lucide/circle-check-big.svg" size="17" /><span>Select</span></button>
+                                <div>
+                                    <h3>Recent uploads</h3>
+                                    <span>A shared timeline for everyone on this server</span>
+                                </div>
+                                <button id="upload-select-mode" class="btn-secondary upload-select-mode" type="button">
+                                    <use svg="!lucide/circle-check-big.svg" size="17" /><span>Select</span>
+                                </button>
                             </div>
                             <div class="upload-gallery" id="selfhost-uploaded-tracks" aria-live="polite"></div>
                         </section>
                     </section>
 
                     <div id="local-upload-modal" class="upload-modal" hidden>
-                        <button class="upload-modal-backdrop" data-close-local-upload aria-label="Close upload dialog"></button>
-                        <section class="upload-modal-panel" role="dialog" aria-modal="true" aria-labelledby="local-upload-title">
-                            <button class="icon-btn upload-modal-close" data-close-local-upload aria-label="Close"><use svg="!lucide/x.svg" size="20" /></button>
+                        <button
+                            class="upload-modal-backdrop"
+                            data-close-local-upload
+                            aria-label="Close upload dialog"
+                        ></button>
+                        <section
+                            class="upload-modal-panel"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="local-upload-title"
+                        >
+                            <button class="icon-btn upload-modal-close" data-close-local-upload aria-label="Close">
+                                <use svg="!lucide/x.svg" size="20" />
+                            </button>
                             <div id="local-upload-dropzone" class="folder-upload-container">
                                 <div class="folder-upload-art" aria-hidden="true">
-                                    <div class="folder-upload-back"><div class="folder-upload-tip"></div><div class="folder-upload-cover"></div></div>
+                                    <div class="folder-upload-back">
+                                        <div class="folder-upload-tip"></div>
+                                        <div class="folder-upload-cover"></div>
+                                    </div>
                                     <div class="folder-upload-files"><span></span><span></span><span></span></div>
                                     <div class="folder-upload-front"><div class="folder-upload-cover"></div></div>
                                 </div>
                                 <div class="folder-upload-copy">
                                     <h3 id="local-upload-title">Drop your FLACs here</h3>
                                     <p>or choose one or more files from your computer</p>
-                                    <label class="custom-file-upload" for="selfhost-upload-input">Choose FLAC files</label>
+                                    <label class="custom-file-upload" for="selfhost-upload-input"
+                                        >Choose FLAC files</label
+                                    >
                                     <input id="selfhost-upload-input" type="file" accept=".flac,audio/flac" multiple />
                                 </div>
                             </div>
@@ -3662,7 +3741,9 @@
                                 <div class="setting-item">
                                     <div class="info">
                                         <span class="label">Animated Background</span>
-                                        <span class="description">Effect displayed inside the player while music is playing</span>
+                                        <span class="description"
+                                            >Effect displayed inside the player while music is playing</span
+                                        >
                                     </div>
                                     <select id="player-bar-effect-select">
                                         <option value="none">None</option>
@@ -3676,7 +3757,9 @@
                                 <div class="setting-item">
                                     <div class="info">
                                         <span class="label">Echo Rings</span>
-                                        <span class="description">Show responsive rings whenever audio starts playing</span>
+                                        <span class="description"
+                                            >Show responsive rings whenever audio starts playing</span
+                                        >
                                     </div>
                                     <label class="toggle-switch">
                                         <input type="checkbox" id="player-magic-rings-toggle" checked />
@@ -3690,15 +3773,21 @@
                                         <h3>Player Actions</h3>
                                         <p>Drag actions to choose what appears in the player and in which order.</p>
                                     </div>
-                                    <button type="button" id="player-layout-reset" class="btn-secondary">Restore default</button>
+                                    <button type="button" id="player-layout-reset" class="btn-secondary">
+                                        Restore default
+                                    </button>
                                 </div>
                                 <div id="player-action-editor" class="player-action-editor">
                                     <section class="player-action-zone-card">
-                                        <div class="player-action-zone-title"><span class="player-zone-status is-visible"></span>Visible</div>
+                                        <div class="player-action-zone-title">
+                                            <span class="player-zone-status is-visible"></span>Visible
+                                        </div>
                                         <div class="player-action-zone" data-player-action-zone="visible"></div>
                                     </section>
                                     <section class="player-action-zone-card is-hidden-zone">
-                                        <div class="player-action-zone-title"><span class="player-zone-status"></span>Hidden</div>
+                                        <div class="player-action-zone-title">
+                                            <span class="player-zone-status"></span>Hidden
+                                        </div>
                                         <div class="player-action-zone" data-player-action-zone="hidden"></div>
                                     </section>
                                 </div>
@@ -6447,10 +6536,21 @@
                         >
                             <use svg="./images/mix.svg" size="20" />
                         </button>
-                        <button id="toggle-lyrics-btn" data-player-action="lyrics" title="Lyrics" style="display: none" aria-label="Lyrics">
+                        <button
+                            id="toggle-lyrics-btn"
+                            data-player-action="lyrics"
+                            title="Lyrics"
+                            style="display: none"
+                            aria-label="Lyrics"
+                        >
                             <use svg="!lucide/mic-vocal.svg" size="20" />
                         </button>
-                        <button id="download-current-btn" data-player-action="download" title="Download current track" class="desktop-only">
+                        <button
+                            id="download-current-btn"
+                            data-player-action="download"
+                            title="Download current track"
+                            class="desktop-only"
+                        >
                             <use svg="!lucide/download.svg" size="20" />
                         </button>
                         <button id="cast-btn" data-player-action="cast" title="Cast">
@@ -6466,15 +6566,30 @@
                         >
                             <use svg="!lucide/list-plus.svg" size="20" />
                         </button>
-                        <button id="equalizer-player-btn" data-player-action="equalizer" title="Equalizer" aria-label="Equalizer">
+                        <button
+                            id="equalizer-player-btn"
+                            data-player-action="equalizer"
+                            title="Equalizer"
+                            aria-label="Equalizer"
+                        >
                             <svg class="equalizer-player-icon" viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M4 18v-5m0-4V4m8 14v-8m0-4V4m8 14v-3m0-4V4M2 13h4M10 6h4m4 9h4" />
                             </svg>
                         </button>
-                        <button id="sleep-timer-btn" data-player-action="sleep-timer" title="Sleep Timer" class="mobile-only">
+                        <button
+                            id="sleep-timer-btn"
+                            data-player-action="sleep-timer"
+                            title="Sleep Timer"
+                            class="mobile-only"
+                        >
                             <use svg="!lucide/clock.svg" size="20" />
                         </button>
-                        <button id="sleep-timer-btn-desktop" data-player-action="sleep-timer" title="Sleep Timer" class="desktop-only">
+                        <button
+                            id="sleep-timer-btn-desktop"
+                            data-player-action="sleep-timer"
+                            title="Sleep Timer"
+                            class="desktop-only"
+                        >
                             <use svg="!lucide/clock.svg" size="20" />
                         </button>
                         <button id="queue-btn" data-player-action="queue" title="Queue">

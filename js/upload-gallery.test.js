@@ -18,7 +18,11 @@ describe('upload gallery helpers', () => {
     });
 
     test('only changes explicitly supplied shared metadata', () => {
-        const original = { title: 'Keep me', artist: { name: 'Old' }, album: { title: 'Album', releaseDate: '2020-01-01' } };
+        const original = {
+            title: 'Keep me',
+            artist: { name: 'Old' },
+            album: { title: 'Album', releaseDate: '2020-01-01' },
+        };
         const changed = patchTrackMetadata(original, { artist: 'New' });
         expect(changed.title).toBe('Keep me');
         expect(changed.artist.name).toBe('New');

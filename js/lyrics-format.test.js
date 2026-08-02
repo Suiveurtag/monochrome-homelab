@@ -24,7 +24,8 @@ describe('LRC lyrics formatting', () => {
     });
 
     it('recognizes and preserves uploaded TTML', () => {
-        const ttml = '<?xml version="1.0"?><tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="1s" end="2s"><span begin="1s" end="2s">Line</span></p></div></body></tt>';
+        const ttml =
+            '<?xml version="1.0"?><tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="1s" end="2s"><span begin="1s" end="2s">Line</span></p></div></body></tt>';
         expect(isTtml(ttml)).toBe(true);
         expect(lyricsToTtml(ttml)).toBe(ttml);
         expect(isTtml('<tt><body></body></tt>')).toBe(false);

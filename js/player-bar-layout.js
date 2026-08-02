@@ -1,21 +1,30 @@
 import { playerBarLayoutSettings } from './storage.js';
 
 const ICONS = {
-    favorite: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.7-7.5 1.1-1.1a5.5 5.5 0 0 0 0-7.8Z"/></svg>',
+    favorite:
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.7-7.5 1.1-1.1a5.5 5.5 0 0 0 0-7.8Z"/></svg>',
     playlist: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6H3m8 6H3m5 6H3m13-3V9m-3 3h6"/></svg>',
     mix: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l10 10h3M17 7h3v3M4 17h3l3-3m4-4 3-3h3"/></svg>',
     lyrics: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l10-2v13M9 9l10-2M6 21c-2 0-3-1-3-2.5S4 16 6 16s3 1 3 2.5S8 21 6 21Zm10-2c-2 0-3-1-3-2.5s1-2.5 3-2.5 3 1 3 2.5S18 19 16 19Z"/></svg>',
     download: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 21h14"/></svg>',
     cast: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 16.1A5 5 0 0 1 6 20M2 12a9 9 0 0 1 8 8M2 7V4h20v15h-8"/></svg>',
-    equalizer: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18v-5m0-4V4m8 14v-8m0-4V4m8 14v-3m0-4V4M2 13h4M10 6h4m4 9h4"/></svg>',
-    'sleep-timer': '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6"/></svg>',
+    equalizer:
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18v-5m0-4V4m8 14v-8m0-4V4m8 14v-3m0-4V4M2 13h4M10 6h4m4 9h4"/></svg>',
+    'sleep-timer':
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6"/></svg>',
     queue: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h8m5-3 3 3-3 3"/></svg>',
 };
 
 export const PLAYER_ACTIONS = [
-    ['favorite', 'Favorites'], ['playlist', 'Add to playlist'], ['mix', 'Track Mix'],
-    ['lyrics', 'Lyrics'], ['download', 'Download'], ['cast', 'Cast'],
-    ['equalizer', 'Equalizer'], ['sleep-timer', 'Sleep timer'], ['queue', 'Queue'],
+    ['favorite', 'Favorites'],
+    ['playlist', 'Add to playlist'],
+    ['mix', 'Track Mix'],
+    ['lyrics', 'Lyrics'],
+    ['download', 'Download'],
+    ['cast', 'Cast'],
+    ['equalizer', 'Equalizer'],
+    ['sleep-timer', 'Sleep timer'],
+    ['queue', 'Queue'],
 ].map(([id, label]) => ({ id, label, icon: ICONS[id] }));
 
 export function applyPlayerActionLayout(layout = playerBarLayoutSettings.getLayout()) {
@@ -57,12 +66,18 @@ export function initializePlayerLayoutEditor() {
 
     const saveFromDom = () => {
         layout = playerBarLayoutSettings.setLayout({
-            visible: [...editor.querySelectorAll('[data-player-action-zone="visible"] .player-action-card')].map((el) => el.dataset.actionId),
-            hidden: [...editor.querySelectorAll('[data-player-action-zone="hidden"] .player-action-card')].map((el) => el.dataset.actionId),
+            visible: [...editor.querySelectorAll('[data-player-action-zone="visible"] .player-action-card')].map(
+                (el) => el.dataset.actionId
+            ),
+            hidden: [...editor.querySelectorAll('[data-player-action-zone="hidden"] .player-action-card')].map(
+                (el) => el.dataset.actionId
+            ),
         });
     };
     const render = () => {
-        zones.forEach((zone) => { zone.replaceChildren(); });
+        zones.forEach((zone) => {
+            zone.replaceChildren();
+        });
         ['visible', 'hidden'].forEach((zoneName) => {
             const zone = editor.querySelector(`[data-player-action-zone="${zoneName}"]`);
             layout[zoneName].forEach((id) => {
@@ -110,14 +125,16 @@ export function initializePlayerLayoutEditor() {
         if (!card) return;
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            const targetZone = card.closest('[data-player-action-zone]').dataset.playerActionZone === 'visible' ? 'hidden' : 'visible';
+            const targetZone =
+                card.closest('[data-player-action-zone]').dataset.playerActionZone === 'visible' ? 'hidden' : 'visible';
             editor.querySelector(`[data-player-action-zone="${targetZone}"]`).appendChild(card);
             saveFromDom();
             card.focus();
         } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
             event.preventDefault();
             const sibling = event.key === 'ArrowLeft' ? card.previousElementSibling : card.nextElementSibling;
-            if (sibling) card.parentElement.insertBefore(card, event.key === 'ArrowLeft' ? sibling : sibling.nextSibling);
+            if (sibling)
+                card.parentElement.insertBefore(card, event.key === 'ArrowLeft' ? sibling : sibling.nextSibling);
             saveFromDom();
             card.focus();
         }

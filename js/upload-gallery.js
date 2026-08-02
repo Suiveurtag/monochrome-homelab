@@ -24,7 +24,9 @@ export function uploadDayLabel(key, now = new Date(), locale = undefined) {
     const difference = Math.round((today - day) / 86400000);
     if (difference === 0) return 'Today';
     if (difference === 1) return 'Yesterday';
-    return new Intl.DateTimeFormat(locale, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(date);
+    return new Intl.DateTimeFormat(locale, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(
+        date
+    );
 }
 
 export function patchTrackMetadata(track, changes) {

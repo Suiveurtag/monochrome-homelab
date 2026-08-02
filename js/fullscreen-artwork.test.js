@@ -36,9 +36,9 @@ describe('fullscreen animated artwork', () => {
         await UIRenderer.prototype.renderFullscreenArtwork.call(renderer, track);
         const video = document.getElementById('fullscreen-cover-image');
         expect(video.tagName).toBe('VIDEO');
-        expect(document.getElementById('fullscreen-cover-overlay').style.getPropertyValue('--fullscreen-artwork-image')).toContain(
-            '/static.jpg'
-        );
+        expect(
+            document.getElementById('fullscreen-cover-overlay').style.getPropertyValue('--fullscreen-artwork-image')
+        ).toContain('/static.jpg');
         expect(video.classList.contains('cd')).toBe(true);
         expect(video.poster).toContain('/static.jpg');
         expect(renderer.setupHlsVideo).toHaveBeenCalledWith(video, '/animated.mp4', null);

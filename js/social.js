@@ -385,9 +385,9 @@ export class SocialManager {
 
     bindUI() {
         this.bound = true;
-        document.getElementById('social-user-search')?.addEventListener('input', (event) =>
-            this.renderDirectory(event.target.value)
-        );
+        document
+            .getElementById('social-user-search')
+            ?.addEventListener('input', (event) => this.renderDirectory(event.target.value));
         document.getElementById('social-people-list')?.addEventListener('click', (event) => {
             const row = event.target.closest('[data-social-user]');
             if (row) this.openConversation(row.dataset.socialUser).catch(console.error);
@@ -510,7 +510,8 @@ export class SocialManager {
                     await this.refreshUnreadCount();
                     if (
                         this.selectedProfile &&
-                        (event.record.sender === this.selectedProfile.user || event.record.recipient === this.selectedProfile.user)
+                        (event.record.sender === this.selectedProfile.user ||
+                            event.record.recipient === this.selectedProfile.user)
                     ) {
                         await this.loadConversation();
                     }

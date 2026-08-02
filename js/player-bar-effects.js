@@ -50,8 +50,11 @@ class PlayerBarEffects {
         this.bar.style.setProperty('--edge-proximity', '100');
         this.bar.addEventListener('pointermove', (event) => {
             const rect = this.bar.getBoundingClientRect();
-            const angle = Math.atan2(event.clientY - rect.top - rect.height / 2, event.clientX - rect.left - rect.width / 2);
-            this.bar.style.setProperty('--cursor-angle', `${angle * 180 / Math.PI + 90}deg`);
+            const angle = Math.atan2(
+                event.clientY - rect.top - rect.height / 2,
+                event.clientX - rect.left - rect.width / 2
+            );
+            this.bar.style.setProperty('--cursor-angle', `${(angle * 180) / Math.PI + 90}deg`);
             this.magicRings?.setPointer(
                 (event.clientX - rect.left) / rect.width - 0.5,
                 -((event.clientY - rect.top) / rect.height - 0.5),
@@ -148,7 +151,9 @@ class PlayerBarEffects {
 
     clearRenderers() {
         this.activeRenderer?.clear?.();
-        this.stage?.querySelectorAll('canvas, .player-cover-blur-effect').forEach((element) => { element.style.opacity = '0'; });
+        this.stage?.querySelectorAll('canvas, .player-cover-blur-effect').forEach((element) => {
+            element.style.opacity = '0';
+        });
     }
 
     getColorRgb() {
@@ -163,7 +168,9 @@ class PlayerBarEffects {
         const t = (now - this.startedAt) / 1000;
         this.bar.style.setProperty('--player-glow-angle', `${(t * 55) % 360}deg`);
         const effect = this.bar.dataset.playerEffect;
-        this.stage?.querySelectorAll('canvas, .player-cover-blur-effect').forEach((element) => { element.style.opacity = '0'; });
+        this.stage?.querySelectorAll('canvas, .player-cover-blur-effect').forEach((element) => {
+            element.style.opacity = '0';
+        });
         const renderer = effect === 'none' ? null : this.activeRenderer;
         renderer?.render(now, this.getColorRgb());
         if (renderer?.gl?.canvas) renderer.gl.canvas.style.opacity = '1';

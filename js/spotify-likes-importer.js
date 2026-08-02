@@ -6,7 +6,10 @@ const STATE_KEY = 'monochrome-spotify-oauth-state';
 const RETURN_KEY = 'monochrome-spotify-likes-return';
 
 function base64Url(bytes) {
-    return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return btoa(String.fromCharCode(...bytes))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
 }
 
 async function sha256(value) {
@@ -36,7 +39,8 @@ export class SpotifyLikesImporter {
             this.panel.hidden = !this.panel.hidden;
         });
         document.getElementById('spotify-likes-connect')?.addEventListener('click', () => void this.connect());
-        if (new URLSearchParams(window.location.search).has('code') && sessionStorage.getItem(VERIFIER_KEY)) void this.completeOAuth();
+        if (new URLSearchParams(window.location.search).has('code') && sessionStorage.getItem(VERIFIER_KEY))
+            void this.completeOAuth();
     }
 
     setStatus(message, error = false) {
@@ -86,10 +90,21 @@ export class SpotifyLikesImporter {
         }
         try {
             this.setStatus('Connecting to Spotify…');
-            const body = new URLSearchParams({ client_id: clientId, grant_type: 'authorization_code', code, redirect_uri: redirectUri(), code_verifier: verifier });
-            const tokenResponse = await fetch('https://accounts.spotify.com/api/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+            const body = new URLSearchParams({
+                client_id: clientId,
+                grant_type: 'authorization_code',
+                code,
+                redirect_uri: redirectUri(),
+                code_verifier: verifier,
+            });
+            const tokenResponse = await fetch('https://accounts.spotify.com/api/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body,
+            });
             const token = await tokenResponse.json();
-            if (!tokenResponse.ok || !token.access_token) throw new Error(token.error_description || 'Spotify token exchange failed');
+            if (!tokenResponse.ok || !token.access_token)
+                throw new Error(token.error_description || 'Spotify token exchange failed');
             const headers = { Authorization: `Bearer ${token.access_token}` };
             const profileResponse = await fetch('https://api.spotify.com/v1/me', { headers });
             const profile = await profileResponse.json();
@@ -97,7 +112,9 @@ export class SpotifyLikesImporter {
             const tracks = await this.fetchSavedTracks(headers);
             if (!tracks.length) throw new Error('This Spotify account has no saved tracks.');
             const order = sessionStorage.getItem(RETURN_KEY) || 'oldest';
-            tracks.sort((a, b) => order === 'oldest' ? a.added_at.localeCompare(b.added_at) : b.added_at.localeCompare(a.added_at));
+            tracks.sort((a, b) =>
+                order === 'oldest' ? a.added_at.localeCompare(b.added_at) : b.added_at.localeCompare(a.added_at)
+            );
             this.setStatus(`Starting one background import for ${tracks.length} liked tracks…`);
             await createSpotifyLikesImport(tracks, profile.id);
             this.setStatus(`${tracks.length} liked tracks queued. Their original Spotify dates will be preserved.`);
@@ -120,7 +137,8 @@ export class SpotifyLikesImporter {
             const page = await response.json();
             if (!response.ok) throw new Error(page.error?.message || 'Could not read Spotify likes');
             for (const item of page.items || []) {
-                if (item.track?.id && !item.track?.is_local) tracks.push({ url: `https://open.spotify.com/track/${item.track.id}`, added_at: item.added_at });
+                if (item.track?.id && !item.track?.is_local)
+                    tracks.push({ url: `https://open.spotify.com/track/${item.track.id}`, added_at: item.added_at });
             }
             next = page.next;
         }

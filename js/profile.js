@@ -178,7 +178,9 @@ function normalizeProfileStatus(rawStatus) {
     const type = raw.type === 'album' ? 'album' : 'track';
     const id = normalizeString(raw.id || raw.trackId || raw.albumId);
     const title = normalizeString(raw.title || raw.name || raw.text?.split(' - ')[0]);
-    const subtitle = normalizeString(raw.subtitle || raw.artist || raw.artistName || raw.text?.split(' - ').slice(1).join(' - '));
+    const subtitle = normalizeString(
+        raw.subtitle || raw.artist || raw.artistName || raw.text?.split(' - ').slice(1).join(' - ')
+    );
     const image = normalizeString(raw.image || raw.cover || raw.artwork);
     const link = normalizeStatusLink(type, id, raw.link || raw.href || raw.url);
 
@@ -232,7 +234,10 @@ function normalizeFavoriteAlbum(album) {
 
 function normalizeFavoriteAlbums(albums) {
     if (!Array.isArray(albums)) return [];
-    return albums.map((album) => normalizeFavoriteAlbum(album)).filter(Boolean).slice(0, 5);
+    return albums
+        .map((album) => normalizeFavoriteAlbum(album))
+        .filter(Boolean)
+        .slice(0, 5);
 }
 
 export async function loadProfile(username) {

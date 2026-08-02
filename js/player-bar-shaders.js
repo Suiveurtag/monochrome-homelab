@@ -3,14 +3,24 @@ import { Renderer, Program, Mesh, Triangle, RenderTarget } from 'ogl';
 
 const clamp01 = (value) => Math.min(1, Math.max(0, value));
 const rgbToHex = ([r, g, b]) => `#${[r, g, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
-const rgb01 = ([r, g, b], boost = 1, lift = 0) => [clamp01(r / 255 * boost + lift), clamp01(g / 255 * boost + lift), clamp01(b / 255 * boost + lift)];
+const rgb01 = ([r, g, b], boost = 1, lift = 0) => [
+    clamp01((r / 255) * boost + lift),
+    clamp01((g / 255) * boost + lift),
+    clamp01((b / 255) * boost + lift),
+];
 
 const QUAD_VERTEX = `attribute vec2 uv; attribute vec2 position; varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 0, 1); }`;
 
 class OglEffect {
     constructor(container, { antialias = false, premultipliedAlpha = false, webgl = 2 } = {}) {
         this.container = container;
-        this.renderer = new Renderer({ alpha: true, premultipliedAlpha, antialias, webgl, dpr: Math.min(window.devicePixelRatio || 1, 2) });
+        this.renderer = new Renderer({
+            alpha: true,
+            premultipliedAlpha,
+            antialias,
+            webgl,
+            dpr: Math.min(window.devicePixelRatio || 1, 2),
+        });
         this.gl = this.renderer.gl;
         this.gl.clearColor(0, 0, 0, 0);
         this.gl.canvas.style.width = '100%';
@@ -172,13 +182,19 @@ export class SoftAuroraRenderer extends OglEffect {
             const rect = this.gl.canvas.getBoundingClientRect();
             this.targetMouse = [(event.clientX - rect.left) / rect.width, 1 - (event.clientY - rect.top) / rect.height];
         });
-        this.gl.canvas.addEventListener('mouseleave', () => { this.targetMouse = [0.5, 0.5]; });
+        this.gl.canvas.addEventListener('mouseleave', () => {
+            this.targetMouse = [0.5, 0.5];
+        });
         this.resize();
     }
 
     resize() {
         super.resize();
-        this.program.uniforms.uResolution.value = [this.gl.canvas.width, this.gl.canvas.height, this.gl.canvas.width / Math.max(1, this.gl.canvas.height)];
+        this.program.uniforms.uResolution.value = [
+            this.gl.canvas.width,
+            this.gl.canvas.height,
+            this.gl.canvas.width / Math.max(1, this.gl.canvas.height),
+        ];
     }
 
     render(time, color) {
@@ -337,7 +353,12 @@ export class SilkRenderer {
             uRotation: { value: 0 },
             uTime: { value: 0 },
         };
-        this.material = new THREE.ShaderMaterial({ uniforms: this.uniforms, vertexShader: SILK_VERTEX, fragmentShader: SILK_FRAGMENT, transparent: true });
+        this.material = new THREE.ShaderMaterial({
+            uniforms: this.uniforms,
+            vertexShader: SILK_VERTEX,
+            fragmentShader: SILK_FRAGMENT,
+            transparent: true,
+        });
         this.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2, 1, 1), this.material));
         this.resize();
     }
@@ -490,14 +511,38 @@ void main() {
 const buildPalette = (color) => {
     const base = rgb01(color, 1, 0);
     const rotateHue = (degrees) => {
-        const angle = degrees * Math.PI / 180;
+        const angle = (degrees * Math.PI) / 180;
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
         const [r, g, b] = color;
         return [
-            Math.min(255, Math.max(0, (0.213 + cos * 0.787 - sin * 0.213) * r + (0.715 - cos * 0.715 - sin * 0.715) * g + (0.072 - cos * 0.072 + sin * 0.928) * b)),
-            Math.min(255, Math.max(0, (0.213 - cos * 0.213 + sin * 0.143) * r + (0.715 + cos * 0.285 + sin * 0.140) * g + (0.072 - cos * 0.072 - sin * 0.283) * b)),
-            Math.min(255, Math.max(0, (0.213 - cos * 0.213 - sin * 0.787) * r + (0.715 - cos * 0.715 + sin * 0.715) * g + (0.072 + cos * 0.928 + sin * 0.072) * b)),
+            Math.min(
+                255,
+                Math.max(
+                    0,
+                    (0.213 + cos * 0.787 - sin * 0.213) * r +
+                        (0.715 - cos * 0.715 - sin * 0.715) * g +
+                        (0.072 - cos * 0.072 + sin * 0.928) * b
+                )
+            ),
+            Math.min(
+                255,
+                Math.max(
+                    0,
+                    (0.213 - cos * 0.213 + sin * 0.143) * r +
+                        (0.715 + cos * 0.285 + sin * 0.14) * g +
+                        (0.072 - cos * 0.072 - sin * 0.283) * b
+                )
+            ),
+            Math.min(
+                255,
+                Math.max(
+                    0,
+                    (0.213 - cos * 0.213 - sin * 0.787) * r +
+                        (0.715 - cos * 0.715 + sin * 0.715) * g +
+                        (0.072 + cos * 0.928 + sin * 0.072) * b
+                )
+            ),
         ];
     };
     const warm = rgb01(rotateHue(34), 1.22, 0.05);
@@ -759,7 +804,13 @@ export class MagicRingsRenderer {
             uParallax: { value: 0.05 },
             uBurst: { value: 0 },
         };
-        this.material = new THREE.ShaderMaterial({ vertexShader: RING_VERTEX, fragmentShader: RING_FRAGMENT, uniforms: this.uniforms, transparent: true, blending: THREE.AdditiveBlending });
+        this.material = new THREE.ShaderMaterial({
+            vertexShader: RING_VERTEX,
+            fragmentShader: RING_FRAGMENT,
+            uniforms: this.uniforms,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+        });
         this.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.material));
         this.pointer = new THREE.Vector2();
         this.smoothPointer = new THREE.Vector2();
@@ -775,7 +826,7 @@ export class MagicRingsRenderer {
         this.renderer.setPixelRatio(dpr);
         this.renderer.setSize(width, height, false);
         this.uniforms.uResolution.value.set(width * dpr, height * dpr);
-        this.uniforms.uScaleRate.value = Math.min(5, Math.max(0.9, width / height * 0.48));
+        this.uniforms.uScaleRate.value = Math.min(5, Math.max(0.9, (width / height) * 0.48));
     }
 
     burst(color) {

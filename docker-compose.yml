@@ -1,50 +1,50 @@
 services:
-  monochrome:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-      args:
-        AUTH_ENABLED: "true"
-        POCKETBASE_URL: ""
-    image: monochrome-selfhost:latest
-    container_name: monochrome-app
-    restart: unless-stopped
-    depends_on:
-      - pocketbase
-      - selfhost-importer
-    ports:
-      - "3000:4173"
-    networks:
-      - monochrome
+    monochrome:
+        build:
+            context: .
+            dockerfile: docker/Dockerfile
+            args:
+                AUTH_ENABLED: 'true'
+                POCKETBASE_URL: ''
+        image: monochrome-selfhost:latest
+        container_name: monochrome-app
+        restart: unless-stopped
+        depends_on:
+            - pocketbase
+            - selfhost-importer
+        ports:
+            - '3000:4173'
+        networks:
+            - monochrome
 
-  pocketbase:
-    image: ghcr.io/muchobien/pocketbase:0.30.0
-    container_name: monochrome-pocketbase
-    restart: unless-stopped
-    command: ["serve", "--http=0.0.0.0:8090", "--dir=/pb_data", "--migrationsDir=/pb_migrations"]
-    volumes:
-      - ./pb_data:/pb_data
-      - ./pb_migrations:/pb_migrations
-    networks:
-      - monochrome
+    pocketbase:
+        image: ghcr.io/muchobien/pocketbase:0.30.0
+        container_name: monochrome-pocketbase
+        restart: unless-stopped
+        command: ['serve', '--http=0.0.0.0:8090', '--dir=/pb_data', '--migrationsDir=/pb_migrations']
+        volumes:
+            - ./pb_data:/pb_data
+            - ./pb_migrations:/pb_migrations
+        networks:
+            - monochrome
 
-  selfhost-importer:
-    build:
-      context: .
-      dockerfile: services/spotiflac-importer/Dockerfile
-      args:
-        SPOTIFLAC_REF: "02cfd119da4e5bf1b0f16ce7e8f38e503bdd995e"
-    image: monochrome-spotiflac-importer:headless-1.5.8
-    container_name: monochrome-selfhost-importer
-    restart: unless-stopped
-    environment:
-      POCKETBASE_URL: "http://pocketbase:8090"
-      MAX_IMPORT_BYTES: "2147483648"
-    depends_on:
-      - pocketbase
-    networks:
-      - monochrome
+    selfhost-importer:
+        build:
+            context: .
+            dockerfile: services/spotiflac-importer/Dockerfile
+            args:
+                SPOTIFLAC_REF: '02cfd119da4e5bf1b0f16ce7e8f38e503bdd995e'
+        image: monochrome-spotiflac-importer:headless-1.5.8
+        container_name: monochrome-selfhost-importer
+        restart: unless-stopped
+        environment:
+            POCKETBASE_URL: 'http://pocketbase:8090'
+            MAX_IMPORT_BYTES: '2147483648'
+        depends_on:
+            - pocketbase
+        networks:
+            - monochrome
 
 networks:
-  monochrome:
-    name: monochrome
+    monochrome:
+        name: monochrome

@@ -1,4 +1,7 @@
-export async function uploadSelfHostedFilesBatch(files, { authUser, readTrackMetadata, uploadTrack, notify = () => {} } = {}) {
+export async function uploadSelfHostedFilesBatch(
+    files,
+    { authUser, readTrackMetadata, uploadTrack, notify = () => {} } = {}
+) {
     const uploadFiles = Array.isArray(files) ? files : [];
     if (uploadFiles.length === 0) {
         return { attemptedCount: 0, successCount: 0, failureCount: 0, authRequired: false, finalMessage: null };
@@ -6,7 +9,13 @@ export async function uploadSelfHostedFilesBatch(files, { authUser, readTrackMet
 
     if (!authUser) {
         notify('Sign in before uploading music to the server.');
-        return { attemptedCount: uploadFiles.length, successCount: 0, failureCount: 0, authRequired: true, finalMessage: null };
+        return {
+            attemptedCount: uploadFiles.length,
+            successCount: 0,
+            failureCount: 0,
+            authRequired: true,
+            finalMessage: null,
+        };
     }
 
     let successCount = 0;

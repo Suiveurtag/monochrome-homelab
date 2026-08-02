@@ -1,4 +1,9 @@
-import { cancelSpotifyImport, listSpotifyImports, markSpotifyImportPlaylistCreated, listSelfHostedTracks } from './selfhost-server-api.js';
+import {
+    cancelSpotifyImport,
+    listSpotifyImports,
+    markSpotifyImportPlaylistCreated,
+    listSelfHostedTracks,
+} from './selfhost-server-api.js';
 import { db } from './db.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { SVG_CLOSE } from './icons.js';
@@ -37,7 +42,12 @@ export class SpotifyImportManager {
 
     async createCompletedPlaylists() {
         const candidates = this.jobs.filter(
-            (job) => job.source_type === 'playlist' && !job.like_after_import && ['completed', 'partial'].includes(job.status) && !job.playlist_created && !this.createdPlaylists.has(job.id)
+            (job) =>
+                job.source_type === 'playlist' &&
+                !job.like_after_import &&
+                ['completed', 'partial'].includes(job.status) &&
+                !job.playlist_created &&
+                !this.createdPlaylists.has(job.id)
         );
         if (!candidates.length) return;
         const tracks = await listSelfHostedTracks().catch(() => []);
@@ -47,7 +57,12 @@ export class SpotifyImportManager {
             try {
                 await markSpotifyImportPlaylistCreated(job.id);
                 const orderedTracks = (job.track_ids || []).map((id) => byId.get(id)).filter(Boolean);
-                const playlist = await db.createPlaylist(job.title || 'Spotify import', orderedTracks, job.cover || '', job.description || '');
+                const playlist = await db.createPlaylist(
+                    job.title || 'Spotify import',
+                    orderedTracks,
+                    job.cover || '',
+                    job.description || ''
+                );
                 await syncManager.syncUserPlaylist(playlist, 'create');
                 window.dispatchEvent(new CustomEvent('library-changed'));
             } catch (error) {
@@ -58,7 +73,11 @@ export class SpotifyImportManager {
 
     async applyCompletedLikes() {
         const candidates = this.jobs.filter(
-            (job) => job.like_after_import && ['completed', 'partial'].includes(job.status) && !job.playlist_created && !this.createdPlaylists.has(`likes:${job.id}`)
+            (job) =>
+                job.like_after_import &&
+                ['completed', 'partial'].includes(job.status) &&
+                !job.playlist_created &&
+                !this.createdPlaylists.has(`likes:${job.id}`)
         );
         if (!candidates.length) return;
         const tracks = await listSelfHostedTracks().catch(() => []);
@@ -120,7 +139,8 @@ export class SpotifyImportManager {
             const percent = total ? Math.round((done / total) * 100) : job.status === 'resolving' ? 8 : 2;
             element.querySelector('img').src = job.cover || '/assets/appicon.png';
             element.querySelector('strong').textContent = job.title || 'Spotify import';
-            element.querySelector('.spotify-import-toast-copy > span').textContent = job.current_track || (job.status === 'resolving' ? 'Reading Spotify metadata…' : 'Waiting…');
+            element.querySelector('.spotify-import-toast-copy > span').textContent =
+                job.current_track || (job.status === 'resolving' ? 'Reading Spotify metadata…' : 'Waiting…');
             element.querySelector('.download-progress-bar i').style.width = `${percent}%`;
             element.querySelector('small').textContent = total ? `${done} / ${total}` : 'Preparing import';
         }

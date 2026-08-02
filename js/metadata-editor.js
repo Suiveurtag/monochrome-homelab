@@ -267,12 +267,7 @@ async function saveArtist(artist, tracks, form) {
     const pictureFile = form.get('picture');
     const bannerFile = form.get('banner');
     const bannerFallbackFile = form.get('bannerFallback');
-    const bannerArtwork = await mergeArtwork(
-        artist.banner,
-        artist.bannerFallback,
-        bannerFile,
-        bannerFallbackFile
-    );
+    const bannerArtwork = await mergeArtwork(artist.banner, artist.bannerFallback, bannerFile, bannerFallbackFile);
     const updatedArtist = {
         ...artist,
         name: value(form, 'name') || 'Unknown Artist',
@@ -343,7 +338,8 @@ function setupArtworkPreviews(form) {
             })
         );
         picker.addEventListener('drop', (event) => {
-            const validator = picker.dataset.allowsVideo === 'true' ? isSupportedArtworkFile : isSupportedImageArtworkFile;
+            const validator =
+                picker.dataset.allowsVideo === 'true' ? isSupportedArtworkFile : isSupportedImageArtworkFile;
             const file = [...(event.dataTransfer?.files || [])].find(validator);
             if (!file) return;
             const transfer = new DataTransfer();

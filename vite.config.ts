@@ -71,7 +71,7 @@ export default defineConfig((_options) => {
         },
         preview: {
             host: true,
-	    port: 3000,
+            port: 3000,
             allowedHosts: true,
         },
         build: {

@@ -69,10 +69,7 @@ describe('uploadSelfHostedFilesBatch', () => {
     test('reports partial success accurately', async () => {
         const notify = vi.fn();
         const readTrackMetadata = vi.fn(async (file) => ({ title: file.name }));
-        const uploadTrack = vi
-            .fn()
-            .mockResolvedValueOnce({})
-            .mockRejectedValueOnce(new Error('timeout'));
+        const uploadTrack = vi.fn().mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('timeout'));
         const files = [
             new File(['a'], 'good.flac', { type: 'audio/flac' }),
             new File(['b'], 'bad.flac', { type: 'audio/flac' }),

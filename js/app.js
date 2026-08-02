@@ -65,11 +65,7 @@ import {
 } from './playlist-importer.js';
 import { generateFullCSV, generateFullJSON } from './playlist-generator.js';
 import { modernSettings } from './ModernSettings.js';
-import {
-    getArtworkSources,
-    isAnimatedArtwork,
-    isSupportedImageArtworkFile,
-} from './artwork-media.js';
+import { getArtworkSources, isAnimatedArtwork, isSupportedImageArtworkFile } from './artwork-media.js';
 import {
     SVG_OFFLINE,
     SVG_RIGHT_ARROW,
@@ -168,9 +164,13 @@ async function initializeSelfHostedUploads() {
         if (!bar) return;
         bar.hidden = !selecting;
         bar.querySelector('[data-upload-selection-count]').textContent = `${selectedIds.size} selected`;
-        bar.querySelectorAll('[data-requires-selection]').forEach((button) => (button.disabled = selectedIds.size === 0));
+        bar.querySelectorAll('[data-requires-selection]').forEach(
+            (button) => (button.disabled = selectedIds.size === 0)
+        );
         selectModeButton?.classList.toggle('active', selecting);
-        selectModeButton?.querySelector('span')?.replaceChildren(document.createTextNode(selecting ? 'Done' : 'Select'));
+        selectModeButton
+            ?.querySelector('span')
+            ?.replaceChildren(document.createTextNode(selecting ? 'Done' : 'Select'));
     };
 
     const leaveSelectionMode = () => {
@@ -186,7 +186,8 @@ async function initializeSelfHostedUploads() {
         }
         stats.textContent = `${allTracks.length} server track${allTracks.length === 1 ? '' : 's'}`;
         if (!allTracks.length) {
-            list.innerHTML = '<div class="upload-gallery-empty"><strong>Your shared gallery is ready.</strong><span>Upload the first FLAC to start the timeline.</span></div>';
+            list.innerHTML =
+                '<div class="upload-gallery-empty"><strong>Your shared gallery is ready.</strong><span>Upload the first FLAC to start the timeline.</span></div>';
             return;
         }
         list.innerHTML = groupTracksByUploadDay(allTracks)
@@ -195,7 +196,10 @@ async function initializeSelfHostedUploads() {
                     <header class="upload-day-header"><h4>${escapeHtml(uploadDayLabel(group.key))}</h4><span>${group.tracks.length} song${group.tracks.length === 1 ? '' : 's'}</span></header>
                     <div class="upload-gallery-grid">${group.tracks
                         .map(
-                            (track, index) => `<button class="upload-gallery-card${selectedIds.has(String(track.id)) ? ' is-selected' : ''}" type="button"
+                            (
+                                track,
+                                index
+                            ) => `<button class="upload-gallery-card${selectedIds.has(String(track.id)) ? ' is-selected' : ''}" type="button"
                                 data-track-id="${escapeHtml(track.id)}" role="checkbox" aria-checked="${selectedIds.has(String(track.id))}" style="--card-index:${index}">
                                 <span class="upload-card-art"><img src="${escapeHtml(getArtworkSources(track.album || track.serverCoverUrl).static)}" alt="" loading="lazy" />
                                     <span class="upload-card-play"><use svg="!lucide/play.svg" size="21" /></span>
@@ -263,9 +267,9 @@ async function initializeSelfHostedUploads() {
             controls.forEach((control) => (control.disabled = !checkbox.checked));
         });
     });
-    bulkEditor.querySelectorAll('[data-close-bulk-editor]').forEach((button) =>
-        button.addEventListener('click', () => (bulkEditor.hidden = true))
-    );
+    bulkEditor
+        .querySelectorAll('[data-close-bulk-editor]')
+        .forEach((button) => button.addEventListener('click', () => (bulkEditor.hidden = true)));
     const bulkCoverInput = bulkEditor.querySelector('input[name="cover"]');
     const bulkCoverFallback = bulkEditor.querySelector('[data-bulk-cover-fallback]');
     const bulkCoverFallbackLabel = bulkEditor.querySelector('[data-bulk-cover-fallback-label]');
@@ -279,7 +283,8 @@ async function initializeSelfHostedUploads() {
     const runTrackOperation = async (tracks, operation, progressLabel) => {
         const failures = [];
         for (let index = 0; index < tracks.length; index++) {
-            selectionBar.querySelector('[data-upload-selection-count]').textContent = `${progressLabel} ${index + 1}/${tracks.length}`;
+            selectionBar.querySelector('[data-upload-selection-count]').textContent =
+                `${progressLabel} ${index + 1}/${tracks.length}`;
             try {
                 await operation(tracks[index]);
                 selectedIds.delete(String(tracks[index].id));
@@ -320,19 +325,24 @@ async function initializeSelfHostedUploads() {
         const fallbackEntry = form.get('coverFallback');
         const coverFallback =
             form.has('applyCover') && fallbackEntry instanceof File && fallbackEntry.size ? fallbackEntry : null;
-        if (!Object.keys(changes).length && !cover) return showNotification('Choose at least one field to update.', 'error');
+        if (!Object.keys(changes).length && !cover)
+            return showNotification('Choose at least one field to update.', 'error');
         const tracks = selectedTracks();
         bulkEditor.hidden = true;
-        await runTrackOperation(tracks, async (track) => {
-            const updated = await updateSelfHostedTrack(
-                track.id,
-                patchTrackMetadata(track, changes),
-                cover,
-                undefined,
-                coverFallback
-            );
-            await db.putUploadedTrack(updated);
-        }, 'Editing');
+        await runTrackOperation(
+            tracks,
+            async (track) => {
+                const updated = await updateSelfHostedTrack(
+                    track.id,
+                    patchTrackMetadata(track, changes),
+                    cover,
+                    undefined,
+                    coverFallback
+                );
+                await db.putUploadedTrack(updated);
+            },
+            'Editing'
+        );
     });
 
     input.addEventListener('change', async (event) => {
@@ -442,7 +452,10 @@ async function initializeSelfHostedUploads() {
         if (range && lastSelectedId) {
             const from = cards.findIndex((item) => item.dataset.trackId === lastSelectedId);
             const to = cards.indexOf(card);
-            if (from >= 0 && to >= 0) cards.slice(Math.min(from, to), Math.max(from, to) + 1).forEach((item) => selectedIds.add(item.dataset.trackId));
+            if (from >= 0 && to >= 0)
+                cards
+                    .slice(Math.min(from, to), Math.max(from, to) + 1)
+                    .forEach((item) => selectedIds.add(item.dataset.trackId));
         } else if (selectedIds.has(id)) selectedIds.delete(id);
         else selectedIds.add(id);
         lastSelectedId = id;
@@ -472,12 +485,16 @@ async function initializeSelfHostedUploads() {
     });
     let longPressTimer = null;
     let suppressNextGalleryClick = false;
-    list.addEventListener('click', (event) => {
-        if (!suppressNextGalleryClick) return;
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        suppressNextGalleryClick = false;
-    }, true);
+    list.addEventListener(
+        'click',
+        (event) => {
+            if (!suppressNextGalleryClick) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            suppressNextGalleryClick = false;
+        },
+        true
+    );
     list.addEventListener('pointerdown', (event) => {
         const card = event.target.closest('.upload-gallery-card');
         if (!card || event.pointerType === 'mouse') return;
@@ -527,7 +544,12 @@ async function initializeSelfHostedUploads() {
             return;
         }
         if (action === 'download') {
-            await downloadTracks(tracks, MusicAPI.instance, downloadQualitySettings.getQuality(), LyricsManager.instance);
+            await downloadTracks(
+                tracks,
+                MusicAPI.instance,
+                downloadQualitySettings.getQuality(),
+                LyricsManager.instance
+            );
             return;
         }
         if (!authManager.user) return showNotification('Sign in to manage the community catalogue.', 'error');
@@ -537,17 +559,31 @@ async function initializeSelfHostedUploads() {
                 return;
             }
             bulkEditor.querySelector('#upload-bulk-form').reset();
-            bulkEditor.querySelectorAll('.upload-bulk-field input:not([type="checkbox"]),.upload-bulk-field select,.upload-bulk-field textarea').forEach((control) => (control.disabled = true));
-            bulkEditor.querySelector('#upload-bulk-title').textContent = `Edit ${tracks.length} selected track${tracks.length === 1 ? '' : 's'}`;
+            bulkEditor
+                .querySelectorAll(
+                    '.upload-bulk-field input:not([type="checkbox"]),.upload-bulk-field select,.upload-bulk-field textarea'
+                )
+                .forEach((control) => (control.disabled = true));
+            bulkEditor.querySelector('#upload-bulk-title').textContent =
+                `Edit ${tracks.length} selected track${tracks.length === 1 ? '' : 's'}`;
             bulkEditor.hidden = false;
             return;
         }
         if (action === 'delete') {
-            if (!confirm(`Permanently delete ${tracks.length} selected track${tracks.length === 1 ? '' : 's'} from the community server?`)) return;
-            await runTrackOperation(tracks, async (track) => {
-                await deleteSelfHostedTrack(track.id);
-                await db.deleteUploadedTrack(track.id).catch(() => {});
-            }, 'Deleting');
+            if (
+                !confirm(
+                    `Permanently delete ${tracks.length} selected track${tracks.length === 1 ? '' : 's'} from the community server?`
+                )
+            )
+                return;
+            await runTrackOperation(
+                tracks,
+                async (track) => {
+                    await deleteSelfHostedTrack(track.id);
+                    await db.deleteUploadedTrack(track.id).catch(() => {});
+                },
+                'Deleting'
+            );
         }
     });
 

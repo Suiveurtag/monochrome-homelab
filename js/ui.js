@@ -489,12 +489,7 @@ export class UIRenderer {
                 }
             } else {
                 const artwork = getArtworkSources(track.album || track.image || track.cover);
-                trackImageHTML = this.getCoverHTML(
-                    artwork.static,
-                    'Track Cover',
-                    'track-item-cover',
-                    'lazy'
-                );
+                trackImageHTML = this.getCoverHTML(artwork.static, 'Track Cover', 'track-item-cover', 'lazy');
             }
         }
 
@@ -1267,10 +1262,7 @@ export class UIRenderer {
             track.videoUrl || track.videoCoverUrl || track.album?.videoCoverUrl || albumArtwork.animated || null;
         const shouldAnimate = Boolean(animatedUrl);
         const overlay = document.getElementById('fullscreen-cover-overlay');
-        overlay?.style.setProperty(
-            '--fullscreen-artwork-image',
-            `url("${String(staticUrl).replaceAll('"', '\\"')}")`
-        );
+        overlay?.style.setProperty('--fullscreen-artwork-image', `url("${String(staticUrl).replaceAll('"', '\\"')}")`);
         let current = document.getElementById('fullscreen-cover-image');
         if (!current) return;
 
@@ -2766,7 +2758,9 @@ export class UIRenderer {
     }
 
     async uploadSelfHostedFiles(files) {
-        const flacFiles = files.filter((file) => file.name.toLowerCase().endsWith('.flac') || file.type === 'audio/flac');
+        const flacFiles = files.filter(
+            (file) => file.name.toLowerCase().endsWith('.flac') || file.type === 'audio/flac'
+        );
         if (flacFiles.length === 0) {
             showNotification('Only FLAC files are accepted.');
             return;
@@ -2806,13 +2800,16 @@ export class UIRenderer {
                 lyrics: metadata.lyrics || '',
                 releaseDate: metadata.album?.releaseDate || '',
                 artist: { ...(metadata.artist || {}), id: artistId, name: metadata.artist?.name || 'Unknown Artist' },
-                artists: (metadata.artists?.length ? metadata.artists : [metadata.artist || { name: 'Unknown Artist' }]).map(
-                    (artist) => ({
-                        ...artist,
-                        id: artist.id || (artist.name === metadata.artist?.name ? artistId : `local-artist-${crypto.randomUUID()}`),
-                        name: artist.name || 'Unknown Artist',
-                    })
-                ),
+                artists: (metadata.artists?.length
+                    ? metadata.artists
+                    : [metadata.artist || { name: 'Unknown Artist' }]
+                ).map((artist) => ({
+                    ...artist,
+                    id:
+                        artist.id ||
+                        (artist.name === metadata.artist?.name ? artistId : `local-artist-${crypto.randomUUID()}`),
+                    name: artist.name || 'Unknown Artist',
+                })),
                 album: {
                     ...(metadata.album || {}),
                     id: albumId,
@@ -2896,7 +2893,8 @@ export class UIRenderer {
                 if (type === 'album') await this.renderAlbumPage(entity.id);
                 else if (type === 'artist') await this.renderArtistPage(entity.id);
                 else if (this.currentPage === 'album' && entity.album?.id) await this.renderAlbumPage(entity.album.id);
-                else if (this.currentPage === 'artist' && entity.artist?.id) await this.renderArtistPage(entity.artist.id);
+                else if (this.currentPage === 'artist' && entity.artist?.id)
+                    await this.renderArtistPage(entity.artist.id);
                 else if (this.currentPage === 'library')
                     await this.renderLocalFiles(document.getElementById('library-local-container'));
                 else if (this.currentPage === 'upload') await this.renderUploadedTracks();
@@ -2926,10 +2924,17 @@ export class UIRenderer {
             const favorites = await db.getFavorites('track');
             const playlists = await db.getPlaylists(true);
             const uploadedTracks = await db.getUploadedTracks().catch(() => []);
-            const globalTracks = await this.api.getAPI().getTracks().catch(() => []);
+            const globalTracks = await this.api
+                .getAPI()
+                .getTracks()
+                .catch(() => []);
 
             const hasActivity =
-                globalTracks.length > 0 || uploadedTracks.length > 0 || history.length > 0 || favorites.length > 0 || playlists.length > 0;
+                globalTracks.length > 0 ||
+                uploadedTracks.length > 0 ||
+                history.length > 0 ||
+                favorites.length > 0 ||
+                playlists.length > 0;
 
             // Handle Editor's Picks visibility based on settings
             if (!homePageSettings.shouldShowEditorsPicks()) {
@@ -3037,8 +3042,10 @@ export class UIRenderer {
             ]);
 
             container.innerHTML = '';
-            if (albums.length > 0) await this.renderExploreSection(container, 'Local Albums', albums.slice(0, 24), 'album');
-            if (tracks.length > 0) await this.renderExploreSection(container, 'Local Tracks', tracks.slice(0, 50), 'track');
+            if (albums.length > 0)
+                await this.renderExploreSection(container, 'Local Albums', albums.slice(0, 24), 'album');
+            if (tracks.length > 0)
+                await this.renderExploreSection(container, 'Local Tracks', tracks.slice(0, 50), 'track');
             if (playlists.length > 0)
                 await this.renderExploreSection(container, 'Local Playlists', playlists.slice(0, 24), 'playlist');
 
@@ -3145,7 +3152,10 @@ export class UIRenderer {
         const favorites = await db.getFavorites('track');
         const playlists = await db.getPlaylists(true);
         const playlistTracks = playlists.flatMap((p) => p.tracks || []);
-        const globalTracks = await this.api.getAPI().getTracks().catch(() => []);
+        const globalTracks = await this.api
+            .getAPI()
+            .getTracks()
+            .catch(() => []);
 
         const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
 
@@ -3303,12 +3313,7 @@ export class UIRenderer {
             href: `/track/${track.id}`,
             title: `${escapeHtml(getTrackTitle(track))} ${explicitBadge} ${qualityBadge}`,
             subtitle: `${escapeHtml(getTrackArtists(track))}${yearDisplay}`,
-            imageHTML: this.getCoverHTML(
-                artwork.static,
-                escapeHtml(track.title),
-                'card-image',
-                'lazy'
-            ),
+            imageHTML: this.getCoverHTML(artwork.static, escapeHtml(track.title), 'card-image', 'lazy'),
             actionButtonsHTML: `
                 <button class="like-btn card-like-btn" data-action="toggle-like" data-type="${likeType}" title="Add to Liked">
                     ${this.createHeartIcon(false)}
@@ -4320,7 +4325,6 @@ export class UIRenderer {
             if (source === 'user' || (!source && isUUID)) {
                 ownedPlaylist = await db.getPlaylist(playlistId);
                 playlistData = ownedPlaylist;
-
             }
 
             if (playlistData) {
@@ -5921,7 +5925,8 @@ export class UIRenderer {
         await this.showPage('podcasts-browse');
         const trendingContainer = document.getElementById('podcasts-trending-container');
         const recentContainer = document.getElementById('podcasts-recent-container');
-        if (trendingContainer) trendingContainer.innerHTML = createPlaceholder('Podcasts are disabled in self-hosted mode.');
+        if (trendingContainer)
+            trendingContainer.innerHTML = createPlaceholder('Podcasts are disabled in self-hosted mode.');
         if (recentContainer) recentContainer.innerHTML = '';
 
         document.title = 'Podcasts - Monochrome Music';

@@ -126,7 +126,12 @@ export async function listSpotifyImports(client = pb, fetchImpl = fetch) {
 }
 
 export async function cancelSpotifyImport(id, client = pb, fetchImpl = fetch) {
-    return authenticatedImportRequest(`/api/selfhost/imports/${encodeURIComponent(id)}/cancel`, { method: 'POST' }, client, fetchImpl);
+    return authenticatedImportRequest(
+        `/api/selfhost/imports/${encodeURIComponent(id)}/cancel`,
+        { method: 'POST' },
+        client,
+        fetchImpl
+    );
 }
 
 export async function markSpotifyImportPlaylistCreated(id, client = pb) {
