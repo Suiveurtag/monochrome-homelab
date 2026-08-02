@@ -20,10 +20,9 @@ describe('fullscreen animated artwork', () => {
 
     afterEach(() => vi.unstubAllGlobals());
 
-    test('uses the static fallback while paused and the MP4 while playing', async () => {
+    test('keeps the MP4 cover animated in fullscreen while playback is paused', async () => {
         const activeElement = document.createElement('audio');
-        let paused = true;
-        Object.defineProperty(activeElement, 'paused', { configurable: true, get: () => paused });
+        Object.defineProperty(activeElement, 'paused', { configurable: true, get: () => true });
         const renderer = {
             api: { getCoverUrl: (source) => source },
             player: { activeElement },
@@ -35,25 +34,19 @@ describe('fullscreen animated artwork', () => {
         const track = { album: { cover: '/animated.mp4', coverFallback: '/static.jpg' } };
 
         await UIRenderer.prototype.renderFullscreenArtwork.call(renderer, track);
-        expect(document.getElementById('fullscreen-cover-image')).toMatchObject({ tagName: 'IMG' });
-        expect(document.getElementById('fullscreen-cover-image').getAttribute('src')).toBe('/static.jpg');
+        const video = document.getElementById('fullscreen-cover-image');
+        expect(video.tagName).toBe('VIDEO');
         expect(document.getElementById('fullscreen-cover-overlay').style.getPropertyValue('--fullscreen-artwork-image')).toContain(
             '/static.jpg'
         );
-
-        paused = false;
-        await UIRenderer.prototype.renderFullscreenArtwork.call(renderer, track);
-        const video = document.getElementById('fullscreen-cover-image');
-        expect(video.tagName).toBe('VIDEO');
         expect(video.classList.contains('cd')).toBe(true);
         expect(video.poster).toContain('/static.jpg');
         expect(renderer.setupHlsVideo).toHaveBeenCalledWith(video, '/animated.mp4', null);
     });
 
-    test('keeps a GIF static outside playback and animates it as an image during playback', async () => {
+    test('keeps a GIF cover animated in fullscreen while playback is paused', async () => {
         const activeElement = document.createElement('audio');
-        let paused = true;
-        Object.defineProperty(activeElement, 'paused', { configurable: true, get: () => paused });
+        Object.defineProperty(activeElement, 'paused', { configurable: true, get: () => true });
         const renderer = {
             api: { getCoverUrl: (source) => source },
             player: { activeElement },
@@ -62,10 +55,6 @@ describe('fullscreen animated artwork', () => {
         };
         const track = { album: { cover: '/animated.gif', coverFallback: '/static.jpg' } };
 
-        await UIRenderer.prototype.renderFullscreenArtwork.call(renderer, track);
-        expect(document.getElementById('fullscreen-cover-image').getAttribute('src')).toBe('/static.jpg');
-
-        paused = false;
         await UIRenderer.prototype.renderFullscreenArtwork.call(renderer, track);
         const image = document.getElementById('fullscreen-cover-image');
         expect(image.tagName).toBe('IMG');

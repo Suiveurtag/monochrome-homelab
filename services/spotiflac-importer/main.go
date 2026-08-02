@@ -228,7 +228,7 @@ func importTrack(ctx context.Context, token, owner string, item track, position 
 	provider = "qobuz"
 	if err != nil {
 		tidal := spot.NewTidalDownloader("")
-		file, err = tidal.Download(item.SpotifyID, dir, "HI_RES_LOSSLESS", "title-artist", false, position, item.Name, item.Artists, item.AlbumName, item.AlbumArtist, item.ReleaseDate, false, item.Cover, true, item.TrackNumber, item.DiscNumber, item.TotalTracks, item.TotalDiscs, item.Copyright, item.Publisher, item.Composer, ", ", isrc, spotifyURL, true, false, false, true)
+		file, err = tidal.Download(item.SpotifyID, dir, "HI_RES_LOSSLESS", "title-artist", false, position, item.Name, item.Artists, item.AlbumName, item.AlbumArtist, item.ReleaseDate, false, item.Cover, true, item.TrackNumber, item.DiscNumber, item.TotalTracks, item.TotalDiscs, item.Copyright, item.Publisher, item.Composer, ", ", isrc, spotifyURL, true, false, "LOSSLESS", false, false, true)
 		provider = "tidal"
 	}
 	if err != nil { return "", provider, err }
@@ -292,6 +292,7 @@ func uploadTrack(token, owner string, item track, isrc, provider, lyrics, audioP
 }
 
 func main() {
-	mux := http.NewServeMux(); mux.HandleFunc("/api/selfhost/imports",handleImports); mux.HandleFunc("/api/selfhost/imports/",handleJob); health := func(w http.ResponseWriter,_ *http.Request){jsonOut(w,200,map[string]string{"status":"ok","engine":"SpotiFLAC v7.1.9"})}; mux.HandleFunc("/health",health); mux.HandleFunc("/api/selfhost/health",health)
+	spot.AppVersion = "7.2.0"
+	mux := http.NewServeMux(); mux.HandleFunc("/api/selfhost/imports",handleImports); mux.HandleFunc("/api/selfhost/imports/",handleJob); health := func(w http.ResponseWriter,_ *http.Request){jsonOut(w,200,map[string]string{"status":"ok","engine":"SpotiFLAC v7.2.0"})}; mux.HandleFunc("/health",health); mux.HandleFunc("/api/selfhost/health",health)
 	server := &http.Server{Addr:":"+port,Handler:mux,ReadHeaderTimeout:10*time.Second}; log.Printf("Monochrome SpotiFLAC importer listening on :%s",port); log.Fatal(server.ListenAndServe())
 }

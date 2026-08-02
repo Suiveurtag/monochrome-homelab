@@ -1,6 +1,6 @@
 FROM golang:1.26-bookworm AS builder
 
-ARG SPOTIFLAC_REF=7a3a50e8d5b56fc7335d5822889c499f5e76e39b
+ARG SPOTIFLAC_REF=02cfd119da4e5bf1b0f16ce7e8f38e503bdd995e
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN git clone https://github.com/spotbye/SpotiFLAC.git /spotiflac && cd /spotiflac && git checkout "$SPOTIFLAC_REF"
 WORKDIR /src

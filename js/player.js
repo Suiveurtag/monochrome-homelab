@@ -222,7 +222,7 @@ export class Player {
     _setupAnimatedCoverSync() {
         const syncPlayPause = () => {
             const isPaused = this.activeElement.paused;
-            document.querySelectorAll('.cover, #fullscreen-cover-image').forEach((el) => {
+            document.querySelectorAll('.cover').forEach((el) => {
                 if (el.tagName === 'VIDEO' && el !== this.video) {
                     if (isPaused) {
                         el.pause();

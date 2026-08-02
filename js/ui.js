@@ -1265,7 +1265,7 @@ export class UIRenderer {
         const staticUrl = this.api.getCoverUrl(albumArtwork.static, '1280');
         const animatedUrl =
             track.videoUrl || track.videoCoverUrl || track.album?.videoCoverUrl || albumArtwork.animated || null;
-        const shouldAnimate = Boolean(animatedUrl && !(this.player?.activeElement?.paused ?? true));
+        const shouldAnimate = Boolean(animatedUrl);
         const overlay = document.getElementById('fullscreen-cover-overlay');
         overlay?.style.setProperty(
             '--fullscreen-artwork-image',

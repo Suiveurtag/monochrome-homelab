@@ -33,8 +33,8 @@ services:
       context: .
       dockerfile: services/spotiflac-importer/Dockerfile
       args:
-        SPOTIFLAC_REF: "7a3a50e8d5b56fc7335d5822889c499f5e76e39b"
-    image: monochrome-spotiflac-importer:7.1.9
+        SPOTIFLAC_REF: "02cfd119da4e5bf1b0f16ce7e8f38e503bdd995e"
+    image: monochrome-spotiflac-importer:7.2.0
     container_name: monochrome-selfhost-importer
     restart: unless-stopped
     environment:
