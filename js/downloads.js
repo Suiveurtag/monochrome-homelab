@@ -21,6 +21,7 @@ import { BulkDownloadMethod, modernSettings } from './ModernSettings.js';
 import { SVG_CLOSE } from './icons.ts';
 import { MusicAPI } from './music-api.js';
 import { LyricsManager } from './lyrics.js';
+import { enableCornerDrag } from './corner-drag.js';
 
 const downloadTasks = new Map();
 const bulkDownloadTasks = new Map();
@@ -142,6 +143,7 @@ function createDownloadNotification() {
         downloadNotificationContainer = document.createElement('div');
         downloadNotificationContainer.id = 'download-notifications';
         document.body.appendChild(downloadNotificationContainer);
+        enableCornerDrag(downloadNotificationContainer);
     }
     return downloadNotificationContainer;
 }
@@ -291,6 +293,7 @@ function removeDownloadTask(trackId) {
         downloadTasks.delete(trackId);
 
         if (downloadNotificationContainer && downloadNotificationContainer.children.length === 0) {
+            downloadNotificationContainer.cornerDragCleanup?.();
             downloadNotificationContainer.remove();
             downloadNotificationContainer = null;
         }

@@ -2,6 +2,7 @@ import { cancelSpotifyImport, listSpotifyImports, markSpotifyImportPlaylistCreat
 import { db } from './db.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { SVG_CLOSE } from './icons.js';
+import { enableCornerDrag } from './corner-drag.js';
 
 const ACTIVE = new Set(['queued', 'resolving', 'downloading']);
 
@@ -85,6 +86,7 @@ export class SpotifyImportManager {
         let container = document.getElementById('spotify-import-notifications');
         const visible = this.jobs.filter((job) => ACTIVE.has(job.status));
         if (!visible.length) {
+            container?.cornerDragCleanup?.();
             container?.remove();
             return;
         }
@@ -93,6 +95,7 @@ export class SpotifyImportManager {
             container.id = 'spotify-import-notifications';
             container.className = 'spotify-import-notifications';
             document.body.appendChild(container);
+            enableCornerDrag(container);
         }
         const visibleIds = new Set(visible.map((job) => job.id));
         container.querySelectorAll('[data-import-id]').forEach((element) => {
