@@ -6,9 +6,9 @@ import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
 import { isTtml, parseLrc } from './lyrics-format.js';
 import {
     getArtworkSources,
+    isAnimatedArtwork,
     isSupportedArtworkFile,
     isSupportedImageArtworkFile,
-    isVideoArtwork,
     setArtworkSource,
 } from './artwork-media.js';
 
@@ -29,10 +29,10 @@ function value(form, name, fallback = '') {
 function artworkPicker(name, label, src, { round = false, allowVideo = true, fallbackSrc = '' } = {}) {
     const accept = allowVideo
         ? 'image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4'
-        : 'image/png,image/jpeg,image/webp,image/avif,image/gif';
+        : 'image/png,image/jpeg,image/webp,image/avif';
     const fallback = allowVideo
-        ? `<label class="metadata-artwork-picker metadata-artwork-fallback" data-artwork-picker="${name}Fallback" data-artwork-fallback-for="${name}" data-allows-video="false" ${isVideoArtwork(src) ? '' : 'hidden'}>
-            <input type="file" name="${name}Fallback" accept="image/png,image/jpeg,image/webp,image/avif,image/gif" />
+        ? `<label class="metadata-artwork-picker metadata-artwork-fallback" data-artwork-picker="${name}Fallback" data-artwork-fallback-for="${name}" data-allows-video="false" ${isAnimatedArtwork(src) ? '' : 'hidden'}>
+            <input type="file" name="${name}Fallback" accept="image/png,image/jpeg,image/webp,image/avif" />
             <span class="metadata-artwork-preview">
                 <img src="${escapeHtml(fallbackSrc || '/assets/appicon.png')}" alt="" data-artwork-preview="${name}Fallback" />
                 <span class="metadata-artwork-overlay">${EDIT_METADATA_ICON}Replace</span>
@@ -45,10 +45,10 @@ function artworkPicker(name, label, src, { round = false, allowVideo = true, fal
             <label class="metadata-artwork-picker${round ? ' is-round' : ''}" data-artwork-picker="${name}" data-allows-video="${allowVideo}">
                 <input type="file" name="${name}" accept="${accept}" />
                 <span class="metadata-artwork-preview">
-                    <img src="${escapeHtml(src || '/assets/appicon.png')}" alt="" data-artwork-preview="${name}" ${isVideoArtwork(src) ? 'data-animated-artwork="true"' : ''} />
+                    <img src="${escapeHtml(src || '/assets/appicon.png')}" alt="" data-artwork-preview="${name}" ${isAnimatedArtwork(src) ? 'data-animated-artwork="true"' : ''} />
                     <span class="metadata-artwork-overlay">${EDIT_METADATA_ICON}Replace</span>
                 </span>
-                <span class="metadata-artwork-copy"><strong>${label}</strong><small>${allowVideo ? 'PNG, JPG, WebP, AVIF, GIF or MP4' : 'PNG, JPG, WebP, AVIF or GIF'}</small></span>
+                <span class="metadata-artwork-copy"><strong>${label}</strong><small>${allowVideo ? 'PNG, JPG, WebP, AVIF, GIF or MP4' : 'PNG, JPG, WebP or AVIF'}</small></span>
             </label>
             ${fallback}
         </div>`;
@@ -61,7 +61,7 @@ async function mergeArtwork(current, currentFallback, primaryFile, fallbackFile)
     if (!primaryData) {
         return { source: current, fallback: fallbackData || currentSources.static };
     }
-    if (isVideoArtwork(primaryData, primaryFile?.type)) {
+    if (isAnimatedArtwork(primaryData, primaryFile?.type)) {
         return { source: primaryData, fallback: fallbackData || currentSources.static };
     }
     return { source: primaryData, fallback: fallbackData || primaryData };
@@ -150,7 +150,7 @@ function buildArtistForm(artist) {
             ${textarea('Biography', 'biography', artist.biography, 'Tell listeners about this artist…', 6)}
         </div></div>
         <div class="metadata-editor-section"><h5>Header artwork</h5>
-            ${artworkPicker('banner', 'Artist banner', artist.banner, { fallbackSrc: artist.bannerFallback })}
+            ${artworkPicker('banner', 'Artist banner', getArtworkSources({ cover: artist.banner, coverFallback: artist.bannerFallback }).static, { allowVideo: false })}
         </div>`;
 }
 
@@ -179,7 +179,7 @@ async function saveTrack(track, form) {
         coverFile,
         coverFallbackFile
     );
-    const hasAnimatedCover = isVideoArtwork(artwork.source);
+    const hasAnimatedCover = isAnimatedArtwork(artwork.source);
     const artist = { ...(track.artist || {}), name: value(form, 'artist') || 'Unknown Artist' };
     const album = {
         ...(track.album || {}),
@@ -228,7 +228,7 @@ async function saveAlbum(album, tracks, form) {
         coverFile,
         coverFallbackFile
     );
-    const hasAnimatedCover = isVideoArtwork(artwork.source);
+    const hasAnimatedCover = isAnimatedArtwork(artwork.source);
     const artist = { ...(album.artist || {}), name: value(form, 'artist') || 'Unknown Artist' };
     const updatedAlbum = {
         ...album,
@@ -318,7 +318,7 @@ function setupArtworkPreviews(form) {
                 showNotification(
                     allowsVideo
                         ? 'Choose a PNG, JPG, WebP, AVIF, GIF or MP4 file.'
-                        : 'Choose a PNG, JPG, WebP, AVIF or GIF file.',
+                        : 'Choose a PNG, JPG, WebP or AVIF file.',
                     'error'
                 );
                 input.value = '';
@@ -327,7 +327,7 @@ function setupArtworkPreviews(form) {
             preview = setArtworkSource(preview, URL.createObjectURL(file), file.type);
             picker.classList.add('has-new-file');
             const fallbackPicker = form.querySelector(`[data-artwork-fallback-for="${input.name}"]`);
-            if (fallbackPicker) fallbackPicker.hidden = !isVideoArtwork(file.name, file.type);
+            if (fallbackPicker) fallbackPicker.hidden = !isAnimatedArtwork(file.name, file.type);
         };
         input.addEventListener('change', update);
         ['dragenter', 'dragover'].forEach((name) =>

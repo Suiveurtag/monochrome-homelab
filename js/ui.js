@@ -42,7 +42,7 @@ import { sidePanelManager } from './side-panel.js';
 import { deleteSelfHostedTrack, listSelfHostedTracks } from './selfhost-server-api.js';
 import { openMetadataEditor } from './metadata-editor.js';
 import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
-import { getArtworkSources, setArtworkBackground } from './artwork-media.js';
+import { getArtworkSources, isVideoArtwork, setArtworkBackground } from './artwork-media.js';
 
 let _isBlockedCopyright = (_c) => false;
 import('./content-filter.ts')
@@ -185,6 +185,7 @@ export class UIRenderer {
         this.fullscreenPlaybackStateCleanup = null;
         this.fullscreenDismissHandleCleanup = null;
         this.fullscreenLyricsToggleCleanup = null;
+        this.vibrantColorRequestId = 0;
 
         // Listen for dynamic color reset events
         window.addEventListener('reset-dynamic-color', () => {
@@ -253,6 +254,7 @@ export class UIRenderer {
     }
 
     async extractAndApplyColor(url) {
+        const requestId = ++this.vibrantColorRequestId;
         if (!url) {
             this.resetVibrantColor();
             return;
@@ -273,32 +275,36 @@ export class UIRenderer {
             }
         }
 
-        const img = new Image();
-        img.crossOrigin = 'Anonymous';
-        // Add cache buster to bypass opaque response in cache
-        const separator = url.includes('?') ? '&' : '?';
-        img.src = `${url}${separator}not-from-cache-please`;
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            const source = String(url);
+            const canCacheBust = !/^(?:blob:|data:)/i.test(source);
+            const separator = source.includes('?') ? '&' : '?';
+            const requestedSource = canCacheBust ? `${source}${separator}not-from-cache-please` : source;
 
-        img.onload = () => {
-            try {
-                const color = getVibrantColorFromImage(img);
-                if (color) {
-                    this.vibrantColorCache.set(url, color);
-                    this.setVibrantColor(color);
-                } else {
+            img.onload = () => {
+                try {
+                    const color = getVibrantColorFromImage(img);
+                    this.vibrantColorCache.set(url, color || null);
+                    if (requestId === this.vibrantColorRequestId) {
+                        if (color) this.setVibrantColor(color);
+                        else this.resetVibrantColor();
+                    }
+                } catch {
                     this.vibrantColorCache.set(url, null);
-                    this.resetVibrantColor();
+                    if (requestId === this.vibrantColorRequestId) this.resetVibrantColor();
                 }
-            } catch {
-                this.vibrantColorCache.set(url, null);
-                this.resetVibrantColor();
-            }
-        };
+                resolve();
+            };
 
-        img.onerror = () => {
-            this.vibrantColorCache.set(url, null);
-            this.resetVibrantColor();
-        };
+            img.onerror = () => {
+                this.vibrantColorCache.set(url, null);
+                if (requestId === this.vibrantColorRequestId) this.resetVibrantColor();
+                resolve();
+            };
+            img.src = requestedSource;
+        });
     }
 
     async updateLikeState(element, type, id) {
@@ -431,7 +437,7 @@ export class UIRenderer {
             return;
         }
 
-        if (backgroundSettings.isEnabled() && this.currentTrack?.album?.cover) {
+        if (this.currentTrack?.album) {
             const artwork = getArtworkSources(this.currentTrack.album);
             await this.extractAndApplyColor(this.api.getCoverUrl(artwork.static, '80'));
         } else {
@@ -604,8 +610,12 @@ export class UIRenderer {
         const imageUrl =
             type === 'artist' ? this.api.getArtistPictureUrl(cover, size) : this.api.getCoverUrl(cover, size);
 
-        if (videoCoverUrl) {
+        if (videoCoverUrl && isVideoArtwork(videoCoverUrl)) {
             return `<video src="${videoCoverUrl}" poster="${imageUrl}" class="${className}" aria-label="${alt}" preload="metadata" autoplay loop playsinline muted></video>`;
+        }
+
+        if (videoCoverUrl) {
+            return `<img src="${videoCoverUrl}" class="${className}" alt="${alt}" loading="${loading}">`;
         }
 
         return `<img src="${imageUrl}" class="${className}" alt="${alt}" loading="${loading}">`;
@@ -1256,6 +1266,11 @@ export class UIRenderer {
         const animatedUrl =
             track.videoUrl || track.videoCoverUrl || track.album?.videoCoverUrl || albumArtwork.animated || null;
         const shouldAnimate = Boolean(animatedUrl && !(this.player?.activeElement?.paused ?? true));
+        const overlay = document.getElementById('fullscreen-cover-overlay');
+        overlay?.style.setProperty(
+            '--fullscreen-artwork-image',
+            `url("${String(staticUrl).replaceAll('"', '\\"')}")`
+        );
         let current = document.getElementById('fullscreen-cover-image');
         if (!current) return;
 
@@ -1270,6 +1285,21 @@ export class UIRenderer {
                 current = image;
             }
             current.src = staticUrl;
+            this.applyFullscreenCdState();
+            return;
+        }
+
+        if (!isVideoArtwork(animatedUrl)) {
+            if (current.tagName === 'VIDEO') {
+                current._hls?.destroy?.();
+                const image = document.createElement('img');
+                image.id = current.id;
+                image.className = current.className;
+                image.alt = current.getAttribute('aria-label') || 'Album Cover';
+                current.replaceWith(image);
+                current = image;
+            }
+            current.src = animatedUrl;
             this.applyFullscreenCdState();
             return;
         }
@@ -1330,6 +1360,7 @@ export class UIRenderer {
         }
 
         if (isRealVideo) {
+            overlay.style.removeProperty('--fullscreen-artwork-image');
             if (sidePanelManager.isActive('lyrics')) {
                 sidePanelManager.close();
             }
@@ -1581,6 +1612,7 @@ export class UIRenderer {
         );
         overlay.style.removeProperty('--fullscreen-drag-offset');
         overlay.style.removeProperty('--fullscreen-drag-progress');
+        overlay.style.removeProperty('--fullscreen-artwork-image');
 
         const playerBar = document.querySelector('.now-playing-bar');
         if (playerBar) playerBar.style.removeProperty('display');
@@ -3258,6 +3290,7 @@ export class UIRenderer {
     }
 
     createTrackCardHTML(track) {
+        const artwork = getArtworkSources(track.album || track.cover || track.image);
         const explicitBadge = hasExplicitContent(track) ? this.createExplicitBadge() : '';
         const qualityBadge = createQualityBadgeHTML(track);
         const isCompact = cardSettings.isCompactAlbum();
@@ -3271,11 +3304,10 @@ export class UIRenderer {
             title: `${escapeHtml(getTrackTitle(track))} ${explicitBadge} ${qualityBadge}`,
             subtitle: `${escapeHtml(getTrackArtists(track))}${yearDisplay}`,
             imageHTML: this.getCoverHTML(
-                track.album?.cover,
+                artwork.static,
                 escapeHtml(track.title),
                 'card-image',
-                'lazy',
-                track.videoUrl || track.album?.videoCoverUrl
+                'lazy'
             ),
             actionButtonsHTML: `
                 <button class="like-btn card-like-btn" data-action="toggle-like" data-type="${likeType}" title="Add to Liked">
@@ -3904,7 +3936,7 @@ export class UIRenderer {
 
             const coverUrl = videoCoverUrl || staticCoverUrl;
 
-            if (videoCoverUrl) {
+            if (videoCoverUrl && isVideoArtwork(videoCoverUrl)) {
                 if (imageEl.tagName !== 'VIDEO') {
                     const video = document.createElement('video');
                     video.autoplay = true;
@@ -3934,7 +3966,7 @@ export class UIRenderer {
 
             // Set background and vibrant color
             this.setPageBackground(staticCoverUrl);
-            if (backgroundSettings.isEnabled() && artwork.static) {
+            if (artwork.static) {
                 await this.extractAndApplyColor(this.api.getCoverUrl(artwork.static, '80'));
             }
 
@@ -4642,87 +4674,15 @@ export class UIRenderer {
                 if (tracks.length > 0 && tracks[0].album?.cover) {
                     const firstTrack = tracks[0];
                     const artwork = getArtworkSources(firstTrack.album);
-                    let videoCoverUrl =
-                        firstTrack.videoUrl ||
-                        firstTrack.videoCoverUrl ||
-                        firstTrack.album?.videoCoverUrl ||
-                        artwork.animated ||
-                        null;
-
-                    if (!videoCoverUrl && (firstTrack.album || firstTrack.type === 'video')) {
-                        const fetchArtwork = () => {
-                            this.api
-                                .getVideoArtwork(firstTrack.title, getTrackArtists(firstTrack))
-                                .then(async (result) => {
-                                    if (result && this.currentPage === 'mix' && this.currentMixId === mixId) {
-                                        const url = result.videoUrl || result.hlsUrl;
-                                        if (!url) return;
-                                        firstTrack.album = firstTrack.album || {};
-                                        firstTrack.album.videoCoverUrl = url;
-                                        const currentImageEl = document.getElementById('mix-detail-image');
-                                        if (currentImageEl && currentImageEl.tagName !== 'VIDEO') {
-                                            const video = document.createElement('video');
-                                            video.autoplay = true;
-                                            video.loop = true;
-                                            video.muted = true;
-                                            video.playsInline = true;
-                                            video.preload = 'auto';
-                                            video.className = currentImageEl.className;
-                                            video.id = currentImageEl.id;
-                                            video.style.opacity = '1';
-                                            video.poster = currentImageEl.src;
-
-                                            await this.setupHlsVideo(video, result, currentImageEl);
-                                            currentImageEl.replaceWith(video);
-                                        }
-                                    }
-                                });
-                        };
-
-                        if (firstTrack.type === 'video') {
-                            await this.api
-                                .getVideoStreamUrl(firstTrack.id)
-                                .then(async (url) => {
-                                    if (url) {
-                                        firstTrack.videoUrl = url;
-                                        await this.renderMixPage(mixId);
-                                    } else {
-                                        fetchArtwork();
-                                    }
-                                })
-                                .catch(fetchArtwork);
-                        } else {
-                            fetchArtwork();
-                        }
-                    }
-
                     const staticCoverUrl = this.api.getCoverUrl(artwork.static);
-                    const coverUrl = videoCoverUrl || staticCoverUrl;
-
-                    if (videoCoverUrl) {
-                        if (imageEl.tagName === 'IMG') {
-                            const video = document.createElement('video');
-                            video.src = videoCoverUrl;
-                            video.autoplay = true;
-                            video.loop = true;
-                            video.muted = true;
-                            video.playsInline = true;
-                            video.className = imageEl.className;
-                            video.id = imageEl.id;
-                            imageEl.replaceWith(video);
-                        } else {
-                            imageEl.src = videoCoverUrl;
-                        }
+                    if (imageEl.tagName === 'VIDEO') {
+                        const img = document.createElement('img');
+                        img.src = staticCoverUrl;
+                        img.className = imageEl.className;
+                        img.id = imageEl.id;
+                        imageEl.replaceWith(img);
                     } else {
-                        if (imageEl.tagName === 'VIDEO') {
-                            const img = document.createElement('img');
-                            img.src = coverUrl;
-                            img.className = imageEl.className;
-                            img.id = imageEl.id;
-                            imageEl.replaceWith(img);
-                        } else {
-                            imageEl.src = coverUrl;
-                        }
+                        imageEl.src = staticCoverUrl;
                     }
                     this.setPageBackground(staticCoverUrl);
                     await this.extractAndApplyColor(this.api.getCoverUrl(artwork.static, '160'));
@@ -4843,43 +4803,10 @@ export class UIRenderer {
                 trackDataStore.set(artistEditBtn, artist);
             }
 
-            const currentId = this.currentArtistId;
             if (artist.banner && bannerContainer) {
-                setArtworkBackground(bannerContainer, artist.banner, artist.bannerFallback);
+                const bannerArtwork = getArtworkSources({ cover: artist.banner, coverFallback: artist.bannerFallback });
+                setArtworkBackground(bannerContainer, bannerArtwork.static);
                 bannerContainer.style.opacity = '1';
-            }
-            if (!artist.banner) {
-                this.api
-                    .getArtistBanner(artist.name)
-                    .then(async (banner) => {
-                        if (this.currentArtistId !== currentId) return;
-
-                        if (banner && banner.hlsUrl && bannerContainer) {
-                            const video = document.createElement('video');
-                            video.autoplay = true;
-                            video.loop = true;
-                            video.muted = true;
-                            video.playsInline = true;
-                            video.setAttribute('muted', '');
-                            video.setAttribute('autoplay', '');
-                            video.setAttribute('playsinline', '');
-                            video.style.opacity = '1';
-
-                            try {
-                                await this.setupHlsVideo(video, banner, null);
-                                if (this.currentArtistId === currentId) {
-                                    bannerContainer.appendChild(video);
-                                    bannerContainer.style.opacity = '1';
-                                    video.play().catch(() => {});
-                                }
-                            } catch (e) {
-                                console.warn('Failed to setup artist banner video:', e);
-                            }
-                        }
-                    })
-                    .catch((e) => {
-                        console.warn('Failed to fetch artist banner:', e);
-                    });
             }
 
             // Handle Biography
@@ -5940,7 +5867,7 @@ export class UIRenderer {
             imageEl.style.backgroundColor = '';
 
             this.setPageBackground(coverUrl);
-            if (backgroundSettings.isEnabled() && artwork.static) {
+            if (artwork.static) {
                 await this.extractAndApplyColor(this.api.getCoverUrl(artwork.static, '80'));
             }
 

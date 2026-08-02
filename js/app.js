@@ -67,8 +67,8 @@ import { generateFullCSV, generateFullJSON } from './playlist-generator.js';
 import { modernSettings } from './ModernSettings.js';
 import {
     getArtworkSources,
+    isAnimatedArtwork,
     isSupportedImageArtworkFile,
-    isVideoArtwork,
 } from './artwork-media.js';
 import {
     SVG_OFFLINE,
@@ -251,7 +251,7 @@ async function initializeSelfHostedUploads() {
                 <label class="upload-bulk-field"><input type="checkbox" name="applyReleaseDate" /><span>Release date</span><input type="date" name="releaseDate" disabled /></label>
                 <label class="upload-bulk-field"><input type="checkbox" name="applyExplicit" /><span>Explicit</span><select name="explicit" disabled><option value="true">Yes</option><option value="false">No</option></select></label>
                 <label class="upload-bulk-field is-wide"><input type="checkbox" name="applyLyrics" /><span>Lyrics</span><textarea name="lyrics" rows="4" placeholder="Replace lyrics on every selected track" disabled></textarea></label>
-                <label class="upload-bulk-field is-wide"><input type="checkbox" name="applyCover" /><span>Artwork</span><input type="file" name="cover" accept="image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4" disabled /><small data-bulk-cover-fallback-label hidden>Static image for colors and backgrounds</small><input type="file" name="coverFallback" accept="image/png,image/jpeg,image/webp,image/avif,image/gif" data-bulk-cover-fallback hidden disabled aria-label="Static artwork fallback" /></label>
+                <label class="upload-bulk-field is-wide"><input type="checkbox" name="applyCover" /><span>Artwork</span><input type="file" name="cover" accept="image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4" disabled /><small data-bulk-cover-fallback-label hidden>Static image for colors and backgrounds</small><input type="file" name="coverFallback" accept="image/png,image/jpeg,image/webp,image/avif" data-bulk-cover-fallback hidden disabled aria-label="Static artwork fallback" /></label>
                 <div class="upload-bulk-footer"><span data-bulk-progress aria-live="polite"></span><button class="btn-primary" type="submit">Apply changes</button></div>
             </form>
         </section>`;
@@ -271,9 +271,9 @@ async function initializeSelfHostedUploads() {
     const bulkCoverFallbackLabel = bulkEditor.querySelector('[data-bulk-cover-fallback-label]');
     bulkCoverInput?.addEventListener('change', () => {
         const file = bulkCoverInput.files?.[0];
-        const hasVideo = isVideoArtwork(file?.name, file?.type);
-        bulkCoverFallback.hidden = !hasVideo;
-        bulkCoverFallbackLabel.hidden = !hasVideo;
+        const hasAnimation = isAnimatedArtwork(file?.name, file?.type);
+        bulkCoverFallback.hidden = !hasAnimation;
+        bulkCoverFallbackLabel.hidden = !hasAnimation;
     });
 
     const runTrackOperation = async (tracks, operation, progressLabel) => {

@@ -1,4 +1,5 @@
 const VIDEO_ARTWORK_PATTERN = /(?:^|\.)mp4$/i;
+const GIF_ARTWORK_PATTERN = /(?:^|\.)gif$/i;
 const SUPPORTED_ARTWORK_TYPES = new Set([
     'image/avif',
     'image/gif',
@@ -7,7 +8,9 @@ const SUPPORTED_ARTWORK_TYPES = new Set([
     'image/webp',
     'video/mp4',
 ]);
-const SUPPORTED_IMAGE_ARTWORK_TYPES = new Set([...SUPPORTED_ARTWORK_TYPES].filter((type) => type !== 'video/mp4'));
+const SUPPORTED_STATIC_ARTWORK_TYPES = new Set(
+    [...SUPPORTED_ARTWORK_TYPES].filter((type) => type !== 'video/mp4' && type !== 'image/gif')
+);
 export const FALLBACK_ARTWORK = '/assets/appicon.png';
 
 function urlPath(value) {
@@ -27,6 +30,13 @@ export function isVideoArtwork(source, mimeType = '') {
     return /^data:video\/mp4[;,]/i.test(path) || VIDEO_ARTWORK_PATTERN.test(path.split('/').pop() || '');
 }
 
+export function isAnimatedArtwork(source, mimeType = '') {
+    if (isVideoArtwork(source, mimeType)) return true;
+    if (String(mimeType).toLowerCase() === 'image/gif') return true;
+    const path = urlPath(source);
+    return /^data:image\/gif[;,]/i.test(path) || GIF_ARTWORK_PATTERN.test(path.split('/').pop() || '');
+}
+
 export function isSupportedArtworkFile(file) {
     if (!file) return false;
     const type = String(file.type || '').toLowerCase();
@@ -37,8 +47,8 @@ export function isSupportedArtworkFile(file) {
 export function isSupportedImageArtworkFile(file) {
     if (!file) return false;
     const type = String(file.type || '').toLowerCase();
-    if (SUPPORTED_IMAGE_ARTWORK_TYPES.has(type)) return true;
-    return /\.(?:avif|gif|jpe?g|png|webp)$/i.test(String(file.name || ''));
+    if (SUPPORTED_STATIC_ARTWORK_TYPES.has(type)) return true;
+    return /\.(?:avif|jpe?g|png|webp)$/i.test(String(file.name || ''));
 }
 
 export function getArtworkSources(media, fallback = FALLBACK_ARTWORK) {
@@ -48,8 +58,11 @@ export function getArtworkSources(media, fallback = FALLBACK_ARTWORK) {
             ? media.coverFallback || media.pictureFallback || media.bannerFallback || media.staticCover
             : '';
     return {
-        animated: (typeof media === 'object' && media?.animatedCover) || (isVideoArtwork(source) ? source : ''),
-        static: (!isVideoArtwork(source) ? source : '') || explicitFallback || fallback,
+        animated: (typeof media === 'object' && media?.animatedCover) || (isAnimatedArtwork(source) ? source : ''),
+        static:
+            (!isAnimatedArtwork(source) ? source : '') ||
+            (!isAnimatedArtwork(explicitFallback) ? explicitFallback : '') ||
+            fallback,
     };
 }
 

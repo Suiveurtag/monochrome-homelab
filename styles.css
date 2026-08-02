@@ -5898,9 +5898,11 @@ input:checked + .slider::before {
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(circle at 50% 50%, rgb(255 255 255 / 0.035), transparent 58%),
-        linear-gradient(180deg, rgb(6 8 12 / 0.12), rgb(6 8 12 / 0.34));
-    z-index: -1;
+        linear-gradient(180deg, rgb(6 8 12 / 0.2), rgb(6 8 12 / 0.48)),
+        var(--fullscreen-artwork-image, none) center / cover no-repeat;
+    filter: blur(42px) saturate(1.3);
+    transform: scale(1.1);
+    z-index: 0;
     transition: opacity 0.65s ease;
     opacity: calc(1 - (var(--fullscreen-drag-progress, 0) * 0.32));
 }

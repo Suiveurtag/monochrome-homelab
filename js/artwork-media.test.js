@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
     getArtworkSources,
+    isAnimatedArtwork,
     isSupportedArtworkFile,
     isSupportedImageArtworkFile,
     isVideoArtwork,
@@ -12,6 +13,7 @@ describe('artwork media', () => {
         expect(isVideoArtwork('https://cdn.test/cover.MP4?token=1')).toBe(true);
         expect(isVideoArtwork('data:video/mp4;base64,AAAA')).toBe(true);
         expect(isVideoArtwork('https://cdn.test/cover.gif')).toBe(false);
+        expect(isAnimatedArtwork('https://cdn.test/cover.gif')).toBe(true);
     });
 
     test('accepts supported animated artwork files', () => {
@@ -19,6 +21,7 @@ describe('artwork media', () => {
         expect(isSupportedArtworkFile(new File(['mp4'], 'cover.mp4', { type: 'video/mp4' }))).toBe(true);
         expect(isSupportedArtworkFile(new File(['text'], 'cover.txt', { type: 'text/plain' }))).toBe(false);
         expect(isSupportedImageArtworkFile(new File(['mp4'], 'cover.mp4', { type: 'video/mp4' }))).toBe(false);
+        expect(isSupportedImageArtworkFile(new File(['gif'], 'cover.gif', { type: 'image/gif' }))).toBe(false);
     });
 
     test('separates animated artwork from the static color source', () => {
@@ -29,6 +32,10 @@ describe('artwork media', () => {
         expect(getArtworkSources({ cover: '/cover.jpg' })).toEqual({ animated: '', static: '/cover.jpg' });
         expect(getArtworkSources({ cover: '/cover.jpg', animatedCover: '/cover.mp4' })).toEqual({
             animated: '/cover.mp4',
+            static: '/cover.jpg',
+        });
+        expect(getArtworkSources({ cover: '/cover.gif', coverFallback: '/cover.jpg' })).toEqual({
+            animated: '/cover.gif',
             static: '/cover.jpg',
         });
     });

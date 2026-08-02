@@ -125,7 +125,7 @@ describe('selfhost-server-api helpers', () => {
             files: { getURL: vi.fn((_record, filename) => `/files/${filename}`) },
         };
         const cover = new File(['cover'], 'cover.webp', { type: 'image/webp' });
-        const coverFallback = new File(['fallback'], 'fallback.gif', { type: 'image/gif' });
+        const coverFallback = new File(['fallback'], 'fallback.png', { type: 'image/png' });
 
         const result = await updateSelfHostedTrack(
             'track1',
