@@ -40,6 +40,8 @@ services:
     environment:
       POCKETBASE_URL: "http://pocketbase:8090"
       MAX_IMPORT_BYTES: "2147483648"
+    volumes:
+      - ./spotiflac_data:/root/.spotiflac
     depends_on:
       - pocketbase
     networks:

@@ -7239,6 +7239,9 @@ input:checked + .slider::before {
 .spotify-import-toast-copy > span,.spotify-import-toast-copy small { color:var(--muted-foreground); font-size:.76rem; }
 .spotify-import-toast .download-progress-bar { height:5px; margin:.5rem 0 .25rem; overflow:hidden; border-radius:5px; background:rgb(var(--highlight-rgb)/.1); }
 .spotify-import-toast .download-progress-bar i { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,color-mix(in srgb,var(--highlight),white 30%),var(--highlight)); box-shadow:0 0 12px rgb(var(--highlight-rgb)/.45); transition:width .5s cubic-bezier(.22,1,.36,1); }
+.spotify-import-verify { display:inline-flex; align-items:center; justify-content:center; min-height:30px; margin-top:.55rem; padding:.35rem .7rem; border:1px solid rgb(var(--highlight-rgb)/.45); border-radius:9px; background:rgb(var(--highlight-rgb)/.16); color:var(--highlight); font:inherit; font-size:.76rem; font-weight:700; cursor:pointer; }
+.spotify-import-verify:hover { background:rgb(var(--highlight-rgb)/.25); }
+.spotify-import-verify[hidden] { display:none; }
 
 .download-cancel:hover {
     background: var(--secondary) !important;

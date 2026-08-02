@@ -9,6 +9,7 @@ dist
 
 # Local/self-host runtime data (do not commit DBs, uploads, or backups)
 pb_data/
+spotiflac_data/
 
 # Neutralino
 .tmp/
