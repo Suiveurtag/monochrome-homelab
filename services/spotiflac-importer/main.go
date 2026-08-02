@@ -3,9 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"crypto/subtle"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -25,19 +23,11 @@ import (
 )
 
 var (
-	pocketbase   = strings.TrimRight(env("POCKETBASE_URL", "http://pocketbase:8090"), "/")
-	port         = env("PORT", "8787")
-	client       = &http.Client{Timeout: 30 * time.Minute}
-	jobs         sync.Map
-	verification communityVerification
+	pocketbase = strings.TrimRight(env("POCKETBASE_URL", "http://pocketbase:8090"), "/")
+	port       = env("PORT", "8787")
+	client     = &http.Client{Timeout: 30 * time.Minute}
+	jobs       sync.Map
 )
-
-type communityVerification struct {
-	sync.RWMutex
-	token       string
-	challenge   string
-	callbackURL string
-}
 
 type likedTrackRequest struct {
 	URL     string `json:"url"`
@@ -65,90 +55,6 @@ func env(key, fallback string) string {
 }
 func bearer(r *http.Request) string {
 	return strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-}
-
-func randomToken() string {
-	value := make([]byte, 32)
-	if _, err := rand.Read(value); err != nil {
-		return fmt.Sprintf("%d", time.Now().UnixNano())
-	}
-	return hex.EncodeToString(value)
-}
-
-func prepareCommunityVerification(target string) {
-	challenge, err := url.Parse(target)
-	if err != nil || challenge.Scheme != "https" {
-		log.Printf("Cannot prepare SpotiFLAC verification: %v", err)
-		return
-	}
-	query := challenge.Query()
-	callbackURL := query.Get("cb")
-	callback, callbackErr := url.Parse(callbackURL)
-	if callbackErr != nil || callback.Scheme != "http" || callback.Hostname() != "127.0.0.1" || callback.Path != "/session-grant" {
-		log.Printf("Cannot prepare SpotiFLAC verification: missing callback URL")
-		return
-	}
-	token := randomToken()
-	query.Set("cb", "/api/selfhost/community-verification/callback?token="+token)
-	challenge.RawQuery = query.Encode()
-	verification.Lock()
-	verification.token = token
-	verification.challenge = challenge.String()
-	verification.callbackURL = callbackURL
-	verification.Unlock()
-	log.Printf("SpotiFLAC community verification is waiting for the user's browser")
-}
-
-func communityVerificationURL() string {
-	verification.RLock()
-	defer verification.RUnlock()
-	return verification.challenge
-}
-
-func handleCommunityVerificationCallback(w http.ResponseWriter, r *http.Request) {
-	verification.RLock()
-	token, callbackURL := verification.token, verification.callbackURL
-	verification.RUnlock()
-	provided := r.URL.Query().Get("token")
-	if token == "" || len(token) != len(provided) || subtle.ConstantTimeCompare([]byte(token), []byte(provided)) != 1 {
-		jsonOut(w, http.StatusNotFound, map[string]string{"error": "verification request not found"})
-		return
-	}
-	callback, err := url.Parse(callbackURL)
-	if err != nil || callback.Scheme != "http" || callback.Hostname() != "127.0.0.1" || callback.Path != "/session-grant" {
-		jsonOut(w, http.StatusBadGateway, map[string]string{"error": "invalid verification callback"})
-		return
-	}
-	query := callback.Query()
-	for key, values := range r.URL.Query() {
-		if key == "token" {
-			continue
-		}
-		for _, value := range values {
-			query.Add(key, value)
-		}
-	}
-	callback.RawQuery = query.Encode()
-	response, err := (&http.Client{Timeout: 15 * time.Second}).Get(callback.String())
-	if err != nil {
-		jsonOut(w, http.StatusBadGateway, map[string]string{"error": "could not complete verification"})
-		return
-	}
-	defer response.Body.Close()
-	if response.StatusCode >= 300 {
-		jsonOut(w, http.StatusBadGateway, map[string]string{"error": "verification was rejected"})
-		return
-	}
-	verification.Lock()
-	if verification.token == token {
-		verification.token = ""
-		verification.challenge = ""
-		verification.callbackURL = ""
-	}
-	verification.Unlock()
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	_, _ = io.WriteString(w, `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Monochrome</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#09090b;color:#fafafa;font:16px system-ui}main{text-align:center;padding:32px}b{display:grid;place-items:center;width:56px;height:56px;margin:0 auto 18px;border-radius:50%;background:#8b5cf6;font-size:28px}p{color:#a1a1aa}</style></head><body><main><b>&#10003;</b><h1>Download verified</h1><p>You can close this page. The import will resume automatically.</p></main><script>setTimeout(()=>window.close(),1200)</script></body></html>`)
 }
 
 func jsonOut(w http.ResponseWriter, status int, value any) {
@@ -228,18 +134,6 @@ func handleImports(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			jsonOut(w, 502, map[string]string{"error": err.Error()})
 			return
-		}
-		if verificationURL := communityVerificationURL(); verificationURL != "" {
-			if items, ok := data["items"].([]any); ok {
-				for _, value := range items {
-					if item, ok := value.(map[string]any); ok {
-						status, _ := item["status"].(string)
-						if status == "queued" || status == "resolving" || status == "downloading" {
-							item["verification_url"] = verificationURL
-						}
-					}
-				}
-			}
 		}
 		jsonOut(w, 200, data)
 		return
@@ -506,15 +400,7 @@ func importTrack(ctx context.Context, token, owner string, item track, position 
 	defer os.RemoveAll(dir)
 	isrc := spot.ResolveTrackISRC(item.SpotifyID)
 	spotifyURL := "https://open.spotify.com/track/" + item.SpotifyID
-	var file, provider string
-	qobuz := spot.NewQobuzDownloader()
-	file, err = qobuz.DownloadTrackWithISRC(isrc, dir, "27", "title-artist", false, position, item.Name, item.Artists, item.AlbumName, item.AlbumArtist, item.ReleaseDate, false, item.Cover, true, item.TrackNumber, item.DiscNumber, item.TotalTracks, item.TotalDiscs, item.Copyright, item.Publisher, item.Composer, ", ", spotifyURL, true, false, false, true)
-	provider = "qobuz"
-	if err != nil {
-		tidal := spot.NewTidalDownloader("")
-		file, err = tidal.Download(item.SpotifyID, dir, "HI_RES_LOSSLESS", "title-artist", false, position, item.Name, item.Artists, item.AlbumName, item.AlbumArtist, item.ReleaseDate, false, item.Cover, true, item.TrackNumber, item.DiscNumber, item.TotalTracks, item.TotalDiscs, item.Copyright, item.Publisher, item.Composer, ", ", isrc, spotifyURL, true, false, "LOSSLESS", false, false, true)
-		provider = "tidal"
-	}
+	file, provider, err := downloadHeadlessTrack(ctx, spotifyURL, dir)
 	if err != nil {
 		return "", provider, err
 	}
@@ -526,6 +412,56 @@ func importTrack(ctx context.Context, token, owner string, item track, position 
 	}
 	id, _ := record["id"].(string)
 	return id, provider, nil
+}
+
+func downloadHeadlessTrack(ctx context.Context, spotifyURL, outputDir string) (string, string, error) {
+	command := exec.CommandContext(ctx, "python", "/app/launcher.py", spotifyURL, outputDir,
+		"--service", "qobuz", "deezer", "--quality", "LOSSLESS", "--timeout", "180", "--no-lyrics", "--no-extensions-fallback")
+	output, commandErr := command.CombinedOutput()
+	file, fileErr := findDownloadedFLAC(outputDir)
+	provider := headlessProvider(output)
+	if commandErr != nil || fileErr != nil {
+		message := strings.TrimSpace(string(output))
+		if len(message) > 4000 {
+			message = message[len(message)-4000:]
+		}
+		if commandErr != nil {
+			return "", provider, fmt.Errorf("headless downloader failed: %w: %s", commandErr, message)
+		}
+		return "", provider, fmt.Errorf("headless downloader produced no FLAC: %w: %s", fileErr, message)
+	}
+	return file, provider, nil
+}
+
+func findDownloadedFLAC(root string) (string, error) {
+	var result string
+	err := filepath.Walk(root, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if !info.IsDir() && strings.EqualFold(filepath.Ext(path), ".flac") && info.Size() > 0 {
+			result = path
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	if result == "" {
+		return "", errors.New("FLAC file not found")
+	}
+	return result, nil
+}
+
+func headlessProvider(output []byte) string {
+	upper := strings.ToUpper(string(output))
+	if strings.Contains(upper, "SOURCE] QOBUZ") {
+		return "qobuz"
+	}
+	if strings.Contains(upper, "SOURCE] DEEZER") {
+		return "deezer"
+	}
+	return "spotiflac-headless"
 }
 
 func fetchTTML(item track) string {
@@ -660,16 +596,14 @@ func uploadTrack(token, owner string, item track, isrc, provider, lyrics, audioP
 
 func main() {
 	spot.AppVersion = "7.2.0"
-	spot.SetCommunityVerificationHandlers(prepareCommunityVerification, nil)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/selfhost/imports", handleImports)
 	mux.HandleFunc("/api/selfhost/imports/", handleJob)
 	health := func(w http.ResponseWriter, _ *http.Request) {
-		jsonOut(w, 200, map[string]string{"status": "ok", "engine": "SpotiFLAC v7.2.0"})
+		jsonOut(w, 200, map[string]string{"status": "ok", "engine": "SpotiFLAC Headless 1.5.8"})
 	}
 	mux.HandleFunc("/health", health)
 	mux.HandleFunc("/api/selfhost/health", health)
-	mux.HandleFunc("/api/selfhost/community-verification/callback", handleCommunityVerificationCallback)
 	server := &http.Server{Addr: ":" + port, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	log.Printf("Monochrome SpotiFLAC importer listening on :%s", port)
 	log.Fatal(server.ListenAndServe())

@@ -46,7 +46,7 @@ import {
     updateSelfHostedTrack,
 } from './selfhost-server-api.js';
 import { groupTracksByUploadDay, patchTrackMetadata, uploadDayLabel } from './upload-gallery.js';
-import { openSpotifyImportVerification, spotifyImportManager } from './spotify-import-manager.js';
+import { spotifyImportManager } from './spotify-import-manager.js';
 import { spotifyLikesImporter } from './spotify-likes-importer.js';
 import { uploadSelfHostedFilesBatch } from './selfhost-upload-batch.js';
 import { registerSW } from 'virtual:pwa-register';
@@ -577,16 +577,9 @@ function renderImportJobs(jobs) {
             const cover = escapeImportHtml(job.cover || '/assets/appicon.png');
             const title = escapeImportHtml(job.title || 'Spotify import');
             const current = escapeImportHtml(job.current_track || 'Reading Spotify metadata…');
-            const verification = job.verification_url
-                ? `<button class="spotify-import-verify" type="button" data-verification-url="${escapeImportHtml(job.verification_url)}">Verify download</button>`
-                : '';
-            const status = job.verification_url ? 'One-time verification required' : current;
-            return `<article class="upload-job-card"><div class="upload-job-top"><img class="upload-job-cover" src="${cover}" alt=""><div class="upload-job-copy"><strong>${title}</strong><span>${status}</span>${verification}</div></div><div class="upload-job-progress"><span style="width:${percent}%"></span></div></article>`;
+            return `<article class="upload-job-card"><div class="upload-job-top"><img class="upload-job-cover" src="${cover}" alt=""><div class="upload-job-copy"><strong>${title}</strong><span>${current}</span></div></div><div class="upload-job-progress"><span style="width:${percent}%"></span></div></article>`;
         })
         .join('');
-    container.querySelectorAll('[data-verification-url]').forEach((button) => {
-        button.addEventListener('click', () => openSpotifyImportVerification(button.dataset.verificationUrl));
-    });
 }
 
 function escapeImportHtml(value) {

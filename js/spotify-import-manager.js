@@ -5,13 +5,6 @@ import { SVG_CLOSE } from './icons.js';
 
 const ACTIVE = new Set(['queued', 'resolving', 'downloading']);
 
-export function openSpotifyImportVerification(rawURL) {
-    const challenge = new URL(rawURL, window.location.origin);
-    const callback = challenge.searchParams.get('cb');
-    if (callback) challenge.searchParams.set('cb', new URL(callback, window.location.origin).href);
-    window.open(challenge.href, '_blank', 'noopener,noreferrer');
-}
-
 export class SpotifyImportManager {
     constructor() {
         this.jobs = [];
@@ -111,9 +104,9 @@ export class SpotifyImportManager {
                 element = document.createElement('article');
                 element.className = 'download-task spotify-import-toast';
                 element.dataset.importId = job.id;
-                element.innerHTML = `<img alt="" /><div class="spotify-import-toast-copy"><strong></strong><span></span><div class="download-progress-bar"><i></i></div><small></small><button class="spotify-import-verify" type="button" hidden>Verify download</button></div><button class="download-cancel" aria-label="Cancel import">${SVG_CLOSE(18)}</button>`;
-                element.querySelector('button').addEventListener('click', async () => {
-                    element.querySelector('button').disabled = true;
+                element.innerHTML = `<img alt="" /><div class="spotify-import-toast-copy"><strong></strong><span></span><div class="download-progress-bar"><i></i></div><small></small></div><button class="download-cancel" aria-label="Cancel import">${SVG_CLOSE(18)}</button>`;
+                element.querySelector('.download-cancel').addEventListener('click', async () => {
+                    element.querySelector('.download-cancel').disabled = true;
                     await cancelSpotifyImport(job.id).catch(console.error);
                     void this.refresh();
                 });
@@ -127,10 +120,6 @@ export class SpotifyImportManager {
             element.querySelector('.spotify-import-toast-copy > span').textContent = job.current_track || (job.status === 'resolving' ? 'Reading Spotify metadata…' : 'Waiting…');
             element.querySelector('.download-progress-bar i').style.width = `${percent}%`;
             element.querySelector('small').textContent = total ? `${done} / ${total}` : 'Preparing import';
-            const verify = element.querySelector('.spotify-import-verify');
-            verify.hidden = !job.verification_url;
-            verify.onclick = job.verification_url ? () => openSpotifyImportVerification(job.verification_url) : null;
-            if (job.verification_url) element.querySelector('.spotify-import-toast-copy > span').textContent = 'One-time verification required';
         }
     }
 }
