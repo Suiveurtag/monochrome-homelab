@@ -65,7 +65,11 @@ import {
 } from './playlist-importer.js';
 import { generateFullCSV, generateFullJSON } from './playlist-generator.js';
 import { modernSettings } from './ModernSettings.js';
-import { isSupportedArtworkFile } from './artwork-media.js';
+import {
+    getArtworkSources,
+    isSupportedImageArtworkFile,
+    isVideoArtwork,
+} from './artwork-media.js';
 import {
     SVG_OFFLINE,
     SVG_RIGHT_ARROW,
@@ -193,7 +197,7 @@ async function initializeSelfHostedUploads() {
                         .map(
                             (track, index) => `<button class="upload-gallery-card${selectedIds.has(String(track.id)) ? ' is-selected' : ''}" type="button"
                                 data-track-id="${escapeHtml(track.id)}" role="checkbox" aria-checked="${selectedIds.has(String(track.id))}" style="--card-index:${index}">
-                                <span class="upload-card-art"><img src="${escapeHtml(track.album?.cover || track.serverCoverUrl || '/assets/appicon.png')}" alt="" loading="lazy" />
+                                <span class="upload-card-art"><img src="${escapeHtml(getArtworkSources(track.album || track.serverCoverUrl).static)}" alt="" loading="lazy" />
                                     <span class="upload-card-play"><use svg="!lucide/play.svg" size="21" /></span>
                                     <span class="upload-card-check"><use svg="!lucide/check.svg" size="18" /></span>
                                     <span class="upload-card-duration">${formatTrackDuration(track.duration)}</span>
@@ -247,7 +251,7 @@ async function initializeSelfHostedUploads() {
                 <label class="upload-bulk-field"><input type="checkbox" name="applyReleaseDate" /><span>Release date</span><input type="date" name="releaseDate" disabled /></label>
                 <label class="upload-bulk-field"><input type="checkbox" name="applyExplicit" /><span>Explicit</span><select name="explicit" disabled><option value="true">Yes</option><option value="false">No</option></select></label>
                 <label class="upload-bulk-field is-wide"><input type="checkbox" name="applyLyrics" /><span>Lyrics</span><textarea name="lyrics" rows="4" placeholder="Replace lyrics on every selected track" disabled></textarea></label>
-                <label class="upload-bulk-field is-wide"><input type="checkbox" name="applyCover" /><span>Artwork</span><input type="file" name="cover" accept="image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4" disabled /></label>
+                <label class="upload-bulk-field is-wide"><input type="checkbox" name="applyCover" /><span>Artwork</span><input type="file" name="cover" accept="image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4" disabled /><small data-bulk-cover-fallback-label hidden>Static image for colors and backgrounds</small><input type="file" name="coverFallback" accept="image/png,image/jpeg,image/webp,image/avif,image/gif" data-bulk-cover-fallback hidden disabled aria-label="Static artwork fallback" /></label>
                 <div class="upload-bulk-footer"><span data-bulk-progress aria-live="polite"></span><button class="btn-primary" type="submit">Apply changes</button></div>
             </form>
         </section>`;
@@ -255,13 +259,22 @@ async function initializeSelfHostedUploads() {
 
     bulkEditor.querySelectorAll('.upload-bulk-field > input[type="checkbox"]').forEach((checkbox) => {
         checkbox.addEventListener('change', () => {
-            const control = checkbox.parentElement.querySelector('input:not([type="checkbox"]),select,textarea');
-            if (control) control.disabled = !checkbox.checked;
+            const controls = checkbox.parentElement.querySelectorAll('input:not([type="checkbox"]),select,textarea');
+            controls.forEach((control) => (control.disabled = !checkbox.checked));
         });
     });
     bulkEditor.querySelectorAll('[data-close-bulk-editor]').forEach((button) =>
         button.addEventListener('click', () => (bulkEditor.hidden = true))
     );
+    const bulkCoverInput = bulkEditor.querySelector('input[name="cover"]');
+    const bulkCoverFallback = bulkEditor.querySelector('[data-bulk-cover-fallback]');
+    const bulkCoverFallbackLabel = bulkEditor.querySelector('[data-bulk-cover-fallback-label]');
+    bulkCoverInput?.addEventListener('change', () => {
+        const file = bulkCoverInput.files?.[0];
+        const hasVideo = isVideoArtwork(file?.name, file?.type);
+        bulkCoverFallback.hidden = !hasVideo;
+        bulkCoverFallbackLabel.hidden = !hasVideo;
+    });
 
     const runTrackOperation = async (tracks, operation, progressLabel) => {
         const failures = [];
@@ -304,11 +317,20 @@ async function initializeSelfHostedUploads() {
         if (form.has('applyLyrics')) changes.lyrics = formText('lyrics');
         const coverEntry = form.get('cover');
         const cover = form.has('applyCover') && coverEntry instanceof File && coverEntry.size ? coverEntry : null;
+        const fallbackEntry = form.get('coverFallback');
+        const coverFallback =
+            form.has('applyCover') && fallbackEntry instanceof File && fallbackEntry.size ? fallbackEntry : null;
         if (!Object.keys(changes).length && !cover) return showNotification('Choose at least one field to update.', 'error');
         const tracks = selectedTracks();
         bulkEditor.hidden = true;
         await runTrackOperation(tracks, async (track) => {
-            const updated = await updateSelfHostedTrack(track.id, patchTrackMetadata(track, changes), cover);
+            const updated = await updateSelfHostedTrack(
+                track.id,
+                patchTrackMetadata(track, changes),
+                cover,
+                undefined,
+                coverFallback
+            );
             await db.putUploadedTrack(updated);
         }, 'Editing');
     });
@@ -1312,8 +1334,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!file) return;
 
         // Validate file type
-        if (!isSupportedArtworkFile(file)) {
-            alert('Please select a PNG, JPG, WebP, AVIF, GIF or MP4 file');
+        if (!isSupportedImageArtworkFile(file)) {
+            alert('Please select a PNG, JPG, WebP, AVIF or GIF file');
             return;
         }
 

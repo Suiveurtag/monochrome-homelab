@@ -7,6 +7,8 @@ const SUPPORTED_ARTWORK_TYPES = new Set([
     'image/webp',
     'video/mp4',
 ]);
+const SUPPORTED_IMAGE_ARTWORK_TYPES = new Set([...SUPPORTED_ARTWORK_TYPES].filter((type) => type !== 'video/mp4'));
+export const FALLBACK_ARTWORK = '/assets/appicon.png';
 
 function urlPath(value) {
     const source = String(value || '').trim();
@@ -30,6 +32,25 @@ export function isSupportedArtworkFile(file) {
     const type = String(file.type || '').toLowerCase();
     if (SUPPORTED_ARTWORK_TYPES.has(type)) return true;
     return /\.(?:avif|gif|jpe?g|png|webp|mp4)$/i.test(String(file.name || ''));
+}
+
+export function isSupportedImageArtworkFile(file) {
+    if (!file) return false;
+    const type = String(file.type || '').toLowerCase();
+    if (SUPPORTED_IMAGE_ARTWORK_TYPES.has(type)) return true;
+    return /\.(?:avif|gif|jpe?g|png|webp)$/i.test(String(file.name || ''));
+}
+
+export function getArtworkSources(media, fallback = FALLBACK_ARTWORK) {
+    const source = typeof media === 'object' && media ? media.cover || media.picture || media.banner : media;
+    const explicitFallback =
+        typeof media === 'object' && media
+            ? media.coverFallback || media.pictureFallback || media.bannerFallback || media.staticCover
+            : '';
+    return {
+        animated: (typeof media === 'object' && media?.animatedCover) || (isVideoArtwork(source) ? source : ''),
+        static: (!isVideoArtwork(source) ? source : '') || explicitFallback || fallback,
+    };
 }
 
 function copyPresentationAttributes(source, target) {
@@ -111,7 +132,7 @@ export function setArtworkSource(element, source, mimeType = '') {
     return element;
 }
 
-export function setArtworkBackground(element, source) {
+export function setArtworkBackground(element, source, fallbackSource = '') {
     if (!element) return;
     element.querySelector(':scope > .artwork-background-video')?.remove();
     if (!source) {
@@ -123,7 +144,7 @@ export function setArtworkBackground(element, source) {
         return;
     }
 
-    element.style.backgroundImage = '';
+    element.style.backgroundImage = fallbackSource ? `url("${String(fallbackSource).replaceAll('"', '\\"')}")` : '';
     const video = document.createElement('video');
     video.className = 'artwork-background-video';
     video.src = source;
@@ -133,13 +154,15 @@ export function setArtworkBackground(element, source) {
     video.defaultMuted = true;
     video.playsInline = true;
     video.preload = 'metadata';
+    if (fallbackSource) video.poster = fallbackSource;
     video.setAttribute('aria-hidden', 'true');
     element.prepend(video);
     video.play().catch(() => {});
 }
 
 function upgradeArtwork(root = document) {
-    const images = root.matches?.('img[src]') ? [root] : [...(root.querySelectorAll?.('img[src]') || [])];
+    const selector = 'img[data-animated-artwork="true"][src]';
+    const images = root.matches?.(selector) ? [root] : [...(root.querySelectorAll?.(selector) || [])];
     for (const image of images) {
         const source = image.getAttribute('src') || '';
         if (isVideoArtwork(source, image.dataset.mediaType)) setArtworkSource(image, source, image.dataset.mediaType);

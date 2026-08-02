@@ -42,7 +42,7 @@ import { sidePanelManager } from './side-panel.js';
 import { deleteSelfHostedTrack, listSelfHostedTracks } from './selfhost-server-api.js';
 import { openMetadataEditor } from './metadata-editor.js';
 import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
-import { setArtworkBackground } from './artwork-media.js';
+import { getArtworkSources, setArtworkBackground } from './artwork-media.js';
 
 let _isBlockedCopyright = (_c) => false;
 import('./content-filter.ts')
@@ -214,6 +214,7 @@ export class UIRenderer {
                 if (coverImage?.vanillaTilt) {
                     coverImage.vanillaTilt.destroy();
                 }
+                this.applyFullscreenCdState();
             }
         });
 
@@ -431,7 +432,8 @@ export class UIRenderer {
         }
 
         if (backgroundSettings.isEnabled() && this.currentTrack?.album?.cover) {
-            await this.extractAndApplyColor(this.api.getCoverUrl(this.currentTrack.album.cover, '80'));
+            const artwork = getArtworkSources(this.currentTrack.album);
+            await this.extractAndApplyColor(this.api.getCoverUrl(artwork.static, '80'));
         } else {
             this.resetVibrantColor();
         }
@@ -480,8 +482,9 @@ export class UIRenderer {
                     trackImageHTML = `<div class="track-item-cover video-icon-placeholder" style="display: flex; align-items: center; justify-content: center; background: var(--secondary);">${SVG_PLAY(16, { style: 'opacity: 0.7;' })}</div>`;
                 }
             } else {
+                const artwork = getArtworkSources(track.album || track.image || track.cover);
                 trackImageHTML = this.getCoverHTML(
-                    track.image || track.cover || track.album?.cover,
+                    artwork.static,
                     'Track Cover',
                     'track-item-cover',
                     'lazy'
@@ -602,7 +605,7 @@ export class UIRenderer {
             type === 'artist' ? this.api.getArtistPictureUrl(cover, size) : this.api.getCoverUrl(cover, size);
 
         if (videoCoverUrl) {
-            return `<video src="${videoCoverUrl}" poster="${imageUrl}" class="${className}" alt="${alt}" preload="metadata" playsinline muted></video>`;
+            return `<video src="${videoCoverUrl}" poster="${imageUrl}" class="${className}" aria-label="${alt}" preload="metadata" autoplay loop playsinline muted></video>`;
         }
 
         return `<img src="${imageUrl}" class="${className}" alt="${alt}" loading="${loading}">`;
@@ -786,6 +789,7 @@ export class UIRenderer {
     }
 
     createAlbumCardHTML(album) {
+        const artwork = getArtworkSources(album);
         const explicitBadge = hasExplicitContent(album) ? this.createExplicitBadge() : '';
         const qualityBadge = createQualityBadgeHTML(album);
         const isBlocked = contentBlockingSettings?.shouldHideAlbum(album);
@@ -814,11 +818,11 @@ export class UIRenderer {
             title: `${escapeHtml(album.title)} ${explicitBadge} ${qualityBadge}`,
             subtitle: `${escapeHtml(artistName)} • ${yearDisplay}${typeLabel}`,
             imageHTML: this.getCoverHTML(
-                album.cover,
+                artwork.static,
                 escapeHtml(album.title),
                 'card-image',
                 album._lazy === false ? 'eager' : 'lazy',
-                album.videoCoverUrl,
+                album.videoCoverUrl || artwork.animated,
                 album._isEditorsPick || false,
                 'album'
             ),
@@ -882,6 +886,7 @@ export class UIRenderer {
     }
 
     createArtistCardHTML(artist) {
+        const artwork = getArtworkSources({ cover: artist.picture, coverFallback: artist.pictureFallback });
         const isCompact = cardSettings.isCompactArtist();
         const isBlocked = contentBlockingSettings?.shouldHideArtist(artist);
 
@@ -892,7 +897,7 @@ export class UIRenderer {
             title: escapeHtml(artist.name),
             subtitle: '',
             imageHTML: this.getCoverHTML(
-                artist.picture,
+                artwork.static,
                 escapeHtml(artist.name),
                 'card-image',
                 artist._lazy === false ? 'eager' : 'lazy',
@@ -1238,6 +1243,74 @@ export class UIRenderer {
         return createQualityBadgeHTML(track);
     }
 
+    applyFullscreenCdState() {
+        const isCdMode = visualizerSettings.isCdAlbumCoverEnabled();
+        document.getElementById('fullscreen-cover-image')?.classList.toggle('cd', isCdMode);
+        document.getElementById('fullscreen-artwork-card')?.classList.toggle('cd', isCdMode);
+        document.getElementById('cd-ring')?.classList.toggle('cd', isCdMode);
+    }
+
+    async renderFullscreenArtwork(track) {
+        const albumArtwork = getArtworkSources(track.album || track.cover || track.image);
+        const staticUrl = this.api.getCoverUrl(albumArtwork.static, '1280');
+        const animatedUrl =
+            track.videoUrl || track.videoCoverUrl || track.album?.videoCoverUrl || albumArtwork.animated || null;
+        const shouldAnimate = Boolean(animatedUrl && !(this.player?.activeElement?.paused ?? true));
+        let current = document.getElementById('fullscreen-cover-image');
+        if (!current) return;
+
+        if (!shouldAnimate) {
+            if (current.tagName === 'VIDEO') {
+                current._hls?.destroy?.();
+                const image = document.createElement('img');
+                image.id = current.id;
+                image.className = current.className;
+                image.alt = current.getAttribute('aria-label') || 'Album Cover';
+                current.replaceWith(image);
+                current = image;
+            }
+            current.src = staticUrl;
+            this.applyFullscreenCdState();
+            return;
+        }
+
+        if (current.tagName !== 'VIDEO') {
+            const video = document.createElement('video');
+            video.id = current.id;
+            video.className = current.className;
+            video.poster = staticUrl;
+            video.loop = true;
+            video.muted = true;
+            video.defaultMuted = true;
+            video.playsInline = true;
+            video.preload = 'auto';
+            video.setAttribute('aria-label', current.alt || 'Album Cover');
+            current.replaceWith(video);
+            current = video;
+        }
+        await this.setupHlsVideo(current, animatedUrl, null);
+        current.play().catch(() => {});
+        this.applyFullscreenCdState();
+    }
+
+    bindFullscreenArtworkPlayback(track, activeElement) {
+        this.fullscreenPlaybackStateCleanup?.();
+        if (!activeElement) return;
+        const sync = () => {
+            const overlay = document.getElementById('fullscreen-cover-overlay');
+            if (overlay && overlay.style.display === 'flex') void this.renderFullscreenArtwork(track);
+        };
+        activeElement.addEventListener('play', sync);
+        activeElement.addEventListener('pause', sync);
+        activeElement.addEventListener('ended', sync);
+        this.fullscreenPlaybackStateCleanup = () => {
+            activeElement.removeEventListener('play', sync);
+            activeElement.removeEventListener('pause', sync);
+            activeElement.removeEventListener('ended', sync);
+            this.fullscreenPlaybackStateCleanup = null;
+        };
+    }
+
     async updateFullscreenMetadata(track, nextTrack) {
         if (!track) return;
         const overlay = document.getElementById('fullscreen-cover-overlay');
@@ -1296,59 +1369,14 @@ export class UIRenderer {
             if (qualityBtn) qualityBtn.style.display = 'none';
             if (qualityMenu) qualityMenu.style.display = 'none';
 
-            const videoCoverUrl = track.videoUrl || track.videoCoverUrl || track.album?.videoCoverUrl || null;
-            const coverUrl = videoCoverUrl || this.api.getCoverUrl(track.album?.cover, '1280');
-
             const fsLikeBtn = document.getElementById('fs-like-btn');
             if (fsLikeBtn) {
                 await this.updateLikeState(fsLikeBtn.parentElement, track.type || 'track', track.id);
             }
 
-            const currentImage = document.getElementById('fullscreen-cover-image');
-
-            if (videoCoverUrl) {
-                const isPaused = this.player?.activeElement?.paused ?? true;
-                if (currentImage.tagName === 'IMG') {
-                    const video = document.createElement('video');
-                    video.src = videoCoverUrl;
-                    video.autoplay = !isPaused;
-                    video.loop = true;
-                    video.muted = true;
-                    video.playsInline = true;
-                    video.preload = 'auto';
-                    video.className = currentImage.className;
-                    video.id = currentImage.id;
-                    video.style.objectFit = 'cover';
-                    currentImage.replaceWith(video);
-                    if (!isPaused) {
-                        video.play().catch(() => {});
-                    }
-                } else if (currentImage.src !== videoCoverUrl) {
-                    currentImage.src = videoCoverUrl;
-                    if (!isPaused) {
-                        currentImage.play().catch(() => {});
-                    } else {
-                        currentImage.pause();
-                    }
-                } else {
-                    if (!isPaused) {
-                        currentImage.play().catch(() => {});
-                    } else {
-                        currentImage.pause();
-                    }
-                }
-            } else {
-                if (currentImage.tagName === 'VIDEO') {
-                    const img = document.createElement('img');
-                    img.src = coverUrl;
-                    img.id = currentImage.id;
-                    img.className = currentImage.className;
-                    currentImage.replaceWith(img);
-                } else if (currentImage.src !== coverUrl) {
-                    currentImage.src = coverUrl;
-                }
-            }
-            await this.extractAndApplyColor(this.api.getCoverUrl(track.album?.cover, '80'));
+            await this.renderFullscreenArtwork(track);
+            const artwork = getArtworkSources(track.album || track.cover || track.image);
+            await this.extractAndApplyColor(this.api.getCoverUrl(artwork.static, '80'));
         }
 
         this.updateFullscreenQualityBadgePlacement(track, overlay);
@@ -1374,16 +1402,8 @@ export class UIRenderer {
         const lyricsPane = document.getElementById('fullscreen-lyrics-pane');
         const lyricsContent = document.getElementById('fullscreen-lyrics-content');
         const lyricsToggleBtn = document.getElementById('toggle-fullscreen-lyrics-btn');
-        const coverImage = document.getElementById('fullscreen-cover-image');
-        const coverCard = document.getElementById('fullscreen-artwork-card');
-        const cdRing = document.getElementById('cd-ring');
-        const isCdMode = visualizerSettings.isCdAlbumCoverEnabled();
-
-        coverImage?.classList.toggle('cd', isCdMode);
-        coverCard?.classList.toggle('cd', isCdMode);
-        cdRing?.classList.toggle('cd', isCdMode);
-
         await this.updateFullscreenMetadata(track, nextTrack);
+        this.applyFullscreenCdState();
 
         if (nextTrack) {
             nextTrackEl.classList.remove('animate-in');
@@ -1441,8 +1461,9 @@ export class UIRenderer {
             overlay.classList.remove('fullscreen-cover-no-round');
         }
 
-        if (coverImage?.vanillaTilt) {
-            coverImage.vanillaTilt.destroy();
+        const currentCover = document.getElementById('fullscreen-cover-image');
+        if (currentCover?.vanillaTilt) {
+            currentCover.vanillaTilt.destroy();
         }
 
         // Setup UI toggle button
@@ -1451,6 +1472,7 @@ export class UIRenderer {
         this.setupFullscreenSidePanelSync(overlay);
         this.setupFullscreenDismissHandle(overlay);
         this.setupFullscreenLyricsToggle(overlay);
+        this.bindFullscreenArtworkPlayback(track, activeElement);
         await this.refreshFullscreenVisualizerState(activeElement);
     }
 
@@ -1543,6 +1565,7 @@ export class UIRenderer {
         if (coverImage && coverImage.vanillaTilt) {
             coverImage.vanillaTilt.destroy();
         }
+        this.fullscreenPlaybackStateCleanup?.();
         if (lyricsContent) {
             clearFullscreenLyricsSync(lyricsContent);
             lyricsContent.innerHTML = '<div class="fullscreen-lyrics-empty">Lyrics appear here.</div>';
@@ -3848,7 +3871,9 @@ export class UIRenderer {
                 return;
             }
 
-            const videoCoverUrl = album.videoCoverUrl || null;
+            const artwork = getArtworkSources(album);
+            const videoCoverUrl = album.videoCoverUrl || artwork.animated || null;
+            const staticCoverUrl = this.api.getCoverUrl(artwork.static);
 
             if (!videoCoverUrl && tracks.length > 0) {
                 const firstTrack = tracks[0];
@@ -3877,7 +3902,7 @@ export class UIRenderer {
                 });
             }
 
-            const coverUrl = videoCoverUrl || this.api.getCoverUrl(album.cover);
+            const coverUrl = videoCoverUrl || staticCoverUrl;
 
             if (videoCoverUrl) {
                 if (imageEl.tagName !== 'VIDEO') {
@@ -3908,9 +3933,9 @@ export class UIRenderer {
             imageEl.style.backgroundColor = '';
 
             // Set background and vibrant color
-            this.setPageBackground(coverUrl);
-            if (backgroundSettings.isEnabled() && album.cover) {
-                await this.extractAndApplyColor(this.api.getCoverUrl(album.cover, '80'));
+            this.setPageBackground(staticCoverUrl);
+            if (backgroundSettings.isEnabled() && artwork.static) {
+                await this.extractAndApplyColor(this.api.getCoverUrl(artwork.static, '80'));
             }
 
             const explicitBadge = hasExplicitContent(album) ? this.createExplicitBadge() : '';
@@ -4616,8 +4641,13 @@ export class UIRenderer {
                 // Try to get cover from first track album
                 if (tracks.length > 0 && tracks[0].album?.cover) {
                     const firstTrack = tracks[0];
+                    const artwork = getArtworkSources(firstTrack.album);
                     let videoCoverUrl =
-                        firstTrack.videoUrl || firstTrack.videoCoverUrl || firstTrack.album?.videoCoverUrl || null;
+                        firstTrack.videoUrl ||
+                        firstTrack.videoCoverUrl ||
+                        firstTrack.album?.videoCoverUrl ||
+                        artwork.animated ||
+                        null;
 
                     if (!videoCoverUrl && (firstTrack.album || firstTrack.type === 'video')) {
                         const fetchArtwork = () => {
@@ -4666,7 +4696,8 @@ export class UIRenderer {
                         }
                     }
 
-                    const coverUrl = videoCoverUrl || this.api.getCoverUrl(firstTrack.album.cover);
+                    const staticCoverUrl = this.api.getCoverUrl(artwork.static);
+                    const coverUrl = videoCoverUrl || staticCoverUrl;
 
                     if (videoCoverUrl) {
                         if (imageEl.tagName === 'IMG') {
@@ -4693,8 +4724,8 @@ export class UIRenderer {
                             imageEl.src = coverUrl;
                         }
                     }
-                    this.setPageBackground(coverUrl);
-                    await this.extractAndApplyColor(this.api.getCoverUrl(tracks[0].album.cover, '160'));
+                    this.setPageBackground(staticCoverUrl);
+                    await this.extractAndApplyColor(this.api.getCoverUrl(artwork.static, '160'));
                 } else {
                     imageEl.src = '/assets/appicon.png';
                     this.setPageBackground(null);
@@ -4814,7 +4845,7 @@ export class UIRenderer {
 
             const currentId = this.currentArtistId;
             if (artist.banner && bannerContainer) {
-                setArtworkBackground(bannerContainer, artist.banner);
+                setArtworkBackground(bannerContainer, artist.banner, artist.bannerFallback);
                 bannerContainer.style.opacity = '1';
             }
             if (!artist.banner) {
@@ -5050,7 +5081,11 @@ export class UIRenderer {
                     });
             }
 
-            imageEl.src = this.api.getArtistPictureUrl(artist.picture);
+            const artistArtwork = getArtworkSources({
+                cover: artist.picture,
+                coverFallback: artist.pictureFallback,
+            });
+            imageEl.src = this.api.getArtistPictureUrl(artistArtwork.static);
             imageEl.style.backgroundColor = '';
             nameEl.textContent = artist.name;
 
@@ -5058,7 +5093,7 @@ export class UIRenderer {
             this.setPageBackground(imageEl.src);
 
             // Extract vibrant color using robust image extraction (160x160 for speed/accuracy balance)
-            const artistPic160 = this.api.getArtistPictureUrl(artist.picture, '160');
+            const artistPic160 = this.api.getArtistPictureUrl(artistArtwork.static, '160');
             await this.extractAndApplyColor(artistPic160);
 
             this.adjustTitleFontSize(nameEl, artist.name);
@@ -5843,7 +5878,7 @@ export class UIRenderer {
         }
     }
 
-    async renderTrackPage(trackId, provider = null) {
+    async renderTrackPage(trackId, _provider = null) {
         await this.showPage('track');
 
         document.body.classList.add('sidebar-collapsed');
@@ -5891,86 +5926,22 @@ export class UIRenderer {
                 return;
             }
 
-            let videoCoverUrl = track.videoUrl || track.videoCoverUrl || track.album?.videoCoverUrl || null;
-
-            if (!videoCoverUrl && (track.album || track.type === 'video')) {
-                const fetchArtwork = () => {
-                    this.api.getVideoArtwork(track.title, getTrackArtists(track)).then(async (result) => {
-                        if (result && this.currentPage === 'track' && this.currentTrackPageId === track.id) {
-                            const url = result.videoUrl || result.hlsUrl;
-                            if (!url) return;
-                            track.album = track.album || {};
-                            track.album.videoCoverUrl = url;
-                            const currentImageEl = document.getElementById('track-detail-image');
-                            if (currentImageEl && currentImageEl.tagName !== 'VIDEO') {
-                                const video = document.createElement('video');
-                                video.autoplay = true;
-                                video.loop = true;
-                                video.muted = true;
-                                video.playsInline = true;
-                                video.preload = 'auto';
-                                video.className = currentImageEl.className;
-                                video.id = currentImageEl.id;
-                                video.style.opacity = '1';
-                                video.poster = currentImageEl.src;
-
-                                await this.setupHlsVideo(video, result, currentImageEl);
-                                currentImageEl.replaceWith(video);
-                            }
-                        }
-                    });
-                };
-
-                if (track.type === 'video') {
-                    this.api
-                        .getVideoStreamUrl(track.id)
-                        .then(async (url) => {
-                            if (url) {
-                                track.videoUrl = url;
-                                await this.renderTrackPage(trackId, provider);
-                            } else {
-                                fetchArtwork();
-                            }
-                        })
-                        .catch(fetchArtwork);
-                } else {
-                    fetchArtwork();
-                }
-            }
-
-            const coverUrl = videoCoverUrl || this.api.getCoverUrl(track.image || track.cover || track.album?.cover);
-
-            if (videoCoverUrl) {
-                if (imageEl.tagName !== 'VIDEO') {
-                    const video = document.createElement('video');
-                    video.autoplay = true;
-                    video.loop = true;
-                    video.muted = true;
-                    video.playsInline = true;
-                    video.preload = 'auto';
-                    video.className = imageEl.className;
-                    video.id = imageEl.id;
-                    await this.setupHlsVideo(video, videoCoverUrl, imageEl);
-                    imageEl.replaceWith(video);
-                } else {
-                    await this.setupHlsVideo(imageEl, videoCoverUrl, null);
-                }
+            const artwork = getArtworkSources(track.album || track.cover || track.image);
+            const coverUrl = this.api.getCoverUrl(artwork.static);
+            if (imageEl.tagName === 'VIDEO') {
+                const img = document.createElement('img');
+                img.src = coverUrl;
+                img.className = imageEl.className;
+                img.id = imageEl.id;
+                imageEl.replaceWith(img);
             } else {
-                if (imageEl.tagName === 'VIDEO') {
-                    const img = document.createElement('img');
-                    img.src = coverUrl;
-                    img.className = imageEl.className;
-                    img.id = imageEl.id;
-                    imageEl.replaceWith(img);
-                } else {
-                    imageEl.src = coverUrl;
-                }
+                imageEl.src = coverUrl;
             }
             imageEl.style.backgroundColor = '';
 
             this.setPageBackground(coverUrl);
-            if (backgroundSettings.isEnabled() && track.album?.cover) {
-                await this.extractAndApplyColor(this.api.getCoverUrl(track.album.cover, '80'));
+            if (backgroundSettings.isEnabled() && artwork.static) {
+                await this.extractAndApplyColor(this.api.getCoverUrl(artwork.static, '80'));
             }
 
             const explicitBadge = hasExplicitContent(track) ? this.createExplicitBadge() : '';

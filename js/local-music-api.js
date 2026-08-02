@@ -1,6 +1,7 @@
 // js/local-music-api.js
 import { db } from './db.js';
 import { getSelfHostedStream, listSelfHostedTracks } from './selfhost-server-api.js';
+import { getArtworkSources } from './artwork-media.js';
 
 const FALLBACK_COVER = '/assets/appicon.png';
 
@@ -88,12 +89,18 @@ export class LocalMusicAPI {
         const artistId = track.artist?.id || `local-artist-${hashString(artistName)}`;
         const albumId = track.album?.id || `local-album-${hashString(`${artistName}|${albumTitle}`)}`;
         const id = track.id || `local-track-${hashString(getLocalTrackKey(track))}`;
-        const artist = { ...(track.artist || {}), id: artistId, name: artistName, picture: track.album?.cover };
+        const albumArtwork = getArtworkSources(track.album || {});
+        const artist = {
+            ...(track.artist || {}),
+            id: artistId,
+            name: artistName,
+            picture: track.artist?.picture || albumArtwork.static,
+        };
         const artists = (track.artists?.length ? track.artists : [artist]).map((a) => ({
             ...a,
             id: a.id || `local-artist-${hashString(a.name || artistName)}`,
             name: a.name || artistName,
-            picture: a.picture || track.album?.cover,
+            picture: a.picture || albumArtwork.static,
         }));
 
         return {
@@ -109,7 +116,9 @@ export class LocalMusicAPI {
                 ...(track.album || {}),
                 id: albumId,
                 title: albumTitle,
-                cover: track.album?.cover || FALLBACK_COVER,
+                cover: albumArtwork.static,
+                animatedCover: albumArtwork.animated,
+                coverFallback: albumArtwork.static,
                 artist: track.album?.artist || artist,
                 numberOfTracks: track.album?.numberOfTracks || null,
             },
@@ -123,6 +132,11 @@ export class LocalMusicAPI {
         const title = album?.title || firstTrack?.album?.title || 'Unknown Album';
         const id = album?.id || firstTrack?.album?.id || `local-album-${hashString(`${artist.name}|${title}`)}`;
 
+        const artwork = getArtworkSources({
+            cover: album?.cover || firstTrack?.album?.cover,
+            animatedCover: album?.animatedCover || firstTrack?.album?.animatedCover,
+            coverFallback: album?.coverFallback || firstTrack?.album?.coverFallback,
+        });
         return {
             ...(album || {}),
             id,
@@ -134,7 +148,9 @@ export class LocalMusicAPI {
                 name: artist.name || 'Unknown Artist',
             },
             artists: album?.artists || [artist],
-            cover: album?.cover || firstTrack?.album?.cover || FALLBACK_COVER,
+            cover: artwork.static,
+            animatedCover: artwork.animated,
+            coverFallback: artwork.static,
             releaseDate: album?.releaseDate || firstTrack?.album?.releaseDate || null,
             numberOfTracks: tracks.length || album?.numberOfTracks || 0,
             duration: tracks.reduce((sum, track) => sum + (track.duration || 0), 0),

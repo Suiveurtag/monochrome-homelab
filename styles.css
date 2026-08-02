@@ -8417,6 +8417,20 @@ img[src=''] {
     pointer-events: none;
 }
 
+.metadata-artwork-stack {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.metadata-artwork-fallback {
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--border);
+}
+
+.metadata-artwork-fallback[hidden] {
+    display: none;
+}
+
 .metadata-artwork-preview {
     position: relative;
     width: 82px;
@@ -13862,7 +13876,7 @@ body:has(#side-panel.active) #close-fullscreen-cover-btn {
     vertical-align: middle;
 }
 
-img.cd {
+#fullscreen-cover-image.cd {
     border-radius: 50% !important;
     box-shadow: none;
     clip-path: url('#cd-hole-clip');

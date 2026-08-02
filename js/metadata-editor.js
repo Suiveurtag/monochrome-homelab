@@ -4,7 +4,13 @@ import { updateSelfHostedTrack } from './selfhost-server-api.js';
 import { createModal, escapeHtml } from './utils.js';
 import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
 import { isTtml, parseLrc } from './lyrics-format.js';
-import { isSupportedArtworkFile, setArtworkSource } from './artwork-media.js';
+import {
+    getArtworkSources,
+    isSupportedArtworkFile,
+    isSupportedImageArtworkFile,
+    isVideoArtwork,
+    setArtworkSource,
+} from './artwork-media.js';
 
 function fileToDataUrl(file) {
     if (!file?.size) return Promise.resolve('');
@@ -20,16 +26,45 @@ function value(form, name, fallback = '') {
     return String(form.get(name) ?? fallback).trim();
 }
 
-function artworkPicker(name, label, src, round = false) {
-    return `
-        <label class="metadata-artwork-picker${round ? ' is-round' : ''}" data-artwork-picker="${name}">
-            <input type="file" name="${name}" accept="image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4" />
+function artworkPicker(name, label, src, { round = false, allowVideo = true, fallbackSrc = '' } = {}) {
+    const accept = allowVideo
+        ? 'image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4'
+        : 'image/png,image/jpeg,image/webp,image/avif,image/gif';
+    const fallback = allowVideo
+        ? `<label class="metadata-artwork-picker metadata-artwork-fallback" data-artwork-picker="${name}Fallback" data-artwork-fallback-for="${name}" data-allows-video="false" ${isVideoArtwork(src) ? '' : 'hidden'}>
+            <input type="file" name="${name}Fallback" accept="image/png,image/jpeg,image/webp,image/avif,image/gif" />
             <span class="metadata-artwork-preview">
-                <img src="${escapeHtml(src || '/assets/appicon.png')}" alt="" data-artwork-preview="${name}" />
+                <img src="${escapeHtml(fallbackSrc || '/assets/appicon.png')}" alt="" data-artwork-preview="${name}Fallback" />
                 <span class="metadata-artwork-overlay">${EDIT_METADATA_ICON}Replace</span>
             </span>
-            <span class="metadata-artwork-copy"><strong>${label}</strong><small>PNG, JPG, WebP, AVIF, GIF or MP4</small></span>
-        </label>`;
+            <span class="metadata-artwork-copy"><strong>Static fallback</strong><small>Used for colors, backgrounds and paused playback</small></span>
+        </label>`
+        : '';
+    return `
+        <div class="metadata-artwork-stack">
+            <label class="metadata-artwork-picker${round ? ' is-round' : ''}" data-artwork-picker="${name}" data-allows-video="${allowVideo}">
+                <input type="file" name="${name}" accept="${accept}" />
+                <span class="metadata-artwork-preview">
+                    <img src="${escapeHtml(src || '/assets/appicon.png')}" alt="" data-artwork-preview="${name}" ${isVideoArtwork(src) ? 'data-animated-artwork="true"' : ''} />
+                    <span class="metadata-artwork-overlay">${EDIT_METADATA_ICON}Replace</span>
+                </span>
+                <span class="metadata-artwork-copy"><strong>${label}</strong><small>${allowVideo ? 'PNG, JPG, WebP, AVIF, GIF or MP4' : 'PNG, JPG, WebP, AVIF or GIF'}</small></span>
+            </label>
+            ${fallback}
+        </div>`;
+}
+
+async function mergeArtwork(current, currentFallback, primaryFile, fallbackFile) {
+    const primaryData = await fileToDataUrl(primaryFile);
+    const fallbackData = await fileToDataUrl(fallbackFile);
+    const currentSources = getArtworkSources({ cover: current, coverFallback: currentFallback });
+    if (!primaryData) {
+        return { source: current, fallback: fallbackData || currentSources.static };
+    }
+    if (isVideoArtwork(primaryData, primaryFile?.type)) {
+        return { source: primaryData, fallback: fallbackData || currentSources.static };
+    }
+    return { source: primaryData, fallback: fallbackData || primaryData };
 }
 
 function field(label, name, current, options = {}) {
@@ -66,7 +101,7 @@ function lyricsFilePicker() {
 function buildTrackForm(track) {
     return `
         <div class="metadata-editor-intro">
-            ${artworkPicker('cover', 'Track artwork', track.album?.cover)}
+            ${artworkPicker('cover', 'Track artwork', track.album?.animatedCover || track.album?.cover, { fallbackSrc: track.album?.coverFallback || track.album?.cover })}
             <div><span class="metadata-editor-kicker">Track</span><h4>${escapeHtml(track.title || 'Untitled')}</h4><p>Changes are applied to your local library.</p></div>
         </div>
         <div class="metadata-editor-section"><h5>Main information</h5><div class="metadata-fields">
@@ -89,7 +124,7 @@ function buildTrackForm(track) {
 function buildAlbumForm(album) {
     return `
         <div class="metadata-editor-intro">
-            ${artworkPicker('cover', 'Album artwork', album.cover)}
+            ${artworkPicker('cover', 'Album artwork', album.animatedCover || album.cover, { fallbackSrc: album.coverFallback || album.cover })}
             <div><span class="metadata-editor-kicker">Album</span><h4>${escapeHtml(album.title || 'Untitled')}</h4><p>Shared fields will be applied to every track.</p></div>
         </div>
         <div class="metadata-editor-section"><h5>Album information</h5><div class="metadata-fields">
@@ -105,7 +140,7 @@ function buildAlbumForm(album) {
 function buildArtistForm(artist) {
     return `
         <div class="metadata-editor-intro metadata-editor-intro--artist">
-            ${artworkPicker('picture', 'Profile picture', artist.picture, true)}
+            ${artworkPicker('picture', 'Profile picture', artist.picture, { round: true, allowVideo: false })}
             <div><span class="metadata-editor-kicker">Artist</span><h4>${escapeHtml(artist.name || 'Unknown artist')}</h4><p>The new name will be applied across the entire discography.</p></div>
         </div>
         <div class="metadata-editor-section"><h5>Identity</h5><div class="metadata-fields">
@@ -115,20 +150,21 @@ function buildArtistForm(artist) {
             ${textarea('Biography', 'biography', artist.biography, 'Tell listeners about this artist…', 6)}
         </div></div>
         <div class="metadata-editor-section"><h5>Header artwork</h5>
-            ${artworkPicker('banner', 'Artist banner', artist.banner)}
+            ${artworkPicker('banner', 'Artist banner', artist.banner, { fallbackSrc: artist.bannerFallback })}
         </div>`;
 }
 
-async function persistTrack(track, updated, coverFile = null) {
+async function persistTrack(track, updated, coverFile = null, coverFallbackFile = null) {
     let remote = null;
     if (track.isSelfHosted) {
-        remote = await updateSelfHostedTrack(track.id, updated, coverFile);
+        remote = await updateSelfHostedTrack(track.id, updated, coverFile, undefined, coverFallbackFile);
     }
     const persisted = {
         ...(remote || track),
         ...updated,
         serverAudioUrl: remote?.serverAudioUrl || track.serverAudioUrl,
         serverCoverUrl: remote?.serverCoverUrl || track.serverCoverUrl,
+        serverCoverFallbackUrl: remote?.serverCoverFallbackUrl || track.serverCoverFallbackUrl,
     };
     await db.putUploadedTrack(persisted);
     return persisted;
@@ -136,7 +172,14 @@ async function persistTrack(track, updated, coverFile = null) {
 
 async function saveTrack(track, form) {
     const coverFile = form.get('cover');
-    const coverData = await fileToDataUrl(coverFile);
+    const coverFallbackFile = form.get('coverFallback');
+    const artwork = await mergeArtwork(
+        track.album?.animatedCover || track.album?.cover,
+        track.album?.coverFallback || track.album?.cover,
+        coverFile,
+        coverFallbackFile
+    );
+    const hasAnimatedCover = isVideoArtwork(artwork.source);
     const artist = { ...(track.artist || {}), name: value(form, 'artist') || 'Unknown Artist' };
     const album = {
         ...(track.album || {}),
@@ -144,7 +187,9 @@ async function saveTrack(track, form) {
         releaseDate: value(form, 'releaseDate'),
         genre: value(form, 'genre'),
         artist,
-        cover: coverData || track.album?.cover,
+        cover: hasAnimatedCover ? artwork.fallback : artwork.source,
+        animatedCover: hasAnimatedCover ? artwork.source : '',
+        coverFallback: artwork.fallback,
     };
     const updated = {
         ...track,
@@ -163,7 +208,12 @@ async function saveTrack(track, form) {
         explicit: form.get('explicit') === 'on',
         lyrics: String(form.get('lyrics') || ''),
     };
-    await persistTrack(track, updated, coverFile?.size ? coverFile : null);
+    await persistTrack(
+        track,
+        updated,
+        coverFile?.size ? coverFile : null,
+        coverFallbackFile?.size ? coverFallbackFile : null
+    );
     Object.assign(track, updated);
     window.dispatchEvent(new CustomEvent('track-metadata-updated', { detail: { trackId: track.id } }));
     await Promise.all([db.putLocalArtist(artist), db.putLocalAlbum(album)]);
@@ -171,7 +221,14 @@ async function saveTrack(track, form) {
 
 async function saveAlbum(album, tracks, form) {
     const coverFile = form.get('cover');
-    const coverData = await fileToDataUrl(coverFile);
+    const coverFallbackFile = form.get('coverFallback');
+    const artwork = await mergeArtwork(
+        album.animatedCover || album.cover,
+        album.coverFallback || album.cover,
+        coverFile,
+        coverFallbackFile
+    );
+    const hasAnimatedCover = isVideoArtwork(artwork.source);
     const artist = { ...(album.artist || {}), name: value(form, 'artist') || 'Unknown Artist' };
     const updatedAlbum = {
         ...album,
@@ -182,7 +239,9 @@ async function saveAlbum(album, tracks, form) {
         genre: value(form, 'genre'),
         copyright: value(form, 'copyright'),
         description: value(form, 'description'),
-        cover: coverData || album.cover,
+        cover: hasAnimatedCover ? artwork.fallback : artwork.source,
+        animatedCover: hasAnimatedCover ? artwork.source : '',
+        coverFallback: artwork.fallback,
     };
     await db.putLocalAlbum(updatedAlbum);
     await Promise.all(
@@ -194,7 +253,12 @@ async function saveAlbum(album, tracks, form) {
                 genre: updatedAlbum.genre || track.genre,
                 copyright: updatedAlbum.copyright || track.copyright,
             };
-            return persistTrack(track, updated, coverFile?.size ? coverFile : null);
+            return persistTrack(
+                track,
+                updated,
+                coverFile?.size ? coverFile : null,
+                coverFallbackFile?.size ? coverFallbackFile : null
+            );
         })
     );
 }
@@ -202,6 +266,13 @@ async function saveAlbum(album, tracks, form) {
 async function saveArtist(artist, tracks, form) {
     const pictureFile = form.get('picture');
     const bannerFile = form.get('banner');
+    const bannerFallbackFile = form.get('bannerFallback');
+    const bannerArtwork = await mergeArtwork(
+        artist.banner,
+        artist.bannerFallback,
+        bannerFile,
+        bannerFallbackFile
+    );
     const updatedArtist = {
         ...artist,
         name: value(form, 'name') || 'Unknown Artist',
@@ -212,7 +283,8 @@ async function saveArtist(artist, tracks, form) {
         website: value(form, 'website'),
         biography: value(form, 'biography'),
         picture: (await fileToDataUrl(pictureFile)) || artist.picture,
-        banner: (await fileToDataUrl(bannerFile)) || artist.banner,
+        banner: bannerArtwork.source,
+        bannerFallback: bannerArtwork.fallback,
     };
     await db.putLocalArtist(updatedArtist);
     await Promise.all(
@@ -240,13 +312,22 @@ function setupArtworkPreviews(form) {
         const update = () => {
             const file = input.files?.[0];
             if (!file) return;
-            if (!isSupportedArtworkFile(file)) {
-                showNotification('Choose a PNG, JPG, WebP, AVIF, GIF or MP4 file.', 'error');
+            const allowsVideo = picker.dataset.allowsVideo === 'true';
+            const isValid = allowsVideo ? isSupportedArtworkFile(file) : isSupportedImageArtworkFile(file);
+            if (!isValid) {
+                showNotification(
+                    allowsVideo
+                        ? 'Choose a PNG, JPG, WebP, AVIF, GIF or MP4 file.'
+                        : 'Choose a PNG, JPG, WebP, AVIF or GIF file.',
+                    'error'
+                );
                 input.value = '';
                 return;
             }
             preview = setArtworkSource(preview, URL.createObjectURL(file), file.type);
             picker.classList.add('has-new-file');
+            const fallbackPicker = form.querySelector(`[data-artwork-fallback-for="${input.name}"]`);
+            if (fallbackPicker) fallbackPicker.hidden = !isVideoArtwork(file.name, file.type);
         };
         input.addEventListener('change', update);
         ['dragenter', 'dragover'].forEach((name) =>
@@ -262,7 +343,8 @@ function setupArtworkPreviews(form) {
             })
         );
         picker.addEventListener('drop', (event) => {
-            const file = [...(event.dataTransfer?.files || [])].find(isSupportedArtworkFile);
+            const validator = picker.dataset.allowsVideo === 'true' ? isSupportedArtworkFile : isSupportedImageArtworkFile;
+            const file = [...(event.dataTransfer?.files || [])].find(validator);
             if (!file) return;
             const transfer = new DataTransfer();
             transfer.items.add(file);

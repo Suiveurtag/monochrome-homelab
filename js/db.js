@@ -338,6 +338,8 @@ export class MusicDatabase {
                           id: item.album.id,
                           title: item.album.title || null,
                           cover: item.album.cover || null,
+                          animatedCover: item.album.animatedCover || null,
+                          coverFallback: item.album.coverFallback || null,
                           releaseDate: item.album.releaseDate || null,
                           vibrantColor: item.album.vibrantColor || null,
                           artist: item.album.artist || null,
@@ -383,6 +385,8 @@ export class MusicDatabase {
                 ...base,
                 title: item.title || null,
                 cover: item.cover || null,
+                animatedCover: item.animatedCover || null,
+                coverFallback: item.coverFallback || null,
                 releaseDate: item.releaseDate || null,
                 explicit: item.explicit || false,
                 // UI uses singular 'artist'
@@ -402,6 +406,9 @@ export class MusicDatabase {
                 ...base,
                 name: item.name || null,
                 picture: item.picture || item.image || null, // Handle both just in case
+                pictureFallback: item.pictureFallback || null,
+                banner: item.banner || null,
+                bannerFallback: item.bannerFallback || null,
             };
         }
 

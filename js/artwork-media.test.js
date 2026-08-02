@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'vitest';
-import { isSupportedArtworkFile, isVideoArtwork, setArtworkSource } from './artwork-media.js';
+import {
+    getArtworkSources,
+    isSupportedArtworkFile,
+    isSupportedImageArtworkFile,
+    isVideoArtwork,
+    setArtworkSource,
+} from './artwork-media.js';
 
 describe('artwork media', () => {
     test('recognizes MP4 URLs and data URLs without misclassifying images', () => {
@@ -12,6 +18,19 @@ describe('artwork media', () => {
         expect(isSupportedArtworkFile(new File(['gif'], 'cover.gif', { type: 'image/gif' }))).toBe(true);
         expect(isSupportedArtworkFile(new File(['mp4'], 'cover.mp4', { type: 'video/mp4' }))).toBe(true);
         expect(isSupportedArtworkFile(new File(['text'], 'cover.txt', { type: 'text/plain' }))).toBe(false);
+        expect(isSupportedImageArtworkFile(new File(['mp4'], 'cover.mp4', { type: 'video/mp4' }))).toBe(false);
+    });
+
+    test('separates animated artwork from the static color source', () => {
+        expect(getArtworkSources({ cover: '/cover.mp4', coverFallback: '/cover.jpg' })).toEqual({
+            animated: '/cover.mp4',
+            static: '/cover.jpg',
+        });
+        expect(getArtworkSources({ cover: '/cover.jpg' })).toEqual({ animated: '', static: '/cover.jpg' });
+        expect(getArtworkSources({ cover: '/cover.jpg', animatedCover: '/cover.mp4' })).toEqual({
+            animated: '/cover.mp4',
+            static: '/cover.jpg',
+        });
     });
 
     test('replaces an image with a silent looping video while preserving presentation', () => {
