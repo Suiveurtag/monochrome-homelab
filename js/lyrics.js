@@ -11,31 +11,7 @@ import {
 } from './icons.js';
 import { sidePanelManager } from './side-panel.js';
 import { isTtml, lyricsToTtml, parseLrc } from './lyrics-format.js';
-import { applySpicyLyricsShadowTheme, applySpicyLyricsSurface } from './spicy-lyrics-theme.js';
-
-const loadAmLyrics = () => {
-    const images = Array.from(document.images).filter((img) => !img.complete);
-    if (images.length === 0) {
-        import('@uimaxbai/am-lyrics/am-lyrics.js').catch(console.error);
-    } else {
-        Promise.all(
-            images.map(
-                (img) =>
-                    new Promise((res) => {
-                        img.onload = img.onerror = res;
-                    })
-            )
-        )
-            .then(() => import('@uimaxbai/am-lyrics/am-lyrics.js').catch(console.error))
-            .catch(console.error);
-    }
-};
-
-if (document.readyState === 'complete') {
-    loadAmLyrics();
-} else {
-    window.addEventListener('load', loadAmLyrics);
-}
+import { createSpicyLyricsRenderer } from './vendor/spicy-lyrics/renderer.js';
 
 // Check if text contains Japanese, Chinese, or Korean characters
 function containsAsianText(text) {
@@ -192,8 +168,6 @@ export class LyricsManager {
         this.currentLyrics = null;
         this.syncedLyrics = [];
         this.lyricsCache = new Map();
-        this.componentLoaded = false;
-        this.amLyricsElement = null;
         this.animationFrameId = null;
         this.currentTrackId = null;
         this.mutationObserver = null;
@@ -292,7 +266,7 @@ export class LyricsManager {
 
             // Also patch fetch just in case
             if (!window._originalFetch) {
-                window._originalFetch = window.fetch;
+                window._originalFetch = window.fetch.bind(window);
                 window.fetch = async (url, options) => {
                     const urlStr = url instanceof URL ? url.toString() : url.url;
                     if (urlStr.includes('/dict/') && urlStr.includes('.dat.gz')) {
@@ -425,15 +399,6 @@ export class LyricsManager {
             return localStorage.getItem('lyricsRomajiMode') === 'true';
         } catch {
             return false;
-        }
-    }
-
-    async ensureComponentLoaded() {
-        if (this.componentLoaded) return;
-
-        if (typeof customElements !== 'undefined') {
-            await customElements.whenDefined('am-lyrics');
-            this.componentLoaded = true;
         }
     }
 
@@ -574,7 +539,7 @@ export class LyricsManager {
         return currentIndex;
     }
 
-    // Setup MutationObserver to convert lyrics in am-lyrics component
+    // Observe the Spicy renderer so Romaji and Genius decorations stay in sync.
     async setupLyricsObserver(amLyricsElement) {
         this.stopLyricsObserver();
 
@@ -926,9 +891,9 @@ export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = f
             updateRomajiBtn();
 
             romajiBtn.addEventListener('click', async () => {
-                const amLyrics = sidePanelManager.panel.querySelector('am-lyrics');
-                if (amLyrics) {
-                    await manager.toggleRomajiMode(amLyrics);
+                const spicyLyrics = sidePanelManager.panel.querySelector('#SpicyLyricsPage');
+                if (spicyLyrics) {
+                    await manager.toggleRomajiMode(spicyLyrics);
                     updateRomajiBtn();
                 }
             });
@@ -950,10 +915,10 @@ export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = f
                         geniusBtn.style.opacity = '0.5';
                         await manager.geniusManager.getDataForTrack(track);
                         manager.currentGeniusData = manager.geniusManager.cache.get(track.id);
-                        const amLyrics = sidePanelManager.panel.querySelector('am-lyrics');
-                        if (amLyrics)
+                        const spicyLyrics = sidePanelManager.panel.querySelector('#SpicyLyricsPage');
+                        if (spicyLyrics)
                             manager.applyGeniusAnnotations(
-                                amLyrics,
+                                spicyLyrics,
                                 manager.geniusManager.cache.get(track.id)?.referents
                             );
                     } catch (e) {
@@ -965,9 +930,9 @@ export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = f
                         geniusBtn.style.opacity = '1';
                     }
                 } else {
-                    const amLyrics = sidePanelManager.panel.querySelector('am-lyrics');
-                    if (amLyrics) {
-                        const root = amLyrics.shadowRoot || amLyrics;
+                    const spicyLyrics = sidePanelManager.panel.querySelector('#SpicyLyricsPage');
+                    if (spicyLyrics) {
+                        const root = spicyLyrics;
                         const lineElements = Array.from(root.querySelectorAll('.genius-annotated'));
                         lineElements.forEach((el) => {
                             el.classList.remove(
@@ -1007,8 +972,8 @@ function getLyricsHighlightColor(element = null) {
 
 function updateLyricsTheme() {
     const highlightColor = getLyricsHighlightColor();
-    document.querySelectorAll('am-lyrics').forEach((el) => {
-        el.setAttribute('highlight-color', getLyricsHighlightColor(el) || highlightColor);
+    document.querySelectorAll('#SpicyLyricsPage').forEach((el) => {
+        el.style.setProperty('--spicy-lyrics-highlight', getLyricsHighlightColor(el) || highlightColor);
     });
 }
 
@@ -1026,115 +991,64 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
     container.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
 
     try {
-        await lyricsManager.ensureComponentLoaded();
-
         // Set initial Romaji mode
         lyricsManager.isRomajiMode = lyricsManager.getRomajiMode();
         lyricsManager.currentTrackId = track.id;
 
-        const title = getTrackTitle(track);
-        const artist = getTrackArtists(track);
-        const album = track.album?.title;
-        const durationMs = track.duration ? Math.round(track.duration * 1000) : undefined;
-        const isrc = (track.isrc || track.mediaMetadata?.isrc || track.audioQuality?.isrc || '').trim();
+        let ttml = lyricsToTtml(track.lyrics, track.duration);
+        const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
+        if (!ttml && fetchedLyrics?.subtitles) {
+            ttml = lyricsToTtml(fetchedLyrics.subtitles, track.duration);
+        }
 
-        container.innerHTML = '';
-        const amLyrics = document.createElement('am-lyrics');
-        const localTtml = lyricsToTtml(track.lyrics, track.duration);
-        if (localTtml) amLyrics.ttml = localTtml;
-        amLyrics.setAttribute('song-title', title);
-        amLyrics.setAttribute('song-artist', artist);
-        if (album) amLyrics.setAttribute('song-album', album);
-        if (durationMs) amLyrics.setAttribute('song-duration', durationMs);
-        amLyrics.setAttribute('query', `${title} ${artist}`.trim());
-        if (isrc) amLyrics.setAttribute('isrc', isrc);
+        const spicyLyrics = createSpicyLyricsRenderer({
+            container,
+            track,
+            ttml,
+            durationSeconds: track.duration,
+            api: lyricsManager.api,
+            onSeek: (timestamp) => {
+                audioPlayer.currentTime = timestamp / 1000;
+                audioPlayer.play();
+            },
+        });
 
-        amLyrics.setAttribute('highlight-color', getLyricsHighlightColor());
-        amLyrics.setAttribute('hover-background-color', 'color-mix(in srgb, var(--primary) 16%, transparent)');
-        amLyrics.setAttribute('autoscroll', '');
-        amLyrics.setAttribute('interpolate', '');
-        if (trackIsJapanese(track)) amLyrics.setAttribute('lang', 'ja');
-        amLyrics.style.height = '100%';
-        amLyrics.style.width = '100%';
-
-        container.appendChild(amLyrics);
-        applySpicyLyricsSurface(container, track, lyricsManager.api);
-        applySpicyLyricsShadowTheme(amLyrics, container);
-
-        lyricsManager.setupLyricsObserver(amLyrics);
+        if (trackIsJapanese(track)) spicyLyrics.root.setAttribute('lang', 'ja');
+        lyricsManager.setupLyricsObserver(spicyLyrics.root);
 
         // If Romaji mode is enabled and track has Asian text, ensure Kuroshiro is ready
         if (lyricsManager.isRomajiMode && trackHasAsianText(track) && !lyricsManager.kuroshiroLoaded) {
             await lyricsManager.loadKuroshiro();
         }
 
-        lyricsManager
-            .fetchLyrics(track.id, track)
-            .then(async () => {
-                if (lyricsManager.isGeniusMode) {
-                    try {
-                        const data = await lyricsManager.geniusManager.getDataForTrack(track);
-                        if (data) {
-                            lyricsManager.currentGeniusData = data;
-                            lyricsManager.applyGeniusAnnotations(amLyrics, data.referents);
-                        }
-                    } catch (e) {
-                        console.warn('Genius auto-load failed', e);
-                    }
+        if (lyricsManager.isGeniusMode) {
+            try {
+                const data = await lyricsManager.geniusManager.getDataForTrack(track);
+                if (data) {
+                    lyricsManager.currentGeniusData = data;
+                    lyricsManager.applyGeniusAnnotations(spicyLyrics.root, data.referents);
                 }
-            })
-            .catch((e) => console.warn('Background lyrics fetch failed', e));
-
-        // Wait for lyrics to appear, then do an immediate conversion
-        const waitForLyrics = () => {
-            return new Promise((resolve) => {
-                // Check if lyrics are already loaded
-                const checkForLyrics = () => {
-                    const hasLyrics =
-                        amLyrics.querySelector(".lyric-line, [class*='lyric']") ||
-                        (amLyrics.shadowRoot && amLyrics.shadowRoot.querySelector("[class*='lyric']")) ||
-                        (amLyrics.textContent && amLyrics.textContent.length > 50);
-                    return hasLyrics;
-                };
-
-                if (checkForLyrics()) {
-                    resolve();
-                    return;
-                }
-
-                // Check more frequently (200ms) for faster response
-                let attempts = 0;
-                const maxAttempts = 25; // 5 seconds max
-                const interval = setInterval(() => {
-                    attempts++;
-                    if (checkForLyrics() || attempts >= maxAttempts) {
-                        clearInterval(interval);
-                        resolve();
-                    }
-                }, 200);
-            });
-        };
-
-        await waitForLyrics();
+            } catch (error) {
+                console.warn('Genius auto-load failed', error);
+            }
+        }
 
         // Convert immediately after lyrics detected
         if (lyricsManager.isRomajiMode) {
-            await lyricsManager.convertLyricsContent(amLyrics);
-            // One retry after 500ms in case more lyrics load
-            setTimeout(() => lyricsManager.convertLyricsContent(amLyrics), 500);
+            await lyricsManager.convertLyricsContent(spicyLyrics.root);
         }
 
         if (lyricsManager.isGeniusMode && lyricsManager.currentGeniusData) {
-            lyricsManager.applyGeniusAnnotations(amLyrics, lyricsManager.currentGeniusData.referents);
+            lyricsManager.applyGeniusAnnotations(spicyLyrics.root, lyricsManager.currentGeniusData.referents);
         }
 
-        const cleanup = setupSync(track, audioPlayer, amLyrics, lyricsManager);
+        const cleanup = setupSync(audioPlayer, spicyLyrics, lyricsManager);
 
         // Attach cleanup to container for easy access
         container.lyricsCleanup = cleanup;
         container.lyricsManager = lyricsManager;
 
-        return amLyrics;
+        return spicyLyrics.root;
     } catch (error) {
         console.error('Failed to load lyrics:', error);
         container.innerHTML = '<div class="lyrics-error">Failed to load lyrics</div>';
@@ -1142,7 +1056,7 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
     }
 }
 
-function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
+function setupSync(audioPlayer, spicyLyrics, lyricsManager) {
     let baseTimeMs = 0;
     let lastTimestamp = performance.now();
     let animationFrameId = null;
@@ -1157,7 +1071,7 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
         baseTimeMs = currentMs;
         lastTimestamp = performance.now();
         // Apply timing offset: positive offset delays lyrics, negative advances them
-        amLyrics.currentTime = currentMs - getTimingOffset();
+        spicyLyrics.setCurrentTime(currentMs - getTimingOffset(), true);
     };
 
     const tick = () => {
@@ -1166,7 +1080,7 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
             const elapsed = now - lastTimestamp;
             const nextMs = baseTimeMs + elapsed;
             // Apply timing offset: positive offset delays lyrics, negative advances them
-            amLyrics.currentTime = nextMs - getTimingOffset();
+            spicyLyrics.setCurrentTime(nextMs - getTimingOffset());
             animationFrameId = requestAnimationFrame(tick);
         }
     };
@@ -1184,39 +1098,11 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
         }
     };
 
-    const onLineClick = (e) => {
-        if (e.detail && e.detail.timestamp !== undefined) {
-            const manager = lyricsManager || sidePanelManager.panel.lyricsManager;
-            if (manager && manager.isGeniusMode) {
-                const timestampSeconds = e.detail.timestamp / 1000;
-
-                const lyricsData = manager.lyricsCache.get(track.id);
-                if (lyricsData && lyricsData.subtitles) {
-                    const parsed = manager.parseSyncedLyrics(lyricsData.subtitles);
-
-                    const line = parsed.find((l) => Math.abs(l.time - timestampSeconds) < 1.0);
-
-                    if (line && line.text && manager.currentGeniusData) {
-                        const annotations = manager.geniusManager.findAnnotations(
-                            line.text,
-                            manager.currentGeniusData.referents
-                        );
-                        showGeniusAnnotations(annotations, line.text);
-                    }
-                }
-                return;
-            }
-
-            audioPlayer.currentTime = e.detail.timestamp / 1000;
-            audioPlayer.play();
-        }
-    };
-
     audioPlayer.addEventListener('timeupdate', updateTime);
     audioPlayer.addEventListener('play', onPlay);
     audioPlayer.addEventListener('pause', onPause);
     audioPlayer.addEventListener('seeked', updateTime);
-    amLyrics.addEventListener('line-click', onLineClick);
+    updateTime();
 
     if (!audioPlayer.paused) {
         tick();
@@ -1230,53 +1116,8 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
         audioPlayer.removeEventListener('play', onPlay);
         audioPlayer.removeEventListener('pause', onPause);
         audioPlayer.removeEventListener('seeked', updateTime);
-        amLyrics.removeEventListener('line-click', onLineClick);
+        spicyLyrics.destroy();
     };
-}
-
-function showGeniusAnnotations(annotations, lineText) {
-    const existing = document.querySelector('.genius-annotation-modal');
-    if (existing) existing.remove();
-
-    const modal = document.createElement('div');
-    modal.className = 'genius-annotation-modal';
-
-    let contentHtml = `
-        <div class="genius-modal-content">
-            <div class="genius-header">
-                <span class="genius-line">"${lineText}"</span>
-                <button class="close-genius">×</button>
-            </div>
-            <div class="genius-body">
-    `;
-
-    if (annotations.length === 0) {
-        contentHtml += `
-            <div class="annotation-item">
-                <div class="annotation-text" style="color: var(--muted-foreground); font-style: italic;">No Genius annotation found for this line.</div>
-            </div>
-        `;
-    } else {
-        annotations.forEach((ann) => {
-            const body = ann.annotations[0].body.plain;
-            contentHtml += `
-                <div class="annotation-item">
-                    <div class="annotation-text">${body.replace(/\n/g, '<br>')}</div>
-                </div>
-            `;
-        });
-    }
-
-    contentHtml += `</div></div>`;
-    modal.innerHTML = contentHtml;
-
-    document.body.appendChild(modal);
-
-    modal.querySelector('.close-genius').addEventListener('click', () => modal.remove());
-
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) modal.remove();
-    });
 }
 
 export async function renderLyricsInFullscreen(track, audioPlayer, lyricsManager, container) {
