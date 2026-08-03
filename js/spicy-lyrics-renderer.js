@@ -133,9 +133,9 @@ const SHADOW_BRIDGE_CSS = `
 }
 .spicy-word-space {
     display: inline-block !important;
-    flex: 0 0 0.32ch;
-    width: 0.32ch;
-    min-width: 0.32ch;
+    flex: 0 0 0.28ch;
+    width: 0.28ch;
+    min-width: 0.28ch;
     overflow: hidden;
     white-space: pre;
     pointer-events: none;
