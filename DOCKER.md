@@ -42,10 +42,10 @@ Use `./monochrome logs` or `./monochrome status` for diagnostics. `npm run dev:s
 
 The root `docker-compose.yml` is the canonical production and infrastructure definition. `./monochrome dev` deliberately starts only `pocketbase`, `pocketbase-dev-init`, and `selfhost-importer-dev`; it does not start or rebuild the production frontend and importer.
 
-| Process | Development runtime | Reload behavior |
-| ------- | ------------------- | --------------- |
-| Frontend | Host Vite process on port 5173 | Vite HMR/full reload |
-| PocketBase | Docker on port 8090 | Restart after changing migrations |
+| Process            | Development runtime               | Reload behavior                    |
+| ------------------ | --------------------------------- | ---------------------------------- |
+| Frontend           | Host Vite process on port 5173    | Vite HMR/full reload               |
+| PocketBase         | Docker on port 8090               | Restart after changing migrations  |
 | SpotiFLAC importer | Docker dev toolchain on port 8787 | Automatic Go recompile and restart |
 
 The `dev` Compose profile contains only development support containers. Use the launcher rather than invoking the profile directly, because Compose would otherwise also select services without a profile.

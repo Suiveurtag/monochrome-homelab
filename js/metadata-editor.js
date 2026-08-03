@@ -4,12 +4,7 @@ import { updateSelfHostedTrack } from './selfhost-server-api.js';
 import { createModal, escapeHtml } from './utils.js';
 import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
 import { isTtml, parseLrc } from './lyrics-format.js';
-import {
-    ARTWORK_ACCEPT,
-    MAX_ARTWORK_BYTES,
-    isSupportedArtworkFile,
-    renderArtworkElement,
-} from './animated-artwork.js';
+import { ARTWORK_ACCEPT, MAX_ARTWORK_BYTES, isSupportedArtworkFile, renderArtworkElement } from './animated-artwork.js';
 
 function fileToDataUrl(file) {
     if (!file?.size) return Promise.resolve('');

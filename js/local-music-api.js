@@ -142,7 +142,9 @@ export class LocalMusicAPI {
             videoCoverUrl:
                 album?.videoCoverUrl ||
                 firstTrack?.album?.videoCoverUrl ||
-                (isVideoArtwork(album?.cover || firstTrack?.album?.cover) ? album?.cover || firstTrack?.album?.cover : null),
+                (isVideoArtwork(album?.cover || firstTrack?.album?.cover)
+                    ? album?.cover || firstTrack?.album?.cover
+                    : null),
             releaseDate: album?.releaseDate || firstTrack?.album?.releaseDate || null,
             numberOfTracks: tracks.length || album?.numberOfTracks || 0,
             duration: tracks.reduce((sum, track) => sum + (track.duration || 0), 0),

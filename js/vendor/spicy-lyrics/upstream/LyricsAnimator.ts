@@ -1,109 +1,101 @@
 // @ts-ignore pkg has no @types on npm
-import Spline from "cubic-spline";
-import { easeSinOut } from "d3-ease";
+import Spline from 'cubic-spline';
+import { easeSinOut } from 'd3-ease';
 import {
-  $currentLyricsType,
-  $simpleLyricsMode,
-  $simpleLyricsModeRenderingType,
-  LyricsObject,
-  SimpleLyricsMode_LetterEffectsStrengthConfig,
-  preHiddenDotLineMs,
-  BlurMultiplier,
-  timeOffset,
-  setOnNewElementMounted,
-} from "./AnimatorCompat.js";
-import { Spring } from "../Spring.js";
+    $currentLyricsType,
+    $simpleLyricsMode,
+    $simpleLyricsModeRenderingType,
+    LyricsObject,
+    SimpleLyricsMode_LetterEffectsStrengthConfig,
+    preHiddenDotLineMs,
+    BlurMultiplier,
+    timeOffset,
+    setOnNewElementMounted,
+} from './AnimatorCompat.js';
+import { Spring } from '../Spring.js';
 /* import { CurveInterpolator } from "curve-interpolator"; */
 
 const getSLMAnimation = (duration: number) => {
-  return `SLM_Animation ${duration}ms linear forwards`;
+    return `SLM_Animation ${duration}ms linear forwards`;
 };
 
 const getPreSLMAnimation = (duration: number) => {
-  return `Pre_SLM_GradientAnimation ${duration}ms linear forwards`;
+    return `Pre_SLM_GradientAnimation ${duration}ms linear forwards`;
 };
 
 // Define types for animation ranges
 export interface AnimationPoint {
-  Time: number;
-  Value: number;
+    Time: number;
+    Value: number;
 }
 
 // Methods
 export const GetSpline = (range: AnimationPoint[]) => {
-  const times = range.map((value) => value.Time);
-  const values = range.map((value) => value.Value);
+    const times = range.map((value) => value.Time);
+    const values = range.map((value) => value.Value);
 
-  return new Spline(times, values);
+    return new Spline(times, values);
 };
 
 export const Clamp = (value: number, min: number, max: number): number => {
-  return Math.max(min, Math.min(value, max));
+    return Math.max(min, Math.min(value, max));
 };
 
 const LetterGlowMultiplier_Opacity = 185;
 
 const ScaleRange = [
-  { Time: 0, Value: 0.95 },
-  { Time: 0.7, Value: 1.0505 /* 1.025 */ },
-  { Time: 1, Value: 1 },
+    { Time: 0, Value: 0.95 },
+    { Time: 0.7, Value: 1.0505 /* 1.025 */ },
+    { Time: 1, Value: 1 },
 ];
 
 const LetterScaleRange = [
-  { Time: 0, Value: 0.95 },
-  { Time: 0.7, Value: 1.175 /* 1.025 */ },
-  { Time: 1, Value: 1 },
+    { Time: 0, Value: 0.95 },
+    { Time: 0.7, Value: 1.175 /* 1.025 */ },
+    { Time: 1, Value: 1 },
 ];
 
 const SimpleLetterScaleRange = [
-  { Time: 0, Value: 0.95 },
-  { Time: 0.7, Value: 1.07 },
-  { Time: 1, Value: 1 },
+    { Time: 0, Value: 0.95 },
+    { Time: 0.7, Value: 1.07 },
+    { Time: 1, Value: 1 },
 ];
 
 const YOffsetRange = [
-  { Time: 0, Value: 1 / 100 },
-  { Time: 0.9, Value: -(1 / 60) },
-  { Time: 1, Value: 0 },
+    { Time: 0, Value: 1 / 100 },
+    { Time: 0.9, Value: -(1 / 60) },
+    { Time: 1, Value: 0 },
 ];
 
 const GlowRange = [
-  { Time: 0, Value: 0 },
-  { Time: 0.15, Value: 1 },
-  { Time: 0.6, Value: 1 },
-  { Time: 1, Value: 0 },
+    { Time: 0, Value: 0 },
+    { Time: 0.15, Value: 1 },
+    { Time: 0.6, Value: 1 },
+    { Time: 1, Value: 0 },
 ];
 
 const SimpleYOffsetRange = [
-  { Time: 0, Value: 1 / 100 },
-  { Time: 1, Value: -0.033 },
+    { Time: 0, Value: 1 / 100 },
+    { Time: 1, Value: -0.033 },
 ];
 
 const ScaleSpline = GetSpline(ScaleRange);
-let LetterScaleSpline = GetSpline(
-  $simpleLyricsMode.get() ? SimpleLetterScaleRange : LetterScaleRange
-);
-let YOffsetSpline = GetSpline(
-  $simpleLyricsMode.get() ? SimpleYOffsetRange : YOffsetRange
-);
+let LetterScaleSpline = GetSpline($simpleLyricsMode.get() ? SimpleLetterScaleRange : LetterScaleRange);
+let YOffsetSpline = GetSpline($simpleLyricsMode.get() ? SimpleYOffsetRange : YOffsetRange);
 
 const LetterYOffsetRange = [
-  { Time: 0, Value: 1 / 100 },
-  { Time: 0.9, Value: -(1 / 56) },
-  { Time: 1, Value: 0 },
+    { Time: 0, Value: 1 / 100 },
+    { Time: 0.9, Value: -(1 / 56) },
+    { Time: 1, Value: 0 },
 ];
-
 
 const SimpleLetterYOffsetRange = [
-  { Time: 0, Value: 1 / 100 },
-  { Time: 0.9, Value: -(1 / 62) },
-  { Time: 1, Value: 0 },
+    { Time: 0, Value: 1 / 100 },
+    { Time: 0.9, Value: -(1 / 62) },
+    { Time: 1, Value: 0 },
 ];
 
-
-let LetterYOffsetSpline = GetSpline(
-  $simpleLyricsMode.get() ? SimpleLetterYOffsetRange : LetterYOffsetRange
-);
+let LetterYOffsetSpline = GetSpline($simpleLyricsMode.get() ? SimpleLetterYOffsetRange : LetterYOffsetRange);
 
 const GlowSpline = GetSpline(GlowRange);
 
@@ -120,101 +112,101 @@ const GlowDamping = 0.56;
 const GlowFrequency = 1.18;
 
 const getDotOpacityRange = (simpleLyricsMode: boolean) => [
-  // Controls element opacity
-  { Time: 0, Value: simpleLyricsMode ? 0.27 : 0.35 }, // Resting (NotSung)
-  { Time: 0.6, Value: 1 }, // Peak animation
-  { Time: 1, Value: 1 }, // End (Sung)
+    // Controls element opacity
+    { Time: 0, Value: simpleLyricsMode ? 0.27 : 0.35 }, // Resting (NotSung)
+    { Time: 0.6, Value: 1 }, // Peak animation
+    { Time: 1, Value: 1 }, // End (Sung)
 ];
 
 // NEW Dot Animation Constants
 const DotAnimations = {
-  YOffsetDamping: 0.4,
-  YOffsetFrequency: 1.25,
-  ScaleDamping: 0.6,
-  ScaleFrequency: 0.7,
-  GlowDamping: 0.5,
-  GlowFrequency: 1,
-  OpacityDamping: 0.5,
-  OpacityFrequency: 1,
+    YOffsetDamping: 0.4,
+    YOffsetFrequency: 1.25,
+    ScaleDamping: 0.6,
+    ScaleFrequency: 0.7,
+    GlowDamping: 0.5,
+    GlowFrequency: 1,
+    OpacityDamping: 0.5,
+    OpacityFrequency: 1,
 
-  ScaleRange: [
-    { Time: 0, Value: 0.75 }, // Resting (NotSung)
-    { Time: 0.7, Value: 1.05 }, // Peak animation
-    { Time: 1, Value: 1 }, // End (Sung)
-  ],
-  YOffsetRange: [
-    // Relative to font-size
-    { Time: 0, Value: 0 }, // Resting (NotSung)
-    { Time: 0.9, Value: -0.12 }, // Peak animation
-    { Time: 1, Value: 0 }, // End (Sung)
-  ],
-  GlowRange: [
-    // Controls --text-shadow-opacity and --text-shadow-blur-radius indirectly
-    { Time: 0, Value: 0 }, // Resting (NotSung)
-    { Time: 0.6, Value: 1 }, // Peak animation
-    { Time: 1, Value: 1 }, // End (Sung) - Note: Inspiration code ends at 1, might need adjustment based on visual needs
-  ],
+    ScaleRange: [
+        { Time: 0, Value: 0.75 }, // Resting (NotSung)
+        { Time: 0.7, Value: 1.05 }, // Peak animation
+        { Time: 1, Value: 1 }, // End (Sung)
+    ],
+    YOffsetRange: [
+        // Relative to font-size
+        { Time: 0, Value: 0 }, // Resting (NotSung)
+        { Time: 0.9, Value: -0.12 }, // Peak animation
+        { Time: 1, Value: 0 }, // End (Sung)
+    ],
+    GlowRange: [
+        // Controls --text-shadow-opacity and --text-shadow-blur-radius indirectly
+        { Time: 0, Value: 0 }, // Resting (NotSung)
+        { Time: 0.6, Value: 1 }, // Peak animation
+        { Time: 1, Value: 1 }, // End (Sung) - Note: Inspiration code ends at 1, might need adjustment based on visual needs
+    ],
 };
 
 // DotGroup Animation Constants
 const DotGroupAnimations = {
-  YOffsetDamping: 0.4,
-  YOffsetFrequency: 1.25,
-  ScaleDamping: 0.7, // 0.6
-  ScaleFrequency: 5, // 4
+    YOffsetDamping: 0.4,
+    YOffsetFrequency: 1.25,
+    ScaleDamping: 0.7, // 0.6
+    ScaleFrequency: 5, // 4
 
-  ScaleRange: [
-    // Time is actually real-time (so in seconds)
-    {
-      Time: 0,
-      Value: 0,
-    },
-    {
-      Time: 0.2,
-      Value: 1.05,
-    },
-    {
-      Time: -0.075,
-      Value: 1.15,
-    },
-    {
-      Time: -0,
-      Value: 0,
-    }, // Rest
-  ],
-  OpacityRange: [
-    {
-      Time: 0,
-      Value: 0,
-    },
-    {
-      Time: 0.5,
-      Value: 1,
-    },
-    {
-      Time: -0.075,
-      Value: 1,
-    },
-    {
-      Time: -0,
-      Value: 0,
-    }, // Rest
-  ],
-  YOffsetRange: [
-    // This is relative to the font-size
-    {
-      Time: 0,
-      Value: 1 / 100,
-    }, // Lowest
-    {
-      Time: 0.9,
-      Value: -(1 / 60),
-    }, // Highest
-    {
-      Time: 1,
-      Value: 0,
-    }, // Rest
-  ],
+    ScaleRange: [
+        // Time is actually real-time (so in seconds)
+        {
+            Time: 0,
+            Value: 0,
+        },
+        {
+            Time: 0.2,
+            Value: 1.05,
+        },
+        {
+            Time: -0.075,
+            Value: 1.15,
+        },
+        {
+            Time: -0,
+            Value: 0,
+        }, // Rest
+    ],
+    OpacityRange: [
+        {
+            Time: 0,
+            Value: 0,
+        },
+        {
+            Time: 0.5,
+            Value: 1,
+        },
+        {
+            Time: -0.075,
+            Value: 1,
+        },
+        {
+            Time: -0,
+            Value: 0,
+        }, // Rest
+    ],
+    YOffsetRange: [
+        // This is relative to the font-size
+        {
+            Time: 0,
+            Value: 1 / 100,
+        }, // Lowest
+        {
+            Time: 0.9,
+            Value: -(1 / 60),
+        }, // Highest
+        {
+            Time: 1,
+            Value: 0,
+        }, // Rest
+    ],
 };
 
 const DotScaleSpline = GetSpline(DotAnimations.ScaleRange);
@@ -223,18 +215,18 @@ const DotGlowSpline = GetSpline(DotAnimations.GlowRange);
 let DotOpacitySpline = GetSpline(getDotOpacityRange($simpleLyricsMode.get()));
 
 const createLetterSprings = () => {
-  return {
-    Scale: new Spring(LetterScaleSpline.at(0), ScaleFrequency, ScaleDamping),
-    YOffset: new Spring(LetterYOffsetSpline.at(0), YOffsetFrequency, YOffsetDamping),
-    Glow: new Spring(GlowSpline.at(0), GlowFrequency, GlowDamping),
-  };
+    return {
+        Scale: new Spring(LetterScaleSpline.at(0), ScaleFrequency, ScaleDamping),
+        YOffset: new Spring(LetterYOffsetSpline.at(0), YOffsetFrequency, YOffsetDamping),
+        Glow: new Spring(GlowSpline.at(0), GlowFrequency, GlowDamping),
+    };
 };
 
 $simpleLyricsMode.subscribe((simpleLyricsMode) => {
-  YOffsetSpline = GetSpline(simpleLyricsMode ? SimpleYOffsetRange : YOffsetRange);
-  DotOpacitySpline = GetSpline(getDotOpacityRange(simpleLyricsMode));
-  LetterYOffsetSpline = GetSpline(simpleLyricsMode? SimpleLetterYOffsetRange : LetterYOffsetRange);
-  LetterScaleSpline = GetSpline(simpleLyricsMode ? SimpleLetterScaleRange : LetterScaleRange);
+    YOffsetSpline = GetSpline(simpleLyricsMode ? SimpleYOffsetRange : YOffsetRange);
+    DotOpacitySpline = GetSpline(getDotOpacityRange(simpleLyricsMode));
+    LetterYOffsetSpline = GetSpline(simpleLyricsMode ? SimpleLetterYOffsetRange : LetterYOffsetRange);
+    LetterScaleSpline = GetSpline(simpleLyricsMode ? SimpleLetterScaleRange : LetterScaleRange);
 });
 
 // DotGroup splines
@@ -248,20 +240,20 @@ const SungLetterGlow = 0.2;
 
 // Promote an element to its own compositor layer for GPU-accelerated animations
 function promoteToGPU(el: HTMLElement): void {
-  // Hint to the browser that transform and opacity will change frequently
-  el.style.willChange = "transform, opacity, text-shadow, scale";
-  // Avoid costly repaints due to backface rendering
-  el.style.backfaceVisibility = "hidden";
+    // Hint to the browser that transform and opacity will change frequently
+    el.style.willChange = 'transform, opacity, text-shadow, scale';
+    // Avoid costly repaints due to backface rendering
+    el.style.backfaceVisibility = 'hidden';
 }
 
 const _gpuPromotedWithFilter = new WeakSet<HTMLElement>();
 
 // Variant that also hints filter changes (useful for blur)
 function promoteToGPUWithFilter(el: HTMLElement): void {
-  if (_gpuPromotedWithFilter.has(el)) return;
-  el.style.willChange = "transform, opacity, text-shadow, scale, filter";
-  el.style.backfaceVisibility = "hidden";
-  _gpuPromotedWithFilter.add(el);
+    if (_gpuPromotedWithFilter.has(el)) return;
+    el.style.willChange = 'transform, opacity, text-shadow, scale, filter';
+    el.style.backfaceVisibility = 'hidden';
+    _gpuPromotedWithFilter.add(el);
 }
 
 // Cache last written style values to avoid redundant DOM writes
@@ -270,122 +262,106 @@ const _styleCache = new WeakMap<HTMLElement, Map<string, string>>();
 const _styleQueue = new Map<HTMLElement, Map<string, string>>();
 
 function queueStyle(el: HTMLElement, prop: string, value: string): void {
-  let props = _styleQueue.get(el);
-  if (!props) {
-    props = new Map<string, string>();
-    _styleQueue.set(el, props);
-  }
-  props.set(prop, value);
+    let props = _styleQueue.get(el);
+    if (!props) {
+        props = new Map<string, string>();
+        _styleQueue.set(el, props);
+    }
+    props.set(prop, value);
 }
 
 function setStyleIfChanged(el: HTMLElement, prop: string, value: string, epsilon = 0): void {
-  let map = _styleCache.get(el);
-  if (!map) {
-    map = new Map();
-    _styleCache.set(el, map);
-  }
-  const prev = map.get(prop);
-  if (prev !== undefined) {
-    // Try numeric comparison when possible
-    const parseNum = (v: string) => {
-      // Extract numeric portion (supports "12px", "45%", "1.2")
-      const n = parseFloat(v);
-      return Number.isNaN(n) ? null : n;
-    };
-    const a = parseNum(prev);
-    const b = parseNum(value);
-    if (a !== null && b !== null) {
-      if (Math.abs(a - b) <= epsilon) return; // Skip tiny changes
-    } else {
-      if (prev === value) return; // Exact match for non-numeric values
+    let map = _styleCache.get(el);
+    if (!map) {
+        map = new Map();
+        _styleCache.set(el, map);
     }
-  }
-  queueStyle(el, prop, value);
-  map.set(prop, value);
+    const prev = map.get(prop);
+    if (prev !== undefined) {
+        // Try numeric comparison when possible
+        const parseNum = (v: string) => {
+            // Extract numeric portion (supports "12px", "45%", "1.2")
+            const n = parseFloat(v);
+            return Number.isNaN(n) ? null : n;
+        };
+        const a = parseNum(prev);
+        const b = parseNum(value);
+        if (a !== null && b !== null) {
+            if (Math.abs(a - b) <= epsilon) return; // Skip tiny changes
+        } else {
+            if (prev === value) return; // Exact match for non-numeric values
+        }
+    }
+    queueStyle(el, prop, value);
+    map.set(prop, value);
 }
 
 function flushStyleBatch(): void {
-  if (_styleQueue.size === 0) return;
-  for (const [el, props] of _styleQueue) {
-    for (const [prop, value] of props) {
-      el.style.setProperty(prop, value);
+    if (_styleQueue.size === 0) return;
+    for (const [el, props] of _styleQueue) {
+        for (const [prop, value] of props) {
+            el.style.setProperty(prop, value);
+        }
     }
-  }
-  _styleQueue.clear();
+    _styleQueue.clear();
 }
 
 const createWordSprings = () => {
-  if ($simpleLyricsMode.get()) {
-    return {
-      Scale: {
-        Step: () => {},
-        SetGoal: () => {},
-      },
-      /* YOffset: {
+    if ($simpleLyricsMode.get()) {
+        return {
+            Scale: {
+                Step: () => {},
+                SetGoal: () => {},
+            },
+            /* YOffset: {
         Step: () => {},
         SetGoal: () => {},
       }, */
-      YOffset: new Spring(YOffsetSpline.at(0), YOffsetFrequency, YOffsetDamping),
-      Glow: {
-        Step: () => {},
-        SetGoal: () => {},
-      },
+            YOffset: new Spring(YOffsetSpline.at(0), YOffsetFrequency, YOffsetDamping),
+            Glow: {
+                Step: () => {},
+                SetGoal: () => {},
+            },
+        };
+    }
+    return {
+        Scale: new Spring(ScaleSpline.at(0), ScaleFrequency, ScaleDamping),
+        YOffset: new Spring(YOffsetSpline.at(0), YOffsetFrequency, YOffsetDamping),
+        Glow: new Spring(GlowSpline.at(0), GlowFrequency, GlowDamping),
     };
-  }
-  return {
-    Scale: new Spring(ScaleSpline.at(0), ScaleFrequency, ScaleDamping),
-    YOffset: new Spring(YOffsetSpline.at(0), YOffsetFrequency, YOffsetDamping),
-    Glow: new Spring(GlowSpline.at(0), GlowFrequency, GlowDamping),
-  };
 };
 
 // NEW Dot Springs Function
 const createDotSprings = () => {
-  if ($simpleLyricsMode.get()) {
+    if ($simpleLyricsMode.get()) {
+        return {
+            Scale: {
+                Step: () => {},
+                SetGoal: () => {},
+            },
+            YOffset: {
+                Step: () => {},
+                SetGoal: () => {},
+            },
+            Glow: {
+                Step: () => {},
+                SetGoal: () => {},
+            },
+            Opacity: new Spring(DotOpacitySpline.at(0), DotAnimations.OpacityFrequency, DotAnimations.OpacityDamping),
+        };
+    }
     return {
-      Scale: {
-        Step: () => {},
-        SetGoal: () => {},
-      },
-      YOffset: {
-        Step: () => {},
-        SetGoal: () => {},
-      },
-      Glow: {
-        Step: () => {},
-        SetGoal: () => {},
-      },
-      Opacity: new Spring(
-        DotOpacitySpline.at(0),
-        DotAnimations.OpacityFrequency,
-        DotAnimations.OpacityDamping
-      ),
+        Scale: new Spring(DotScaleSpline.at(0), DotAnimations.ScaleFrequency, DotAnimations.ScaleDamping),
+        YOffset: new Spring(DotYOffsetSpline.at(0), DotAnimations.YOffsetFrequency, DotAnimations.YOffsetDamping),
+        Glow: new Spring(DotGlowSpline.at(0), DotAnimations.GlowFrequency, DotAnimations.GlowDamping),
+        Opacity: new Spring(DotOpacitySpline.at(0), DotAnimations.OpacityFrequency, DotAnimations.OpacityDamping),
     };
-  }
-  return {
-    Scale: new Spring(
-      DotScaleSpline.at(0),
-      DotAnimations.ScaleFrequency,
-      DotAnimations.ScaleDamping
-    ),
-    YOffset: new Spring(
-      DotYOffsetSpline.at(0),
-      DotAnimations.YOffsetFrequency,
-      DotAnimations.YOffsetDamping
-    ),
-    Glow: new Spring(DotGlowSpline.at(0), DotAnimations.GlowFrequency, DotAnimations.GlowDamping),
-    Opacity: new Spring(
-      DotOpacitySpline.at(0),
-      DotAnimations.OpacityFrequency,
-      DotAnimations.OpacityDamping
-    ),
-  };
 };
 
 // DotGroup Springs Function - for animating the entire dotGroup element
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 const _createDotGroupSprings = () => {
-  /*   if ($simpleLyricsMode.get()) {
+    /*   if ($simpleLyricsMode.get()) {
     return {
       Scale: {
         Step: () => {},
@@ -401,27 +377,27 @@ const _createDotGroupSprings = () => {
       },
     }
   } */
-  return {
-    Scale: new Spring(0, DotGroupAnimations.ScaleFrequency, DotGroupAnimations.ScaleDamping),
-    YOffset: new Spring(0, DotGroupAnimations.YOffsetFrequency, DotGroupAnimations.YOffsetDamping),
-    Opacity: new Spring(0, DotGroupAnimations.YOffsetFrequency, DotGroupAnimations.YOffsetDamping),
-  };
+    return {
+        Scale: new Spring(0, DotGroupAnimations.ScaleFrequency, DotGroupAnimations.ScaleDamping),
+        YOffset: new Spring(0, DotGroupAnimations.YOffsetFrequency, DotGroupAnimations.YOffsetDamping),
+        Opacity: new Spring(0, DotGroupAnimations.YOffsetFrequency, DotGroupAnimations.YOffsetDamping),
+    };
 };
 
 // Visual Constants
 const LineGlowRange = [
-  {
-    Time: 0,
-    Value: 0,
-  },
-  {
-    Time: 0.5,
-    Value: 1,
-  },
-  {
-    Time: 1,
-    Value: 0,
-  },
+    {
+        Time: 0,
+        Value: 0,
+    },
+    {
+        Time: 0.5,
+        Value: 1,
+    },
+    {
+        Time: 1,
+        Value: 0,
+    },
 ];
 const LineGlowSpline = GetSpline(LineGlowRange);
 
@@ -429,17 +405,17 @@ const LineGlowDamping = 0.5;
 const LineGlowFrequency = 1;
 
 const createLineSprings = () => {
-  if ($simpleLyricsMode.get()) {
+    if ($simpleLyricsMode.get()) {
+        return {
+            Glow: {
+                Step: () => {},
+                SetGoal: () => {},
+            },
+        };
+    }
     return {
-      Glow: {
-        Step: () => {},
-        SetGoal: () => {},
-      },
+        Glow: new Spring(LineGlowSpline.at(0), LineGlowFrequency, LineGlowDamping),
     };
-  }
-  return {
-    Glow: new Spring(LineGlowSpline.at(0), LineGlowFrequency, LineGlowDamping),
-  };
 };
 
 export let Blurring_LastLine: number | null = null;
@@ -450,142 +426,138 @@ let lastFrameTime = performance.now();
 // Blurring_LastLine so that applyBlur runs on the next animation frame and
 // writes the correct --BlurAmount to the freshly connected element.
 setOnNewElementMounted(() => {
-  Blurring_LastLine = null;
+    Blurring_LastLine = null;
 });
 
 export function findActiveElement(currentTime: number): any {
-  const ProcessedPosition = currentTime + timeOffset;
-  const CurrentLyricsType = $currentLyricsType.get();
+    const ProcessedPosition = currentTime + timeOffset;
+    const CurrentLyricsType = $currentLyricsType.get();
 
-  if (!CurrentLyricsType || CurrentLyricsType === "None") return null;
+    if (!CurrentLyricsType || CurrentLyricsType === 'None') return null;
 
-  if (CurrentLyricsType === "Syllable") {
-    const lines = LyricsObject.Types.Syllable.Lines;
-    for (const line of lines) {
-      if (getElementState(ProcessedPosition, line.StartTime, line.EndTime) === "Active") {
-        if (line.DotLine && line.Syllables?.Lead) {
-          const dotArray = line.Syllables.Lead;
-          for (const dot of dotArray) {
-            if (getElementState(ProcessedPosition, dot.StartTime, dot.EndTime) === "Active") {
-              return [dot, "dot"];
-            }
-          }
-        } else if (line.Syllables?.Lead) {
-          const words = line.Syllables.Lead;
-          for (const word of words) {
-            if (word.Dot) continue;
-            if (getElementState(ProcessedPosition, word.StartTime, word.EndTime) === "Active") {
-              if (word.LetterGroup && word.Letters) {
-                for (const letter of word.Letters) {
-                  if (
-                    getElementState(ProcessedPosition, letter.StartTime, letter.EndTime) ===
-                    "Active"
-                  ) {
-                    return [letter, "letter"];
-                  }
+    if (CurrentLyricsType === 'Syllable') {
+        const lines = LyricsObject.Types.Syllable.Lines;
+        for (const line of lines) {
+            if (getElementState(ProcessedPosition, line.StartTime, line.EndTime) === 'Active') {
+                if (line.DotLine && line.Syllables?.Lead) {
+                    const dotArray = line.Syllables.Lead;
+                    for (const dot of dotArray) {
+                        if (getElementState(ProcessedPosition, dot.StartTime, dot.EndTime) === 'Active') {
+                            return [dot, 'dot'];
+                        }
+                    }
+                } else if (line.Syllables?.Lead) {
+                    const words = line.Syllables.Lead;
+                    for (const word of words) {
+                        if (word.Dot) continue;
+                        if (getElementState(ProcessedPosition, word.StartTime, word.EndTime) === 'Active') {
+                            if (word.LetterGroup && word.Letters) {
+                                for (const letter of word.Letters) {
+                                    if (
+                                        getElementState(ProcessedPosition, letter.StartTime, letter.EndTime) ===
+                                        'Active'
+                                    ) {
+                                        return [letter, 'letter'];
+                                    }
+                                }
+                            }
+                            return [word, word.LetterGroup ? 'letterGroup' : 'word'];
+                        }
+                    }
                 }
-              }
-              return [word, word.LetterGroup ? "letterGroup" : "word"];
+                return [line, 'line'];
             }
-          }
         }
-        return [line, "line"];
-      }
-    }
-  } else if (CurrentLyricsType === "Line") {
-    const lines = LyricsObject.Types.Line.Lines;
-    for (const line of lines) {
-      if (getElementState(ProcessedPosition, line.StartTime, line.EndTime) === "Active") {
-        if (line.DotLine && line.Syllables?.Lead) {
-          const dotArray = line.Syllables.Lead;
-          for (const dot of dotArray) {
-            if (getElementState(ProcessedPosition, dot.StartTime, dot.EndTime) === "Active") {
-              return [dot, "dot"];
+    } else if (CurrentLyricsType === 'Line') {
+        const lines = LyricsObject.Types.Line.Lines;
+        for (const line of lines) {
+            if (getElementState(ProcessedPosition, line.StartTime, line.EndTime) === 'Active') {
+                if (line.DotLine && line.Syllables?.Lead) {
+                    const dotArray = line.Syllables.Lead;
+                    for (const dot of dotArray) {
+                        if (getElementState(ProcessedPosition, dot.StartTime, dot.EndTime) === 'Active') {
+                            return [dot, 'dot'];
+                        }
+                    }
+                }
+                return [line, 'line'];
             }
-          }
         }
-        return [line, "line"];
-      }
     }
-  }
 
-  return null;
+    return null;
 }
 
 export function setBlurringLastLine(c: number | null) {
-  Blurring_LastLine = c;
+    Blurring_LastLine = c;
 }
 
-function getElementState(
-  currentTime: number,
-  startTime: number,
-  endTime: number
-): "NotSung" | "Active" | "Sung" {
-  if (currentTime < startTime) return "NotSung";
-  if (currentTime >= endTime) return "Sung";
-  return "Active";
+function getElementState(currentTime: number, startTime: number, endTime: number): 'NotSung' | 'Active' | 'Sung' {
+    if (currentTime < startTime) return 'NotSung';
+    if (currentTime >= endTime) return 'Sung';
+    return 'Active';
 }
 
 function getProgressPercentage(currentTime: number, startTime: number, endTime: number): number {
-  if (currentTime <= startTime) return 0;
-  if (currentTime >= endTime) return 1;
-  return (currentTime - startTime) / (endTime - startTime);
+    if (currentTime <= startTime) return 0;
+    if (currentTime >= endTime) return 1;
+    return (currentTime - startTime) / (endTime - startTime);
 }
 
 let lastAnimateFrameTime = 0;
 
 export function Animate(position: number): void {
-  const ProcessedPosition = position + timeOffset - ($simpleLyricsMode.get() ? 33.5 : 0);
+    const ProcessedPosition = position + timeOffset - ($simpleLyricsMode.get() ? 33.5 : 0);
 
-  const now = performance.now();
+    const now = performance.now();
 
-  const deltaTime = (now - lastFrameTime) / 1000;
-  lastFrameTime = now;
-  lastAnimateFrameTime = now;
+    const deltaTime = (now - lastFrameTime) / 1000;
+    lastFrameTime = now;
+    lastAnimateFrameTime = now;
 
-  const CurrentLyricsType = $currentLyricsType.get();
+    const CurrentLyricsType = $currentLyricsType.get();
 
-  if (!CurrentLyricsType || CurrentLyricsType === "None") return;
+    if (!CurrentLyricsType || CurrentLyricsType === 'None') return;
 
-  // Define proper types for the arrays and indices
-  const applyBlur = (
-    arr: Array<{ HTMLElement: HTMLElement; StartTime: number; EndTime: number }>,
-    activeIndex: number,
-    blurMultiplierValue: number
-  ): void => {
-    if (!arr[activeIndex]) return;
+    // Define proper types for the arrays and indices
+    const applyBlur = (
+        arr: Array<{ HTMLElement: HTMLElement; StartTime: number; EndTime: number }>,
+        activeIndex: number,
+        blurMultiplierValue: number
+    ): void => {
+        if (!arr[activeIndex]) return;
 
-    // Promote line elements for filter changes
-    promoteToGPUWithFilter(arr[activeIndex].HTMLElement);
+        // Promote line elements for filter changes
+        promoteToGPUWithFilter(arr[activeIndex].HTMLElement);
 
-    const max = BlurMultiplier * 5 + BlurMultiplier * 0.465;
+        const max = BlurMultiplier * 5 + BlurMultiplier * 0.465;
 
-    for (let i = 0; i < arr.length; i++) {
-      const el = arr[i].HTMLElement;
-      // The virtualizer only mounts a small window of elements at a time.
-      // Skip elements that are not in the DOM — writing styles to detached
-      // elements is wasteful: it populates _styleQueue with hundreds of entries
-      // that flushStyleBatch() then has to flush (style.setProperty on each),
-      // creating a large burst of DOM work every time the active line changes.
-      // When an off-screen element is later mounted, the next active-line change
-      // will call applyBlur again and catch it with the correct values.
-      if (!el.isConnected) continue;
-      const state = getElementState(ProcessedPosition, arr[i].StartTime, arr[i].EndTime);
-      const distance = Math.abs(i - activeIndex);
-      const blurAmount = distance === 0 ? 0 : Math.min(blurMultiplierValue * distance, max);
+        for (let i = 0; i < arr.length; i++) {
+            const el = arr[i].HTMLElement;
+            // The virtualizer only mounts a small window of elements at a time.
+            // Skip elements that are not in the DOM — writing styles to detached
+            // elements is wasteful: it populates _styleQueue with hundreds of entries
+            // that flushStyleBatch() then has to flush (style.setProperty on each),
+            // creating a large burst of DOM work every time the active line changes.
+            // When an off-screen element is later mounted, the next active-line change
+            // will call applyBlur again and catch it with the correct values.
+            if (!el.isConnected) continue;
+            const state = getElementState(ProcessedPosition, arr[i].StartTime, arr[i].EndTime);
+            const distance = Math.abs(i - activeIndex);
+            const blurAmount = distance === 0 ? 0 : Math.min(blurMultiplierValue * distance, max);
 
-      // Active elements and the active line get zero blur
-      const value = state === "Active" || distance === 0 ? "0px" : `${blurAmount}px`;
+            // Active elements and the active line get zero blur
+            const value = state === 'Active' || distance === 0 ? '0px' : `${blurAmount}px`;
 
-      // Cache + batch style writes to avoid thrash
-      setStyleIfChanged(el, "--BlurAmount", value, 0.25);
+            // Cache + batch style writes to avoid thrash
+            setStyleIfChanged(el, '--BlurAmount', value, 0.25);
 
-      // Hint filter changes to the compositor
-      promoteToGPUWithFilter(el);
-    }
-  };
+            // Hint filter changes to the compositor
+            promoteToGPUWithFilter(el);
+        }
+    };
 
-  /* const applyDistance = (arr: Array<{HTMLElement: HTMLElement; StartTime: number; EndTime: number}>,
+    /* const applyDistance = (arr: Array<{HTMLElement: HTMLElement; StartTime: number; EndTime: number}>,
                      activeIndex: number): void => {
       if (!arr[activeIndex]) return;
 
@@ -614,7 +586,7 @@ export function Animate(position: number): void {
       }
   }; */
 
-  /* const applyScale = (arr: Array<{HTMLElement: HTMLElement; StartTime: number; EndTime: number}>,
+    /* const applyScale = (arr: Array<{HTMLElement: HTMLElement; StartTime: number; EndTime: number}>,
                      activeIndex: number): void => {
       if (!arr[activeIndex]) return;
 
@@ -644,247 +616,245 @@ export function Animate(position: number): void {
       }
   }; */
 
-  // These utility functions are not used but kept for future reference
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _calculateOpacity = (percentage: number): number => {
-    if (percentage <= 0.65) {
-      return percentage * 100;
-    } else {
-      return (1 - percentage) * 100;
-    }
-  };
+    // These utility functions are not used but kept for future reference
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _calculateLineGlowOpacity = (percentage: number): number => {
-    if (percentage <= 0.5) {
-      return percentage * 200;
-    } else if (percentage <= 0.8 && percentage > 0.5) {
-      return 100;
-    } else {
-      return (1 - (percentage - 0.8) / 0.2) * 100;
-    }
-  };
-
-  if (CurrentLyricsType === "Syllable") {
-    const arr = LyricsObject.Types.Syllable.Lines;
-
-    for (let index = 0; index < arr.length; index++) {
-      const line = arr[index];
-      if (!line.HTMLElement.isConnected) continue;
-      const lineState = getElementState(ProcessedPosition, line.StartTime, line.EndTime);
-
-      if (lineState === "Active") {
-        if (Blurring_LastLine !== index) {
-          applyBlur(arr, index, BlurMultiplier);
-          //applyScale(arr, index);
-          Blurring_LastLine = index;
+    const _calculateOpacity = (percentage: number): number => {
+        if (percentage <= 0.65) {
+            return percentage * 100;
+        } else {
+            return (1 - percentage) * 100;
         }
+    };
 
-        if (!line.HTMLElement.classList.contains("Active")) {
-          line.HTMLElement.classList.add("Active");
+    const _calculateLineGlowOpacity = (percentage: number): number => {
+        if (percentage <= 0.5) {
+            return percentage * 200;
+        } else if (percentage <= 0.8 && percentage > 0.5) {
+            return 100;
+        } else {
+            return (1 - (percentage - 0.8) / 0.2) * 100;
         }
+    };
 
-        if (line.HTMLElement.classList.contains("NotSung")) {
-          line.HTMLElement.classList.remove("NotSung");
-        }
+    if (CurrentLyricsType === 'Syllable') {
+        const arr = LyricsObject.Types.Syllable.Lines;
 
-        if (line.HTMLElement.classList.contains("Sung")) {
-          line.HTMLElement.classList.remove("Sung");
-        }
+        for (let index = 0; index < arr.length; index++) {
+            const line = arr[index];
+            if (!line.HTMLElement.isConnected) continue;
+            const lineState = getElementState(ProcessedPosition, line.StartTime, line.EndTime);
 
-        if (line.DotLine) {
-          if (ProcessedPosition > line.EndTime - preHiddenDotLineMs) {
-            if (!line.HTMLElement.classList.contains("pre-hidden")) {
-              line.HTMLElement.classList.add("pre-hidden");
-            }
-          } else {
-            if (line.HTMLElement.classList.contains("pre-hidden")) {
-              line.HTMLElement.classList.remove("pre-hidden");
-            }
-          }
-        }
+            if (lineState === 'Active') {
+                if (Blurring_LastLine !== index) {
+                    applyBlur(arr, index, BlurMultiplier);
+                    //applyScale(arr, index);
+                    Blurring_LastLine = index;
+                }
 
-        /* if (line.HTMLElement.classList.contains("FeelSung")) {
+                if (!line.HTMLElement.classList.contains('Active')) {
+                    line.HTMLElement.classList.add('Active');
+                }
+
+                if (line.HTMLElement.classList.contains('NotSung')) {
+                    line.HTMLElement.classList.remove('NotSung');
+                }
+
+                if (line.HTMLElement.classList.contains('Sung')) {
+                    line.HTMLElement.classList.remove('Sung');
+                }
+
+                if (line.DotLine) {
+                    if (ProcessedPosition > line.EndTime - preHiddenDotLineMs) {
+                        if (!line.HTMLElement.classList.contains('pre-hidden')) {
+                            line.HTMLElement.classList.add('pre-hidden');
+                        }
+                    } else {
+                        if (line.HTMLElement.classList.contains('pre-hidden')) {
+                            line.HTMLElement.classList.remove('pre-hidden');
+                        }
+                    }
+                }
+
+                /* if (line.HTMLElement.classList.contains("FeelSung")) {
                   line.HTMLElement.classList.remove("FeelSung");
               } */
 
-        // Check if Syllables exists and has Lead property
-        if (!line.Syllables?.Lead) {
-          console.warn("Line has no Syllables.Lead array");
-          continue;
-        }
+                // Check if Syllables exists and has Lead property
+                if (!line.Syllables?.Lead) {
+                    console.warn('Line has no Syllables.Lead array');
+                    continue;
+                }
 
-        const words = line.Syllables.Lead;
-        for (let wordIndex = 0; wordIndex < words.length; wordIndex++) {
-          const word = words[wordIndex];
-          const wordState = getElementState(ProcessedPosition, word.StartTime, word.EndTime);
-          const percentage = getProgressPercentage(ProcessedPosition, word.StartTime, word.EndTime);
+                const words = line.Syllables.Lead;
+                for (let wordIndex = 0; wordIndex < words.length; wordIndex++) {
+                    const word = words[wordIndex];
+                    const wordState = getElementState(ProcessedPosition, word.StartTime, word.EndTime);
+                    const percentage = getProgressPercentage(ProcessedPosition, word.StartTime, word.EndTime);
 
-          const isLetterGroup = word?.LetterGroup;
-          const isDot = word?.Dot;
+                    const isLetterGroup = word?.LetterGroup;
+                    const isDot = word?.Dot;
 
-          if (!isDot) {
-            if (!word.AnimatorStore) {
-              word.AnimatorStore = createWordSprings();
-              word.AnimatorStore.Scale.SetGoal(ScaleSpline.at(0), true);
-              word.AnimatorStore.YOffset.SetGoal(YOffsetSpline.at(0), true);
-              word.AnimatorStore.Glow.SetGoal(GlowSpline.at(0), true);
-              // Enable GPU compositing for word elements
-              promoteToGPU(word.HTMLElement);
-            }
+                    if (!isDot) {
+                        if (!word.AnimatorStore) {
+                            word.AnimatorStore = createWordSprings();
+                            word.AnimatorStore.Scale.SetGoal(ScaleSpline.at(0), true);
+                            word.AnimatorStore.YOffset.SetGoal(YOffsetSpline.at(0), true);
+                            word.AnimatorStore.Glow.SetGoal(GlowSpline.at(0), true);
+                            // Enable GPU compositing for word elements
+                            promoteToGPU(word.HTMLElement);
+                        }
 
-            let targetScale: number;
-            let targetYOffset: number;
-            let targetGlow: number;
-            let targetGradientPos: number;
+                        let targetScale: number;
+                        let targetYOffset: number;
+                        let targetGlow: number;
+                        let targetGradientPos: number;
 
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const totalDuration = word.EndTime - word.StartTime; // Kept for future reference
+                        const totalDuration = word.EndTime - word.StartTime; // Kept for future reference
 
-            if (wordState === "Active") {
-              targetScale = ScaleSpline.at(percentage);
-              targetYOffset = YOffsetSpline.at(percentage);
-              targetGlow = GlowSpline.at(percentage);
-              if ($simpleLyricsMode.get()) {
-                targetGradientPos = -50 + 120 * percentage;
-              } else {
-                targetGradientPos = -20 + 120 * percentage;
-              }
-            } else if (wordState === "NotSung") {
-              targetScale = ScaleSpline.at(0);
-              targetYOffset = YOffsetSpline.at(0);
-              targetGlow = GlowSpline.at(0);
-              if ($simpleLyricsMode.get()) {
-                targetGradientPos = -50;
-              } else {
-                targetGradientPos = -20;
-              }
-            } else {
-              // Sung
-              targetScale = ScaleSpline.at(1);
-              targetYOffset = YOffsetSpline.at(1);
-              targetGlow = GlowSpline.at(1);
-              targetGradientPos = 100;
-            }
+                        if (wordState === 'Active') {
+                            targetScale = ScaleSpline.at(percentage);
+                            targetYOffset = YOffsetSpline.at(percentage);
+                            targetGlow = GlowSpline.at(percentage);
+                            if ($simpleLyricsMode.get()) {
+                                targetGradientPos = -50 + 120 * percentage;
+                            } else {
+                                targetGradientPos = -20 + 120 * percentage;
+                            }
+                        } else if (wordState === 'NotSung') {
+                            targetScale = ScaleSpline.at(0);
+                            targetYOffset = YOffsetSpline.at(0);
+                            targetGlow = GlowSpline.at(0);
+                            if ($simpleLyricsMode.get()) {
+                                targetGradientPos = -50;
+                            } else {
+                                targetGradientPos = -20;
+                            }
+                        } else {
+                            // Sung
+                            targetScale = ScaleSpline.at(1);
+                            targetYOffset = YOffsetSpline.at(1);
+                            targetGlow = GlowSpline.at(1);
+                            targetGradientPos = 100;
+                        }
 
-            word.AnimatorStore.Scale.SetGoal(targetScale);
-            word.AnimatorStore.YOffset.SetGoal(targetYOffset);
-            word.AnimatorStore.Glow.SetGoal(targetGlow);
+                        word.AnimatorStore.Scale.SetGoal(targetScale);
+                        word.AnimatorStore.YOffset.SetGoal(targetYOffset);
+                        word.AnimatorStore.Glow.SetGoal(targetGlow);
 
-            const currentScale = word.AnimatorStore.Scale.Step(deltaTime);
-            const currentYOffset = word.AnimatorStore.YOffset.Step(deltaTime);
-            const currentGlow = word.AnimatorStore.Glow.Step(deltaTime);
+                        const currentScale = word.AnimatorStore.Scale.Step(deltaTime);
+                        const currentYOffset = word.AnimatorStore.YOffset.Step(deltaTime);
+                        const currentGlow = word.AnimatorStore.Glow.Step(deltaTime);
 
-            setStyleIfChanged(word.HTMLElement, "scale", `${currentScale}`, 0.001);
-            // Use translate3d to ensure GPU-accelerated transforms
-            setStyleIfChanged(
-              word.HTMLElement,
-              "transform",
-              `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset}), 0)`,
-              0.001
-            );
-            if (isLetterGroup) {
-              if ($simpleLyricsMode.get()) {
-                if (wordState === "Active") {
-                  if ($simpleLyricsModeRenderingType.get() === "animate") {
-                    const nextWord = words[wordIndex + 1];
-                    if (nextWord && !nextWord?.LetterGroup) {
-                      if (!nextWord.PreSLMAnimated) {
-                        nextWord.PreSLMAnimated = true;
-                        nextWord.HTMLElement.style.removeProperty("--SLM_GradientPosition");
-                        setTimeout(
-                          () => {
-                            nextWord.HTMLElement.style.animation = getPreSLMAnimation(250);
-                          },
-                          Number(totalDuration * 0.845 - 130) ?? totalDuration
+                        setStyleIfChanged(word.HTMLElement, 'scale', `${currentScale}`, 0.001);
+                        // Use translate3d to ensure GPU-accelerated transforms
+                        setStyleIfChanged(
+                            word.HTMLElement,
+                            'transform',
+                            `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset}), 0)`,
+                            0.001
                         );
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            if (!isLetterGroup) {
-              if ($simpleLyricsMode.get()) {
-                if (wordState === "Active" && !word.SLMAnimated) {
-                  if ($simpleLyricsModeRenderingType.get() === "calculate") {
-                    word.HTMLElement.style.setProperty(
-                      "--SLM_GradientPosition",
-                      `${targetGradientPos}%`
-                    );
-                  } else {
-                    word.HTMLElement.style.removeProperty("--SLM_GradientPosition");
-                    //word.HTMLElement.style.removeProperty("--SLM_TranslateY");
-                    word.HTMLElement.style.animation = getSLMAnimation(totalDuration);
-                    word.SLMAnimated = true;
-                    word.PreSLMAnimated = false;
-                    const nextWord = words[wordIndex + 1];
-                    if (nextWord) {
-                      if (!nextWord.PreSLMAnimated) {
-                        nextWord.PreSLMAnimated = true;
-                        nextWord.HTMLElement.style.removeProperty("--SLM_GradientPosition");
-                        setTimeout(
-                          () => {
-                            nextWord.HTMLElement.style.animation = getPreSLMAnimation(125);
-                          },
-                          Number(totalDuration * 0.6 - 22) ?? totalDuration
-                        );
-                      }
-                    }
-                  }
-                }
-                if (wordState === "NotSung") {
-                  if ($simpleLyricsModeRenderingType.get() === "calculate") {
-                    word.HTMLElement.style.setProperty(
-                      "--SLM_GradientPosition",
-                      `${targetGradientPos}%`
-                    );
-                  } else {
-                    if (!word.PreSLMAnimated) {
-                      word.HTMLElement.style.animation = "none";
-                      word.HTMLElement.style.setProperty("--SLM_GradientPosition", "-50%");
-                      //word.HTMLElement.style.setProperty("--SLM_TranslateY", "0.01");
-                    }
-                    word.SLMAnimated = false;
-                    /* word.PreSLMAnimated = false; */
-                  }
-                }
-                if (wordState === "Sung") {
-                  if ($simpleLyricsModeRenderingType.get() === "calculate") {
-                    word.HTMLElement.style.setProperty(
-                      "--SLM_GradientPosition",
-                      `${targetGradientPos}%`
-                    );
-                  } else {
-                    word.HTMLElement.style.animation = "none";
-                    word.HTMLElement.style.setProperty("--SLM_GradientPosition", "100%");
-                    //word.HTMLElement.style.setProperty("--SLM_TranslateY", "-0.03");
-                    //word.HTMLElement.style.animation = getSLMAnimation(0);
-                    word.SLMAnimated = false;
-                    word.PreSLMAnimated = false;
-                  }
-                }
-              } else {
-                word.HTMLElement.style.setProperty("--gradient-position", `${targetGradientPos}%`);
-              }
-              // Reduce redundant writes using thresholds for smoother performance
-              setStyleIfChanged(
-                word.HTMLElement,
-                "--text-shadow-blur-radius",
-                `${4 + 2 * currentGlow * 1}px`,
-                0.5
-              );
-              setStyleIfChanged(
-                word.HTMLElement,
-                "--text-shadow-opacity",
-                `${Math.min(currentGlow * 35, 100)}%`,
-                1
-              );
-            }
-          } else if (isDot && !isLetterGroup) {
-            // DotGroup
-            // (still undone)
-            /* {
+                        if (isLetterGroup) {
+                            if ($simpleLyricsMode.get()) {
+                                if (wordState === 'Active') {
+                                    if ($simpleLyricsModeRenderingType.get() === 'animate') {
+                                        const nextWord = words[wordIndex + 1];
+                                        if (nextWord && !nextWord?.LetterGroup) {
+                                            if (!nextWord.PreSLMAnimated) {
+                                                nextWord.PreSLMAnimated = true;
+                                                nextWord.HTMLElement.style.removeProperty('--SLM_GradientPosition');
+                                                setTimeout(
+                                                    () => {
+                                                        nextWord.HTMLElement.style.animation = getPreSLMAnimation(250);
+                                                    },
+                                                    Number(totalDuration * 0.845 - 130) ?? totalDuration
+                                                );
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (!isLetterGroup) {
+                            if ($simpleLyricsMode.get()) {
+                                if (wordState === 'Active' && !word.SLMAnimated) {
+                                    if ($simpleLyricsModeRenderingType.get() === 'calculate') {
+                                        word.HTMLElement.style.setProperty(
+                                            '--SLM_GradientPosition',
+                                            `${targetGradientPos}%`
+                                        );
+                                    } else {
+                                        word.HTMLElement.style.removeProperty('--SLM_GradientPosition');
+                                        //word.HTMLElement.style.removeProperty("--SLM_TranslateY");
+                                        word.HTMLElement.style.animation = getSLMAnimation(totalDuration);
+                                        word.SLMAnimated = true;
+                                        word.PreSLMAnimated = false;
+                                        const nextWord = words[wordIndex + 1];
+                                        if (nextWord) {
+                                            if (!nextWord.PreSLMAnimated) {
+                                                nextWord.PreSLMAnimated = true;
+                                                nextWord.HTMLElement.style.removeProperty('--SLM_GradientPosition');
+                                                setTimeout(
+                                                    () => {
+                                                        nextWord.HTMLElement.style.animation = getPreSLMAnimation(125);
+                                                    },
+                                                    Number(totalDuration * 0.6 - 22) ?? totalDuration
+                                                );
+                                            }
+                                        }
+                                    }
+                                }
+                                if (wordState === 'NotSung') {
+                                    if ($simpleLyricsModeRenderingType.get() === 'calculate') {
+                                        word.HTMLElement.style.setProperty(
+                                            '--SLM_GradientPosition',
+                                            `${targetGradientPos}%`
+                                        );
+                                    } else {
+                                        if (!word.PreSLMAnimated) {
+                                            word.HTMLElement.style.animation = 'none';
+                                            word.HTMLElement.style.setProperty('--SLM_GradientPosition', '-50%');
+                                            //word.HTMLElement.style.setProperty("--SLM_TranslateY", "0.01");
+                                        }
+                                        word.SLMAnimated = false;
+                                        /* word.PreSLMAnimated = false; */
+                                    }
+                                }
+                                if (wordState === 'Sung') {
+                                    if ($simpleLyricsModeRenderingType.get() === 'calculate') {
+                                        word.HTMLElement.style.setProperty(
+                                            '--SLM_GradientPosition',
+                                            `${targetGradientPos}%`
+                                        );
+                                    } else {
+                                        word.HTMLElement.style.animation = 'none';
+                                        word.HTMLElement.style.setProperty('--SLM_GradientPosition', '100%');
+                                        //word.HTMLElement.style.setProperty("--SLM_TranslateY", "-0.03");
+                                        //word.HTMLElement.style.animation = getSLMAnimation(0);
+                                        word.SLMAnimated = false;
+                                        word.PreSLMAnimated = false;
+                                    }
+                                }
+                            } else {
+                                word.HTMLElement.style.setProperty('--gradient-position', `${targetGradientPos}%`);
+                            }
+                            // Reduce redundant writes using thresholds for smoother performance
+                            setStyleIfChanged(
+                                word.HTMLElement,
+                                '--text-shadow-blur-radius',
+                                `${4 + 2 * currentGlow * 1}px`,
+                                0.5
+                            );
+                            setStyleIfChanged(
+                                word.HTMLElement,
+                                '--text-shadow-opacity',
+                                `${Math.min(currentGlow * 35, 100)}%`,
+                                1
+                            );
+                        }
+                    } else if (isDot && !isLetterGroup) {
+                        // DotGroup
+                        // (still undone)
+                        /* {
 
                         // const dotGroupPercentage = getProgressPercentage(ProcessedPosition, dotGroup.StartTime, dotGroup.EndTime);
 
@@ -924,385 +894,380 @@ export function Animate(position: number): void {
                         dotGroup.HTMLElement.style.opacity = currentOpacity.toString();
                       } */
 
-            // Refactored Dot Animation using Springs
-            if (!word.AnimatorStore) {
-              word.AnimatorStore = createDotSprings();
-              word.AnimatorStore.Scale.SetGoal(DotScaleSpline.at(0), true);
-              word.AnimatorStore.YOffset.SetGoal(DotYOffsetSpline.at(0), true);
-              word.AnimatorStore.Glow.SetGoal(DotGlowSpline.at(0), true);
-              word.AnimatorStore.Opacity.SetGoal(DotOpacitySpline.at(0), true);
-              // Enable GPU compositing for dot elements
-              promoteToGPU(word.HTMLElement);
-            }
+                        // Refactored Dot Animation using Springs
+                        if (!word.AnimatorStore) {
+                            word.AnimatorStore = createDotSprings();
+                            word.AnimatorStore.Scale.SetGoal(DotScaleSpline.at(0), true);
+                            word.AnimatorStore.YOffset.SetGoal(DotYOffsetSpline.at(0), true);
+                            word.AnimatorStore.Glow.SetGoal(DotGlowSpline.at(0), true);
+                            word.AnimatorStore.Opacity.SetGoal(DotOpacitySpline.at(0), true);
+                            // Enable GPU compositing for dot elements
+                            promoteToGPU(word.HTMLElement);
+                        }
 
-            let targetScale: number;
-            let targetYOffset: number;
-            let targetGlow: number;
-            let targetOpacity: number;
+                        let targetScale: number;
+                        let targetYOffset: number;
+                        let targetGlow: number;
+                        let targetOpacity: number;
 
-            if (wordState === "Active") {
-              targetScale = DotScaleSpline.at(percentage);
-              targetYOffset = DotYOffsetSpline.at(percentage);
-              targetGlow = DotGlowSpline.at(percentage);
-              targetOpacity = DotOpacitySpline.at(percentage);
-            } else if (wordState === "NotSung") {
-              targetScale = DotScaleSpline.at(0);
-              targetYOffset = DotYOffsetSpline.at(0);
-              targetGlow = DotGlowSpline.at(0);
-              targetOpacity = DotOpacitySpline.at(0);
-            } else {
-              // Sung
-              targetScale = DotScaleSpline.at(1);
-              targetYOffset = DotYOffsetSpline.at(1);
-              targetGlow = DotGlowSpline.at(1);
-              targetOpacity = DotOpacitySpline.at(1);
-            }
+                        if (wordState === 'Active') {
+                            targetScale = DotScaleSpline.at(percentage);
+                            targetYOffset = DotYOffsetSpline.at(percentage);
+                            targetGlow = DotGlowSpline.at(percentage);
+                            targetOpacity = DotOpacitySpline.at(percentage);
+                        } else if (wordState === 'NotSung') {
+                            targetScale = DotScaleSpline.at(0);
+                            targetYOffset = DotYOffsetSpline.at(0);
+                            targetGlow = DotGlowSpline.at(0);
+                            targetOpacity = DotOpacitySpline.at(0);
+                        } else {
+                            // Sung
+                            targetScale = DotScaleSpline.at(1);
+                            targetYOffset = DotYOffsetSpline.at(1);
+                            targetGlow = DotGlowSpline.at(1);
+                            targetOpacity = DotOpacitySpline.at(1);
+                        }
 
-            word.AnimatorStore.Scale.SetGoal(targetScale);
-            word.AnimatorStore.YOffset.SetGoal(targetYOffset);
-            word.AnimatorStore.Glow.SetGoal(targetGlow);
-            word.AnimatorStore.Opacity.SetGoal(targetOpacity);
+                        word.AnimatorStore.Scale.SetGoal(targetScale);
+                        word.AnimatorStore.YOffset.SetGoal(targetYOffset);
+                        word.AnimatorStore.Glow.SetGoal(targetGlow);
+                        word.AnimatorStore.Opacity.SetGoal(targetOpacity);
 
-            const currentScale = word.AnimatorStore.Scale.Step(deltaTime);
-            const currentYOffset = word.AnimatorStore.YOffset.Step(deltaTime);
-            const currentGlow = word.AnimatorStore.Glow.Step(deltaTime);
-            const currentOpacity = word.AnimatorStore.Opacity.Step(deltaTime);
+                        const currentScale = word.AnimatorStore.Scale.Step(deltaTime);
+                        const currentYOffset = word.AnimatorStore.YOffset.Step(deltaTime);
+                        const currentGlow = word.AnimatorStore.Glow.Step(deltaTime);
+                        const currentOpacity = word.AnimatorStore.Opacity.Step(deltaTime);
 
-            // Use translate3d to ensure GPU-accelerated transforms
-            setStyleIfChanged(
-              word.HTMLElement,
-              "transform",
-              `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset ?? 0}), 0)`,
-              0.001
-            ); // Use --DefaultLyricsSize
-            setStyleIfChanged(word.HTMLElement, "scale", `${currentScale}`, 0.001);
-            setStyleIfChanged(word.HTMLElement, "opacity", `${currentOpacity}`, 0.001);
-            setStyleIfChanged(
-              word.HTMLElement,
-              "--text-shadow-blur-radius",
-              `${4 + 6 * currentGlow}px`,
-              0.5
-            ); // Match inspiration
-            setStyleIfChanged(
-              word.HTMLElement,
-              "--text-shadow-opacity",
-              `${currentGlow * 90}%`,
-              1
-            ); // Match inspiration
-          }
-
-          if (isLetterGroup && word.Letters) {
-            if (wordState === "Active") {
-              for (let k = 0; k < word.Letters.length; k++) {
-                const letter = word.Letters[k];
-
-                if (!letter.AnimatorStore) {
-                  letter.AnimatorStore = createLetterSprings();
-                  letter.AnimatorStore.Scale.SetGoal(LetterScaleSpline.at(0), true);
-                  letter.AnimatorStore.YOffset.SetGoal(LetterYOffsetSpline.at(0), true);
-                  letter.AnimatorStore.Glow.SetGoal(GlowSpline.at(0), true);
-                  // Enable GPU compositing for letter elements
-                  promoteToGPU(letter.HTMLElement);
-                }
-
-                let targetScale: number,
-                  targetYOffset: number,
-                  targetGlow: number,
-                  targetGradient: number;
-
-                // Find active letter info (needed only for Active state calculation)
-                let activeLetterIndex = -1;
-                let activeLetterPercentage = 0;
-                if (wordState === "Active" && word.Letters) {
-                  for (let i = 0; i < word.Letters.length; i++) {
-                    if (
-                      getElementState(
-                        ProcessedPosition,
-                        word.Letters[i].StartTime,
-                        word.Letters[i].EndTime
-                      ) === "Active"
-                    ) {
-                      activeLetterIndex = i;
-                      activeLetterPercentage = getProgressPercentage(
-                        ProcessedPosition,
-                        word.Letters[i].StartTime,
-                        word.Letters[i].EndTime
-                      );
-                      break;
+                        // Use translate3d to ensure GPU-accelerated transforms
+                        setStyleIfChanged(
+                            word.HTMLElement,
+                            'transform',
+                            `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset ?? 0}), 0)`,
+                            0.001
+                        ); // Use --DefaultLyricsSize
+                        setStyleIfChanged(word.HTMLElement, 'scale', `${currentScale}`, 0.001);
+                        setStyleIfChanged(word.HTMLElement, 'opacity', `${currentOpacity}`, 0.001);
+                        setStyleIfChanged(
+                            word.HTMLElement,
+                            '--text-shadow-blur-radius',
+                            `${4 + 6 * currentGlow}px`,
+                            0.5
+                        ); // Match inspiration
+                        setStyleIfChanged(word.HTMLElement, '--text-shadow-opacity', `${currentGlow * 90}%`, 1); // Match inspiration
                     }
-                  }
-                }
 
-                // Determine initial targets based on word state
-                // wordState is Active - Default to resting, then apply proximity-based animation
-                targetScale = LetterScaleSpline.at(0); // Default active state target is resting
-                targetYOffset = LetterYOffsetSpline.at(0);
-                targetGlow = GlowSpline.at(0);
+                    if (isLetterGroup && word.Letters) {
+                        if (wordState === 'Active') {
+                            for (let k = 0; k < word.Letters.length; k++) {
+                                const letter = word.Letters[k];
 
-                // --- Handle individual letter states ---
-                const letterState = getElementState(
-                  ProcessedPosition,
-                  letter.StartTime,
-                  letter.EndTime
-                );
+                                if (!letter.AnimatorStore) {
+                                    letter.AnimatorStore = createLetterSprings();
+                                    letter.AnimatorStore.Scale.SetGoal(LetterScaleSpline.at(0), true);
+                                    letter.AnimatorStore.YOffset.SetGoal(LetterYOffsetSpline.at(0), true);
+                                    letter.AnimatorStore.Glow.SetGoal(GlowSpline.at(0), true);
+                                    // Enable GPU compositing for letter elements
+                                    promoteToGPU(letter.HTMLElement);
+                                }
 
-                // Apply proximity-based animation if an active letter is found
-                if (activeLetterIndex !== -1) {
-                  // Get the base animation values for the active letter
-                  const percentageCount = $simpleLyricsMode.get()
-                    ? getProgressPercentage(ProcessedPosition, word.StartTime, word.EndTime)
-                    : activeLetterPercentage;
+                                let targetScale: number,
+                                    targetYOffset: number,
+                                    targetGlow: number,
+                                    targetGradient: number;
 
-                  const config = SimpleLyricsMode_LetterEffectsStrengthConfig;
-                  const baseScale =
-                  LetterScaleSpline.at(percentageCount) *
-                    ($simpleLyricsMode.get()
-                      ? word.TotalTime > config.LongerThan
-                        ? config.Longer.Scale
-                        : config.Shorter.Scale
-                      : 1);
-                  const baseYOffset =
-                    LetterYOffsetSpline.at(percentageCount) *
-                    ($simpleLyricsMode.get()
-                      ? word.TotalTime > config.LongerThan
-                        ? config.Longer.YOffset
-                        : config.Shorter.YOffset
-                      : 1);
-                  const baseGlow =
-                    GlowSpline.at(percentageCount) *
-                    ($simpleLyricsMode.get()
-                      ? word.TotalTime > config.LongerThan
-                        ? config.Longer.Glow
-                        : config.Shorter.Glow
-                      : 1);
+                                // Find active letter info (needed only for Active state calculation)
+                                let activeLetterIndex = -1;
+                                let activeLetterPercentage = 0;
+                                if (wordState === 'Active' && word.Letters) {
+                                    for (let i = 0; i < word.Letters.length; i++) {
+                                        if (
+                                            getElementState(
+                                                ProcessedPosition,
+                                                word.Letters[i].StartTime,
+                                                word.Letters[i].EndTime
+                                            ) === 'Active'
+                                        ) {
+                                            activeLetterIndex = i;
+                                            activeLetterPercentage = getProgressPercentage(
+                                                ProcessedPosition,
+                                                word.Letters[i].StartTime,
+                                                word.Letters[i].EndTime
+                                            );
+                                            break;
+                                        }
+                                    }
+                                }
 
-                  // Get the resting values
-                  const restingScale = LetterScaleSpline.at(0);
-                  const restingYOffset = LetterYOffsetSpline.at(0);
-                  const restingGlow = GlowSpline.at(0);
+                                // Determine initial targets based on word state
+                                // wordState is Active - Default to resting, then apply proximity-based animation
+                                targetScale = LetterScaleSpline.at(0); // Default active state target is resting
+                                targetYOffset = LetterYOffsetSpline.at(0);
+                                targetGlow = GlowSpline.at(0);
 
-                  // Calculate distance from active letter and apply smooth falloff
-                  const distance = Math.abs(k - activeLetterIndex);
+                                // --- Handle individual letter states ---
+                                const letterState = getElementState(
+                                    ProcessedPosition,
+                                    letter.StartTime,
+                                    letter.EndTime
+                                );
 
-                  // Use a steeper falloff curve for proximity effect
-                  // This creates a more pronounced difference between the active letter and others
-                  // Make the falloff much steeper for a bolder active letter scaling
-                  const falloff = Math.max(0, 1 / (1 + Math.pow(distance, 2.8)));
-                  const glowFalloff = Math.max(0, 1 / (1 + distance * 0.9));
-          
-                  // Apply the proximity-based animation values
-                  targetScale = restingScale + (baseScale - restingScale) * falloff;
-                  targetYOffset = restingYOffset + (baseYOffset - restingYOffset) * falloff;
-                  targetGlow = restingGlow + (baseGlow - restingGlow) * glowFalloff;
-                } // else - if no active letter, targets remain at resting state set above
+                                // Apply proximity-based animation if an active letter is found
+                                if (activeLetterIndex !== -1) {
+                                    // Get the base animation values for the active letter
+                                    const percentageCount = $simpleLyricsMode.get()
+                                        ? getProgressPercentage(ProcessedPosition, word.StartTime, word.EndTime)
+                                        : activeLetterPercentage;
 
-                // Only override values for NotSung letters or for letters in a non-Active word
-                if (letterState === "NotSung" && !$simpleLyricsMode.get()) {
-                  // NotSung letters always use resting values
-                  targetScale = LetterScaleSpline.at(0);
-                  targetYOffset = LetterYOffsetSpline.at(0);
-                  targetGlow = GlowSpline.at(0);
-                } else if (letterState === "Sung" && activeLetterIndex === -1) {
-                  // Only apply SungLetterGlow to letters in words that don't have an active letter
-                  // This preserves our proximity-based animation for active words
-                  targetGlow = GlowSpline.at(SungLetterGlow);
-                }
+                                    const config = SimpleLyricsMode_LetterEffectsStrengthConfig;
+                                    const baseScale =
+                                        LetterScaleSpline.at(percentageCount) *
+                                        ($simpleLyricsMode.get()
+                                            ? word.TotalTime > config.LongerThan
+                                                ? config.Longer.Scale
+                                                : config.Shorter.Scale
+                                            : 1);
+                                    const baseYOffset =
+                                        LetterYOffsetSpline.at(percentageCount) *
+                                        ($simpleLyricsMode.get()
+                                            ? word.TotalTime > config.LongerThan
+                                                ? config.Longer.YOffset
+                                                : config.Shorter.YOffset
+                                            : 1);
+                                    const baseGlow =
+                                        GlowSpline.at(percentageCount) *
+                                        ($simpleLyricsMode.get()
+                                            ? word.TotalTime > config.LongerThan
+                                                ? config.Longer.Glow
+                                                : config.Shorter.Glow
+                                            : 1);
 
-                // --- Determine Gradient based on individual letter state ---
-                if (letterState === "NotSung") {
-                  if ($simpleLyricsMode.get()) {
-                    targetGradient = -50;
-                  } else {
-                    targetGradient = -20;
-                  }
-                } else if (letterState === "Sung") {
-                  targetGradient = 100;
-                } else {
-                  // Active
-                  // Only the *actual* active letter gets the animated gradient
-                  targetGradient =
-                    k === activeLetterIndex ? -20 + 120 * easeSinOut(activeLetterPercentage) : -20;
-                  if ($simpleLyricsMode.get()) {
-                    targetGradient =
-                      k === activeLetterIndex
-                        ? -50 + 120 * easeSinOut(activeLetterPercentage)
-                        : -50;
-                  } else {
-                    targetGradient =
-                      k === activeLetterIndex
-                        ? -20 + 120 * easeSinOut(activeLetterPercentage)
-                        : -20;
-                  }
-                }
+                                    // Get the resting values
+                                    const restingScale = LetterScaleSpline.at(0);
+                                    const restingYOffset = LetterYOffsetSpline.at(0);
+                                    const restingGlow = GlowSpline.at(0);
 
-                // Set spring goals (smooth animation)
-                letter.AnimatorStore.Scale.SetGoal(targetScale);
-                letter.AnimatorStore.YOffset.SetGoal(targetYOffset);
-                letter.AnimatorStore.Glow.SetGoal(targetGlow);
+                                    // Calculate distance from active letter and apply smooth falloff
+                                    const distance = Math.abs(k - activeLetterIndex);
 
-                // Step springs
-                const currentScale = letter.AnimatorStore.Scale.Step(deltaTime);
-                const currentYOffset = letter.AnimatorStore.YOffset.Step(deltaTime);
-                const currentGlow = letter.AnimatorStore.Glow.Step(deltaTime);
+                                    // Use a steeper falloff curve for proximity effect
+                                    // This creates a more pronounced difference between the active letter and others
+                                    // Make the falloff much steeper for a bolder active letter scaling
+                                    const falloff = Math.max(0, 1 / (1 + Math.pow(distance, 2.8)));
+                                    const glowFalloff = Math.max(0, 1 / (1 + distance * 0.9));
 
-                const totalDuration = letter.EndTime - letter.StartTime;
-                // Apply styles from springs and calculated gradient
-                if ($simpleLyricsMode.get()) {
-                  if ($simpleLyricsModeRenderingType.get() === "calculate") {
-                    letter.HTMLElement.style.setProperty(
-                      "--SLM_GradientPosition",
-                      `${targetGradient}%`
-                    );
-                  } else {
-                    if (letterState === "Active" && !letter.SLMAnimated) {
-                      letter.HTMLElement.style.removeProperty("--SLM_GradientPosition");
-                      letter.HTMLElement.style.animation = getSLMAnimation(totalDuration);
-                      letter.SLMAnimated = true;
+                                    // Apply the proximity-based animation values
+                                    targetScale = restingScale + (baseScale - restingScale) * falloff;
+                                    targetYOffset = restingYOffset + (baseYOffset - restingYOffset) * falloff;
+                                    targetGlow = restingGlow + (baseGlow - restingGlow) * glowFalloff;
+                                } // else - if no active letter, targets remain at resting state set above
+
+                                // Only override values for NotSung letters or for letters in a non-Active word
+                                if (letterState === 'NotSung' && !$simpleLyricsMode.get()) {
+                                    // NotSung letters always use resting values
+                                    targetScale = LetterScaleSpline.at(0);
+                                    targetYOffset = LetterYOffsetSpline.at(0);
+                                    targetGlow = GlowSpline.at(0);
+                                } else if (letterState === 'Sung' && activeLetterIndex === -1) {
+                                    // Only apply SungLetterGlow to letters in words that don't have an active letter
+                                    // This preserves our proximity-based animation for active words
+                                    targetGlow = GlowSpline.at(SungLetterGlow);
+                                }
+
+                                // --- Determine Gradient based on individual letter state ---
+                                if (letterState === 'NotSung') {
+                                    if ($simpleLyricsMode.get()) {
+                                        targetGradient = -50;
+                                    } else {
+                                        targetGradient = -20;
+                                    }
+                                } else if (letterState === 'Sung') {
+                                    targetGradient = 100;
+                                } else {
+                                    // Active
+                                    // Only the *actual* active letter gets the animated gradient
+                                    targetGradient =
+                                        k === activeLetterIndex ? -20 + 120 * easeSinOut(activeLetterPercentage) : -20;
+                                    if ($simpleLyricsMode.get()) {
+                                        targetGradient =
+                                            k === activeLetterIndex
+                                                ? -50 + 120 * easeSinOut(activeLetterPercentage)
+                                                : -50;
+                                    } else {
+                                        targetGradient =
+                                            k === activeLetterIndex
+                                                ? -20 + 120 * easeSinOut(activeLetterPercentage)
+                                                : -20;
+                                    }
+                                }
+
+                                // Set spring goals (smooth animation)
+                                letter.AnimatorStore.Scale.SetGoal(targetScale);
+                                letter.AnimatorStore.YOffset.SetGoal(targetYOffset);
+                                letter.AnimatorStore.Glow.SetGoal(targetGlow);
+
+                                // Step springs
+                                const currentScale = letter.AnimatorStore.Scale.Step(deltaTime);
+                                const currentYOffset = letter.AnimatorStore.YOffset.Step(deltaTime);
+                                const currentGlow = letter.AnimatorStore.Glow.Step(deltaTime);
+
+                                const totalDuration = letter.EndTime - letter.StartTime;
+                                // Apply styles from springs and calculated gradient
+                                if ($simpleLyricsMode.get()) {
+                                    if ($simpleLyricsModeRenderingType.get() === 'calculate') {
+                                        letter.HTMLElement.style.setProperty(
+                                            '--SLM_GradientPosition',
+                                            `${targetGradient}%`
+                                        );
+                                    } else {
+                                        if (letterState === 'Active' && !letter.SLMAnimated) {
+                                            letter.HTMLElement.style.removeProperty('--SLM_GradientPosition');
+                                            letter.HTMLElement.style.animation = getSLMAnimation(totalDuration);
+                                            letter.SLMAnimated = true;
+                                        }
+                                        if (letterState === 'NotSung') {
+                                            if (!letter.PreSLMAnimated) {
+                                                letter.HTMLElement.style.animation = 'none';
+                                                letter.HTMLElement.style.setProperty('--SLM_GradientPosition', '-50%');
+                                            }
+                                            letter.SLMAnimated = false;
+                                        }
+                                        if (letterState === 'Sung') {
+                                            letter.HTMLElement.style.animation = 'none';
+                                            letter.HTMLElement.style.setProperty('--SLM_GradientPosition', '100%');
+                                            // letter.HTMLElement.style.animation = getSLMAnimation(0);
+                                            letter.SLMAnimated = false;
+                                        }
+                                    }
+                                } else {
+                                    letter.HTMLElement.style.setProperty('--gradient-position', `${targetGradient}%`);
+                                }
+                                // Use translate3d to ensure GPU-accelerated transforms
+                                setStyleIfChanged(
+                                    letter.HTMLElement,
+                                    'transform',
+                                    `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset * 2}), 0)`,
+                                    0.001
+                                );
+                                setStyleIfChanged(letter.HTMLElement, 'scale', `${currentScale}`, 0.001);
+                                setStyleIfChanged(
+                                    letter.HTMLElement,
+                                    '--text-shadow-blur-radius',
+                                    `${4 + 12 * currentGlow}px`,
+                                    0.5
+                                );
+                                setStyleIfChanged(
+                                    letter.HTMLElement,
+                                    '--text-shadow-opacity',
+                                    `${currentGlow * LetterGlowMultiplier_Opacity}%`,
+                                    1
+                                );
+                            }
+                        } else if (wordState === 'NotSung' && word.Letters) {
+                            for (let k = 0; k < word.Letters.length; k++) {
+                                const letter = word.Letters[k];
+
+                                if (!letter.AnimatorStore) {
+                                    letter.AnimatorStore = createLetterSprings();
+                                    letter.AnimatorStore.Scale.SetGoal(LetterScaleSpline.at(0), true);
+                                    letter.AnimatorStore.YOffset.SetGoal(LetterYOffsetSpline.at(0), true);
+                                    letter.AnimatorStore.Glow.SetGoal(GlowSpline.at(0), true);
+                                    promoteToGPU(letter.HTMLElement);
+                                }
+
+                                letter.AnimatorStore.Scale.SetGoal(LetterScaleSpline.at(0));
+                                letter.AnimatorStore.YOffset.SetGoal(LetterYOffsetSpline.at(0));
+                                letter.AnimatorStore.Glow.SetGoal(GlowSpline.at(0));
+
+                                const currentScale = letter.AnimatorStore.Scale.Step(deltaTime);
+                                const currentYOffset = letter.AnimatorStore.YOffset.Step(deltaTime);
+                                const currentGlow = letter.AnimatorStore.Glow.Step(deltaTime);
+
+                                if ($simpleLyricsMode.get()) {
+                                    letter.HTMLElement.style.animation = 'none';
+                                    letter.HTMLElement.style.setProperty('--SLM_GradientPosition', '-50%');
+                                } else {
+                                    letter.HTMLElement.style.setProperty('--gradient-position', `-20%`);
+                                }
+
+                                setStyleIfChanged(
+                                    letter.HTMLElement,
+                                    'transform',
+                                    `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset * 2}), 0)`,
+                                    0.001
+                                );
+                                setStyleIfChanged(letter.HTMLElement, 'scale', `${currentScale}`, 0.001);
+                                setStyleIfChanged(
+                                    letter.HTMLElement,
+                                    '--text-shadow-blur-radius',
+                                    `${4 + 12 * currentGlow}px`,
+                                    0.5
+                                );
+                                setStyleIfChanged(
+                                    letter.HTMLElement,
+                                    '--text-shadow-opacity',
+                                    `${currentGlow * LetterGlowMultiplier_Opacity}%`,
+                                    1
+                                );
+                            }
+                        } else if (wordState === 'Sung' && word.Letters) {
+                            for (let k = 0; k < word.Letters.length; k++) {
+                                const letter = word.Letters[k];
+
+                                if (!letter.AnimatorStore) {
+                                    letter.AnimatorStore = createLetterSprings();
+                                    letter.AnimatorStore.Scale.SetGoal(LetterScaleSpline.at(0), true);
+                                    letter.AnimatorStore.YOffset.SetGoal(LetterYOffsetSpline.at(0), true);
+                                    letter.AnimatorStore.Glow.SetGoal(GlowSpline.at(0), true);
+                                    promoteToGPU(letter.HTMLElement);
+                                }
+
+                                letter.AnimatorStore.Scale.SetGoal(LetterScaleSpline.at(1));
+                                letter.AnimatorStore.YOffset.SetGoal(LetterYOffsetSpline.at(1));
+                                letter.AnimatorStore.Glow.SetGoal(GlowSpline.at(1));
+
+                                const currentScale = letter.AnimatorStore.Scale.Step(deltaTime);
+                                const currentYOffset = letter.AnimatorStore.YOffset.Step(deltaTime);
+                                const currentGlow = letter.AnimatorStore.Glow.Step(deltaTime);
+
+                                if ($simpleLyricsMode.get()) {
+                                    letter.HTMLElement.style.animation = 'none';
+                                    letter.HTMLElement.style.setProperty('--SLM_GradientPosition', '100%');
+                                } else {
+                                    letter.HTMLElement.style.setProperty('--gradient-position', `100%`);
+                                }
+                                setStyleIfChanged(
+                                    letter.HTMLElement,
+                                    'transform',
+                                    `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset * 2}), 0)`,
+                                    0.001
+                                );
+                                setStyleIfChanged(letter.HTMLElement, 'scale', `${currentScale}`, 0.001);
+                                setStyleIfChanged(
+                                    letter.HTMLElement,
+                                    '--text-shadow-blur-radius',
+                                    `${4 + 12 * currentGlow}px`,
+                                    0.5
+                                );
+                                setStyleIfChanged(
+                                    letter.HTMLElement,
+                                    '--text-shadow-opacity',
+                                    `${currentGlow * LetterGlowMultiplier_Opacity}%`,
+                                    1
+                                );
+                            }
+                        }
                     }
-                    if (letterState === "NotSung") {
-                      if (!letter.PreSLMAnimated) {
-                        letter.HTMLElement.style.animation = "none";
-                        letter.HTMLElement.style.setProperty("--SLM_GradientPosition", "-50%");
-                      }
-                      letter.SLMAnimated = false;
-                    }
-                    if (letterState === "Sung") {
-                      letter.HTMLElement.style.animation = "none";
-                      letter.HTMLElement.style.setProperty("--SLM_GradientPosition", "100%");
-                      // letter.HTMLElement.style.animation = getSLMAnimation(0);
-                      letter.SLMAnimated = false;
-                    }
-                  }
-                } else {
-                  letter.HTMLElement.style.setProperty("--gradient-position", `${targetGradient}%`);
                 }
-                // Use translate3d to ensure GPU-accelerated transforms
-                setStyleIfChanged(
-                  letter.HTMLElement,
-                  "transform",
-                  `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset * 2}), 0)`,
-                  0.001
-                );
-                setStyleIfChanged(letter.HTMLElement, "scale", `${currentScale}`, 0.001);
-                setStyleIfChanged(
-                  letter.HTMLElement,
-                  "--text-shadow-blur-radius",
-                  `${4 + 12 * currentGlow}px`,
-                  0.5
-                );
-                setStyleIfChanged(
-                  letter.HTMLElement,
-                  "--text-shadow-opacity",
-                  `${currentGlow * LetterGlowMultiplier_Opacity}%`,
-                  1
-                );
-              }
-            } else if (wordState === "NotSung" && word.Letters) {
-              for (let k = 0; k < word.Letters.length; k++) {
-                const letter = word.Letters[k];
-
-                if (!letter.AnimatorStore) {
-                  letter.AnimatorStore = createLetterSprings();
-                  letter.AnimatorStore.Scale.SetGoal(LetterScaleSpline.at(0), true);
-                  letter.AnimatorStore.YOffset.SetGoal(LetterYOffsetSpline.at(0), true);
-                  letter.AnimatorStore.Glow.SetGoal(GlowSpline.at(0), true);
-                  promoteToGPU(letter.HTMLElement);
+            } else if (lineState === 'NotSung') {
+                line.HTMLElement.classList.add('NotSung');
+                line.HTMLElement.classList.remove('Sung');
+                if (line.HTMLElement.classList.contains('Active')) {
+                    line.HTMLElement.classList.remove('Active');
                 }
-
-                letter.AnimatorStore.Scale.SetGoal(LetterScaleSpline.at(0));
-                letter.AnimatorStore.YOffset.SetGoal(LetterYOffsetSpline.at(0));
-                letter.AnimatorStore.Glow.SetGoal(GlowSpline.at(0));
-
-                const currentScale = letter.AnimatorStore.Scale.Step(deltaTime);
-                const currentYOffset = letter.AnimatorStore.YOffset.Step(deltaTime);
-                const currentGlow = letter.AnimatorStore.Glow.Step(deltaTime);
-
-                if ($simpleLyricsMode.get()) {
-                  letter.HTMLElement.style.animation = "none";
-                  letter.HTMLElement.style.setProperty("--SLM_GradientPosition", "-50%");
-                } else {
-                  letter.HTMLElement.style.setProperty("--gradient-position", `-20%`);
+                if (line.DotLine && !line.HTMLElement.classList.contains('pre-hidden')) {
+                    line.HTMLElement.classList.add('pre-hidden');
                 }
-
-                setStyleIfChanged(
-                  letter.HTMLElement,
-                  "transform",
-                  `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset * 2}), 0)`,
-                  0.001
-                );
-                setStyleIfChanged(letter.HTMLElement, "scale", `${currentScale}`, 0.001);
-                setStyleIfChanged(
-                  letter.HTMLElement,
-                  "--text-shadow-blur-radius",
-                  `${4 + 12 * currentGlow}px`,
-                  0.5
-                );
-                setStyleIfChanged(
-                  letter.HTMLElement,
-                  "--text-shadow-opacity",
-                  `${currentGlow * LetterGlowMultiplier_Opacity}%`,
-                  1
-                );
-              }
-            } else if (wordState === "Sung" && word.Letters) {
-              for (let k = 0; k < word.Letters.length; k++) {
-                const letter = word.Letters[k];
-
-                if (!letter.AnimatorStore) {
-                  letter.AnimatorStore = createLetterSprings();
-                  letter.AnimatorStore.Scale.SetGoal(LetterScaleSpline.at(0), true);
-                  letter.AnimatorStore.YOffset.SetGoal(LetterYOffsetSpline.at(0), true);
-                  letter.AnimatorStore.Glow.SetGoal(GlowSpline.at(0), true);
-                  promoteToGPU(letter.HTMLElement);
-                }
-
-                letter.AnimatorStore.Scale.SetGoal(LetterScaleSpline.at(1));
-                letter.AnimatorStore.YOffset.SetGoal(LetterYOffsetSpline.at(1));
-                letter.AnimatorStore.Glow.SetGoal(GlowSpline.at(1));
-
-                const currentScale = letter.AnimatorStore.Scale.Step(deltaTime);
-                const currentYOffset = letter.AnimatorStore.YOffset.Step(deltaTime);
-                const currentGlow = letter.AnimatorStore.Glow.Step(deltaTime);
-
-                if ($simpleLyricsMode.get()) {
-                  letter.HTMLElement.style.animation = "none";
-                  letter.HTMLElement.style.setProperty("--SLM_GradientPosition", "100%");
-                } else {
-                  letter.HTMLElement.style.setProperty("--gradient-position", `100%`);
-                }
-                setStyleIfChanged(
-                  letter.HTMLElement,
-                  "transform",
-                  `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset * 2}), 0)`,
-                  0.001
-                );
-                setStyleIfChanged(letter.HTMLElement, "scale", `${currentScale}`, 0.001);
-                setStyleIfChanged(
-                  letter.HTMLElement,
-                  "--text-shadow-blur-radius",
-                  `${4 + 12 * currentGlow}px`,
-                  0.5
-                );
-                setStyleIfChanged(
-                  letter.HTMLElement,
-                  "--text-shadow-opacity",
-                  `${currentGlow * LetterGlowMultiplier_Opacity}%`,
-                  1
-                );
-              }
-            }
-          }
-        }
-      } else if (lineState === "NotSung") {
-        line.HTMLElement.classList.add("NotSung");
-        line.HTMLElement.classList.remove("Sung");
-        if (line.HTMLElement.classList.contains("Active")) {
-          line.HTMLElement.classList.remove("Active");
-        }
-        if (line.DotLine && !line.HTMLElement.classList.contains("pre-hidden")) {
-          line.HTMLElement.classList.add("pre-hidden");
-        }
-        /* const words = line.Syllables.Lead;
+                /* const words = line.Syllables.Lead;
               for (const word of words) {
                   if (word.AnimatorStore && !word.Dot) {
                        word.AnimatorStore.Scale.SetGoal(ScaleSpline.at(0));
@@ -1361,14 +1326,14 @@ export function Animate(position: number): void {
                     }
                   }
               } */
-      } else if (lineState === "Sung") {
-        line.HTMLElement.classList.add("Sung");
-        line.HTMLElement.classList.remove("Active", "NotSung");
-        if (line.DotLine && line.HTMLElement.classList.contains("pre-hidden")) {
-          line.HTMLElement.classList.remove("pre-hidden");
-        }
+            } else if (lineState === 'Sung') {
+                line.HTMLElement.classList.add('Sung');
+                line.HTMLElement.classList.remove('Active', 'NotSung');
+                if (line.DotLine && line.HTMLElement.classList.contains('pre-hidden')) {
+                    line.HTMLElement.classList.remove('pre-hidden');
+                }
 
-        /* // Apply FeelSung class to lines that are at a distance of 2 or more from the active line
+                /* // Apply FeelSung class to lines that are at a distance of 2 or more from the active line
               // Only for non-dot lines (regular lyrics lines)
               if (activeLineIndex !== -1) {
                   // Calculate distance from active line
@@ -1385,59 +1350,59 @@ export function Animate(position: number): void {
                   line.HTMLElement.classList.remove("FeelSung");
               } */
 
-        if (arr.length === index + 1) {
-          /* if (Credits && !Credits.classList.contains("Active")) {
+                if (arr.length === index + 1) {
+                    /* if (Credits && !Credits.classList.contains("Active")) {
             Credits.classList.add("Active");
           } */
-        }
-
-        const checkNextLine = () => {
-          const words = line.Syllables?.Lead;
-          if (!words) return;
-          for (let i = 0; i < words.length; i++) {
-            const word = words[i];
-            if (word.AnimatorStore && !word.Dot) {
-              word.AnimatorStore.Scale.SetGoal(ScaleSpline.at(1));
-              word.AnimatorStore.YOffset.SetGoal(YOffsetSpline.at(1));
-              word.AnimatorStore.Glow.SetGoal(GlowSpline.at(1));
-              const currentScale = word.AnimatorStore.Scale.Step(deltaTime);
-              const currentYOffset = word.AnimatorStore.YOffset.Step(deltaTime);
-              const currentGlow = word.AnimatorStore.Glow.Step(deltaTime);
-              //if (!$simpleLyricsMode.get()) {
-              // Use translate3d to ensure GPU-accelerated transforms
-              setStyleIfChanged(
-                word.HTMLElement,
-                "transform",
-                `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset}), 0)`,
-                0.001
-              );
-              setStyleIfChanged(word.HTMLElement, "scale", `${currentScale}`, 0.001);
-              //}
-              if (!word.LetterGroup) {
-                if ($simpleLyricsMode.get()) {
-                  word.HTMLElement.style.animation = "none";
-                  word.HTMLElement.style.setProperty("--SLM_GradientPosition", "100%");
-                } else {
-                  word.HTMLElement.style.setProperty("--gradient-position", "100%");
                 }
-                setStyleIfChanged(
-                  word.HTMLElement,
-                  "--text-shadow-blur-radius",
-                  `${4 + 2 * currentGlow * 1}px`,
-                  0.5
-                );
-                setStyleIfChanged(
-                  word.HTMLElement,
-                  "--text-shadow-opacity",
-                  `${Math.min(currentGlow * 35, 100)}%`,
-                  1
-                );
-              }
-            } else if (word.AnimatorStore && word.Dot && !word.LetterGroup) {
-              // Handle dot sung state
 
-              // Again - undone
-              /* {
+                const checkNextLine = () => {
+                    const words = line.Syllables?.Lead;
+                    if (!words) return;
+                    for (let i = 0; i < words.length; i++) {
+                        const word = words[i];
+                        if (word.AnimatorStore && !word.Dot) {
+                            word.AnimatorStore.Scale.SetGoal(ScaleSpline.at(1));
+                            word.AnimatorStore.YOffset.SetGoal(YOffsetSpline.at(1));
+                            word.AnimatorStore.Glow.SetGoal(GlowSpline.at(1));
+                            const currentScale = word.AnimatorStore.Scale.Step(deltaTime);
+                            const currentYOffset = word.AnimatorStore.YOffset.Step(deltaTime);
+                            const currentGlow = word.AnimatorStore.Glow.Step(deltaTime);
+                            //if (!$simpleLyricsMode.get()) {
+                            // Use translate3d to ensure GPU-accelerated transforms
+                            setStyleIfChanged(
+                                word.HTMLElement,
+                                'transform',
+                                `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset}), 0)`,
+                                0.001
+                            );
+                            setStyleIfChanged(word.HTMLElement, 'scale', `${currentScale}`, 0.001);
+                            //}
+                            if (!word.LetterGroup) {
+                                if ($simpleLyricsMode.get()) {
+                                    word.HTMLElement.style.animation = 'none';
+                                    word.HTMLElement.style.setProperty('--SLM_GradientPosition', '100%');
+                                } else {
+                                    word.HTMLElement.style.setProperty('--gradient-position', '100%');
+                                }
+                                setStyleIfChanged(
+                                    word.HTMLElement,
+                                    '--text-shadow-blur-radius',
+                                    `${4 + 2 * currentGlow * 1}px`,
+                                    0.5
+                                );
+                                setStyleIfChanged(
+                                    word.HTMLElement,
+                                    '--text-shadow-opacity',
+                                    `${Math.min(currentGlow * 35, 100)}%`,
+                                    1
+                                );
+                            }
+                        } else if (word.AnimatorStore && word.Dot && !word.LetterGroup) {
+                            // Handle dot sung state
+
+                            // Again - undone
+                            /* {
                         const dotGroup = {
                           HTMLElement: word.HTMLElement.parentElement,
                           StartTime: words[0].StartTime,
@@ -1559,289 +1524,266 @@ export function Animate(position: number): void {
                         dotGroup.HTMLElement.style.opacity = easeSinOut(currentOpacity).toString();
                       } */
 
-              word.AnimatorStore.Scale.SetGoal(DotScaleSpline.at(1));
-              word.AnimatorStore.YOffset.SetGoal(DotYOffsetSpline.at(1));
-              word.AnimatorStore.Glow.SetGoal(DotGlowSpline.at(1));
-              word.AnimatorStore.Opacity.SetGoal(DotOpacitySpline.at(1));
+                            word.AnimatorStore.Scale.SetGoal(DotScaleSpline.at(1));
+                            word.AnimatorStore.YOffset.SetGoal(DotYOffsetSpline.at(1));
+                            word.AnimatorStore.Glow.SetGoal(DotGlowSpline.at(1));
+                            word.AnimatorStore.Opacity.SetGoal(DotOpacitySpline.at(1));
 
-              const currentScale = word.AnimatorStore.Scale.Step(deltaTime);
-              const currentYOffset = word.AnimatorStore.YOffset.Step(deltaTime);
-              const currentGlow = word.AnimatorStore.Glow.Step(deltaTime);
-              const currentOpacity = word.AnimatorStore.Opacity.Step(deltaTime);
+                            const currentScale = word.AnimatorStore.Scale.Step(deltaTime);
+                            const currentYOffset = word.AnimatorStore.YOffset.Step(deltaTime);
+                            const currentGlow = word.AnimatorStore.Glow.Step(deltaTime);
+                            const currentOpacity = word.AnimatorStore.Opacity.Step(deltaTime);
 
-              setStyleIfChanged(
-                word.HTMLElement,
-                "transform",
-                `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset ?? 0}), 0)`,
-                0.001
-              );
-              setStyleIfChanged(word.HTMLElement, "scale", `${currentScale}`, 0.001);
-              setStyleIfChanged(word.HTMLElement, "opacity", `${currentOpacity}`, 0.001);
-              setStyleIfChanged(
-                word.HTMLElement,
-                "--text-shadow-blur-radius",
-                `${4 + 6 * currentGlow}px`,
-                0.5
-              );
-              setStyleIfChanged(
-                word.HTMLElement,
-                "--text-shadow-opacity",
-                `${currentGlow * 90}%`,
-                1
-              );
+                            setStyleIfChanged(
+                                word.HTMLElement,
+                                'transform',
+                                `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset ?? 0}), 0)`,
+                                0.001
+                            );
+                            setStyleIfChanged(word.HTMLElement, 'scale', `${currentScale}`, 0.001);
+                            setStyleIfChanged(word.HTMLElement, 'opacity', `${currentOpacity}`, 0.001);
+                            setStyleIfChanged(
+                                word.HTMLElement,
+                                '--text-shadow-blur-radius',
+                                `${4 + 6 * currentGlow}px`,
+                                0.5
+                            );
+                            setStyleIfChanged(word.HTMLElement, '--text-shadow-opacity', `${currentGlow * 90}%`, 1);
+                        }
+                        if (word.LetterGroup && word.Letters) {
+                            for (let k = 0; k < word.Letters.length; k++) {
+                                const letter = word.Letters[k];
+
+                                if (!letter.AnimatorStore) {
+                                    letter.AnimatorStore = createLetterSprings();
+                                    letter.AnimatorStore.Scale.SetGoal(LetterScaleSpline.at(0), true);
+                                    letter.AnimatorStore.YOffset.SetGoal(LetterYOffsetSpline.at(0), true);
+                                    letter.AnimatorStore.Glow.SetGoal(GlowSpline.at(0), true);
+                                }
+
+                                letter.AnimatorStore.Scale.SetGoal(LetterScaleSpline.at(1));
+                                letter.AnimatorStore.YOffset.SetGoal(LetterYOffsetSpline.at(1));
+                                letter.AnimatorStore.Glow.SetGoal(GlowSpline.at(1));
+
+                                const currentScale = letter.AnimatorStore.Scale.Step(deltaTime);
+                                const currentYOffset = letter.AnimatorStore.YOffset.Step(deltaTime);
+                                const currentGlow = letter.AnimatorStore.Glow.Step(deltaTime);
+
+                                if ($simpleLyricsMode.get()) {
+                                    letter.HTMLElement.style.animation = 'none';
+                                    letter.HTMLElement.style.setProperty('--SLM_GradientPosition', '100%');
+                                } else {
+                                    letter.HTMLElement.style.setProperty('--gradient-position', `100%`);
+                                }
+                                setStyleIfChanged(
+                                    letter.HTMLElement,
+                                    'transform',
+                                    `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset * 2}), 0)`,
+                                    0.001
+                                );
+                                setStyleIfChanged(letter.HTMLElement, 'scale', `${currentScale}`, 0.001);
+                                letter.HTMLElement.style.setProperty(
+                                    '--text-shadow-blur-radius',
+                                    `${4 + 12 * currentGlow}px`
+                                );
+                                letter.HTMLElement.style.setProperty(
+                                    '--text-shadow-opacity',
+                                    `${currentGlow * LetterGlowMultiplier_Opacity}%`
+                                );
+                            }
+                        }
+                    }
+                };
+
+                {
+                    const NextLine = arr[index + 1];
+                    if (NextLine) {
+                        const nextLineStatus = getElementState(ProcessedPosition, NextLine.StartTime, NextLine.EndTime);
+                        if (nextLineStatus === 'NotSung' || nextLineStatus === 'Active') {
+                            checkNextLine();
+                        }
+                    } else if (!NextLine) {
+                        checkNextLine();
+                    }
+                }
             }
-            if (word.LetterGroup && word.Letters) {
-              for (let k = 0; k < word.Letters.length; k++) {
-                const letter = word.Letters[k];
+        }
+    } else if (CurrentLyricsType === 'Line') {
+        const arr = LyricsObject.Types.Line.Lines;
 
-                if (!letter.AnimatorStore) {
-                  letter.AnimatorStore = createLetterSprings();
-                  letter.AnimatorStore.Scale.SetGoal(LetterScaleSpline.at(0), true);
-                  letter.AnimatorStore.YOffset.SetGoal(LetterYOffsetSpline.at(0), true);
-                  letter.AnimatorStore.Glow.SetGoal(GlowSpline.at(0), true);
+        for (let index = 0; index < arr.length; index++) {
+            const line = arr[index];
+            if (!line.HTMLElement.isConnected) continue;
+            const lineState = getElementState(ProcessedPosition, line.StartTime, line.EndTime);
+
+            if (lineState === 'Active') {
+                if (Blurring_LastLine !== index) {
+                    applyBlur(arr, index, BlurMultiplier);
+                    //applyScale(arr, index);
+                    Blurring_LastLine = index;
                 }
 
-                letter.AnimatorStore.Scale.SetGoal(LetterScaleSpline.at(1));
-                letter.AnimatorStore.YOffset.SetGoal(LetterYOffsetSpline.at(1));
-                letter.AnimatorStore.Glow.SetGoal(GlowSpline.at(1));
+                if (!line.HTMLElement.classList.contains('Active')) {
+                    line.HTMLElement.classList.add('Active');
+                }
 
-                const currentScale = letter.AnimatorStore.Scale.Step(deltaTime);
-                const currentYOffset = letter.AnimatorStore.YOffset.Step(deltaTime);
-                const currentGlow = letter.AnimatorStore.Glow.Step(deltaTime);
+                if (line.HTMLElement.classList.contains('NotSung')) {
+                    line.HTMLElement.classList.remove('NotSung');
+                }
 
-                if ($simpleLyricsMode.get()) {
-                  letter.HTMLElement.style.animation = "none";
-                  letter.HTMLElement.style.setProperty("--SLM_GradientPosition", "100%");
+                if (line.HTMLElement.classList.contains('Sung')) {
+                    line.HTMLElement.classList.remove('Sung');
+                }
+
+                if (line.DotLine) {
+                    if (ProcessedPosition > line.EndTime - preHiddenDotLineMs) {
+                        if (!line.HTMLElement.classList.contains('pre-hidden')) {
+                            line.HTMLElement.classList.add('pre-hidden');
+                        }
+                    } else {
+                        if (line.HTMLElement.classList.contains('pre-hidden')) {
+                            line.HTMLElement.classList.remove('pre-hidden');
+                        }
+                    }
+                }
+
+                const percentage = getProgressPercentage(ProcessedPosition, line.StartTime, line.EndTime);
+
+                if (line.DotLine && line.Syllables?.Lead) {
+                    const dotArray = line.Syllables.Lead; // Assuming Syllables.Lead holds the dots for DotLine
+                    for (let i = 0; i < dotArray.length; i++) {
+                        const dot = dotArray[i];
+                        const dotState = getElementState(ProcessedPosition, dot.StartTime, dot.EndTime);
+                        const dotPercentage = getProgressPercentage(ProcessedPosition, dot.StartTime, dot.EndTime);
+
+                        // Refactored Dot Animation using Springs for Line Type
+                        if (!dot.AnimatorStore) {
+                            dot.AnimatorStore = createDotSprings();
+                            dot.AnimatorStore.Scale.SetGoal(DotScaleSpline.at(0), true);
+                            dot.AnimatorStore.YOffset.SetGoal(DotYOffsetSpline.at(0), true);
+                            dot.AnimatorStore.Glow.SetGoal(DotGlowSpline.at(0), true);
+                            dot.AnimatorStore.Opacity.SetGoal(DotOpacitySpline.at(0), true);
+                            // Enable GPU compositing for dot elements
+                            promoteToGPU(dot.HTMLElement);
+                        }
+
+                        let targetScale: number;
+                        let targetYOffset: number;
+                        let targetGlow: number;
+                        let targetOpacity: number;
+
+                        if (dotState === 'Active') {
+                            targetScale = DotScaleSpline.at(dotPercentage);
+                            targetYOffset = DotYOffsetSpline.at(dotPercentage);
+                            targetGlow = DotGlowSpline.at(dotPercentage);
+                            targetOpacity = DotOpacitySpline.at(dotPercentage);
+                        } else if (dotState === 'NotSung') {
+                            targetScale = DotScaleSpline.at(0);
+                            targetYOffset = DotYOffsetSpline.at(0);
+                            targetGlow = DotGlowSpline.at(0);
+                            targetOpacity = DotOpacitySpline.at(0);
+                        } else {
+                            // Sung
+                            targetScale = DotScaleSpline.at(1);
+                            targetYOffset = DotYOffsetSpline.at(1);
+                            targetGlow = DotGlowSpline.at(1);
+                            targetOpacity = DotOpacitySpline.at(1);
+                        }
+
+                        dot.AnimatorStore.Scale.SetGoal(targetScale);
+                        dot.AnimatorStore.YOffset.SetGoal(targetYOffset);
+                        dot.AnimatorStore.Glow.SetGoal(targetGlow);
+                        dot.AnimatorStore.Opacity.SetGoal(targetOpacity);
+
+                        const currentScale = dot.AnimatorStore.Scale.Step(deltaTime);
+                        const currentYOffset = dot.AnimatorStore.YOffset.Step(deltaTime);
+                        const currentGlow = dot.AnimatorStore.Glow.Step(deltaTime);
+                        const currentOpacity = dot.AnimatorStore.Opacity.Step(deltaTime);
+
+                        // Use translate3d to ensure GPU-accelerated transforms
+                        queueStyle(
+                            dot.HTMLElement,
+                            'transform',
+                            `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset ?? 0}), 0)`
+                        ); // Use --DefaultLyricsSize?
+                        queueStyle(dot.HTMLElement, 'scale', `${currentScale}`);
+                        queueStyle(dot.HTMLElement, 'opacity', `${currentOpacity}`);
+                        setStyleIfChanged(
+                            dot.HTMLElement,
+                            '--text-shadow-blur-radius',
+                            `${4 + 6 * currentGlow}px`,
+                            0.5
+                        );
+                        setStyleIfChanged(dot.HTMLElement, '--text-shadow-opacity', `${currentGlow * 90}%`, 1);
+                    }
                 } else {
-                  letter.HTMLElement.style.setProperty("--gradient-position", `100%`);
+                    // Existing Line animation (non-dot) -> Refactored to use Spring
+                    if (!line.AnimatorStore) {
+                        line.AnimatorStore = createLineSprings();
+                        line.AnimatorStore.Glow.SetGoal(LineGlowSpline.at(0), true);
+                    }
+
+                    let targetGlow: number;
+                    let targetGradientPos: number;
+
+                    if (lineState === 'Active') {
+                        targetGlow = LineGlowSpline.at(percentage);
+                        targetGradientPos = percentage * 100; // Keep gradient separate from spring for now
+                    } else if (lineState === 'NotSung') {
+                        targetGlow = LineGlowSpline.at(0);
+                        targetGradientPos = -20;
+                    } else {
+                        // Sung
+                        targetGlow = LineGlowSpline.at(1);
+                        targetGradientPos = 100;
+                    }
+
+                    line.AnimatorStore.Glow.SetGoal(targetGlow);
+                    const currentGlow = line.AnimatorStore.Glow.Step(deltaTime);
+
+                    // Apply styles using spring value for glow, keep direct calculation for gradient
+                    if (!$simpleLyricsMode.get()) {
+                        line.HTMLElement.style.setProperty('--gradient-position', `${targetGradientPos}%`);
+                        setStyleIfChanged(
+                            line.HTMLElement,
+                            '--text-shadow-blur-radius',
+                            `${4 + 8 * currentGlow}px`,
+                            0.5
+                        );
+                        setStyleIfChanged(line.HTMLElement, '--text-shadow-opacity', `${currentGlow * 50}%`, 1);
+                    }
                 }
-                setStyleIfChanged(
-                  letter.HTMLElement,
-                  "transform",
-                  `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset * 2}), 0)`,
-                  0.001
-                );
-                setStyleIfChanged(letter.HTMLElement, "scale", `${currentScale}`, 0.001);
-                letter.HTMLElement.style.setProperty(
-                  "--text-shadow-blur-radius",
-                  `${4 + 12 * currentGlow}px`
-                );
-                letter.HTMLElement.style.setProperty(
-                  "--text-shadow-opacity",
-                  `${currentGlow * LetterGlowMultiplier_Opacity}%`
-                );
-              }
-            }
-          }
-        };
-
-        {
-          const NextLine = arr[index + 1];
-          if (NextLine) {
-            const nextLineStatus = getElementState(
-              ProcessedPosition,
-              NextLine.StartTime,
-              NextLine.EndTime
-            );
-            if (nextLineStatus === "NotSung" || nextLineStatus === "Active") {
-              checkNextLine();
-            }
-          } else if (!NextLine) {
-            checkNextLine();
-          }
-        }
-      }
-    }
-  } else if (CurrentLyricsType === "Line") {
-    const arr = LyricsObject.Types.Line.Lines;
-
-    for (let index = 0; index < arr.length; index++) {
-      const line = arr[index];
-      if (!line.HTMLElement.isConnected) continue;
-      const lineState = getElementState(ProcessedPosition, line.StartTime, line.EndTime);
-
-      if (lineState === "Active") {
-        if (Blurring_LastLine !== index) {
-          applyBlur(arr, index, BlurMultiplier);
-          //applyScale(arr, index);
-          Blurring_LastLine = index;
-        }
-
-        if (!line.HTMLElement.classList.contains("Active")) {
-          line.HTMLElement.classList.add("Active");
-        }
-
-        if (line.HTMLElement.classList.contains("NotSung")) {
-          line.HTMLElement.classList.remove("NotSung");
-        }
-
-        if (line.HTMLElement.classList.contains("Sung")) {
-          line.HTMLElement.classList.remove("Sung");
-        }
-
-        if (line.DotLine) {
-          if (ProcessedPosition > line.EndTime - preHiddenDotLineMs) {
-            if (!line.HTMLElement.classList.contains("pre-hidden")) {
-              line.HTMLElement.classList.add("pre-hidden");
-            }
-          } else {
-            if (line.HTMLElement.classList.contains("pre-hidden")) {
-              line.HTMLElement.classList.remove("pre-hidden");
-            }
-          }
-        }
-
-        const percentage = getProgressPercentage(ProcessedPosition, line.StartTime, line.EndTime);
-
-        if (line.DotLine && line.Syllables?.Lead) {
-          const dotArray = line.Syllables.Lead; // Assuming Syllables.Lead holds the dots for DotLine
-          for (let i = 0; i < dotArray.length; i++) {
-            const dot = dotArray[i];
-            const dotState = getElementState(ProcessedPosition, dot.StartTime, dot.EndTime);
-            const dotPercentage = getProgressPercentage(
-              ProcessedPosition,
-              dot.StartTime,
-              dot.EndTime
-            );
-
-            // Refactored Dot Animation using Springs for Line Type
-            if (!dot.AnimatorStore) {
-              dot.AnimatorStore = createDotSprings();
-              dot.AnimatorStore.Scale.SetGoal(DotScaleSpline.at(0), true);
-              dot.AnimatorStore.YOffset.SetGoal(DotYOffsetSpline.at(0), true);
-              dot.AnimatorStore.Glow.SetGoal(DotGlowSpline.at(0), true);
-              dot.AnimatorStore.Opacity.SetGoal(DotOpacitySpline.at(0), true);
-              // Enable GPU compositing for dot elements
-              promoteToGPU(dot.HTMLElement);
-            }
-
-            let targetScale: number;
-            let targetYOffset: number;
-            let targetGlow: number;
-            let targetOpacity: number;
-
-            if (dotState === "Active") {
-              targetScale = DotScaleSpline.at(dotPercentage);
-              targetYOffset = DotYOffsetSpline.at(dotPercentage);
-              targetGlow = DotGlowSpline.at(dotPercentage);
-              targetOpacity = DotOpacitySpline.at(dotPercentage);
-            } else if (dotState === "NotSung") {
-              targetScale = DotScaleSpline.at(0);
-              targetYOffset = DotYOffsetSpline.at(0);
-              targetGlow = DotGlowSpline.at(0);
-              targetOpacity = DotOpacitySpline.at(0);
-            } else {
-              // Sung
-              targetScale = DotScaleSpline.at(1);
-              targetYOffset = DotYOffsetSpline.at(1);
-              targetGlow = DotGlowSpline.at(1);
-              targetOpacity = DotOpacitySpline.at(1);
-            }
-
-            dot.AnimatorStore.Scale.SetGoal(targetScale);
-            dot.AnimatorStore.YOffset.SetGoal(targetYOffset);
-            dot.AnimatorStore.Glow.SetGoal(targetGlow);
-            dot.AnimatorStore.Opacity.SetGoal(targetOpacity);
-
-            const currentScale = dot.AnimatorStore.Scale.Step(deltaTime);
-            const currentYOffset = dot.AnimatorStore.YOffset.Step(deltaTime);
-            const currentGlow = dot.AnimatorStore.Glow.Step(deltaTime);
-            const currentOpacity = dot.AnimatorStore.Opacity.Step(deltaTime);
-
-            // Use translate3d to ensure GPU-accelerated transforms
-            queueStyle(
-              dot.HTMLElement,
-              "transform",
-              `translate3d(0, calc(var(--DefaultLyricsSize) * ${currentYOffset ?? 0}), 0)`
-            ); // Use --DefaultLyricsSize?
-            queueStyle(dot.HTMLElement, "scale", `${currentScale}`);
-            queueStyle(dot.HTMLElement, "opacity", `${currentOpacity}`);
-            setStyleIfChanged(
-              dot.HTMLElement,
-              "--text-shadow-blur-radius",
-              `${4 + 6 * currentGlow}px`,
-              0.5
-            );
-            setStyleIfChanged(
-              dot.HTMLElement,
-              "--text-shadow-opacity",
-              `${currentGlow * 90}%`,
-              1
-            );
-          }
-        } else {
-          // Existing Line animation (non-dot) -> Refactored to use Spring
-          if (!line.AnimatorStore) {
-            line.AnimatorStore = createLineSprings();
-            line.AnimatorStore.Glow.SetGoal(LineGlowSpline.at(0), true);
-          }
-
-          let targetGlow: number;
-          let targetGradientPos: number;
-
-          if (lineState === "Active") {
-            targetGlow = LineGlowSpline.at(percentage);
-            targetGradientPos = percentage * 100; // Keep gradient separate from spring for now
-          } else if (lineState === "NotSung") {
-            targetGlow = LineGlowSpline.at(0);
-            targetGradientPos = -20;
-          } else {
-            // Sung
-            targetGlow = LineGlowSpline.at(1);
-            targetGradientPos = 100;
-          }
-
-          line.AnimatorStore.Glow.SetGoal(targetGlow);
-          const currentGlow = line.AnimatorStore.Glow.Step(deltaTime);
-
-          // Apply styles using spring value for glow, keep direct calculation for gradient
-          if (!$simpleLyricsMode.get()) {
-            line.HTMLElement.style.setProperty("--gradient-position", `${targetGradientPos}%`);
-            setStyleIfChanged(
-              line.HTMLElement,
-              "--text-shadow-blur-radius",
-              `${4 + 8 * currentGlow}px`,
-              0.5
-            );
-            setStyleIfChanged(
-              line.HTMLElement,
-              "--text-shadow-opacity",
-              `${currentGlow * 50}%`,
-              1
-            );
-          }
-        }
-        /* if (Credits?.classList.contains("Active")) {
+                /* if (Credits?.classList.contains("Active")) {
           Credits.classList.remove("Active");
         } */
-      } else if (lineState === "NotSung") {
-        if (!line.HTMLElement.classList.contains("NotSung")) {
-          line.HTMLElement.classList.add("NotSung");
-        }
-        line.HTMLElement.classList.remove("Sung");
-        if (line.HTMLElement.classList.contains("Active")) {
-          line.HTMLElement.classList.remove("Active");
-        }
-        if (line.DotLine && !line.HTMLElement.classList.contains("pre-hidden")) {
-          line.HTMLElement.classList.add("pre-hidden");
-        }
-      } else if (lineState === "Sung") {
-        if (!line.HTMLElement.classList.contains("Sung")) {
-          line.HTMLElement.classList.add("Sung");
-        }
-        line.HTMLElement.classList.remove("Active", "NotSung");
-        if (line.DotLine && line.HTMLElement.classList.contains("pre-hidden")) {
-          line.HTMLElement.classList.remove("pre-hidden");
-        }
+            } else if (lineState === 'NotSung') {
+                if (!line.HTMLElement.classList.contains('NotSung')) {
+                    line.HTMLElement.classList.add('NotSung');
+                }
+                line.HTMLElement.classList.remove('Sung');
+                if (line.HTMLElement.classList.contains('Active')) {
+                    line.HTMLElement.classList.remove('Active');
+                }
+                if (line.DotLine && !line.HTMLElement.classList.contains('pre-hidden')) {
+                    line.HTMLElement.classList.add('pre-hidden');
+                }
+            } else if (lineState === 'Sung') {
+                if (!line.HTMLElement.classList.contains('Sung')) {
+                    line.HTMLElement.classList.add('Sung');
+                }
+                line.HTMLElement.classList.remove('Active', 'NotSung');
+                if (line.DotLine && line.HTMLElement.classList.contains('pre-hidden')) {
+                    line.HTMLElement.classList.remove('pre-hidden');
+                }
 
-        if (arr.length === index + 1) {
-          /* if (Credits && !Credits.classList.contains("Active")) {
+                if (arr.length === index + 1) {
+                    /* if (Credits && !Credits.classList.contains("Active")) {
             Credits.classList.add("Active");
           } */
+                }
+            }
         }
-      }
     }
-  }
-  // Commit any queued style changes after completing the animation computations
-  flushStyleBatch();
+    // Commit any queued style changes after completing the animation computations
+    flushStyleBatch();
 }

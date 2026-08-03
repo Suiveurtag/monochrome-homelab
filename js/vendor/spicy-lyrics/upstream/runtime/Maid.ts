@@ -4,12 +4,7 @@
  * gives DOM observers and cleanup callbacks to this class.
  */
 
-export type MaidItem =
-    | MutationObserver
-    | ResizeObserver
-    | Element
-    | (() => void)
-    | { Destroy?: () => void };
+export type MaidItem = MutationObserver | ResizeObserver | Element | (() => void) | { Destroy?: () => void };
 
 function uuidv4(): string {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
@@ -40,7 +35,7 @@ export class Maid {
             cleanItem(item);
             return item;
         }
-        if (this._items.has(itemKey)) cleanItem(this._items.get(itemKey)!);
+        if (this._items.has(itemKey)) cleanItem(this._items.get(itemKey));
         this._items.set(itemKey, item);
         return item;
     }

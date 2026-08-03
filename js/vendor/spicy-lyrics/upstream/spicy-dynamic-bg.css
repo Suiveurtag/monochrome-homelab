@@ -1,68 +1,79 @@
 /* Base styles for all dynamic backgrounds */
 .spicy-dynamic-bg {
-  height: 100%;
-  left: 0;
-  overflow: hidden;
-  pointer-events: none;
-  position: absolute;
-  top: 0;
-  width: 100%;
-  transform-origin: center center;
-  filter: saturate(2.5) brightness(0.65);
+    height: 100%;
+    left: 0;
+    overflow: hidden;
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    width: 100%;
+    transform-origin: center center;
+    filter: saturate(2.5) brightness(0.65);
 }
 
 body:has(.starrynight-bg-container) #main .spicy-dynamic-bg:not(.StaticBackground),
 body:has(.glassify-bg .bg.animated) #main .spicy-dynamic-bg:not(.StaticBackground) {
-  display: none !important;
+    display: none !important;
 }
 
 aside .spicy-dynamic-bg {
-  border-radius: var(--section-border-radius, 8px);
+    border-radius: var(--section-border-radius, 8px);
 }
 
 /* Container styles */
 .spicy-dynamic-bg-in-this {
-  overflow: hidden;
-  position: relative;
+    overflow: hidden;
+    position: relative;
 }
 
 /* Special styling for side panel */
 aside .spicy-dynamic-bg {
-  max-height: 100%;
-  max-width: 100%;
+    max-height: 100%;
+    max-width: 100%;
 }
 
 aside .spicy-dynamic-bg {
-  filter: brightness(0.6) saturate(2.65);
+    filter: brightness(0.6) saturate(2.65);
 }
 
 @property --sl_videocanvas_mask-stop {
-  syntax: '<percentage>';
-  inherits: false;
-  initial-value: 80%;
+    syntax: '<percentage>';
+    inherits: false;
+    initial-value: 80%;
 }
 
 aside video {
-  --sl_videocanvas_mask-stop: 25%;
-  filter: brightness(0.65);
-  opacity: .95;
-  mask-image: linear-gradient(to bottom, transparent -5%, black 15%, black var(--sl_videocanvas_mask-stop), transparent 100%);
-  transition: --sl_videocanvas_mask-stop 1s cubic-bezier(0,0,0,1), filter 0.2s linear;
+    --sl_videocanvas_mask-stop: 25%;
+
+    filter: brightness(0.65);
+    opacity: 0.95;
+    mask-image: linear-gradient(
+        to bottom,
+        transparent -5%,
+        black 15%,
+        black var(--sl_videocanvas_mask-stop),
+        transparent 100%
+    );
+    transition:
+        --sl_videocanvas_mask-stop 1s cubic-bezier(0, 0, 0, 1),
+        filter 0.2s linear;
 }
 
 aside .main-nowPlayingView-coverArtContainer:not(.XixZ4ftG53tYcM4KohE1, .yiy_EezkGycfPvS3, .pUIBQ9cykHKYx2A2ZIPA) video,
-.main-nowPlayingView-nowPlayingGrid > div:has(video):not(.yiy_EezkGycfPvS3, .XixZ4ftG53tYcM4KohE1, .pUIBQ9cykHKYx2A2ZIPA) video {
-  --sl_videocanvas_mask-stop: 80%;
+.main-nowPlayingView-nowPlayingGrid
+    > div:has(video):not(.yiy_EezkGycfPvS3, .XixZ4ftG53tYcM4KohE1, .pUIBQ9cykHKYx2A2ZIPA)
+    video {
+    --sl_videocanvas_mask-stop: 80%;
 }
 
 aside video:hover {
-  filter: brightness(0.9);
+    filter: brightness(0.9);
 }
 
 .VideoPlayer__container video {
-  filter: none !important;
-  -webkit-mask-image: none !important;
-  mask-image: none !important;
+    filter: none !important;
+    mask-image: none !important;
+    mask-image: none !important;
 }
 
 .main-nowPlayingView-coverArtContainer :is(div, .E08D6ucrHuPJYzzGO7HG):has(video)::before,
@@ -73,76 +84,84 @@ div.UUydeXMsXVZofB0YAOgm:has(.main-trackInfo-container)::before,
 div.main-nowPlayingView-contextItemInfo:has(.main-trackInfo-container)::before,
 div.UUydeXMsXVZofB0YAOgm:has(.main-trackInfo-container)::after,
 div.main-nowPlayingView-contextItemInfo:has(.main-trackInfo-container)::after,
-:is(.main-nowPlayingView-nowPlayingWidget, .NowPlayingView, aside) div:has(> .main-nowPlayingView-coverArtVisualEnhancement) :not(.main-nowPlayingView-coverArtVisualEnhancement):has(video)::before,
-:is(.main-nowPlayingView-nowPlayingWidget, .NowPlayingView, aside) div:has(> .main-nowPlayingView-coverArtVisualEnhancement) :not(.main-nowPlayingView-coverArtVisualEnhancement):has(video)::after {
-  display: none !important;
+:is(.main-nowPlayingView-nowPlayingWidget, .NowPlayingView, aside)
+    div:has(> .main-nowPlayingView-coverArtVisualEnhancement)
+    :not(.main-nowPlayingView-coverArtVisualEnhancement):has(video)::before,
+:is(.main-nowPlayingView-nowPlayingWidget, .NowPlayingView, aside)
+    div:has(> .main-nowPlayingView-coverArtVisualEnhancement)
+    :not(.main-nowPlayingView-coverArtVisualEnhancement):has(video)::after {
+    display: none !important;
 }
 
 aside:has(.spicy-dynamic-bg) > div,
 aside:has(.spicy-dynamic-bg) .AAdBM1nhG73supMfnYX7,
 aside:has(.spicy-dynamic-bg) .iHa_q9pq4un3VNRQgwTx {
-  z-index: 1;
-  position: relative;
+    z-index: 1;
+    position: relative;
 }
 
 /* Low quality mode styles - kept unchanged as requested */
 #SpicyLyricsPage .spicy-dynamic-bg.StaticBackground {
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  filter: brightness(0.55) contrast(1.05) saturate(1.7)
-    blur(var(--StaticBackgroundBlur, 0px));
-  /* The 1.25 upscale crops the transparent fringe blur samples in at the edges. */
-  scale: 1.25;
-  transform: translateX(0);
-  will-change: transform, filter;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    filter: brightness(0.55) contrast(1.05) saturate(1.7) blur(var(--StaticBackgroundBlur, 0));
+
+    /* The 1.25 upscale crops the transparent fringe blur samples in at the edges. */
+    scale: 1.25;
+    transform: translateX(0);
+    will-change: transform, filter;
 }
 
 #SpicyLyricsPage .spicy-dynamic-bg.StaticBackground.transition_In {
-  animation: SDB_StaticBG_T_IN forwards 850ms cubic-bezier(0.66, 0, 0.34, 1);
+    animation: SDB_StaticBG_T_IN forwards 850ms cubic-bezier(0.66, 0, 0.34, 1);
 }
+
 #SpicyLyricsPage .spicy-dynamic-bg.StaticBackground.transition_Out {
-  animation: SDB_StaticBG_T_OUT forwards 850ms cubic-bezier(0.66, 0, 0.34, 1);
+    animation: SDB_StaticBG_T_OUT forwards 850ms cubic-bezier(0.66, 0, 0.34, 1);
 }
 
 @keyframes SDB_StaticBG_T_IN {
-  0% {
-    transform: translateX(100%);
-  }
-  100% {
-    transform: translateX(0);
-  }
+    0% {
+        transform: translateX(100%);
+    }
+
+    100% {
+        transform: translateX(0);
+    }
 }
 
 @keyframes SDB_StaticBG_T_OUT {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-100%);
-  }
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-100%);
+    }
 }
 
 /* Hide sidebar background when in fullscreen lyrics mode */
-body:has(#SpicyLyricsPage.Fullscreen) .Root__right-sidebar
-  aside:is(.NowPlayingView, .spicy-dynamic-bg-in-this)
-  .spicy-dynamic-bg {
-  display: none;
+body:has(#SpicyLyricsPage.Fullscreen)
+    .Root__right-sidebar
+    aside:is(.NowPlayingView, .spicy-dynamic-bg-in-this)
+    .spicy-dynamic-bg {
+    display: none;
 }
 
-.Root__right-sidebar
-  aside#Desktop_PanelContainer_Id:has(.spicy-dynamic-bg)
-  .main-buddyFeed-scrollBarContainer {
-  z-index: 1;
+.Root__right-sidebar aside#Desktop_PanelContainer_Id:has(.spicy-dynamic-bg) .main-buddyFeed-scrollBarContainer {
+    z-index: 1;
 }
 
 #SpicyLyricsPage .spicy-dynamic-bg.ColorBackground {
-  /* background-color: rgba(0, 0, 0, 0.25); */
-  /* background: linear-gradient(var(--ColorBackgroundRotation), var(--DesaturatedColor), var(--VibrantColor), var(--DarkVibrantColor), var(--BaseColor), var(--DesaturatedColor)); */
-  background-color: rgba(var(--MinContrastColor));
-  /* animation: ColorBackgroundBackgroundRotation 20s linear infinite; */
-  transition: background-color 1.5s;
-  filter: none;
+    /* background-color: rgba(0, 0, 0, 0.25); */
+
+    /* background: linear-gradient(var(--ColorBackgroundRotation), var(--DesaturatedColor), var(--VibrantColor), var(--DarkVibrantColor), var(--BaseColor), var(--DesaturatedColor)); */
+    background-color: rgb(var(--MinContrastColor));
+
+    /* animation: ColorBackgroundBackgroundRotation 20s linear infinite; */
+    transition: background-color 1.5s;
+    filter: none;
 }
 
 /* @property --ColorBackgroundRotation {
@@ -152,48 +171,48 @@ body:has(#SpicyLyricsPage.Fullscreen) .Root__right-sidebar
 } */
 
 #SpicyLyricsPage .spicy-dynamic-bg.ColorBackground::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 90%;
-  background-color: rgba(var(--HighContrastColor));
-  mask-image: linear-gradient(to top, transparent, black 145%);
-  z-index: 1;
-  transition: background-color 1.5s;
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 90%;
+    background-color: rgb(var(--HighContrastColor));
+    mask-image: linear-gradient(to top, transparent, black 145%);
+    z-index: 1;
+    transition: background-color 1.5s;
 }
 
 #SpicyLyricsPage .spicy-dynamic-bg.ColorBackground::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0.3;
-  background: linear-gradient(to top, rgb(0, 0, 0), transparent);
-  z-index: 5;
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.3;
+    background: linear-gradient(to top, rgb(0, 0, 0), transparent);
+    z-index: 5;
 }
 
 #SpicyLyricsPage .spicy-dynamic-bg.CanvasBackground {
-  width: 100%;
-  height: 100%;
+    width: 100%;
+    height: 100%;
 }
 
 #SpicyLyricsPage .spicy-dynamic-bg.CanvasBackground video {
-  width: 100%;
-  height: 100%;
+    width: 100%;
+    height: 100%;
 }
 
 #SpicyLyricsPage .spicy-dynamic-bg.ColorBackground {
-  z-index: -1 !important;
+    z-index: -1 !important;
 }
 
 .NowPlayingView .main-nowPlayingView-headerCloseButton {
-  color: var(--spice-text);
-  opacity: .8 !important;
+    color: var(--spice-text);
+    opacity: 0.8 !important;
 }
 
 .NowPlayingView .main-nowPlayingView-headerCloseButton:hover,
 .NowPlayingView .main-nowPlayingView-headerCloseButton:focus {
-  opacity: 1 !important;
+    opacity: 1 !important;
 }

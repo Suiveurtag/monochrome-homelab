@@ -25,7 +25,10 @@ export function pairSelfHostedUploadFiles(files) {
     }));
 }
 
-export async function uploadSelfHostedFilesBatch(files, { authUser, readTrackMetadata, uploadTrack, notify = () => {} } = {}) {
+export async function uploadSelfHostedFilesBatch(
+    files,
+    { authUser, readTrackMetadata, uploadTrack, notify = () => {} } = {}
+) {
     const selectedFiles = Array.isArray(files) ? files : [];
     const uploadPairs = pairSelfHostedUploadFiles(selectedFiles);
     if (selectedFiles.length === 0) {
@@ -39,7 +42,13 @@ export async function uploadSelfHostedFilesBatch(files, { authUser, readTrackMet
 
     if (!authUser) {
         notify('Sign in before uploading music to the server.');
-        return { attemptedCount: uploadPairs.length, successCount: 0, failureCount: 0, authRequired: true, finalMessage: null };
+        return {
+            attemptedCount: uploadPairs.length,
+            successCount: 0,
+            failureCount: 0,
+            authRequired: true,
+            finalMessage: null,
+        };
     }
 
     let successCount = 0;

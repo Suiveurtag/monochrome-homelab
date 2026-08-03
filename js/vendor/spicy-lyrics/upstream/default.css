@@ -1,90 +1,88 @@
 :root {
-  --bg-rotation-degree: 258deg;
-  /* --sltoaster-bottom-padding: 104px; */
+    --bg-rotation-degree: 258deg;
+
+    /* --sltoaster-bottom-padding: 104px; */
 }
 
 :root:has(#SpicyLyricsPage.Fullscreen) {
-  --sltoaster-bottom-padding: 32px;
+    --sltoaster-bottom-padding: 32px;
 }
 
 .main-nowPlayingView-contextItemInfo::before {
-  display: none;
+    display: none;
 }
 
 #SpicyLyricsPage {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  overflow: hidden;
-  height: 100%;
-  container-type: size;
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  font-weight: 700;
-  user-select: none;
-  -webkit-user-drag: none;
-  opacity: 1;
-  transition:
-    left 0.5s cubic-bezier(0.91, 0.04, 0.94, 0.98),
-    transform 0.6s cubic-bezier(0.78, 0, 0.22, 1);
-  will-change: transform;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    height: 100%;
+    container-type: size;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    font-weight: 700;
+    user-select: none;
+    -webkit-user-drag: none;
+    opacity: 1;
+    transition:
+        left 0.5s cubic-bezier(0.91, 0.04, 0.94, 0.98),
+        transform 0.6s cubic-bezier(0.78, 0, 0.22, 1);
+    will-change: transform;
 }
 
 #SpicyLyricsPage.frame_F_Exit {
-  transform: translateY(100%);
+    transform: translateY(100%);
 }
 
 #SpicyLyricsPage.UseSpicyFont,
 #SpicyLyricsPage.UseSpicyFont *,
 .SpicyLyricsFontPixel,
 .SpicyLyricsFontPixel * {
-  font-family: SpicyLyrics, "Noto Sans Georgian", "VazirmatnRegular", sans-serif !important;
+    font-family: SpicyLyrics, 'Noto Sans Georgian', VazirmatnRegular, sans-serif !important;
 }
 
 .Root__main-view:has(#SpicyLyricsPage) .main-view-container__scroll-node-child,
 .Root__main-view:has(#SpicyLyricsPage) .main-view-container__scroll-node-child-spacer,
 .Root__main-view:has(#SpicyLyricsPage) .main-view-container__scroll-node-child,
 .Root__main-view:has(#SpicyLyricsPage) .main-view-container__scroll-node-child-spacer {
-  display: none;
+    display: none;
 }
 
 #SpicyLyricsPage .ViewControls {
-  container-type: size;
-  display: flex;
-  gap: 6px;
-  height: 5cqh;
-  justify-content: center;
-  align-items: center;
-  opacity: 1;
-  transition: opacity 0.3s !important;
-  z-index: 101;
-  --ViewControlSize: 110cqh;
+    container-type: size;
+    display: flex;
+    gap: 6px;
+    height: 5cqh;
+    justify-content: center;
+    align-items: center;
+    opacity: 1;
+    transition: opacity 0.3s !important;
+    z-index: 101;
+
+    --ViewControlSize: 110cqh;
 }
 
-
-
 #SpicyLyricsPage:not(.Fullscreen) .ViewControls {
-  position: absolute;
-  width: 100cqw;
-  opacity: 0;
+    position: absolute;
+    width: 100cqw;
+    opacity: 0;
 }
 
 #SpicyLyricsPage.ViewControlsPosition_Bottom:not(.Fullscreen) .ViewControls {
-  bottom: 24px;
+    bottom: 24px;
 }
 
 #SpicyLyricsPage.ViewControlsPosition_Top:not(.Fullscreen) .ViewControls {
-  top: 24px;
+    top: 24px;
 }
 
 .Root:not(.global-nav) .Root__main-view #SpicyLyricsPage.ViewControlsPosition_Top:not(.Fullscreen) .ViewControls {
-  bottom: 36px;
-  top: unset;
+    bottom: 36px;
+    top: unset;
 }
-
-
 
 /* :root:has(.SpicyBG.BackgroundLayer)
   #SpicyLyricsPage:not(.Fullscreen)
@@ -102,70 +100,75 @@ body.player-floating:has(.glassify-bg) #SpicyLyricsPage:not(.Fullscreen) .ViewCo
 } */
 
 #SpicyLyricsPage:not(.Fullscreen):hover .ViewControls {
-  opacity: 0.7;
+    opacity: 0.7;
 }
 
 #SpicyLyricsPage:not(.Fullscreen) .ViewControls:hover {
-  opacity: 1 !important;
+    opacity: 1 !important;
 }
 
 #SpicyLyricsPage .ViewControls .ViewControl {
-  --ViewControlHeight: var(--ViewControlSize, 100cqh);
-  aspect-ratio: 1;
-  background: var(--material-regular-bg);
-  -webkit-backdrop-filter: var(--material-regular-blur);
-  backdrop-filter: var(--material-regular-blur);
-  border: 0;
-  border-radius: 100rem;
-  display: flex;
-  height: var(--ViewControlHeight);
-  width: var(--ViewControlHeight);
-  -webkit-app-region: no-drag;
-  align-items: center;
-  color: var(--color-text-primary);
-  justify-content: center;
-  text-align: center;
-  -webkit-box-align: center;
-  -webkit-box-pack: center;
-  box-shadow:
-    0 10px 24px -8px rgba(8, 10, 18, 0.42),
-    inset 0 1px 0 rgba(255, 255, 255, 0.36),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.18);
-  transition: scale 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  transform-origin: center;
+    --ViewControlHeight: var(--ViewControlSize, 100cqh);
+
+    aspect-ratio: 1;
+    background: var(--material-regular-bg);
+    backdrop-filter: var(--material-regular-blur);
+    backdrop-filter: var(--material-regular-blur);
+    border: 0;
+    border-radius: 100rem;
+    display: flex;
+    height: var(--ViewControlHeight);
+    width: var(--ViewControlHeight);
+    -webkit-app-region: no-drag;
+    align-items: center;
+    color: var(--color-text-primary);
+    justify-content: center;
+    text-align: center;
+    align-items: center;
+    -webkit-box-pack: center;
+    box-shadow:
+        0 10px 24px -8px rgb(8, 10, 18, 0.42),
+        inset 0 1px 0 rgb(255, 255, 255, 0.36),
+        inset 0 0 0 1px rgb(255, 255, 255, 0.16),
+        inset 0 -1px 0 rgb(255, 255, 255, 0.18);
+    transition:
+        scale 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+        color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center;
 }
 
 #SpicyLyricsPage .ViewControls .ViewControl:hover {
-  scale: 1.015;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow:
-    0 14px 32px -8px rgba(8, 10, 18, 0.5),
-    0 0 22px -4px rgba(255, 255, 255, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.48),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.22),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.24);
+    scale: 1.015;
+    color: #fff;
+    background: rgb(255, 255, 255, 0.12);
+    box-shadow:
+        0 14px 32px -8px rgb(8, 10, 18, 0.5),
+        0 0 22px -4px rgb(255, 255, 255, 0.24),
+        inset 0 1px 0 rgb(255, 255, 255, 0.48),
+        inset 0 0 0 1px rgb(255, 255, 255, 0.22),
+        inset 0 -1px 0 rgb(255, 255, 255, 0.24);
 }
 
 #SpicyLyricsPage .ViewControls .ViewControl:active {
-  scale: 0.94;
+    scale: 0.94;
 }
 
 #SpicyLyricsPage .ViewControls:has(.ViewControl:hover) > .ViewControl:not(:hover) {
-  opacity: 0.78;
+    opacity: 0.78;
 }
 
 #SpicyLyricsPage .ViewControls .ViewControl svg:not(.NoFill) {
-  fill: currentColor;
+    fill: currentcolor;
 }
 
 #SpicyLyricsPage .ViewControls .ViewControl svg.NoFill {
-  fill: none !important;
+    fill: none !important;
 }
 
 #SpicyLyricsPage .ViewControls .ViewControl#Close svg {
-  scale: 1.15;
+    scale: 1.15;
 }
 
 /* #SpicyLyricsPage:not(.Fullscreen, .NowBarSide__Right) .ViewControls:hover {
@@ -193,137 +196,138 @@ body.player-floating:has(.glassify-bg) #SpicyLyricsPage:not(.Fullscreen) .ViewCo
 } */
 
 #SpicyLyricsPage .ViewControls button {
-  cursor: pointer;
+    cursor: pointer;
+}
+
+body:not(.SpicyLyrics_StaticBackground) .Root__right-sidebar:has(.main-nowPlayingView-section, canvas) {
+    --background-tint: color-mix(in srgb, rgb(var(--spice-rgb-selected-row)) 7%, transparent);
+    --spice-card: var(--background-tint);
+    --background-tinted-base: var(--background-tint);
 }
 
 body:not(.SpicyLyrics_StaticBackground)
-  .Root__right-sidebar:has(.main-nowPlayingView-section, canvas) {
-  --background-tint: color-mix(in srgb, rgb(var(--spice-rgb-selected-row)) 7%, transparent);
-  --spice-card: var(--background-tint);
-  --background-tinted-base: var(--background-tint);
+    .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
+    .main-nowPlayingView-content {
+    background: transparent;
 }
 
 body:not(.SpicyLyrics_StaticBackground)
-  .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
-  .main-nowPlayingView-content {
-  background: transparent;
+    .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
+    .main-nowPlayingView-contextItemInfo::before {
+    display: none;
 }
 
 body:not(.SpicyLyrics_StaticBackground)
-  .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
-  .main-nowPlayingView-contextItemInfo:before {
-  display: none;
-}
-
-body:not(.SpicyLyrics_StaticBackground)
-  .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
-  .spicy-dynamic-bg
-  div[data-overlayscrollbars-viewport],
+    .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
+    .spicy-dynamic-bg
+    div[data-overlayscrollbars-viewport],
 .Root__right-sidebar:has(.main-nowPlayingView-section, canvas)
-  .spicy-dynamic-bg
-  div[data-overlayscrollbars-viewport]
-  > div {
-  background: transparent;
+    .spicy-dynamic-bg
+    div[data-overlayscrollbars-viewport]
+    > div {
+    background: transparent;
 }
 
 body:not(.SpicyLyrics_StaticBackground)
-  .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
-  .spicy-dynamic-bg
-  .main-nowPlayingView-coverArtContainer
-  div:has(video)::after,
+    .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
+    .spicy-dynamic-bg
+    .main-nowPlayingView-coverArtContainer
+    div:has(video)::after,
 .Root__right-sidebar:has(.main-nowPlayingView-section, canvas)
-  .spicy-dynamic-bg
-  .main-nowPlayingView-coverArtContainer
-  div:has(video):before {
-  display: none;
+    .spicy-dynamic-bg
+    .main-nowPlayingView-coverArtContainer
+    div:has(video)::before {
+    display: none;
 }
 
 body:not(.SpicyLyrics_StaticBackground)
-  .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
-  .spicy-dynamic-bg
-  .main-trackInfo-artists {
-  filter: brightness(1.15);
-  opacity: 0.75;
+    .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
+    .spicy-dynamic-bg
+    .main-trackInfo-artists {
+    filter: brightness(1.15);
+    opacity: 0.75;
 }
 
 body:not(.SpicyLyrics_StaticBackground)
-  .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
-  .main-nowPlayingView-coverArt {
-  box-shadow: 0 9px 20px 0 rgba(0, 0, 0, 0.271);
-  opacity: 0.95;
+    .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
+    .main-nowPlayingView-coverArt {
+    box-shadow: 0 9px 20px 0 rgb(0, 0, 0, 0.271);
+    opacity: 0.95;
 }
 
 body:not(.SpicyLyrics_StaticBackground)
-  .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
-  .main-nowPlayingView-section:not(:has(.search-searchCategory-carousel)):not(:has(button[type="button"])),
+    .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
+    .main-nowPlayingView-section:not(:has(.search-searchCategory-carousel), :has(button[type='button'])),
 body:not(.SpicyLyrics_StaticBackground)
-  .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
-  .main-nowPlayingView-section.QR9JmVmX9LYwo62NRtew
-  .CvxzmyND_aGd2RR8ZoSr,
+    .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
+    .main-nowPlayingView-section.QR9JmVmX9LYwo62NRtew
+    .CvxzmyND_aGd2RR8ZoSr,
 body:not(.SpicyLyrics_StaticBackground)
-  .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
-  .Uw4tcZdmh7s4BMdgCCuu,
+    .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
+    .Uw4tcZdmh7s4BMdgCCuu,
 body:not(.SpicyLyrics_StaticBackground)
-  .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
-  .main-nowPlayingView-section:is(.main-nowPlayingView-aboutArtist, .main-nowPlayingView-aboutArtistV2) :is(.jHqD4CkJSTwpZihD, .main-nowPlayingView-aboutArtistV2TextContent) {
-  background-color: var(--background-tinted-base) !important;
-  backdrop-filter: blur(6px);
+    .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
+    .main-nowPlayingView-section:is(.main-nowPlayingView-aboutArtist, .main-nowPlayingView-aboutArtistV2)
+    :is(.jHqD4CkJSTwpZihD, .main-nowPlayingView-aboutArtistV2TextContent) {
+    background-color: var(--background-tinted-base) !important;
+    backdrop-filter: blur(6px);
 }
 
 body:not(.SpicyLyrics_StaticBackground)
-  .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
-  .main-nowPlayingView-section.main-nowPlayingView-aboutArtistV2 .main-nowPlayingView-aboutArtistV2TextContent {
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 8px;
-}
-
-
-body:not(.SpicyLyrics_StaticBackground)
-  .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
-  .main-nowPlayingView-section:has(button[type="button"]) {
-  background-color: transparent;
+    .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
+    .main-nowPlayingView-section.main-nowPlayingView-aboutArtistV2
+    .main-nowPlayingView-aboutArtistV2TextContent {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
 }
 
 body:not(.SpicyLyrics_StaticBackground)
-  .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
-  button[type="button"] {
-  /* background-color: var(--background-tinted-base); */
-  background-color: transparent;
-  /* color: hsla(0, 0%, 100%, 0.8); */
+    .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
+    .main-nowPlayingView-section:has(button[type='button']) {
+    background-color: transparent;
 }
 
 body:not(.SpicyLyrics_StaticBackground)
-  .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
-  button[type="button"]
-  .Button-sm-buttonSecondary-isUsingKeyboard-useBrowserDefaultFocusStyle,
+    .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
+    button[type='button'] {
+    /* background-color: var(--background-tinted-base); */
+    background-color: transparent;
+
+    /* color: hsla(0, 0%, 100%, 0.8); */
+}
+
+body:not(.SpicyLyrics_StaticBackground)
+    .Root__right-sidebar:has(.spicy-dynamic-bg):has(.main-nowPlayingView-section, canvas)
+    button[type='button']
+    .Button-sm-buttonSecondary-isUsingKeyboard-useBrowserDefaultFocusStyle,
 .Root__right-sidebar:has(.main-nowPlayingView-section, canvas)
-  button[type="button"]
-  .Button-sm-buttonSecondary-useBrowserDefaultFocusStyle {
-  border: 1px solid hsla(0, 0%, 100%, 0.5);
+    button[type='button']
+    .Button-sm-buttonSecondary-useBrowserDefaultFocusStyle {
+    border: 1px solid hsl(0deg, 0%, 100%, 0.5);
 }
 
 #SpicyLyricsPageSvg {
-  fill: currentColor;
-  transform: translateY(2px);
+    fill: currentcolor;
+    transform: translateY(2px);
 }
 
 .Root:not(.global-nav) #SpicyLyricsPageSvg {
-  transform: translateY(0);
+    transform: translateY(0);
 }
 
 #SpicyLyrics_PopupLyricsButton svg {
-  fill: var(--encore-icon-fill, currentColor);
-  height: var(--encore-icon-height, var(--encore-graphic-size-decorative-base));
-  width: var(--encore-icon-width, var(--encore-graphic-size-decorative-base));
-  transform: translateY(2px);
+    fill: var(--encore-icon-fill, currentColor);
+    height: var(--encore-icon-height, var(--encore-graphic-size-decorative-base));
+    width: var(--encore-icon-width, var(--encore-graphic-size-decorative-base));
+    transform: translateY(2px);
 }
 
 button:has(#SpicyLyricsPageSvg)::after {
-  transform: translateX(-370%) translateY(-40%) !important;
+    transform: translateX(-370%) translateY(-40%) !important;
 }
 
 button:has(#SpicyLyricsPageSvg):not(.main-genericButton-buttonActive, .main-genericButton-buttonActiveDot)::after {
-  content: unset;
+    content: unset;
 }
 
 /* "Page Not Visible" fix */
@@ -333,48 +337,46 @@ button:has(#SpicyLyricsPageSvg):not(.main-genericButton-buttonActive, .main-gene
 .Root__main-view:has(#SpicyLyricsPage) .main-view-container,
 .Root__main-view:has(#SpicyLyricsPage) .main-view-container__scroll-node,
 .Root__main-view:has(#SpicyLyricsPage) .main-view-container .div[data-overlayscrollbars-viewport] {
-  height: 100% !important;
+    height: 100% !important;
 }
 
-body:not(:has(.Root__main-view-overlay #SpicyLyricsPage:is(.Fullscreen)))
-  #SpicyLyrics_FullscreenButton {
-  scale: 1.25;
+body:not(:has(.Root__main-view-overlay #SpicyLyricsPage:is(.Fullscreen))) #SpicyLyrics_FullscreenButton {
+    scale: 1.25;
 }
 
 #SpicyLyrics_FullscreenButton {
-  color: rgba(var(--spice-rgb-selected-row), 0.7) !important;
+    color: rgb(var(--spice-rgb-selected-row), 0.7) !important;
 }
 
 #SpicyLyrics_FullscreenButton svg {
-  fill: currentColor;
+    fill: currentcolor;
 }
 
-body:not(:has(.Root__main-view-overlay .BeautifulLyricsPage:is(.Fullscreen)))
-  #BeautifulLyricsFullscreenButton {
-  scale: 0.85 !important;
-  order: 1000 !important;
-  opacity: 0.65 !important;
+body:not(:has(.Root__main-view-overlay .BeautifulLyricsPage:is(.Fullscreen))) #BeautifulLyricsFullscreenButton {
+    scale: 0.85 !important;
+    order: 1000 !important;
+    opacity: 0.65 !important;
 }
 
 #SpicyLyricsPage .MediaImageContainer,
 #SpicyLyricsPage .MediaContent {
-  user-select: none;
+    user-select: none;
 }
 
 #SpicyLyricsPage .ViewControls svg {
-  aspect-ratio: 1;
-  height: calc(var(--ViewControlSize) * 0.4);
-  width: auto;
+    aspect-ratio: 1;
+    height: calc(var(--ViewControlSize) * 0.4);
+    width: auto;
 }
+
 /* 
 #SpicyLyricsPage.Fullscreen .ViewControls svg {
   height: calc(var(--ViewControlSize)* .4);
 } */
 
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay {
-  z-index: 999;
+    z-index: 999;
 }
-
 
 /* .QdB2YtfEq0ks5O4QbtwX .WRGTOibB8qNEkgPNtMxq:has(#SpicyLyricsPage) *:not(#SpicyLyricsPage),
 .QdB2YtfEq0ks5O4QbtwX:has(#SpicyLyricsPage) .DJcMUKFwkFECf5ksmSfU {
@@ -383,331 +385,331 @@ sl-generic-modal.SpicyLyricsModal .sl-modal-overlay {
 
 #SpicyLyricsPage:not(.Lyrics_RomanizationAvailable) .ViewControls #RomanizationToggle,
 #SpicyLyricsPage:not(.SpicyRenderer) .ViewControls #RomanizationToggle {
-  display: none !important;
+    display: none !important;
 }
 
 #SpicyLyricsPage.CompactifyEnabledCompactMode .ViewControls .ViewControl#CompactModeToggle {
-  display: none !important;
+    display: none !important;
 }
 
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay {
-  .sl-modal-container:has(.update-card-wrapper) {
-    width: min(28rem, 92vw);
-  }
-
-  .update-card-wrapper {
-    display: flex;
-    gap: var(--space-3);
-    flex-direction: column;
-
-    .uc-title {
-      font-size: 1.2rem !important;
-      font-weight: var(--w-semibold);
-      color: var(--color-text-primary);
-      line-height: 1.3;
-      letter-spacing: -0.015em;
-      margin: 0;
+    .sl-modal-container:has(.update-card-wrapper) {
+        width: min(28rem, 92vw);
     }
 
-    .uc-subtitle {
-      font-size: var(--text-body-size) !important;
-      color: var(--color-text-secondary);
-      margin: 0;
-      line-height: 1.45;
-    }
+    .update-card-wrapper {
+        display: flex;
+        gap: var(--space-3);
+        flex-direction: column;
 
-    /* Kept only for the post-update success card (UpdateDialog.tsx).
+        .uc-title {
+            font-size: 1.2rem !important;
+            font-weight: var(--w-semibold);
+            color: var(--color-text-primary);
+            line-height: 1.3;
+            letter-spacing: -0.015em;
+            margin: 0;
+        }
+
+        .uc-subtitle {
+            font-size: var(--text-body-size) !important;
+            color: var(--color-text-secondary);
+            margin: 0;
+            line-height: 1.45;
+        }
+
+        /* Kept only for the post-update success card (UpdateDialog.tsx).
        The update-available flow no longer renders a divider — the
        version row provides its own visual break. */
-    .uc-divider {
-      height: 1px;
-      background: var(--hairline);
-      margin: var(--space-1) 0;
-    }
+        .uc-divider {
+            height: 1px;
+            background: var(--hairline);
+            margin: var(--space-1) 0;
+        }
 
-    /* Flat version display — no inner blur, no triple-inset highlight.
+        /* Flat version display — no inner blur, no triple-inset highlight.
        The accent token does the work; the headline matters more than
        the chrome around it. */
-    .uc-version-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--space-3);
-      padding: 14px var(--space-4);
-      background: var(--accent-tint-bg);
-      box-shadow: inset 0 0 0 1px var(--hairline);
-      border-radius: var(--radius-md);
-      margin: var(--space-1) 0 var(--space-2);
+        .uc-version-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-3);
+            padding: 14px var(--space-4);
+            background: var(--accent-tint-bg);
+            box-shadow: inset 0 0 0 1px var(--hairline);
+            border-radius: var(--radius-md);
+            margin: var(--space-1) 0 var(--space-2);
 
-      .uc-ver {
-        font-size: 1.05rem !important;
-        font-weight: var(--w-semibold);
-        color: var(--color-text-secondary);
-        font-variant-numeric: tabular-nums;
-        letter-spacing: -0.01em;
+            .uc-ver {
+                font-size: 1.05rem !important;
+                font-weight: var(--w-semibold);
+                color: var(--color-text-secondary);
+                font-variant-numeric: tabular-nums;
+                letter-spacing: -0.01em;
 
-        &.new {
-          color: var(--color-text-primary);
+                &.new {
+                    color: var(--color-text-primary);
+                }
+            }
+
+            .uc-arrow {
+                display: inline-flex;
+                align-items: center;
+                color: var(--color-text-tertiary);
+            }
         }
-      }
 
-      .uc-arrow {
-        display: inline-flex;
-        align-items: center;
-        color: var(--color-text-tertiary);
-      }
-    }
-
-    /* New: horizontal action row replaces the stacked full-width pair.
+        /* New: horizontal action row replaces the stacked full-width pair.
        Quiet "Later" sits left, primary "Update now" sits right. The
        hierarchy is unambiguous and the visual weight matches the
        importance of the choice. */
-    .uc-actions {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: var(--space-2);
-      margin-top: var(--space-1);
-    }
+        .uc-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: var(--space-2);
+            margin-top: var(--space-1);
+        }
 
-    button {
-      border: none;
-      border-radius: var(--radius-sm);
-      padding: 9px 18px;
-      font-size: var(--text-body-size) !important;
-      font-weight: var(--w-semibold);
-      cursor: pointer;
-      transition:
-        background-color 0.15s var(--ease-standard),
-        box-shadow 0.15s var(--ease-standard),
-        color 0.15s var(--ease-standard),
-        transform 0.12s ease;
-      letter-spacing: 0.01em;
+        button {
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 9px 18px;
+            font-size: var(--text-body-size) !important;
+            font-weight: var(--w-semibold);
+            cursor: pointer;
+            transition:
+                background-color 0.15s var(--ease-standard),
+                box-shadow 0.15s var(--ease-standard),
+                color 0.15s var(--ease-standard),
+                transform 0.12s ease;
+            letter-spacing: 0.01em;
 
-      &:active {
-        transform: scale(0.97);
-      }
-    }
+            &:active {
+                transform: scale(0.97);
+            }
+        }
 
-    .btn-primary,
-    .btn-update {
-      background-color: var(--accent);
-      color: var(--accent-on-fill);
+        .btn-primary,
+        .btn-update {
+            background-color: var(--accent);
+            color: var(--accent-on-fill);
 
-      &:hover {
-        background-color: var(--accent-hover);
-      }
-    }
+            &:hover {
+                background-color: var(--accent-hover);
+            }
+        }
 
-    /* Quiet text-style button. No background until hover. Used as the
+        /* Quiet text-style button. No background until hover. Used as the
        "Later" affordance — it should let the user dismiss without
        drawing attention to the act of dismissing. */
-    .btn-quiet {
-      background-color: transparent;
-      color: var(--color-text-secondary);
-      box-shadow: none;
-      padding: 9px 14px;
+        .btn-quiet {
+            background-color: transparent;
+            color: var(--color-text-secondary);
+            box-shadow: none;
+            padding: 9px 14px;
 
-      &:hover {
-        background-color: var(--accent-tint-bg);
-        color: var(--color-text-primary);
-      }
-    }
-
-    .btn-secondary {
-      background-color: var(--accent-tint-bg);
-      color: var(--color-text-primary);
-      box-shadow: inset 0 0 0 1px var(--hairline);
-      border: 0;
-
-      &:hover {
-        background-color: var(--accent-tint-bg-hover);
-        box-shadow: inset 0 0 0 1px var(--hairline-strong);
-      }
-    }
-
-    /* Data migration variant — centered icon-led message. */
-    &.migration-card {
-      align-items: center;
-      text-align: center;
-
-      .udc-icon-wrap {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 52px;
-        height: 52px;
-        border-radius: 50%;
-        background: var(--accent-tint-bg);
-        box-shadow: inset 0 0 0 1px var(--hairline);
-        margin-bottom: 2px;
-        flex-shrink: 0;
-
-        .udc-migrate-svg {
-          width: 24px;
-          height: 24px;
-          color: var(--color-text-primary);
+            &:hover {
+                background-color: var(--accent-tint-bg);
+                color: var(--color-text-primary);
+            }
         }
-      }
 
-      .udc-desc {
-        color: var(--color-text-secondary);
-        max-width: 22rem;
-        line-height: 1.55;
-      }
+        .btn-secondary {
+            background-color: var(--accent-tint-bg);
+            color: var(--color-text-primary);
+            box-shadow: inset 0 0 0 1px var(--hairline);
+            border: 0;
 
-      button {
-        width: 100%;
-      }
+            &:hover {
+                background-color: var(--accent-tint-bg-hover);
+                box-shadow: inset 0 0 0 1px var(--hairline-strong);
+            }
+        }
+
+        /* Data migration variant — centered icon-led message. */
+        &.migration-card {
+            align-items: center;
+            text-align: center;
+
+            .udc-icon-wrap {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 52px;
+                height: 52px;
+                border-radius: 50%;
+                background: var(--accent-tint-bg);
+                box-shadow: inset 0 0 0 1px var(--hairline);
+                margin-bottom: 2px;
+                flex-shrink: 0;
+
+                .udc-migrate-svg {
+                    width: 24px;
+                    height: 24px;
+                    color: var(--color-text-primary);
+                }
+            }
+
+            .udc-desc {
+                color: var(--color-text-secondary);
+                max-width: 22rem;
+                line-height: 1.55;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+
+        .btn-discord {
+            background-color: #5865f2;
+            color: #fff;
+
+            &:hover {
+                background-color: #6872f5;
+            }
+        }
+
+        a {
+            color: var(--color-text-primary);
+            font-weight: var(--w-semibold);
+            text-decoration: none;
+
+            &:hover {
+                text-decoration: underline;
+            }
+        }
     }
-
-    .btn-discord {
-      background-color: #5865f2;
-      color: #ffffff;
-
-      &:hover {
-        background-color: #6872f5;
-      }
-    }
-
-    a {
-      color: var(--color-text-primary);
-      font-weight: var(--w-semibold);
-      text-decoration: none;
-
-      &:hover {
-        text-decoration: underline;
-      }
-    }
-  }
 }
 
-
-
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay {
-  .dev-tools-wrapper {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-
-    .dt-section-label {
-      font-size: var(--text-footnote-size) !important;
-      font-weight: var(--w-semibold);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--color-text-tertiary);
-      padding: 0 2px;
-      margin-bottom: 4px;
-    }
-
-    .dt-setting {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-4);
-      padding: var(--space-3) var(--space-4);
-      border-radius: var(--radius-md);
-      transition: background var(--dur-fast) var(--ease-standard);
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.05);
-      }
-
-      .dt-setting-info {
+    .dev-tools-wrapper {
         display: flex;
         flex-direction: column;
-        gap: 3px;
-        min-width: 0;
-      }
+        gap: 4px;
 
-      .dt-setting-name {
-        font-size: var(--text-headline-size) !important;
-        font-weight: var(--w-semibold);
-        color: var(--color-text-primary);
-        white-space: nowrap;
-      }
-
-      .dt-setting-desc {
-        font-size: var(--text-caption-size) !important;
-        font-weight: var(--w-regular);
-        color: var(--color-text-tertiary);
-      }
-    }
-
-    .dt-btn {
-      border: none;
-      border-radius: var(--radius-sm);
-      padding: 8px 16px;
-      font-size: var(--text-caption-size) !important;
-      font-weight: var(--w-semibold);
-      cursor: pointer;
-      white-space: nowrap;
-      flex-shrink: 0;
-      letter-spacing: 0.01em;
-      min-height: var(--tap-min);
-      transition: background-color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
-      width: 132px;
-
-      &:active {
-        transform: scale(0.97);
-      }
-
-      &.dt-btn-primary {
-        background-color: var(--accent);
-        color: var(--accent-on-fill);
-
-        &:hover {
-          background-color: var(--accent-hover);
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+        .dt-section-label {
+            font-size: var(--text-footnote-size) !important;
+            font-weight: var(--w-semibold);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--color-text-tertiary);
+            padding: 0 2px;
+            margin-bottom: 4px;
         }
-      }
 
-      &.dt-btn-danger {
-        background-color: rgba(255, 255, 255, 0.06);
-        -webkit-backdrop-filter: blur(8px) saturate(1.4);
-        backdrop-filter: blur(8px) saturate(1.4);
-        color: var(--color-text-primary);
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.18),
-          inset 0 0 0 1px var(--hairline-strong),
-          inset 0 -1px 0 rgba(255, 255, 255, 0.14);
-        border: 0;
+        .dt-setting {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius-md);
+            transition: background var(--dur-fast) var(--ease-standard);
 
-        &:hover {
-          background-color: rgba(255, 255, 255, 0.11);
-          box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.24),
-            inset 0 0 0 1px rgba(255, 255, 255, 0.28),
-            inset 0 -1px 0 rgba(255, 255, 255, 0.16);
+            &:hover {
+                background: rgb(255, 255, 255, 0.05);
+            }
+
+            .dt-setting-info {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                min-width: 0;
+            }
+
+            .dt-setting-name {
+                font-size: var(--text-headline-size) !important;
+                font-weight: var(--w-semibold);
+                color: var(--color-text-primary);
+                white-space: nowrap;
+            }
+
+            .dt-setting-desc {
+                font-size: var(--text-caption-size) !important;
+                font-weight: var(--w-regular);
+                color: var(--color-text-tertiary);
+            }
         }
-      }
+
+        .dt-btn {
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 8px 16px;
+            font-size: var(--text-caption-size) !important;
+            font-weight: var(--w-semibold);
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+            letter-spacing: 0.01em;
+            min-height: var(--tap-min);
+            transition:
+                background-color 0.18s ease,
+                box-shadow 0.18s ease,
+                transform 0.12s ease;
+            width: 132px;
+
+            &:active {
+                transform: scale(0.97);
+            }
+
+            &.dt-btn-primary {
+                background-color: var(--accent);
+                color: var(--accent-on-fill);
+
+                &:hover {
+                    background-color: var(--accent-hover);
+                    box-shadow: 0 4px 14px rgb(0, 0, 0, 0.2);
+                }
+            }
+
+            &.dt-btn-danger {
+                background-color: rgb(255, 255, 255, 0.06);
+                backdrop-filter: blur(8px) saturate(1.4);
+                backdrop-filter: blur(8px) saturate(1.4);
+                color: var(--color-text-primary);
+                box-shadow:
+                    inset 0 1px 0 rgb(255, 255, 255, 0.18),
+                    inset 0 0 0 1px var(--hairline-strong),
+                    inset 0 -1px 0 rgb(255, 255, 255, 0.14);
+                border: 0;
+
+                &:hover {
+                    background-color: rgb(255, 255, 255, 0.11);
+                    box-shadow:
+                        inset 0 1px 0 rgb(255, 255, 255, 0.24),
+                        inset 0 0 0 1px rgb(255, 255, 255, 0.28),
+                        inset 0 -1px 0 rgb(255, 255, 255, 0.16);
+                }
+            }
+        }
     }
-  }
 }
 
 sl-generic-modal.SpicyLyricsModal .sl-modal,
 sl-generic-modal.SpicyLyricsModal .sl-modal .sl-modal-container {
-  border-radius: var(--radius-lg);
+    border-radius: var(--radius-lg);
 }
 
 .sl-modal-main-section:has(.scroll-x-hidden) {
-  overflow-x: hidden;
+    overflow-x: hidden;
 }
-
 
 .Root.global-nav .Root__main-view:has(#SpicyLyricsPage) > header,
 .Root.global-nav .Root__main-view:has(#SpicyLyricsPage) > .main-topBar-container {
-  display: none !important;
+    display: none !important;
 }
 
 .sl-modal:has(.hidden-modal-header-style) .sl-modal-header {
-  /* border-bottom: none !important;
+    /* border-bottom: none !important;
   padding: 24px 46px 0px !important;
   margin-bottom: -40px !important;
   position: relative;
   z-index: 104; */
 
-  display: none;
+    display: none;
 }
 
 /* .sl-modal:has(.slm.hidden-modal-header-style) .sl-modal-content {
@@ -748,42 +750,42 @@ sl-generic-modal.SpicyLyricsModal .sl-modal .sl-modal-container {
    polyfill rule on `.sl-modal-overlay` (loaded later, sets bg to the active
    tint). Both selectors match the same element. */
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay.sl-modal-overlay-animated {
-  background-color: rgba(0, 0, 0, 0);
-  transition: background-color 0.22s cubic-bezier(0.23, 1, 0.32, 1);
+    background-color: rgb(0, 0, 0, 0);
+    transition: background-color 0.22s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay.sl-modal-overlay-animated.Active {
-  background-color: rgba(0, 0, 0, 0.45);
+    background-color: rgb(0, 0, 0, 0.45);
 }
 
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay-animated .sl-modal::before {
-  transition:
-    background-color 0.22s cubic-bezier(0.23, 1, 0.32, 1),
-    box-shadow 0.22s cubic-bezier(0.23, 1, 0.32, 1),
-    -webkit-backdrop-filter 0.22s cubic-bezier(0.23, 1, 0.32, 1),
-    backdrop-filter 0.22s cubic-bezier(0.23, 1, 0.32, 1);
+    transition:
+        background-color 0.22s cubic-bezier(0.23, 1, 0.32, 1),
+        box-shadow 0.22s cubic-bezier(0.23, 1, 0.32, 1),
+        -webkit-backdrop-filter 0.22s cubic-bezier(0.23, 1, 0.32, 1),
+        backdrop-filter 0.22s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay-animated:not(.Active) .sl-modal::before {
-  background-color: rgba(22, 22, 22, 0);
-  -webkit-backdrop-filter: blur(0px) saturate(1);
-  backdrop-filter: blur(0px) saturate(1);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0),
-    inset 0 0 0 1px rgba(255, 255, 255, 0),
-    0 0 0 0 rgba(0, 0, 0, 0),
-    0 0 0 0 rgba(0, 0, 0, 0);
-  transform: scale(0.96);
+    background-color: rgb(22, 22, 22, 0);
+    backdrop-filter: blur(0) saturate(1);
+    backdrop-filter: blur(0) saturate(1);
+    box-shadow:
+        inset 0 1px 0 rgb(255, 255, 255, 0),
+        inset 0 0 0 1px rgb(255, 255, 255, 0),
+        0 0 0 0 rgb(0, 0, 0, 0),
+        0 0 0 0 rgb(0, 0, 0, 0);
+    transform: scale(0.96);
 }
 
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay-animated .sl-modal-container > *,
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay-animated .sl-modal-container-large > * {
-  transition: opacity 0.22s cubic-bezier(0.23, 1, 0.32, 1);
+    transition: opacity 0.22s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay-animated:not(.Active) .sl-modal-container > *,
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay-animated:not(.Active) .sl-modal-container-large > * {
-  opacity: 0;
+    opacity: 0;
 }
 
 /* Modal scale: 0.96 → 1 on enter (never from scale(0) — looks like it
@@ -800,56 +802,55 @@ sl-generic-modal.SpicyLyricsModal .sl-modal-overlay-animated:not(.Active) .sl-mo
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay-animated .sl-modal::before,
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay-animated .sl-modal-container,
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay-animated .sl-modal-container-large {
-  transition: transform 0.22s cubic-bezier(0.23, 1, 0.32, 1);
-  will-change: transform;
-  transform: scale(0.96);
+    transition: transform 0.22s cubic-bezier(0.23, 1, 0.32, 1);
+    will-change: transform;
+    transform: scale(0.96);
 }
 
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay-animated.Active .sl-modal::before,
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay-animated.Active .sl-modal-container,
 sl-generic-modal.SpicyLyricsModal .sl-modal-overlay-animated.Active .sl-modal-container-large {
-  transform: scale(1);
+    transform: scale(1);
 }
 
 #SpicyLyricsPage .ContentBox.LyricsHidden .ViewControls #NowBarSideToggle {
-  display: none !important;
+    display: none !important;
 }
 
 #SpicyLyricsPage.episode-content-type .ContentBox .NowBar .Heart {
-  opacity: 0 !important;
-  pointer-events: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 
 .SL_spinAnimation {
-  animation: SL_spin 0.8s linear infinite;
+    animation: SL_spin 0.8s linear infinite;
 }
 
 @keyframes SL_spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .Root__right-sidebar aside {
-  border-radius: var(--radius-sm);
-  overflow: hidden;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
 }
 
-
-.main-genericButton-button.main-genericButton-buttonActiveDot:after {
-  content: "";
-  background-color: var(--spice-button);
-  border-radius: 50%;
-  width: 4px;
-  height: 4px;
-  display: block;
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translate(-50%);
-  inline-size: 4px !important;
+.main-genericButton-button.main-genericButton-buttonActiveDot::after {
+    content: '';
+    background-color: var(--spice-button);
+    border-radius: 50%;
+    width: 4px;
+    height: 4px;
+    display: block;
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translate(-50%);
+    inline-size: 4px !important;
 }
-
