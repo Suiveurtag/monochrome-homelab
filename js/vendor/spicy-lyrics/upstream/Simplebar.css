@@ -127,15 +127,11 @@
     pointer-events: none;
     -webkit-touch-callout: none;
     user-select: none;
-    user-select: none;
-    user-select: none;
 }
 
 #SpicyLyricsPage [data-simplebar].simplebar-dragging .simplebar-content {
     pointer-events: none;
     -webkit-touch-callout: none;
-    user-select: none;
-    user-select: none;
     user-select: none;
 }
 

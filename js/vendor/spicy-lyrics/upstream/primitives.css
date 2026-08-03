@@ -13,20 +13,17 @@
 .sl-glass--ultraThin {
     background: var(--material-ultraThin-bg);
     backdrop-filter: var(--material-ultraThin-blur);
-    backdrop-filter: var(--material-ultraThin-blur);
     box-shadow: var(--liquid-edge);
 }
 
 .sl-glass--regular {
     background: var(--material-regular-bg);
     backdrop-filter: var(--material-regular-blur);
-    backdrop-filter: var(--material-regular-blur);
     box-shadow: var(--liquid-edge);
 }
 
 .sl-glass--thick {
     background: var(--material-thick-bg);
-    backdrop-filter: var(--material-thick-blur);
     backdrop-filter: var(--material-thick-blur);
     box-shadow: var(--liquid-edge-strong);
 }
@@ -37,14 +34,12 @@
 .sl-glass--liquid {
     background: var(--material-thick-bg);
     backdrop-filter: var(--material-thick-blur);
-    backdrop-filter: var(--material-thick-blur);
     box-shadow: var(--liquid-cast), var(--liquid-edge-strong);
 }
 
 /* ─── Card (translucent surface with refractive edge) ─────────────────── */
 .sl-card {
     background: rgb(255, 255, 255, 0.03);
-    backdrop-filter: blur(8px) saturate(1.4);
     backdrop-filter: blur(8px) saturate(1.4);
     border-radius: var(--radius-md);
     padding: var(--space-3);
@@ -129,7 +124,6 @@
 .sl-button--primary {
     background: rgb(255, 255, 255, 0.14);
     backdrop-filter: blur(12px) saturate(1.5);
-    backdrop-filter: blur(12px) saturate(1.5);
     color: var(--color-text-primary);
     box-shadow:
         inset 0 1px 0 rgb(255, 255, 255, 0.36),
@@ -148,7 +142,6 @@
 
 .sl-button--secondary {
     background: rgb(255, 255, 255, 0.05);
-    backdrop-filter: blur(8px) saturate(1.4);
     backdrop-filter: blur(8px) saturate(1.4);
     color: var(--color-text-primary);
     box-shadow:

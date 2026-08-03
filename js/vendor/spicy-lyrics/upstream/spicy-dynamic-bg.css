@@ -73,7 +73,6 @@ aside video:hover {
 .VideoPlayer__container video {
     filter: none !important;
     mask-image: none !important;
-    mask-image: none !important;
 }
 
 .main-nowPlayingView-coverArtContainer :is(div, .E08D6ucrHuPJYzzGO7HG):has(video)::before,

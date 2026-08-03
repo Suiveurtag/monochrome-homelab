@@ -10,7 +10,6 @@
 
     animation: skeleton 1s linear infinite;
     backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
     background: linear-gradient(
         -45deg,
         var(--ColorStop1) var(--ValueStop1),
@@ -236,15 +235,6 @@
         transparent 100%,
         transparent
     );
-    mask-image: linear-gradient(
-        90deg,
-        transparent 0,
-        #fff 2.5cqw,
-        #000 2.5cqw,
-        #000 calc(100% - 3.75cqw),
-        transparent 100%,
-        transparent
-    );
 }
 
 #SpicyLyricsPage .ContentBox .NowBar .Header .Metadata .SongName span {
@@ -264,15 +254,6 @@
     opacity: 0.7;
     max-width: 80cqw;
     overflow: hidden;
-    mask-image: linear-gradient(
-        90deg,
-        transparent 0,
-        #fff 2.5cqw,
-        #000 2.5cqw,
-        #000 calc(100% - 3.75cqw),
-        transparent 100%,
-        transparent
-    );
     mask-image: linear-gradient(
         90deg,
         transparent 0,
@@ -666,7 +647,6 @@
     background: var(--material-regular-bg) !important;
     border: 0 !important;
     backdrop-filter: var(--material-regular-blur) !important;
-    backdrop-filter: var(--material-regular-blur) !important;
     box-shadow:
         0 10px 24px -8px rgb(8, 10, 18, 0.42),
         inset 0 1px 0 rgb(255, 255, 255, 0.36),
@@ -853,7 +833,6 @@
     overflow: hidden;
     background: var(--material-regular-bg);
     backdrop-filter: var(--material-regular-blur);
-    backdrop-filter: var(--material-regular-blur);
     box-shadow:
         0 6px 18px -8px rgb(8, 10, 18, 0.35),
         inset 0 1px 0 rgb(255, 255, 255, 0.36),
@@ -997,7 +976,6 @@
     .VolumeControl {
     overflow: hidden;
     background: var(--material-regular-bg);
-    backdrop-filter: var(--material-regular-blur);
     backdrop-filter: var(--material-regular-blur);
     box-shadow:
         0 10px 24px -8px rgb(8, 10, 18, 0.42),
