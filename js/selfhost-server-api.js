@@ -1,5 +1,5 @@
 import { pb } from './accounts/config.js';
-import { getArtworkSources } from './artwork-media.js';
+import { isVideoArtwork } from './animated-artwork.js';
 
 export const SELFHOST_TRACKS_COLLECTION = 'music_tracks';
 export const FALLBACK_COVER = '/assets/appicon.png';
@@ -39,12 +39,11 @@ export function mapPocketBaseTrack(record, client = pb) {
     const albumArtist = record.album_artist || artistName;
     const audioUrl = pocketBaseFileUrl(client, record, record.audio);
     const coverUrl = pocketBaseFileUrl(client, record, record.cover) || FALLBACK_COVER;
-    const storedFallbackUrl = pocketBaseFileUrl(client, record, record.cover_fallback);
-    const artwork = getArtworkSources({ cover: coverUrl, coverFallback: storedFallbackUrl });
+    const videoCoverUrl = isVideoArtwork(coverUrl) ? coverUrl : null;
     const artist = {
         id: stableId('selfhost-artist', artistName),
         name: artistName,
-        picture: artwork.static,
+        picture: coverUrl,
     };
 
     return {
@@ -70,45 +69,17 @@ export function mapPocketBaseTrack(record, client = pb) {
         album: {
             id: stableId('selfhost-album', `${albumArtist}|${albumTitle}`),
             title: albumTitle,
-            cover: artwork.static,
-            animatedCover: artwork.animated,
-            coverFallback: artwork.static,
+            cover: coverUrl,
+            videoCoverUrl,
             releaseDate: record.release_date || null,
-            artist: { id: stableId('selfhost-artist', albumArtist), name: albumArtist, picture: artwork.static },
+            artist: { id: stableId('selfhost-artist', albumArtist), name: albumArtist, picture: coverUrl },
         },
         serverAudioUrl: audioUrl,
         serverCoverUrl: coverUrl,
-        serverCoverFallbackUrl: artwork.static,
+        videoCoverUrl,
         mediaMetadata: { tags: ['Self-hosted'] },
         lyrics: record.lyrics || '',
         importSource: record.source_provider || null,
-    };
-}
-
-export function mergeSelfHostedTrackMetadata(serverTrack, cachedTrack) {
-    if (!cachedTrack) return serverTrack;
-    return {
-        ...serverTrack,
-        ...cachedTrack,
-        // PocketBase is authoritative for fields enriched after an import.
-        // Older IndexedDB snapshots often predate the lyrics/ISRC import step.
-        lyrics: serverTrack.lyrics || cachedTrack.lyrics || '',
-        isrc: serverTrack.isrc || cachedTrack.isrc || null,
-        spotifyId: serverTrack.spotifyId || cachedTrack.spotifyId || null,
-        spotifyUrl: serverTrack.spotifyUrl || cachedTrack.spotifyUrl || null,
-        serverAudioUrl: serverTrack.serverAudioUrl,
-        serverCoverUrl: serverTrack.serverCoverUrl,
-        serverCoverFallbackUrl: serverTrack.serverCoverFallbackUrl,
-        artist: { ...serverTrack.artist, ...cachedTrack.artist },
-        artists: cachedTrack.artists?.length ? cachedTrack.artists : serverTrack.artists,
-        album: {
-            ...serverTrack.album,
-            ...cachedTrack.album,
-            cover: serverTrack.album?.cover || cachedTrack.album?.cover,
-            animatedCover: serverTrack.album?.animatedCover || cachedTrack.album?.animatedCover,
-            coverFallback: serverTrack.album?.coverFallback || cachedTrack.album?.coverFallback,
-            artist: { ...serverTrack.album?.artist, ...cachedTrack.album?.artist },
-        },
     };
 }
 
@@ -153,12 +124,7 @@ export async function listSpotifyImports(client = pb, fetchImpl = fetch) {
 }
 
 export async function cancelSpotifyImport(id, client = pb, fetchImpl = fetch) {
-    return authenticatedImportRequest(
-        `/api/selfhost/imports/${encodeURIComponent(id)}/cancel`,
-        { method: 'POST' },
-        client,
-        fetchImpl
-    );
+    return authenticatedImportRequest(`/api/selfhost/imports/${encodeURIComponent(id)}/cancel`, { method: 'POST' }, client, fetchImpl);
 }
 
 export async function markSpotifyImportPlaylistCreated(id, client = pb) {
@@ -166,7 +132,7 @@ export async function markSpotifyImportPlaylistCreated(id, client = pb) {
     return client.collection('music_import_jobs').update(id, { playlist_created: true });
 }
 
-export function createTrackFormData(track, file, ownerId, coverFile = null, coverFallbackFile = null) {
+export function createTrackFormData(track, file, ownerId, coverFile = null) {
     if (!ownerId) throw new Error('You must be signed in to upload music.');
     if (!file) throw new Error('Missing audio file.');
 
@@ -183,7 +149,6 @@ export function createTrackFormData(track, file, ownerId, coverFile = null, cove
     formData.set('lyrics', track?.lyrics || '');
     formData.set('audio', file);
     if (coverFile) formData.set('cover', coverFile);
-    if (coverFallbackFile) formData.set('cover_fallback', coverFallbackFile);
     return formData;
 }
 
@@ -225,16 +190,16 @@ export async function importRemoteSelfHostedTrack(payload, client = pb, fetchImp
     return mapPocketBaseTrack(result.record, client);
 }
 
-export async function uploadSelfHostedTrack(track, file, coverFile = null, client = pb, coverFallbackFile = null) {
+export async function uploadSelfHostedTrack(track, file, coverFile = null, client = pb) {
     if (!client?.authStore?.isValid) throw new Error('You must be signed in to upload music.');
     const ownerId = client.authStore.model?.id || client.authStore.model?.$id;
     const record = await client
         .collection(SELFHOST_TRACKS_COLLECTION)
-        .create(createTrackFormData(track, file, ownerId, coverFile, coverFallbackFile));
+        .create(createTrackFormData(track, file, ownerId, coverFile));
     return mapPocketBaseTrack(record, client);
 }
 
-export async function updateSelfHostedTrack(id, track, coverFile = null, client = pb, coverFallbackFile = null) {
+export async function updateSelfHostedTrack(id, track, coverFile = null, client = pb) {
     if (!client?.authStore?.isValid) throw new Error('You must be signed in to edit music.');
     if (!id) throw new Error('Missing track id.');
 
@@ -249,7 +214,6 @@ export async function updateSelfHostedTrack(id, track, coverFile = null, client 
     formData.set('explicit', String(Boolean(track?.explicit)));
     formData.set('lyrics', track?.lyrics || '');
     if (coverFile) formData.set('cover', coverFile);
-    if (coverFallbackFile) formData.set('cover_fallback', coverFallbackFile);
 
     const record = await client.collection(SELFHOST_TRACKS_COLLECTION).update(id, formData);
     return mapPocketBaseTrack(record, client);

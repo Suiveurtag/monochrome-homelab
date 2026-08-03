@@ -13,38 +13,42 @@ Visit `http://localhost:3000`
 ### Development
 
 ```bash
-docker compose --profile dev up -d
+./monochrome dev
 ```
 
 Visit `http://localhost:5173` (hot-reload enabled)
+
+This is the recommended Codex Desktop workflow. Vite runs directly on the host, so frontend changes are visible immediately without a Docker build. Docker only runs PocketBase and a development SpotiFLAC importer. The importer's source is mounted and its lightweight watcher automatically recompiles and restarts it when a Go file changes.
+
+The first run builds the importer toolchain image. Later source changes do not rebuild it. Rebuild that image only after changing `docker/Dockerfile.importer.dev` or the pinned SpotiFLAC version.
+
+PocketBase is available at `http://localhost:8090/_/`; its data is kept in `./pb_data`. The importer is available through Vite's `/api/selfhost` proxy and directly at `http://localhost:8787/health`.
+
+The development profile creates a local PocketBase superuser with `admin@example.com` / `changeme`. Set `PB_ADMIN_EMAIL` and `PB_ADMIN_PASSWORD` before starting Compose to override these credentials, and do not reuse the default password outside local development.
+
+Stop only Vite with `Ctrl+C`. PocketBase and the importer intentionally stay running so the next start is fast. Stop the complete development stack with:
+
+```bash
+./monochrome down
+```
+
+Use `./monochrome logs` or `./monochrome status` for diagnostics. `npm run dev:stack` and `npm run dev:down` are equivalent aliases.
 
 ---
 
 ## How It Works
 
-### Profiles
+### Development orchestration
 
-Docker Compose [profiles](https://docs.docker.com/compose/how-tos/profiles/) control which services start. A service with no profile always runs. A service with a profile only runs when that profile is activated.
+The root `docker-compose.yml` is the canonical production and infrastructure definition. `./monochrome dev` deliberately starts only `pocketbase`, `pocketbase-dev-init`, and `selfhost-importer-dev`; it does not start or rebuild the production frontend and importer.
 
-| Command                                                   | What starts                          |
-| --------------------------------------------------------- | ------------------------------------ |
-| `docker compose up -d`                                    | Monochrome                           |
-| `docker compose --profile pocketbase up -d`               | Monochrome + PocketBase              |
-| `docker compose --profile dev up -d`                      | Monochrome + Dev server              |
-| `docker compose --profile dev --profile pocketbase up -d` | Monochrome + Dev server + PocketBase |
+| Process | Development runtime | Reload behavior |
+| ------- | ------------------- | --------------- |
+| Frontend | Host Vite process on port 5173 | Vite HMR/full reload |
+| PocketBase | Docker on port 8090 | Restart after changing migrations |
+| SpotiFLAC importer | Docker dev toolchain on port 8787 | Automatic Go recompile and restart |
 
-In `docker-compose.yml`, it looks like this:
-
-```yaml
-services:
-    monochrome: # no profile -- always starts
-
-    pocketbase:
-        profiles: ['pocketbase'] # opt-in
-
-    monochrome-dev:
-        profiles: ['dev'] # opt-in
-```
+The `dev` Compose profile contains only development support containers. Use the launcher rather than invoking the profile directly, because Compose would otherwise also select services without a profile.
 
 ### Override File
 
@@ -108,10 +112,10 @@ Monochrome uses Appwrite for user authentication. While it defaults to official 
 
 ### Database (PocketBase)
 
-Monochrome uses PocketBase to store user data (playlists, favorites, profiles, etc.). You can run it alongside Monochrome using the `pocketbase` profile:
+Monochrome uses PocketBase to store user data (playlists, favorites, profiles, etc.). It is part of the production stack, or can be started alone for diagnostics:
 
 ```bash
-docker compose --profile pocketbase up -d
+docker compose up -d pocketbase
 ```
 
 #### PocketBase Schema Note
@@ -131,13 +135,10 @@ Portainer can deploy directly from your GitHub fork with auto-updates on push.
 3. Compose path: `docker-compose.yml`
 4. If your fork has a `docker-compose.override.yml`, Portainer loads it automatically
 5. Under **Environment variables**, add:
-    - `COMPOSE_PROFILES=pocketbase` (to enable PocketBase -- omit if not needed)
     - `PB_ADMIN_EMAIL=your@email.com`
     - `PB_ADMIN_PASSWORD=your_secure_password`
     - Any other variables from `.env.example`
 6. Enable **GitOps updates** to auto-redeploy on push
-
-> **Tip:** `COMPOSE_PROFILES` is a built-in Docker Compose variable. Setting it to `pocketbase` is equivalent to passing `--profile pocketbase` on the command line.
 
 > **Warning:** The `dev` profile is for **local development only**. It uses volume mounts to enable hot-reload, which requires the source code to be present on the host machine. Do **not** include `dev` in `COMPOSE_PROFILES` on Portainer deployments from GitHub - it will fail because there's no local source code to mount.
 
@@ -165,10 +166,10 @@ docker compose logs -f pocketbase
 docker compose up -d --build
 
 # Stop everything (include all profiles you started)
-docker compose --profile pocketbase down
+docker compose down
 
 # Stop and remove volumes (data loss!)
-docker compose --profile pocketbase down -v
+docker compose down -v
 
 # Backup PocketBase data
 docker compose exec pocketbase tar czf - /pb_data > backup.tar.gz
@@ -183,11 +184,11 @@ docker compose exec pocketbase tar xzf - -C / < backup.tar.gz
 
 ### Production (Dockerfile)
 
-Node.js Alpine image (multi-arch: amd64 + arm64). Installs dependencies, runs `vite build`, then serves the built files with `vite preview` on port 4173.
+The Bun builder installs dependencies and runs `vite build`; nginx serves the static result on port 4173.
 
-### Development (Dockerfile.dev)
+### Development
 
-Node.js Alpine image with source code mounted as a volume for hot-reload.
+Vite runs on the host. `Dockerfile.importer.dev` contains the reusable Go/SpotiFLAC toolchain; `services/spotiflac-importer/dev-watch.sh` recompiles mounted backend source without rebuilding the image.
 
 ### Files
 
@@ -198,5 +199,5 @@ Node.js Alpine image with source code mounted as a volume for hot-reload.
 | `.env.example`                | Environment variable template |       Yes        |
 | `.env`                        | Your local configuration      |        No        |
 | `Dockerfile`                  | Production build              |       Yes        |
-| `Dockerfile.dev`              | Development build             |       Yes        |
+| `Dockerfile.importer.dev`     | Backend development toolchain |       Yes        |
 | `.dockerignore`               | Build context exclusions      |       Yes        |

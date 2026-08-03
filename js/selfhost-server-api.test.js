@@ -8,7 +8,6 @@ import {
     importRemoteSelfHostedTrack,
     listSelfHostedTracks,
     mapPocketBaseTrack,
-    mergeSelfHostedTrackMetadata,
     pocketBaseFileUrl,
     updateSelfHostedTrack,
 } from './selfhost-server-api.js';
@@ -33,7 +32,6 @@ describe('selfhost-server-api helpers', () => {
             lyrics: '[00:01.00] Local lyrics',
             audio: 'song.flac',
             cover: 'cover.jpg',
-            cover_fallback: 'cover-fallback.gif',
             created: '2026-06-24 10:00:00Z',
             updated: '2026-06-24 10:01:00Z',
         };
@@ -55,40 +53,8 @@ describe('selfhost-server-api helpers', () => {
                 releaseDate: '2026-06-24',
                 artist: { name: 'Album Artist' },
                 cover: 'http://monochrome.local/api/files/cover.jpg',
-                coverFallback: 'http://monochrome.local/api/files/cover.jpg',
             },
             serverAudioUrl: 'http://monochrome.local/api/files/song.flac',
-        });
-    });
-
-    test('keeps server lyrics when an older IndexedDB snapshot has empty lyrics', () => {
-        const merged = mergeSelfHostedTrackMetadata(
-            {
-                id: 'track1',
-                title: 'Server title',
-                lyrics: '<tt><body><div><p begin="1s" end="2s">Server lyrics</p></div></body></tt>',
-                isrc: 'SERVER-ISRC',
-                serverAudioUrl: '/server.flac',
-                album: { title: 'Album', cover: '/server.jpg', artist: { name: 'Server artist' } },
-                artist: { name: 'Server artist' },
-            },
-            {
-                id: 'track1',
-                title: 'Cached title',
-                lyrics: '',
-                isrc: null,
-                serverAudioUrl: 'stale.flac',
-                album: { title: 'Album', cover: '/stale.jpg' },
-                artist: { name: 'Cached artist' },
-            }
-        );
-
-        expect(merged).toMatchObject({
-            title: 'Cached title',
-            lyrics: expect.stringContaining('Server lyrics'),
-            isrc: 'SERVER-ISRC',
-            serverAudioUrl: '/server.flac',
-            album: { cover: '/server.jpg' },
         });
     });
 
@@ -117,26 +83,16 @@ describe('selfhost-server-api helpers', () => {
         expect(formData.get('audio')).toBe(file);
     });
 
-    test('maps an MP4 cover to animated artwork while retaining its static fallback', () => {
-        const pb = { files: { getURL: vi.fn((_record, filename) => `/files/${filename}`) } };
+    test('maps an uploaded MP4 cover as animated track and album artwork', () => {
+        const pb = { files: { getURL: vi.fn((_record, filename) => `/api/files/${filename}`) } };
         const track = mapPocketBaseTrack(
-            {
-                id: 'animated1',
-                title: 'Animated',
-                artist: 'Artist',
-                album: 'Album',
-                audio: 'song.flac',
-                cover: 'cover.mp4',
-                cover_fallback: 'cover.jpg',
-            },
+            { id: 'animated', title: 'Song', artist: 'Artist', album: 'Album', audio: 'song.flac', cover: 'cover.mp4' },
             pb
         );
 
-        expect(track.album).toMatchObject({
-            cover: '/files/cover.jpg',
-            coverFallback: '/files/cover.jpg',
-            animatedCover: '/files/cover.mp4',
-        });
+        expect(track.videoCoverUrl).toBe('/api/files/cover.mp4');
+        expect(track.album.videoCoverUrl).toBe('/api/files/cover.mp4');
+        expect(track.album.cover).toBe('/api/files/cover.mp4');
     });
 
     test('updates editable metadata and an optional cover without replacing audio', async () => {
@@ -157,7 +113,6 @@ describe('selfhost-server-api helpers', () => {
             files: { getURL: vi.fn((_record, filename) => `/files/${filename}`) },
         };
         const cover = new File(['cover'], 'cover.webp', { type: 'image/webp' });
-        const coverFallback = new File(['fallback'], 'fallback.png', { type: 'image/png' });
 
         const result = await updateSelfHostedTrack(
             'track1',
@@ -171,8 +126,7 @@ describe('selfhost-server-api helpers', () => {
                 lyrics: '[00:01.00] Local lyrics',
             },
             cover,
-            client,
-            coverFallback
+            client
         );
 
         const [, formData] = update.mock.calls[0];
@@ -184,7 +138,6 @@ describe('selfhost-server-api helpers', () => {
         expect(formData.get('explicit')).toBe('true');
         expect(formData.get('lyrics')).toBe('[00:01.00] Local lyrics');
         expect(formData.get('cover')).toBe(cover);
-        expect(formData.get('cover_fallback')).toBe(coverFallback);
         expect(formData.has('audio')).toBe(false);
         expect(result).toMatchObject({ id: 'track1', title: 'New title', serverAudioUrl: '/files/song.flac' });
     });

@@ -6,7 +6,7 @@ import { MusicAPI } from './music-api.js';
 import { apiSettings } from './storage.js';
 import { debounce, escapeHtml } from './utils.js';
 import { Player } from './player.js';
-import { getArtworkSources, isSupportedImageArtworkFile, setArtworkBackground } from './artwork-media.js';
+import { MAX_ARTWORK_BYTES, isSupportedArtworkFile, setArtworkBackground } from './animated-artwork.js';
 
 // objects execution february 29th 2027
 
@@ -41,6 +41,8 @@ const api = new MusicAPI(apiSettings);
 
 async function uploadImage(file) {
     try {
+        if (!isSupportedArtworkFile(file)) throw new Error('Choose an image, GIF, or MP4 file');
+        if (file.size > MAX_ARTWORK_BYTES) throw new Error('File exceeds 100MB');
         const fileNameWithoutSpace = file.name.replace(/\s/g, '_');
         const response = await fetch(`https://worker.uploads.monochrome.qzz.io/${fileNameWithoutSpace}`, {
             method: 'PUT',
@@ -97,8 +99,8 @@ function setupImageUploadControl(idPrefix) {
         const file = e.target.files[0];
         if (!file) return;
 
-        if (!isSupportedImageArtworkFile(file)) {
-            alert('Please select a PNG, JPG, WebP, AVIF or GIF file');
+        if (!isSupportedArtworkFile(file)) {
+            alert('Please select an image, GIF, or MP4 file');
             return;
         }
 
@@ -178,9 +180,7 @@ function normalizeProfileStatus(rawStatus) {
     const type = raw.type === 'album' ? 'album' : 'track';
     const id = normalizeString(raw.id || raw.trackId || raw.albumId);
     const title = normalizeString(raw.title || raw.name || raw.text?.split(' - ')[0]);
-    const subtitle = normalizeString(
-        raw.subtitle || raw.artist || raw.artistName || raw.text?.split(' - ').slice(1).join(' - ')
-    );
+    const subtitle = normalizeString(raw.subtitle || raw.artist || raw.artistName || raw.text?.split(' - ').slice(1).join(' - '));
     const image = normalizeString(raw.image || raw.cover || raw.artwork);
     const link = normalizeStatusLink(type, id, raw.link || raw.href || raw.url);
 
@@ -234,10 +234,7 @@ function normalizeFavoriteAlbum(album) {
 
 function normalizeFavoriteAlbums(albums) {
     if (!Array.isArray(albums)) return [];
-    return albums
-        .map((album) => normalizeFavoriteAlbum(album))
-        .filter(Boolean)
-        .slice(0, 5);
+    return albums.map((album) => normalizeFavoriteAlbum(album)).filter(Boolean).slice(0, 5);
 }
 
 export async function loadProfile(username) {
@@ -295,12 +292,8 @@ export async function loadProfile(username) {
     const normalizedStatus = normalizeProfileStatus(profile.status);
 
     document.getElementById('profile-display-name').textContent = profile.display_name || username;
-    if (profile.banner) {
-        setArtworkBackground(document.getElementById('profile-banner'), getArtworkSources(profile.banner).static);
-    }
-    if (profile.avatar_url) {
-        document.getElementById('profile-avatar').src = getArtworkSources(profile.avatar_url).static;
-    }
+    setArtworkBackground(document.getElementById('profile-banner'), profile.banner);
+    if (profile.avatar_url) document.getElementById('profile-avatar').src = profile.avatar_url;
 
     if (normalizedStatus) {
         const statusEl = document.getElementById('profile-status');

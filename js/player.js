@@ -24,7 +24,7 @@ import { audioContextManager } from './audio-context.js';
 import { isIos, isSafari } from './platform-detection.js';
 import { db } from './db.js';
 import { getProxyUrl } from './proxy-utils.js';
-import { getArtworkSources } from './artwork-media.js';
+import { isVideoArtwork } from './animated-artwork.js';
 
 import { SVG_CLOCK, SVG_ATMOS } from './icons.js';
 import { UIRenderer } from './ui.js';
@@ -222,7 +222,7 @@ export class Player {
     _setupAnimatedCoverSync() {
         const syncPlayPause = () => {
             const isPaused = this.activeElement.paused;
-            document.querySelectorAll('.cover').forEach((el) => {
+            document.querySelectorAll('.cover, #fullscreen-cover-image').forEach((el) => {
                 if (el.tagName === 'VIDEO' && el !== this.video) {
                     if (isPaused) {
                         el.pause();
@@ -367,28 +367,46 @@ export class Player {
                 const artistEl = document.querySelector('.now-playing-bar .artist');
 
                 if (coverEl) {
-                    const artwork = getArtworkSources(track.album || track.cover || track.image);
-                    const coverUrl = this.api.getCoverUrl(artwork.static);
-                    const coverSrcset = this.api.getCoverSrcset(artwork.static);
+                    const videoCoverUrl = track.videoUrl || track.videoCoverUrl || track.album?.videoCoverUrl || null;
+                    const coverId = track.image || track.cover || track.album?.cover;
+                    const coverUrl = videoCoverUrl || this.api.getCoverUrl(coverId);
+                    const coverSrcset = videoCoverUrl ? null : this.api.getCoverSrcset(coverId);
 
-                    const setImgSrcset = (img) => {
-                        if (img.getAttribute('src') !== coverUrl) img.src = coverUrl;
-                        if (coverSrcset) {
-                            img.setAttribute('srcset', coverSrcset);
-                            img.setAttribute('sizes', '(max-width: 640px) 160px, (max-width: 1024px) 320px, 640px');
-                        } else {
-                            img.removeAttribute('srcset');
-                            img.removeAttribute('sizes');
+                    if (videoCoverUrl) {
+                        if (coverEl.tagName === 'IMG') {
+                            const video = document.createElement('video');
+                            video.src = videoCoverUrl;
+                            video.autoplay = true;
+                            video.loop = true;
+                            video.muted = true;
+                            video.playsInline = true;
+                            video.className = coverEl.className;
+                            video.id = coverEl.id;
+                            video.style.objectFit = 'cover';
+                            coverEl.replaceWith(video);
+                        } else if (coverEl.tagName === 'VIDEO' && coverEl.src !== videoCoverUrl) {
+                            coverEl.src = videoCoverUrl;
                         }
-                    };
-                    if (coverEl.tagName === 'VIDEO') {
-                        const img = document.createElement('img');
-                        img.className = coverEl.className;
-                        img.id = coverEl.id;
-                        setImgSrcset(img);
-                        coverEl.replaceWith(img);
                     } else {
-                        setImgSrcset(coverEl);
+                        const setImgSrcset = (img) => {
+                            if (img.getAttribute('src') !== coverUrl) img.src = coverUrl;
+                            if (coverSrcset) {
+                                img.setAttribute('srcset', coverSrcset);
+                                img.setAttribute('sizes', '(max-width: 640px) 160px, (max-width: 1024px) 320px, 640px');
+                            } else {
+                                img.removeAttribute('srcset');
+                                img.removeAttribute('sizes');
+                            }
+                        };
+                        if (coverEl.tagName === 'VIDEO') {
+                            const img = document.createElement('img');
+                            img.className = coverEl.className;
+                            img.id = coverEl.id;
+                            setImgSrcset(img);
+                            coverEl.replaceWith(img);
+                        } else {
+                            setImgSrcset(coverEl);
+                        }
                     }
                 }
                 if (titleEl) {
@@ -935,10 +953,42 @@ export class Player {
 
     async updateVideoCovers(videoUrl) {
         if (!videoUrl) return;
-        const overlay = document.getElementById('fullscreen-cover-overlay');
-        if (overlay?.style.display === 'flex' && UIRenderer.instance && this.currentTrack) {
-            await UIRenderer.instance.renderFullscreenArtwork(this.currentTrack);
-        }
+
+        const syncCover = async (el) => {
+            if (!el) return;
+            const isPaused = this.activeElement.paused;
+            let videoEl;
+            if (el.tagName === 'IMG') {
+                videoEl = document.createElement('video');
+                videoEl.autoplay = !isPaused;
+                videoEl.loop = true;
+                videoEl.muted = true;
+                videoEl.playsInline = true;
+                videoEl.className = el.className;
+                videoEl.id = el.id;
+                videoEl.style.objectFit = 'cover';
+                el.replaceWith(videoEl);
+            } else if (el.tagName === 'VIDEO') {
+                videoEl = el;
+            } else {
+                return;
+            }
+
+            if (UIRenderer.instance) {
+                await UIRenderer.instance.setupHlsVideo(videoEl, videoUrl, null);
+                if (isPaused) {
+                    videoEl.pause();
+                } else {
+                    videoEl.play().catch(() => {});
+                }
+            }
+        };
+
+        const playerBarCover = document.querySelector('.now-playing-bar .cover');
+        if (playerBarCover) await syncCover(playerBarCover);
+
+        const fullscreenCover = document.getElementById('fullscreen-cover-image');
+        if (fullscreenCover) await syncCover(fullscreenCover);
     }
 
     async playTrackFromQueue(startTime = 0, recursiveCount = 0, isRetry = false, options = {}) {
@@ -1002,12 +1052,7 @@ export class Player {
         const trackArtistsHTML = getTrackArtistsHTML(track);
         const yearDisplay = getTrackYearDisplay(track);
 
-        if (
-            !track.videoUrl &&
-            !track.videoCoverUrl &&
-            !track.album?.videoCoverUrl &&
-            !getArtworkSources(track.album).animated
-        ) {
+        if (!track.videoUrl && !track.videoCoverUrl && !track.album?.videoCoverUrl) {
             this.api.getVideoArtwork(trackTitle, artistName).then((result) => {
                 if (this.currentTrack?.id === track.id && result && (result.videoUrl || result.hlsUrl)) {
                     track.videoCoverUrl = result.videoUrl || result.hlsUrl;
@@ -1087,25 +1132,31 @@ export class Player {
         } else {
             if (coverEl) {
                 coverEl.style.display = 'block';
-                const artwork = getArtworkSources(track.album || track.cover || track.image);
-                const coverUrl = this.api.getCoverUrl(artwork.static);
-                const coverSrcset = this.api.getCoverSrcset(artwork.static);
-                let imgEl = coverEl;
-                if (coverEl.tagName === 'VIDEO') {
-                    imgEl = document.createElement('img');
-                    imgEl.className = coverEl.className;
-                    imgEl.id = coverEl.id;
-                    coverEl.replaceWith(imgEl);
-                }
+                const videoCoverUrl = track.videoUrl || track.videoCoverUrl || track.album?.videoCoverUrl || null;
+                const coverId = track.image || track.cover || track.album?.cover;
+                const coverUrl = videoCoverUrl || this.api.getCoverUrl(coverId);
+                const coverSrcset = videoCoverUrl ? null : this.api.getCoverSrcset(coverId);
 
-                if (imgEl.getAttribute('src') !== coverUrl) {
-                    imgEl.src = coverUrl;
-                    if (coverSrcset) {
-                        imgEl.setAttribute('srcset', coverSrcset);
-                        imgEl.setAttribute('sizes', '(max-width: 640px) 160px, (max-width: 1024px) 320px, 640px');
-                    } else {
-                        imgEl.removeAttribute('srcset');
-                        imgEl.removeAttribute('sizes');
+                if (videoCoverUrl) {
+                    void this.updateVideoCovers(videoCoverUrl);
+                } else {
+                    let imgEl = coverEl;
+                    if (coverEl.tagName === 'VIDEO') {
+                        imgEl = document.createElement('img');
+                        imgEl.className = coverEl.className;
+                        imgEl.id = coverEl.id;
+                        coverEl.replaceWith(imgEl);
+                    }
+
+                    if (imgEl.getAttribute('src') !== coverUrl) {
+                        imgEl.src = coverUrl;
+                        if (coverSrcset) {
+                            imgEl.setAttribute('srcset', coverSrcset);
+                            imgEl.setAttribute('sizes', '(max-width: 640px) 160px, (max-width: 1024px) 320px, 640px');
+                        } else {
+                            imgEl.removeAttribute('srcset');
+                            imgEl.removeAttribute('sizes');
+                        }
                     }
                 }
             }
@@ -1851,6 +1902,35 @@ export class Player {
         }
     }
 
+    async playFromTimestamp(timestampSeconds) {
+        const startTime = Math.max(0, Number(timestampSeconds) || 0);
+        let el = this.activeElement;
+        const hasSource = el.src || el.currentSrc || el.srcObject || this.shakaInitialized;
+
+        if (!hasSource || el.error) {
+            if (!this.currentTrack) return false;
+            await this.playTrackFromQueue(startTime, 0);
+            return !this.activeElement.paused;
+        }
+
+        el.currentTime = startTime;
+        if (!audioContextManager.isReady()) {
+            audioContextManager.init(el);
+            this.applyReplayGain();
+        }
+        await audioContextManager.resume();
+
+        const started = await this.safePlay(el);
+        if (!started || el.paused) {
+            if (!this.currentTrack) return false;
+            await this.playTrackFromQueue(startTime, 0);
+            el = this.activeElement;
+        }
+
+        this.updateMediaSessionPositionState();
+        return !el.paused;
+    }
+
     seekBackward(seconds = 10) {
         const el = this.activeElement;
         const newTime = Math.max(0, el.currentTime - seconds);
@@ -2425,7 +2505,7 @@ export class Player {
     }
 
     updateMediaSession(track) {
-        const coverId = getArtworkSources(track.album || track.cover || track.image).static;
+        const coverId = track.album?.cover;
         const trackTitle = getTrackTitle(track);
 
         // Force a refresh for picky Bluetooth systems by clearing metadata first
@@ -2435,15 +2515,16 @@ export class Player {
                     title: trackTitle || 'Unknown Title',
                     artist: getTrackArtists(track) || 'Unknown Artist',
                     album: track.album?.title || 'Unknown Album',
-                    artwork: coverId
-                        ? [
-                              {
-                                  src: this.api.getCoverUrl(coverId, '1280'),
-                                  sizes: '1280x1280',
-                                  type: 'image/jpeg',
-                              },
-                          ]
-                        : undefined,
+                    artwork:
+                        coverId && !isVideoArtwork(coverId)
+                            ? [
+                                  {
+                                      src: this.api.getCoverUrl(coverId, '1280'),
+                                      sizes: '1280x1280',
+                                      type: 'image/jpeg',
+                                  },
+                              ]
+                            : undefined,
                 })
             )
             .catch(() => {})

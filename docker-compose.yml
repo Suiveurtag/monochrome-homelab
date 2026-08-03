@@ -1,50 +1,106 @@
 services:
-    monochrome:
-        build:
-            context: .
-            dockerfile: docker/Dockerfile
-            args:
-                AUTH_ENABLED: 'true'
-                POCKETBASE_URL: ''
-        image: monochrome-selfhost:latest
-        container_name: monochrome-app
-        restart: unless-stopped
-        depends_on:
-            - pocketbase
-            - selfhost-importer
-        ports:
-            - '3000:4173'
-        networks:
-            - monochrome
+  monochrome:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      network: host
+      args:
+        AUTH_ENABLED: "true"
+        POCKETBASE_URL: ""
+    image: monochrome-selfhost:latest
+    container_name: monochrome-app
+    restart: unless-stopped
+    depends_on:
+      - pocketbase
+      - selfhost-importer
+    ports:
+      - "3000:4173"
+    networks:
+      - monochrome
 
-    pocketbase:
-        image: ghcr.io/muchobien/pocketbase:0.30.0
-        container_name: monochrome-pocketbase
-        restart: unless-stopped
-        command: ['serve', '--http=0.0.0.0:8090', '--dir=/pb_data', '--migrationsDir=/pb_migrations']
-        volumes:
-            - ./pb_data:/pb_data
-            - ./pb_migrations:/pb_migrations
-        networks:
-            - monochrome
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:0.30.0
+    container_name: monochrome-pocketbase
+    restart: unless-stopped
+    command: ["serve", "--http=0.0.0.0:8090", "--dir=/pb_data", "--migrationsDir=/pb_migrations"]
+    volumes:
+      - ./pb_data:/pb_data
+      - ./pb_migrations:/pb_migrations
+    ports:
+      - "127.0.0.1:8090:8090"
+    networks:
+      - monochrome
 
-    selfhost-importer:
-        build:
-            context: .
-            dockerfile: services/spotiflac-importer/Dockerfile
-            args:
-                SPOTIFLAC_REF: '02cfd119da4e5bf1b0f16ce7e8f38e503bdd995e'
-        image: monochrome-spotiflac-importer:headless-1.5.8
-        container_name: monochrome-selfhost-importer
-        restart: unless-stopped
-        environment:
-            POCKETBASE_URL: 'http://pocketbase:8090'
-            MAX_IMPORT_BYTES: '2147483648'
-        depends_on:
-            - pocketbase
-        networks:
-            - monochrome
+  pocketbase-dev-init:
+    image: ghcr.io/muchobien/pocketbase:0.30.0
+    profiles: ["dev"]
+    restart: "no"
+    environment:
+      PB_ADMIN_EMAIL: "${PB_ADMIN_EMAIL:-admin@example.com}"
+      PB_ADMIN_PASSWORD: "${PB_ADMIN_PASSWORD:-changeme}"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until wget -qO- http://pocketbase:8090/api/health >/dev/null; do sleep 1; done
+        /usr/local/bin/pocketbase superuser upsert "$${PB_ADMIN_EMAIL}" "$${PB_ADMIN_PASSWORD}" --dir=/pb_data
+    depends_on:
+      - pocketbase
+    volumes:
+      - ./pb_data:/pb_data
+    networks:
+      - monochrome
+
+  selfhost-importer:
+    build:
+      context: .
+      dockerfile: services/spotiflac-importer/Dockerfile
+      network: host
+      args:
+        SPOTIFLAC_REF: "7a3a50e8d5b56fc7335d5822889c499f5e76e39b"
+    image: monochrome-spotiflac-importer:7.1.9
+    container_name: monochrome-selfhost-importer
+    restart: unless-stopped
+    environment:
+      POCKETBASE_URL: "http://pocketbase:8090"
+      MAX_IMPORT_BYTES: "2147483648"
+    depends_on:
+      - pocketbase
+    networks:
+      - monochrome
+
+  selfhost-importer-dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.importer.dev
+      network: host
+      args:
+        SPOTIFLAC_REF: "7a3a50e8d5b56fc7335d5822889c499f5e76e39b"
+    image: monochrome-spotiflac-importer-dev:7.1.9
+    container_name: monochrome-selfhost-importer-dev
+    profiles: ["dev"]
+    restart: unless-stopped
+    environment:
+      POCKETBASE_URL: "http://pocketbase:8090"
+      MAX_IMPORT_BYTES: "2147483648"
+    command: ["./dev-watch.sh"]
+    depends_on:
+      pocketbase:
+        condition: service_started
+      pocketbase-dev-init:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - ./services/spotiflac-importer:/app/services/spotiflac-importer
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8787/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+      start_period: 2s
+    networks:
+      - monochrome
 
 networks:
-    monochrome:
-        name: monochrome
+  monochrome:
+    name: monochrome

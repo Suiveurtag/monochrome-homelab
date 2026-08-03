@@ -65,7 +65,12 @@ import {
 } from './playlist-importer.js';
 import { generateFullCSV, generateFullJSON } from './playlist-generator.js';
 import { modernSettings } from './ModernSettings.js';
-import { getArtworkSources, isAnimatedArtwork, isSupportedImageArtworkFile } from './artwork-media.js';
+import {
+    ARTWORK_ACCEPT,
+    MAX_ARTWORK_BYTES,
+    installAnimatedArtworkObserver,
+    isSupportedArtworkFile,
+} from './animated-artwork.js';
 import {
     SVG_OFFLINE,
     SVG_RIGHT_ARROW,
@@ -77,6 +82,8 @@ import {
 } from './icons.js';
 
 // Capture real iOS state before spoofing (needed for background audio)
+installAnimatedArtworkObserver();
+
 if (typeof window !== 'undefined') {
     const _ua = navigator.userAgent.toLowerCase();
     // Spoof User-Agent to bypass Google's embedded browser check
@@ -201,7 +208,7 @@ async function initializeSelfHostedUploads() {
                                 index
                             ) => `<button class="upload-gallery-card${selectedIds.has(String(track.id)) ? ' is-selected' : ''}" type="button"
                                 data-track-id="${escapeHtml(track.id)}" role="checkbox" aria-checked="${selectedIds.has(String(track.id))}" style="--card-index:${index}">
-                                <span class="upload-card-art"><img src="${escapeHtml(getArtworkSources(track.album || track.serverCoverUrl).static)}" alt="" loading="lazy" />
+                                <span class="upload-card-art"><img src="${escapeHtml(track.album?.cover || track.serverCoverUrl || '/assets/appicon.png')}" alt="" loading="lazy" />
                                     <span class="upload-card-play"><use svg="!lucide/play.svg" size="21" /></span>
                                     <span class="upload-card-check"><use svg="!lucide/check.svg" size="18" /></span>
                                     <span class="upload-card-duration">${formatTrackDuration(track.duration)}</span>
@@ -255,7 +262,7 @@ async function initializeSelfHostedUploads() {
                 <label class="upload-bulk-field"><input type="checkbox" name="applyReleaseDate" /><span>Release date</span><input type="date" name="releaseDate" disabled /></label>
                 <label class="upload-bulk-field"><input type="checkbox" name="applyExplicit" /><span>Explicit</span><select name="explicit" disabled><option value="true">Yes</option><option value="false">No</option></select></label>
                 <label class="upload-bulk-field is-wide"><input type="checkbox" name="applyLyrics" /><span>Lyrics</span><textarea name="lyrics" rows="4" placeholder="Replace lyrics on every selected track" disabled></textarea></label>
-                <label class="upload-bulk-field is-wide"><input type="checkbox" name="applyCover" /><span>Artwork</span><input type="file" name="cover" accept="image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4" disabled /><small data-bulk-cover-fallback-label hidden>Static image for colors and backgrounds</small><input type="file" name="coverFallback" accept="image/png,image/jpeg,image/webp,image/avif" data-bulk-cover-fallback hidden disabled aria-label="Static artwork fallback" /></label>
+                <label class="upload-bulk-field is-wide"><input type="checkbox" name="applyCover" /><span>Artwork</span><input type="file" name="cover" accept="${ARTWORK_ACCEPT}" disabled /></label>
                 <div class="upload-bulk-footer"><span data-bulk-progress aria-live="polite"></span><button class="btn-primary" type="submit">Apply changes</button></div>
             </form>
         </section>`;
@@ -263,22 +270,13 @@ async function initializeSelfHostedUploads() {
 
     bulkEditor.querySelectorAll('.upload-bulk-field > input[type="checkbox"]').forEach((checkbox) => {
         checkbox.addEventListener('change', () => {
-            const controls = checkbox.parentElement.querySelectorAll('input:not([type="checkbox"]),select,textarea');
-            controls.forEach((control) => (control.disabled = !checkbox.checked));
+            const control = checkbox.parentElement.querySelector('input:not([type="checkbox"]),select,textarea');
+            if (control) control.disabled = !checkbox.checked;
         });
     });
     bulkEditor
         .querySelectorAll('[data-close-bulk-editor]')
         .forEach((button) => button.addEventListener('click', () => (bulkEditor.hidden = true)));
-    const bulkCoverInput = bulkEditor.querySelector('input[name="cover"]');
-    const bulkCoverFallback = bulkEditor.querySelector('[data-bulk-cover-fallback]');
-    const bulkCoverFallbackLabel = bulkEditor.querySelector('[data-bulk-cover-fallback-label]');
-    bulkCoverInput?.addEventListener('change', () => {
-        const file = bulkCoverInput.files?.[0];
-        const hasAnimation = isAnimatedArtwork(file?.name, file?.type);
-        bulkCoverFallback.hidden = !hasAnimation;
-        bulkCoverFallbackLabel.hidden = !hasAnimation;
-    });
 
     const runTrackOperation = async (tracks, operation, progressLabel) => {
         const failures = [];
@@ -322,9 +320,6 @@ async function initializeSelfHostedUploads() {
         if (form.has('applyLyrics')) changes.lyrics = formText('lyrics');
         const coverEntry = form.get('cover');
         const cover = form.has('applyCover') && coverEntry instanceof File && coverEntry.size ? coverEntry : null;
-        const fallbackEntry = form.get('coverFallback');
-        const coverFallback =
-            form.has('applyCover') && fallbackEntry instanceof File && fallbackEntry.size ? fallbackEntry : null;
         if (!Object.keys(changes).length && !cover)
             return showNotification('Choose at least one field to update.', 'error');
         const tracks = selectedTracks();
@@ -332,13 +327,7 @@ async function initializeSelfHostedUploads() {
         await runTrackOperation(
             tracks,
             async (track) => {
-                const updated = await updateSelfHostedTrack(
-                    track.id,
-                    patchTrackMetadata(track, changes),
-                    cover,
-                    undefined,
-                    coverFallback
-                );
+                const updated = await updateSelfHostedTrack(track.id, patchTrackMetadata(track, changes), cover);
                 await db.putUploadedTrack(updated);
             },
             'Editing'
@@ -422,11 +411,12 @@ async function initializeSelfHostedUploads() {
         })
     );
     localDropzone?.addEventListener('drop', (event) => {
-        const files = Array.from(event.dataTransfer?.files || []).filter(
-            (file) => file.type === 'audio/flac' || file.name.toLowerCase().endsWith('.flac')
-        );
+        const files = Array.from(event.dataTransfer?.files || []).filter((file) => {
+            const name = file.name.toLowerCase();
+            return file.type === 'audio/flac' || name.endsWith('.flac') || name.endsWith('.ttml');
+        });
         if (!files.length) {
-            showNotification('Drop one or more FLAC files.');
+            showNotification('Drop one or more FLAC files, with optional matching TTML files.');
             return;
         }
         const transfer = new DataTransfer();
@@ -844,7 +834,11 @@ function hideOfflineNotification() {
     }
 }
 
-async function disablePwaForAuthGate() {
+function isLocalPreviewHost() {
+    return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+}
+
+async function disablePwaRuntime() {
     if (!('serviceWorker' in navigator)) return;
 
     try {
@@ -865,7 +859,8 @@ async function disablePwaForAuthGate() {
 }
 
 async function uploadCoverImage(file) {
-    if (file.size > 10 * 1024 * 1024) throw new Error('File exceeds 10MB');
+    if (!isSupportedArtworkFile(file)) throw new Error('Choose an image, GIF, or MP4 file');
+    if (file.size > MAX_ARTWORK_BYTES) throw new Error('File exceeds 100MB');
 
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -1134,15 +1129,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (mode === 'lyrics') {
             const isActive = sidePanelManager.isActive('lyrics');
-        } else if (mode === 'cover') {
-            const overlay = document.getElementById('fullscreen-cover-overlay');
-            if (overlay && overlay.style.display === 'flex') {
-            } else {
-            }
-        }
-
-        if (mode === 'lyrics') {
-            const isActive = sidePanelManager.isActive('lyrics');
 
             if (isActive) {
                 sidePanelManager.close();
@@ -1155,13 +1141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (overlay && overlay.style.display === 'flex') {
                 await closeFullscreenOverlay();
             } else {
-                const nextTrack = Player.instance.getNextTrack();
-                UIRenderer.instance.showFullscreenCover(
-                    Player.instance.currentTrack,
-                    nextTrack,
-                    lyricsManager,
-                    Player.instance.activeElement
-                );
+                await UIRenderer.instance.openCurrentTrackFullscreen();
             }
         } else {
             // Default to 'album' mode - navigate to album
@@ -1193,7 +1173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         switch (action) {
             case 'exit':
-                closeFullscreenOverlay();
+                void closeFullscreenOverlay();
                 break;
             case 'hide-ui':
                 if (overlay) {
@@ -1235,7 +1215,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             case 'nothing':
                 break;
             default:
-                closeFullscreenOverlay();
+                void closeFullscreenOverlay();
         }
     });
 
@@ -1370,8 +1350,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!file) return;
 
         // Validate file type
-        if (!isSupportedImageArtworkFile(file)) {
-            alert('Please select a PNG, JPG, WebP, AVIF or GIF file');
+        if (!isSupportedArtworkFile(file)) {
+            alert('Please select an image, GIF, or MP4 file');
             return;
         }
 
@@ -1430,6 +1410,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        const fullscreenOverlay = document.getElementById('fullscreen-cover-overlay');
+        if (UIRenderer.instance.isFullscreenCoverOpen(fullscreenOverlay)) {
+            UIRenderer.instance.toggleFullscreenLyrics(fullscreenOverlay);
+            return;
+        }
+
         const isActive = sidePanelManager.isActive('lyrics');
 
         if (isActive) {
@@ -1478,13 +1464,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Update Fullscreen if it's open
         const fullscreenOverlay = document.getElementById('fullscreen-cover-overlay');
         if (fullscreenOverlay && getComputedStyle(fullscreenOverlay).display !== 'none') {
-            const nextTrack = Player.instance.getNextTrack();
-            UIRenderer.instance.showFullscreenCover(
-                Player.instance.currentTrack,
-                nextTrack,
-                lyricsManager,
-                Player.instance.activeElement
-            );
+            await UIRenderer.instance.openCurrentTrackFullscreen({ historyMode: 'none' });
         }
 
         // DEV: Auto-open fullscreen mode if ?fullscreen=1 in URL
@@ -1494,13 +1474,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             fullscreenOverlay &&
             getComputedStyle(fullscreenOverlay).display === 'none'
         ) {
-            const nextTrack = Player.instance.getNextTrack();
-            UIRenderer.instance.showFullscreenCover(
-                Player.instance.currentTrack,
-                nextTrack,
-                lyricsManager,
-                Player.instance.activeElement
-            );
+            await UIRenderer.instance.openCurrentTrackFullscreen();
         }
     });
 
@@ -2965,12 +2939,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         await router();
+        await UIRenderer.instance.reconcileFullscreenFromLocation();
         updateTabTitle(Player.instance);
     };
 
     await handleRouteChange();
 
     window.addEventListener('popstate', handleRouteChange);
+    window.addEventListener('hashchange', () => {
+        UIRenderer.instance.reconcileFullscreenFromLocation().catch((error) => {
+            console.error('Failed to reconcile fullscreen location:', error);
+        });
+    });
 
     document.body.addEventListener('click', (e) => {
         const link = e.target.closest('a');
@@ -2991,8 +2971,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // PWA Update Logic
-    if (window.__AUTH_GATE__) {
-        await disablePwaForAuthGate().catch(console.error);
+    // A service worker makes localhost visual work deceptively stale: Workbox
+    // can keep serving a previous index/assets pair even after a fresh Docker
+    // build. Local preview is deliberately network-only; installed/remote
+    // Monochrome instances keep the normal offline PWA behaviour.
+    if (window.__AUTH_GATE__ || isLocalPreviewHost()) {
+        await disablePwaRuntime().catch(console.error);
     } else {
         const updateSW = registerSW({
             onNeedRefresh() {

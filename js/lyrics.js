@@ -10,58 +10,8 @@ import {
     SVG_GLOBE,
 } from './icons.js';
 import { sidePanelManager } from './side-panel.js';
-import { isTtml, lyricsToTtml, parseLrc, plainLyricsToTtml } from './lyrics-format.js';
-import { createSpicyLyricsRenderer } from './vendor/spicy-lyrics/renderer.js';
-
-function normalizeLyricsPayload(value) {
-    if (typeof value === 'string') {
-        const content = value.replace(/^\uFEFF/, '').trim();
-        if (!content) return null;
-        if (isTtml(content)) return { ttml: content };
-        if (parseLrc(content).length) return { subtitles: content };
-        return { plainLyrics: content };
-    }
-
-    if (!value || typeof value !== 'object') return null;
-    const candidates = [
-        value.ttml,
-        value.syncedLyrics,
-        value.subtitles,
-        value.plainLyrics,
-        value.lyrics,
-        value.content,
-    ];
-    for (const candidate of candidates) {
-        const payload = normalizeLyricsPayload(candidate);
-        if (payload) return payload;
-    }
-    return null;
-}
-
-function getEmbeddedLyricsPayload(track) {
-    if (!track) return null;
-    const candidates = [
-        track.lyrics,
-        track.syncedLyrics,
-        track.plainLyrics,
-        track.mediaMetadata?.lyrics,
-        track.metadata?.lyrics,
-        track.info?.lyrics,
-        track.track?.lyrics,
-    ];
-    for (const candidate of candidates) {
-        const payload = normalizeLyricsPayload(candidate);
-        if (payload) return payload;
-    }
-    return null;
-}
-
-function lyricsPayloadToTtml(payload, durationSeconds) {
-    if (payload?.ttml) return payload.ttml;
-    if (payload?.subtitles) return lyricsToTtml(payload.subtitles, durationSeconds);
-    if (payload?.plainLyrics) return plainLyricsToTtml(payload.plainLyrics, durationSeconds);
-    return '';
-}
+import { isTtml, lyricsToTtml, parseLrc } from './lyrics-format.js';
+import { Player } from './player.js';
 
 // Check if text contains Japanese, Chinese, or Korean characters
 function containsAsianText(text) {
@@ -218,6 +168,9 @@ export class LyricsManager {
         this.currentLyrics = null;
         this.syncedLyrics = [];
         this.lyricsCache = new Map();
+        this.componentLoaded = false;
+        this.componentLoadPromise = null;
+        this.amLyricsElement = null;
         this.animationFrameId = null;
         this.currentTrackId = null;
         this.mutationObserver = null;
@@ -316,7 +269,7 @@ export class LyricsManager {
 
             // Also patch fetch just in case
             if (!window._originalFetch) {
-                window._originalFetch = window.fetch.bind(window);
+                window._originalFetch = window.fetch;
                 window.fetch = async (url, options) => {
                     const urlStr = url instanceof URL ? url.toString() : url.url;
                     if (urlStr.includes('/dict/') && urlStr.includes('.dat.gz')) {
@@ -452,11 +405,41 @@ export class LyricsManager {
         }
     }
 
+    async ensureComponentLoaded() {
+        if (this.componentLoaded) return;
+        if (typeof customElements === 'undefined') return;
+
+        if (!this.componentLoadPromise) {
+            this.componentLoadPromise = import('./spicy-lyrics-renderer.js')
+                .then(() => customElements.whenDefined('spicy-lyrics'))
+                .then(() => {
+                    this.componentLoaded = true;
+                })
+                .catch((error) => {
+                    this.componentLoadPromise = null;
+                    throw error;
+                });
+        }
+
+        await this.componentLoadPromise;
+    }
+
     async fetchLyrics(trackId, track = null) {
         if (track) {
-            const embeddedLyrics = getEmbeddedLyricsPayload(track);
-            if (embeddedLyrics) {
-                const lyricsData = { ...embeddedLyrics, lyricsProvider: 'Local' };
+            if (isTtml(track.lyrics)) {
+                const lyricsData = {
+                    ttml: track.lyrics,
+                    lyricsProvider: 'Local',
+                };
+                this.lyricsCache.set(trackId, lyricsData);
+                return lyricsData;
+            }
+
+            if (parseLrc(track.lyrics).length) {
+                const lyricsData = {
+                    subtitles: track.lyrics,
+                    lyricsProvider: 'Local',
+                };
                 this.lyricsCache.set(trackId, lyricsData);
                 return lyricsData;
             }
@@ -466,22 +449,9 @@ export class LyricsManager {
             }
 
             try {
-                if (this.api?.getTrackMetadata && trackId != null) {
-                    const hydratedResult = await this.api.getTrackMetadata(trackId);
-                    const hydratedTrack = hydratedResult?.track || hydratedResult;
-                    const hydratedLyrics = getEmbeddedLyricsPayload(hydratedTrack);
-                    if (hydratedLyrics) {
-                        const lyricsData = { ...hydratedLyrics, lyricsProvider: 'Server' };
-                        this.lyricsCache.set(trackId, lyricsData);
-                        return lyricsData;
-                    }
-                }
-            } catch (error) {
-                console.warn('Lyrics metadata refresh failed:', error);
-            }
-
-            try {
-                const artist = getTrackArtists(track, { fallback: '' }) || track.artist?.name || '';
+                const artist = Array.isArray(track.artists)
+                    ? track.artists.map((a) => a.name || a).join(', ')
+                    : track.artist?.name || '';
                 const title = track.title || '';
                 const album = track.album?.title || '';
                 const duration = track.duration ? Math.round(track.duration) : null;
@@ -500,39 +470,19 @@ export class LyricsManager {
                 if (duration) params.append('duration', duration.toString());
 
                 const response = await fetch(`https://lrclib.net/api/get?${params.toString()}`);
-                const exactMatch = response.ok ? await response.json() : null;
-                let matchedLyrics = normalizeLyricsPayload(exactMatch?.syncedLyrics || exactMatch?.plainLyrics);
 
-                if (!matchedLyrics) {
-                    const searchParams = new URLSearchParams({
-                        track_name: title,
-                        artist_name: artist,
-                    });
-                    if (album) searchParams.append('album_name', album);
-                    const searchResponse = await fetch(`https://lrclib.net/api/search?${searchParams.toString()}`);
-                    if (searchResponse.ok) {
-                        const candidates = await searchResponse.json();
-                        const sortedCandidates = Array.isArray(candidates)
-                            ? [...candidates].sort((a, b) => {
-                                  const syncedDifference =
-                                      Number(Boolean(b.syncedLyrics)) - Number(Boolean(a.syncedLyrics));
-                                  if (syncedDifference) return syncedDifference;
-                                  if (!duration) return 0;
-                                  return (
-                                      Math.abs(Number(a.duration || 0) - duration) -
-                                      Math.abs(Number(b.duration || 0) - duration)
-                                  );
-                              })
-                            : [];
-                        const bestMatch = sortedCandidates[0];
-                        matchedLyrics = normalizeLyricsPayload(bestMatch?.syncedLyrics || bestMatch?.plainLyrics);
+                if (response.ok) {
+                    const data = await response.json();
+
+                    if (data.syncedLyrics) {
+                        const lyricsData = {
+                            subtitles: data.syncedLyrics,
+                            lyricsProvider: 'LRCLIB',
+                        };
+
+                        this.lyricsCache.set(trackId, lyricsData);
+                        return lyricsData;
                     }
-                }
-
-                if (matchedLyrics) {
-                    const lyricsData = { ...matchedLyrics, lyricsProvider: 'LRCLIB' };
-                    this.lyricsCache.set(trackId, lyricsData);
-                    return lyricsData;
                 }
             } catch (error) {
                 console.warn('LRCLIB fetch failed:', error);
@@ -611,7 +561,7 @@ export class LyricsManager {
         return currentIndex;
     }
 
-    // Observe the Spicy renderer so Romaji and Genius decorations stay in sync.
+    // Setup MutationObserver to convert lyrics in am-lyrics component
     async setupLyricsObserver(amLyricsElement) {
         this.stopLyricsObserver();
 
@@ -963,9 +913,9 @@ export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = f
             updateRomajiBtn();
 
             romajiBtn.addEventListener('click', async () => {
-                const spicyLyrics = sidePanelManager.panel.querySelector('#SpicyLyricsPage');
-                if (spicyLyrics) {
-                    await manager.toggleRomajiMode(spicyLyrics);
+                const amLyrics = sidePanelManager.panel.querySelector('spicy-lyrics');
+                if (amLyrics) {
+                    await manager.toggleRomajiMode(amLyrics);
                     updateRomajiBtn();
                 }
             });
@@ -987,10 +937,10 @@ export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = f
                         geniusBtn.style.opacity = '0.5';
                         await manager.geniusManager.getDataForTrack(track);
                         manager.currentGeniusData = manager.geniusManager.cache.get(track.id);
-                        const spicyLyrics = sidePanelManager.panel.querySelector('#SpicyLyricsPage');
-                        if (spicyLyrics)
+                        const amLyrics = sidePanelManager.panel.querySelector('spicy-lyrics');
+                        if (amLyrics)
                             manager.applyGeniusAnnotations(
-                                spicyLyrics,
+                                amLyrics,
                                 manager.geniusManager.cache.get(track.id)?.referents
                             );
                     } catch (e) {
@@ -1002,9 +952,9 @@ export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = f
                         geniusBtn.style.opacity = '1';
                     }
                 } else {
-                    const spicyLyrics = sidePanelManager.panel.querySelector('#SpicyLyricsPage');
-                    if (spicyLyrics) {
-                        const root = spicyLyrics;
+                    const amLyrics = sidePanelManager.panel.querySelector('spicy-lyrics');
+                    if (amLyrics) {
+                        const root = amLyrics.shadowRoot || amLyrics;
                         const lineElements = Array.from(root.querySelectorAll('.genius-annotated'));
                         lineElements.forEach((el) => {
                             el.classList.remove(
@@ -1023,9 +973,10 @@ export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = f
         }
     };
 
-    const renderContent = async (container) => {
+    const renderContent = async (container, renderContext = {}) => {
         clearLyricsPanelSync(audioPlayer, sidePanelManager.panel);
-        await renderLyricsComponent(container, track, audioPlayer, manager);
+        await renderLyricsComponent(container, track, audioPlayer, manager, renderContext);
+        if (renderContext.signal?.aborted || (renderContext.isCurrent && !renderContext.isCurrent())) return;
         if (container.lyricsCleanup) {
             sidePanelManager.panel.lyricsCleanup = container.lyricsCleanup;
             sidePanelManager.panel.lyricsManager = container.lyricsManager;
@@ -1035,8 +986,7 @@ export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = f
     sidePanelManager.open('lyrics', 'Lyrics', renderControls, renderContent, forceOpen);
 }
 
-function getLyricsHighlightColor(element = null) {
-    if (element?.dataset?.spicyLyricsView) return '#fff';
+function getLyricsHighlightColor() {
     // Check if the current theme is light
     const isLight = getComputedStyle(document.documentElement).colorScheme === 'light';
     return isLight ? '#000' : '#fff';
@@ -1044,8 +994,8 @@ function getLyricsHighlightColor(element = null) {
 
 function updateLyricsTheme() {
     const highlightColor = getLyricsHighlightColor();
-    document.querySelectorAll('#SpicyLyricsPage').forEach((el) => {
-        el.style.setProperty('--spicy-lyrics-highlight', getLyricsHighlightColor(el) || highlightColor);
+    document.querySelectorAll('spicy-lyrics').forEach((el) => {
+        el.style.setProperty('--spicy-lyrics-active-color', highlightColor);
     });
 }
 
@@ -1059,79 +1009,84 @@ themeObserver.observe(document.documentElement, {
     attributeFilter: ['data-theme', 'style'],
 });
 
-async function renderLyricsComponent(container, track, audioPlayer, lyricsManager) {
+async function renderLyricsComponent(container, track, audioPlayer, lyricsManager, { signal } = {}) {
+    if (signal?.aborted) return null;
     container.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
 
     try {
+        await lyricsManager.ensureComponentLoaded();
+        if (signal?.aborted) return null;
+
         // Set initial Romaji mode
         lyricsManager.isRomajiMode = lyricsManager.getRomajiMode();
         lyricsManager.currentTrackId = track.id;
-        lyricsManager.timingOffset = lyricsManager.getTimingOffset(track.id);
 
-        let ttml = lyricsPayloadToTtml(getEmbeddedLyricsPayload(track), track.duration);
         const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
-        if (!ttml) ttml = lyricsPayloadToTtml(fetchedLyrics, track.duration);
+        if (signal?.aborted) return null;
+        const sourceLyrics = track.lyrics || fetchedLyrics?.ttml || fetchedLyrics?.subtitles || '';
+        const localTtml = lyricsToTtml(sourceLyrics, track.duration);
+        if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
 
-        const spicyLyrics = createSpicyLyricsRenderer({
-            container,
-            track,
-            ttml,
-            durationSeconds: track.duration,
-            api: lyricsManager.api,
-            onSeek: (timestamp) => {
-                if (!audioPlayer) return;
-                audioPlayer.currentTime = timestamp / 1000;
-                const playPromise = audioPlayer.play?.();
-                playPromise?.catch?.(() => {});
-            },
-        });
+        container.innerHTML = '';
+        const amLyrics = document.createElement('spicy-lyrics');
+        amLyrics.ttml = localTtml;
+        amLyrics.style.setProperty('--spicy-lyrics-active-color', getLyricsHighlightColor());
+        if (trackIsJapanese(track)) amLyrics.setAttribute('lang', 'ja');
+        amLyrics.style.height = '100%';
+        amLyrics.style.width = '100%';
 
-        if (trackIsJapanese(track)) spicyLyrics.root.setAttribute('lang', 'ja');
-        lyricsManager.setupLyricsObserver(spicyLyrics.root);
+        container.appendChild(amLyrics);
+        await amLyrics.setTrack(track, lyricsManager.api);
+        if (signal?.aborted) {
+            amLyrics.remove();
+            return null;
+        }
+
+        await lyricsManager.setupLyricsObserver(amLyrics);
+        if (signal?.aborted) {
+            amLyrics.remove();
+            return null;
+        }
 
         // If Romaji mode is enabled and track has Asian text, ensure Kuroshiro is ready
         if (lyricsManager.isRomajiMode && trackHasAsianText(track) && !lyricsManager.kuroshiroLoaded) {
             await lyricsManager.loadKuroshiro();
-        }
-
-        if (lyricsManager.isGeniusMode) {
-            try {
-                const data = await lyricsManager.geniusManager.getDataForTrack(track);
-                if (data) {
-                    lyricsManager.currentGeniusData = data;
-                    lyricsManager.applyGeniusAnnotations(spicyLyrics.root, data.referents);
-                }
-            } catch (error) {
-                console.warn('Genius auto-load failed', error);
+            if (signal?.aborted) {
+                amLyrics.remove();
+                return null;
             }
         }
 
-        // Convert immediately after lyrics detected
         if (lyricsManager.isRomajiMode) {
-            await lyricsManager.convertLyricsContent(spicyLyrics.root);
+            await lyricsManager.convertLyricsContent(amLyrics);
+            if (signal?.aborted) {
+                amLyrics.remove();
+                return null;
+            }
         }
 
         if (lyricsManager.isGeniusMode && lyricsManager.currentGeniusData) {
-            lyricsManager.applyGeniusAnnotations(spicyLyrics.root, lyricsManager.currentGeniusData.referents);
+            lyricsManager.applyGeniusAnnotations(amLyrics, lyricsManager.currentGeniusData.referents);
         }
 
-        const cleanup = audioPlayer?.addEventListener
-            ? setupSync(audioPlayer, spicyLyrics, lyricsManager)
-            : () => spicyLyrics.destroy();
+        const cleanup = setupSync(track, audioPlayer, amLyrics, lyricsManager);
 
         // Attach cleanup to container for easy access
         container.lyricsCleanup = cleanup;
         container.lyricsManager = lyricsManager;
 
-        return spicyLyrics.root;
+        return amLyrics;
     } catch (error) {
+        if (signal?.aborted || error?.name === 'AbortError') return null;
         console.error('Failed to load lyrics:', error);
         container.innerHTML = '<div class="lyrics-error">Failed to load lyrics</div>';
         return null;
     }
 }
 
-function setupSync(audioPlayer, spicyLyrics, lyricsManager) {
+function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
+    let baseTimeMs = 0;
+    let lastTimestamp = performance.now();
     let animationFrameId = null;
 
     // Get timing offset from lyrics manager (in milliseconds)
@@ -1141,21 +1096,26 @@ function setupSync(audioPlayer, spicyLyrics, lyricsManager) {
 
     const updateTime = () => {
         const currentMs = audioPlayer.currentTime * 1000;
+        baseTimeMs = currentMs;
+        lastTimestamp = performance.now();
         // Apply timing offset: positive offset delays lyrics, negative advances them
-        spicyLyrics.setCurrentTime(currentMs - getTimingOffset(), true);
+        amLyrics.currentTime = currentMs - getTimingOffset();
     };
 
     const tick = () => {
         if (!audioPlayer.paused) {
-            // Read the media clock on every frame. This stays accurate through
-            // buffering, playback-rate changes and browser clock corrections.
-            spicyLyrics.setCurrentTime(audioPlayer.currentTime * 1000 - getTimingOffset());
+            const now = performance.now();
+            const elapsed = now - lastTimestamp;
+            const nextMs = baseTimeMs + elapsed;
+            // Apply timing offset: positive offset delays lyrics, negative advances them
+            amLyrics.currentTime = nextMs - getTimingOffset();
             animationFrameId = requestAnimationFrame(tick);
         }
     };
 
     const onPlay = () => {
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        baseTimeMs = audioPlayer.currentTime * 1000;
+        lastTimestamp = performance.now();
         tick();
     };
 
@@ -1166,10 +1126,58 @@ function setupSync(audioPlayer, spicyLyrics, lyricsManager) {
         }
     };
 
+    const onLineClick = async (e) => {
+        if (e.detail && e.detail.timestamp !== undefined) {
+            const manager = lyricsManager || sidePanelManager.panel.lyricsManager;
+            if (manager && manager.isGeniusMode) {
+                const timestampSeconds = e.detail.timestamp / 1000;
+
+                const lyricsData = manager.lyricsCache.get(track.id);
+                if (lyricsData && lyricsData.subtitles) {
+                    const parsed = manager.parseSyncedLyrics(lyricsData.subtitles);
+
+                    const line = parsed.find((l) => Math.abs(l.time - timestampSeconds) < 1.0);
+
+                    if (line && line.text && manager.currentGeniusData) {
+                        const annotations = manager.geniusManager.findAnnotations(
+                            line.text,
+                            manager.currentGeniusData.referents
+                        );
+                        showGeniusAnnotations(annotations, line.text);
+                    }
+                }
+            }
+
+            const timestampSeconds = e.detail.timestamp / 1000;
+            audioPlayer.currentTime = timestampSeconds;
+            updateTime();
+
+            try {
+                const player = Player.instance;
+                const started = await player.playFromTimestamp(timestampSeconds);
+                if (!started) {
+                    console.warn('Playback was blocked after seeking from lyrics');
+                }
+            } catch (error) {
+                // Keep the lyrics view usable if it is mounted without the
+                // application Player (for example in an isolated preview).
+                try {
+                    await audioPlayer.play();
+                } catch (playError) {
+                    console.error('Failed to start playback from lyrics:', playError ?? error);
+                }
+            }
+        }
+    };
+
     audioPlayer.addEventListener('timeupdate', updateTime);
     audioPlayer.addEventListener('play', onPlay);
     audioPlayer.addEventListener('pause', onPause);
     audioPlayer.addEventListener('seeked', updateTime);
+    amLyrics.addEventListener('line-click', onLineClick);
+
+    // A paused player does not emit timeupdate when the lyrics view opens.
+    // Initialize immediately so the renderer never starts on the wrong line.
     updateTime();
 
     if (!audioPlayer.paused) {
@@ -1184,12 +1192,57 @@ function setupSync(audioPlayer, spicyLyrics, lyricsManager) {
         audioPlayer.removeEventListener('play', onPlay);
         audioPlayer.removeEventListener('pause', onPause);
         audioPlayer.removeEventListener('seeked', updateTime);
-        spicyLyrics.destroy();
+        amLyrics.removeEventListener('line-click', onLineClick);
     };
 }
 
-export async function renderLyricsInFullscreen(track, audioPlayer, lyricsManager, container) {
-    return renderLyricsComponent(container, track, audioPlayer, lyricsManager);
+function showGeniusAnnotations(annotations, lineText) {
+    const existing = document.querySelector('.genius-annotation-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.className = 'genius-annotation-modal';
+
+    let contentHtml = `
+        <div class="genius-modal-content">
+            <div class="genius-header">
+                <span class="genius-line">"${lineText}"</span>
+                <button class="close-genius">×</button>
+            </div>
+            <div class="genius-body">
+    `;
+
+    if (annotations.length === 0) {
+        contentHtml += `
+            <div class="annotation-item">
+                <div class="annotation-text" style="color: var(--muted-foreground); font-style: italic;">No Genius annotation found for this line.</div>
+            </div>
+        `;
+    } else {
+        annotations.forEach((ann) => {
+            const body = ann.annotations[0].body.plain;
+            contentHtml += `
+                <div class="annotation-item">
+                    <div class="annotation-text">${body.replace(/\n/g, '<br>')}</div>
+                </div>
+            `;
+        });
+    }
+
+    contentHtml += `</div></div>`;
+    modal.innerHTML = contentHtml;
+
+    document.body.appendChild(modal);
+
+    modal.querySelector('.close-genius').addEventListener('click', () => modal.remove());
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+}
+
+export async function renderLyricsInFullscreen(track, audioPlayer, lyricsManager, container, options = {}) {
+    return renderLyricsComponent(container, track, audioPlayer, lyricsManager, options);
 }
 
 export function clearFullscreenLyricsSync(container) {

@@ -343,7 +343,7 @@ class CommandPalette {
                 keywords: ['lyrics', 'words', 'text', 'karaoke'],
                 shortcut: 'L',
                 action: () => {
-                    document.querySelector('.now-playing-bar .cover')?.click();
+                    document.getElementById('toggle-lyrics-btn')?.click();
                 },
             },
             {
@@ -352,10 +352,7 @@ class CommandPalette {
                 icon: 'maximize',
                 label: 'Open Fullscreen View',
                 keywords: ['fullscreen', 'expand', 'immersive', 'cover'],
-                action: () => {
-                    const cover = document.querySelector('.now-playing-bar .cover-art');
-                    if (cover) cover.click();
-                },
+                action: () => UIRenderer.instance.openCurrentTrackFullscreen(),
             },
             {
                 id: 'vis-toggle',
@@ -1157,7 +1154,7 @@ class CommandPalette {
 
         const overlay = document.getElementById('fullscreen-cover-overlay');
         if (overlay && getComputedStyle(overlay).display !== 'none') {
-            UIRenderer.instance.closeFullscreenCover();
+            await UIRenderer.instance.dismissFullscreenCover({ animate: false });
         }
     }
 

@@ -1,7 +1,29 @@
 import { describe, expect, test, vi } from 'vitest';
-import { uploadSelfHostedFilesBatch } from './selfhost-upload-batch.js';
+import { pairSelfHostedUploadFiles, uploadSelfHostedFilesBatch } from './selfhost-upload-batch.js';
 
 describe('uploadSelfHostedFilesBatch', () => {
+    test('pairs TTML sidecars with FLACs, including numbered audio filenames', () => {
+        const audio = new File(['audio'], '13 - Tame Impala - New Person.flac', { type: 'audio/flac' });
+        const lyrics = new File(['<tt/>'], 'Tame Impala - New Person.ttml', { type: 'application/ttml+xml' });
+
+        expect(pairSelfHostedUploadFiles([audio, lyrics])).toEqual([{ audio, lyrics }]);
+    });
+
+    test('stores matching TTML content in uploaded metadata', async () => {
+        const audio = new File(['audio'], 'Song.flac', { type: 'audio/flac' });
+        const lyrics = new File(['<tt><body /></tt>'], 'Song.ttml', { type: 'application/ttml+xml' });
+        const uploadTrack = vi.fn(async () => ({}));
+
+        const result = await uploadSelfHostedFilesBatch([audio, lyrics], {
+            authUser: { id: 'user1' },
+            readTrackMetadata: vi.fn(async () => ({ title: 'Song' })),
+            uploadTrack,
+        });
+
+        expect(uploadTrack.mock.calls[0][0].lyrics).toBe('<tt><body /></tt>');
+        expect(result.finalMessage).toBe('1 FLAC file uploaded with 1 TTML file.');
+    });
+
     test('requires authentication before uploading', async () => {
         const notify = vi.fn();
         const readTrackMetadata = vi.fn();

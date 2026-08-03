@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+DEV_COMPOSE=(docker compose --project-directory "$ROOT_DIR" -f "$ROOT_DIR/docker-compose.yml")
+DEV_SERVICES=(pocketbase pocketbase-dev-init selfhost-importer-dev)
+
+usage() {
+    cat <<'EOF'
+Usage: ./monochrome <command>
+
+Commands:
+  dev       Start Docker infrastructure, then Vite with hot reload
+  down      Stop the local development infrastructure
+  logs      Follow PocketBase and importer logs
+  status    Show development service status
+EOF
+}
+
+require_command() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        echo "Missing required command: $1" >&2
+        exit 1
+    fi
+}
+
+frontend_runner() {
+    if command -v bun >/dev/null 2>&1; then
+        printf '%s\n' bun
+    elif command -v npm >/dev/null 2>&1; then
+        printf '%s\n' npm
+    else
+        echo "Install Bun or Node.js/npm to run the frontend." >&2
+        exit 1
+    fi
+}
+
+start_dev() {
+    require_command docker
+    local runner
+    runner="$(frontend_runner)"
+
+    if [[ ! -d "$ROOT_DIR/node_modules/vite" ]]; then
+        echo "Installing frontend dependencies with $runner..."
+        if [[ "$runner" == "bun" ]]; then
+            (cd "$ROOT_DIR" && bun install --frozen-lockfile)
+        else
+            (cd "$ROOT_DIR" && npm install --no-package-lock)
+        fi
+    fi
+
+    echo "Starting PocketBase and the hot-reloading importer..."
+    "${DEV_COMPOSE[@]}" --profile dev up -d --wait "${DEV_SERVICES[@]}"
+
+    echo
+    echo "Monochrome: http://127.0.0.1:5173"
+    echo "PocketBase: http://127.0.0.1:8090/_/"
+    echo "Press Ctrl+C to stop Vite; infrastructure stays warm for the next run."
+    echo
+
+    export VITE_POCKETBASE_PROXY_TARGET="http://127.0.0.1:8090"
+    export VITE_SELFHOST_IMPORTER_PROXY_TARGET="http://127.0.0.1:8787"
+    if [[ "$runner" == "bun" ]]; then
+        exec bun run --cwd "$ROOT_DIR" dev -- --host 127.0.0.1
+    else
+        cd "$ROOT_DIR"
+        exec npm run dev -- --host 127.0.0.1
+    fi
+}
+
+case "${1:-dev}" in
+    dev) start_dev ;;
+    down)
+        require_command docker
+        "${DEV_COMPOSE[@]}" --profile dev down
+        ;;
+    logs)
+        require_command docker
+        "${DEV_COMPOSE[@]}" --profile dev logs -f pocketbase selfhost-importer-dev
+        ;;
+    status)
+        require_command docker
+        "${DEV_COMPOSE[@]}" --profile dev ps
+        ;;
+    help|-h|--help) usage ;;
+    *) usage >&2; exit 2 ;;
+esac

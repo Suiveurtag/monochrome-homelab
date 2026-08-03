@@ -1,7 +1,7 @@
 // js/local-music-api.js
 import { db } from './db.js';
-import { getSelfHostedStream, listSelfHostedTracks, mergeSelfHostedTrackMetadata } from './selfhost-server-api.js';
-import { getArtworkSources } from './artwork-media.js';
+import { getSelfHostedStream, listSelfHostedTracks } from './selfhost-server-api.js';
+import { isVideoArtwork } from './animated-artwork.js';
 
 const FALLBACK_COVER = '/assets/appicon.png';
 
@@ -89,18 +89,13 @@ export class LocalMusicAPI {
         const artistId = track.artist?.id || `local-artist-${hashString(artistName)}`;
         const albumId = track.album?.id || `local-album-${hashString(`${artistName}|${albumTitle}`)}`;
         const id = track.id || `local-track-${hashString(getLocalTrackKey(track))}`;
-        const albumArtwork = getArtworkSources(track.album || {});
-        const artist = {
-            ...(track.artist || {}),
-            id: artistId,
-            name: artistName,
-            picture: track.artist?.picture || albumArtwork.static,
-        };
+        const artist = { ...(track.artist || {}), id: artistId, name: artistName, picture: track.album?.cover };
+        const videoCoverUrl = track.videoCoverUrl || (isVideoArtwork(track.album?.cover) ? track.album.cover : null);
         const artists = (track.artists?.length ? track.artists : [artist]).map((a) => ({
             ...a,
             id: a.id || `local-artist-${hashString(a.name || artistName)}`,
             name: a.name || artistName,
-            picture: a.picture || albumArtwork.static,
+            picture: a.picture || track.album?.cover,
         }));
 
         return {
@@ -116,13 +111,13 @@ export class LocalMusicAPI {
                 ...(track.album || {}),
                 id: albumId,
                 title: albumTitle,
-                cover: albumArtwork.static,
-                animatedCover: albumArtwork.animated,
-                coverFallback: albumArtwork.static,
+                cover: track.album?.cover || FALLBACK_COVER,
+                videoCoverUrl: track.album?.videoCoverUrl || videoCoverUrl,
                 artist: track.album?.artist || artist,
                 numberOfTracks: track.album?.numberOfTracks || null,
             },
             mediaMetadata: track.mediaMetadata || { tags: ['Local'] },
+            videoCoverUrl,
         };
     }
 
@@ -132,11 +127,6 @@ export class LocalMusicAPI {
         const title = album?.title || firstTrack?.album?.title || 'Unknown Album';
         const id = album?.id || firstTrack?.album?.id || `local-album-${hashString(`${artist.name}|${title}`)}`;
 
-        const artwork = getArtworkSources({
-            cover: album?.cover || firstTrack?.album?.cover,
-            animatedCover: album?.animatedCover || firstTrack?.album?.animatedCover,
-            coverFallback: album?.coverFallback || firstTrack?.album?.coverFallback,
-        });
         return {
             ...(album || {}),
             id,
@@ -148,9 +138,11 @@ export class LocalMusicAPI {
                 name: artist.name || 'Unknown Artist',
             },
             artists: album?.artists || [artist],
-            cover: artwork.static,
-            animatedCover: artwork.animated,
-            coverFallback: artwork.static,
+            cover: album?.cover || firstTrack?.album?.cover || FALLBACK_COVER,
+            videoCoverUrl:
+                album?.videoCoverUrl ||
+                firstTrack?.album?.videoCoverUrl ||
+                (isVideoArtwork(album?.cover || firstTrack?.album?.cover) ? album?.cover || firstTrack?.album?.cover : null),
             releaseDate: album?.releaseDate || firstTrack?.album?.releaseDate || null,
             numberOfTracks: tracks.length || album?.numberOfTracks || 0,
             duration: tracks.reduce((sum, track) => sum + (track.duration || 0), 0),
@@ -184,7 +176,20 @@ export class LocalMusicAPI {
         const uploadedById = new Map(uploadedTracks.map((track) => [String(track.id), track]));
         const serverWithLocalMetadata = serverTracks.map((track) => {
             const local = uploadedById.get(String(track.id));
-            return mergeSelfHostedTrackMetadata(track, local);
+            if (!local) return track;
+            return {
+                ...track,
+                ...local,
+                serverAudioUrl: track.serverAudioUrl,
+                serverCoverUrl: track.serverCoverUrl,
+                artist: { ...track.artist, ...local.artist },
+                artists: local.artists?.length ? local.artists : track.artists,
+                album: {
+                    ...track.album,
+                    ...local.album,
+                    artist: { ...track.album?.artist, ...local.album?.artist },
+                },
+            };
         });
         return uniqueBy(
             mergeById(serverWithLocalMetadata, mergeById(uploadedTracks, localFiles))

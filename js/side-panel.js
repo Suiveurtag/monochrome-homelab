@@ -7,6 +7,9 @@ export class SidePanelManager {
         this.resizerElement = document.getElementById('side-panel-resizer');
         this.currentView = null; // 'queue' or 'lyrics'
         this.isResizing = false;
+        this.renderController = null;
+        this.pendingRender = null;
+        this.clearTimer = null;
 
         if (this.resizerElement) {
             this.initResizer();
@@ -82,6 +85,12 @@ export class SidePanelManager {
             return;
         }
 
+        this.cancelPendingRender();
+        if (this.clearTimer) {
+            clearTimeout(this.clearTimer);
+            this.clearTimer = null;
+        }
+
         this.currentView = view;
         this.panel.dataset.view = view;
         this.titleElement.textContent = title;
@@ -92,31 +101,57 @@ export class SidePanelManager {
 
         // Render new content
         if (renderControlsCallback) renderControlsCallback(this.controlsElement);
-        if (renderContentCallback) renderContentCallback(this.contentElement);
+        if (renderContentCallback) {
+            const controller = new AbortController();
+            const renderContext = {
+                signal: controller.signal,
+                isCurrent: () =>
+                    !controller.signal.aborted && this.renderController === controller && this.currentView === view,
+            };
+            this.renderController = controller;
+            this.pendingRender = Promise.resolve()
+                .then(() => renderContentCallback(this.contentElement, renderContext))
+                .catch((error) => {
+                    if (error?.name !== 'AbortError') console.error(`Failed to render ${view} side panel:`, error);
+                })
+                .finally(() => {
+                    if (this.renderController === controller) this.renderController = null;
+                    if (this.pendingRender && this.renderController === null) this.pendingRender = null;
+                });
+        }
 
         this.panel.classList.add('active');
         this.emitChange();
     }
 
-    close() {
-        // Track side panel close
-        if (this.currentView) {
-            if (this.currentView === 'lyrics') {
-                // Get current track from audio player context
-                const audioPlayer = document.getElementById('audio-player');
-            }
+    cancelPendingRender() {
+        if (this.renderController) {
+            this.renderController.abort();
+            this.renderController = null;
         }
+    }
 
+    close({ immediate = false } = {}) {
+        this.cancelPendingRender();
         this.panel.classList.remove('active');
         this.currentView = null;
         this.emitChange();
-        // Optionally clear content after transition
-        setTimeout(() => {
+
+        const clearContent = () => {
             if (!this.panel.classList.contains('active')) {
                 this.controlsElement.innerHTML = '';
                 this.contentElement.innerHTML = '';
             }
-        }, 300);
+            this.clearTimer = null;
+        };
+
+        if (this.clearTimer) clearTimeout(this.clearTimer);
+        if (immediate) {
+            clearContent();
+        } else {
+            // Keep the closing animation intact for regular panel interactions.
+            this.clearTimer = setTimeout(clearContent, 300);
+        }
     }
 
     isActive(view) {

@@ -63,9 +63,23 @@ export default defineConfig((_options) => {
             exclude: ['pocketbase', '@ffmpeg/ffmpeg', '@ffmpeg/util'],
         },
         server: {
+            host: true,
+            proxy: {
+                '/api/selfhost': {
+                    target: process.env.VITE_SELFHOST_IMPORTER_PROXY_TARGET || 'http://127.0.0.1:8787',
+                    changeOrigin: true,
+                },
+                '/api': {
+                    target: process.env.VITE_POCKETBASE_PROXY_TARGET || 'http://127.0.0.1:8090',
+                    changeOrigin: true,
+                },
+                '/_': {
+                    target: process.env.VITE_POCKETBASE_PROXY_TARGET || 'http://127.0.0.1:8090',
+                    changeOrigin: true,
+                },
+            },
             fs: {
                 allow: ['.', 'node_modules'],
-                // host: true,
                 // allowedHosts: ['<your_tailscale_hostname>'], // e.g. pi5.tailf5f622.ts.net
             },
         },
@@ -92,10 +106,14 @@ export default defineConfig((_options) => {
         plugins: [
             proxyAudioPlugin(),
             purgecss({
-                variables: false, // DO NOT REMOVE UNUSED VARIABLES (breaks web components like am-lyrics)
+                variables: false, // DO NOT REMOVE UNUSED VARIABLES (breaks lyrics web components)
                 safelist: {
                     standard: [
-                        /^am-lyrics/,
+                        /^spicy-lyrics/,
+                        /^SpicyLyrics/,
+                        /^Lyrics/,
+                        /^VirtualLyrics/,
+                        /^(?:SpicyRenderer|UseSpicyFont|SimpleLyricsMode|MinimalLyricsMode|Fullscreen|Active|NotSung|Sung|FeelSung|OppositeAligned|HasDuetLines|HasRtlLines|HideLineBlur|InstantScroll|pre-hidden|musical-line|dotGroup|dot|word|word-group|letter|letterGroup|PartOfWord|LastWordInLine|LastLetterInWord|Emphasis|bg-line|bg-word|rtl)$/,
                         /^lyplus-/,
                         'sidepanel',
                         'side-panel',
@@ -104,7 +122,7 @@ export default defineConfig((_options) => {
                         /^data-/,
                         /^modal-/,
                     ],
-                    deep: [/^am-lyrics/],
+                    deep: [/^spicy-lyrics/, /^SpicyLyrics/, /^Lyrics/],
                     greedy: [/^lyplus-/, /sidepanel/, /side-panel/],
                 },
             }),

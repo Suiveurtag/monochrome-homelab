@@ -1,0 +1,18 @@
+FROM golang:1.26-bookworm
+
+ARG SPOTIFLAC_REF=7a3a50e8d5b56fc7335d5822889c499f5e76e39b
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates ffmpeg git libtag1v5 \
+    && rm -rf /var/lib/apt/lists/* \
+    && git clone https://github.com/spotbye/SpotiFLAC.git /spotiflac \
+    && git -C /spotiflac checkout "$SPOTIFLAC_REF"
+
+WORKDIR /app/services/spotiflac-importer
+
+COPY services/spotiflac-importer/go.mod ./
+RUN go mod download
+
+EXPOSE 8787
+
+CMD ["./dev-watch.sh"]
