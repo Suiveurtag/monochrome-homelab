@@ -10,8 +10,58 @@ import {
     SVG_GLOBE,
 } from './icons.js';
 import { sidePanelManager } from './side-panel.js';
-import { isTtml, lyricsToTtml, parseLrc } from './lyrics-format.js';
+import { isTtml, lyricsToTtml, parseLrc, plainLyricsToTtml } from './lyrics-format.js';
 import { createSpicyLyricsRenderer } from './vendor/spicy-lyrics/renderer.js';
+
+function normalizeLyricsPayload(value) {
+    if (typeof value === 'string') {
+        const content = value.replace(/^\uFEFF/, '').trim();
+        if (!content) return null;
+        if (isTtml(content)) return { ttml: content };
+        if (parseLrc(content).length) return { subtitles: content };
+        return { plainLyrics: content };
+    }
+
+    if (!value || typeof value !== 'object') return null;
+    const candidates = [
+        value.ttml,
+        value.syncedLyrics,
+        value.subtitles,
+        value.plainLyrics,
+        value.lyrics,
+        value.content,
+    ];
+    for (const candidate of candidates) {
+        const payload = normalizeLyricsPayload(candidate);
+        if (payload) return payload;
+    }
+    return null;
+}
+
+function getEmbeddedLyricsPayload(track) {
+    if (!track) return null;
+    const candidates = [
+        track.lyrics,
+        track.syncedLyrics,
+        track.plainLyrics,
+        track.mediaMetadata?.lyrics,
+        track.metadata?.lyrics,
+        track.info?.lyrics,
+        track.track?.lyrics,
+    ];
+    for (const candidate of candidates) {
+        const payload = normalizeLyricsPayload(candidate);
+        if (payload) return payload;
+    }
+    return null;
+}
+
+function lyricsPayloadToTtml(payload, durationSeconds) {
+    if (payload?.ttml) return payload.ttml;
+    if (payload?.subtitles) return lyricsToTtml(payload.subtitles, durationSeconds);
+    if (payload?.plainLyrics) return plainLyricsToTtml(payload.plainLyrics, durationSeconds);
+    return '';
+}
 
 // Check if text contains Japanese, Chinese, or Korean characters
 function containsAsianText(text) {
@@ -404,20 +454,9 @@ export class LyricsManager {
 
     async fetchLyrics(trackId, track = null) {
         if (track) {
-            if (isTtml(track.lyrics)) {
-                const lyricsData = {
-                    ttml: track.lyrics,
-                    lyricsProvider: 'Local',
-                };
-                this.lyricsCache.set(trackId, lyricsData);
-                return lyricsData;
-            }
-
-            if (parseLrc(track.lyrics).length) {
-                const lyricsData = {
-                    subtitles: track.lyrics,
-                    lyricsProvider: 'Local',
-                };
+            const embeddedLyrics = getEmbeddedLyricsPayload(track);
+            if (embeddedLyrics) {
+                const lyricsData = { ...embeddedLyrics, lyricsProvider: 'Local' };
                 this.lyricsCache.set(trackId, lyricsData);
                 return lyricsData;
             }
@@ -427,9 +466,22 @@ export class LyricsManager {
             }
 
             try {
-                const artist = Array.isArray(track.artists)
-                    ? track.artists.map((a) => a.name || a).join(', ')
-                    : track.artist?.name || '';
+                if (this.api?.getTrackMetadata && trackId != null) {
+                    const hydratedResult = await this.api.getTrackMetadata(trackId);
+                    const hydratedTrack = hydratedResult?.track || hydratedResult;
+                    const hydratedLyrics = getEmbeddedLyricsPayload(hydratedTrack);
+                    if (hydratedLyrics) {
+                        const lyricsData = { ...hydratedLyrics, lyricsProvider: 'Server' };
+                        this.lyricsCache.set(trackId, lyricsData);
+                        return lyricsData;
+                    }
+                }
+            } catch (error) {
+                console.warn('Lyrics metadata refresh failed:', error);
+            }
+
+            try {
+                const artist = getTrackArtists(track, { fallback: '' }) || track.artist?.name || '';
                 const title = track.title || '';
                 const album = track.album?.title || '';
                 const duration = track.duration ? Math.round(track.duration) : null;
@@ -448,19 +500,39 @@ export class LyricsManager {
                 if (duration) params.append('duration', duration.toString());
 
                 const response = await fetch(`https://lrclib.net/api/get?${params.toString()}`);
+                const exactMatch = response.ok ? await response.json() : null;
+                let matchedLyrics = normalizeLyricsPayload(exactMatch?.syncedLyrics || exactMatch?.plainLyrics);
 
-                if (response.ok) {
-                    const data = await response.json();
-
-                    if (data.syncedLyrics) {
-                        const lyricsData = {
-                            subtitles: data.syncedLyrics,
-                            lyricsProvider: 'LRCLIB',
-                        };
-
-                        this.lyricsCache.set(trackId, lyricsData);
-                        return lyricsData;
+                if (!matchedLyrics) {
+                    const searchParams = new URLSearchParams({
+                        track_name: title,
+                        artist_name: artist,
+                    });
+                    if (album) searchParams.append('album_name', album);
+                    const searchResponse = await fetch(`https://lrclib.net/api/search?${searchParams.toString()}`);
+                    if (searchResponse.ok) {
+                        const candidates = await searchResponse.json();
+                        const sortedCandidates = Array.isArray(candidates)
+                            ? [...candidates].sort((a, b) => {
+                                  const syncedDifference =
+                                      Number(Boolean(b.syncedLyrics)) - Number(Boolean(a.syncedLyrics));
+                                  if (syncedDifference) return syncedDifference;
+                                  if (!duration) return 0;
+                                  return (
+                                      Math.abs(Number(a.duration || 0) - duration) -
+                                      Math.abs(Number(b.duration || 0) - duration)
+                                  );
+                              })
+                            : [];
+                        const bestMatch = sortedCandidates[0];
+                        matchedLyrics = normalizeLyricsPayload(bestMatch?.syncedLyrics || bestMatch?.plainLyrics);
                     }
+                }
+
+                if (matchedLyrics) {
+                    const lyricsData = { ...matchedLyrics, lyricsProvider: 'LRCLIB' };
+                    this.lyricsCache.set(trackId, lyricsData);
+                    return lyricsData;
                 }
             } catch (error) {
                 console.warn('LRCLIB fetch failed:', error);
@@ -995,11 +1067,9 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
         lyricsManager.isRomajiMode = lyricsManager.getRomajiMode();
         lyricsManager.currentTrackId = track.id;
 
-        let ttml = lyricsToTtml(track.lyrics, track.duration);
+        let ttml = lyricsPayloadToTtml(getEmbeddedLyricsPayload(track), track.duration);
         const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
-        if (!ttml && fetchedLyrics?.subtitles) {
-            ttml = lyricsToTtml(fetchedLyrics.subtitles, track.duration);
-        }
+        if (!ttml) ttml = lyricsPayloadToTtml(fetchedLyrics, track.duration);
 
         const spicyLyrics = createSpicyLyricsRenderer({
             container,

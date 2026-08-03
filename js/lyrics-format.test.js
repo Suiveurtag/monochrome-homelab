@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isTtml, lrcToTtml, lyricsToTtml, parseLrc } from './lyrics-format.js';
+import { isTtml, lrcToTtml, lyricsToTtml, parseLrc, plainLyricsToTtml } from './lyrics-format.js';
 
 describe('LRC lyrics formatting', () => {
     it('parses centisecond and millisecond timestamps', () => {
@@ -29,5 +29,13 @@ describe('LRC lyrics formatting', () => {
         expect(isTtml(ttml)).toBe(true);
         expect(lyricsToTtml(ttml)).toBe(ttml);
         expect(isTtml('<tt><body></body></tt>')).toBe(false);
+    });
+
+    it('turns plain fallback lyrics into timed TTML', () => {
+        const ttml = plainLyricsToTtml('First & line\nSecond <line>', 10);
+        expect(ttml).toContain('begin="00:00:00.000" end="00:00:05.000"');
+        expect(ttml).toContain('begin="00:00:05.000" end="00:00:10.000"');
+        expect(ttml).toContain('First &amp; line');
+        expect(ttml).toContain('Second &lt;line&gt;');
     });
 });

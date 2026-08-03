@@ -85,6 +85,33 @@ export function mapPocketBaseTrack(record, client = pb) {
     };
 }
 
+export function mergeSelfHostedTrackMetadata(serverTrack, cachedTrack) {
+    if (!cachedTrack) return serverTrack;
+    return {
+        ...serverTrack,
+        ...cachedTrack,
+        // PocketBase is authoritative for fields enriched after an import.
+        // Older IndexedDB snapshots often predate the lyrics/ISRC import step.
+        lyrics: serverTrack.lyrics || cachedTrack.lyrics || '',
+        isrc: serverTrack.isrc || cachedTrack.isrc || null,
+        spotifyId: serverTrack.spotifyId || cachedTrack.spotifyId || null,
+        spotifyUrl: serverTrack.spotifyUrl || cachedTrack.spotifyUrl || null,
+        serverAudioUrl: serverTrack.serverAudioUrl,
+        serverCoverUrl: serverTrack.serverCoverUrl,
+        serverCoverFallbackUrl: serverTrack.serverCoverFallbackUrl,
+        artist: { ...serverTrack.artist, ...cachedTrack.artist },
+        artists: cachedTrack.artists?.length ? cachedTrack.artists : serverTrack.artists,
+        album: {
+            ...serverTrack.album,
+            ...cachedTrack.album,
+            cover: serverTrack.album?.cover || cachedTrack.album?.cover,
+            animatedCover: serverTrack.album?.animatedCover || cachedTrack.album?.animatedCover,
+            coverFallback: serverTrack.album?.coverFallback || cachedTrack.album?.coverFallback,
+            artist: { ...serverTrack.album?.artist, ...cachedTrack.album?.artist },
+        },
+    };
+}
+
 async function authenticatedImportRequest(path, options = {}, client = pb, fetchImpl = fetch) {
     if (!client?.authStore?.isValid || !client?.authStore?.token) {
         throw new Error('You must be signed in to import music.');

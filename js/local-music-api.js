@@ -1,6 +1,6 @@
 // js/local-music-api.js
 import { db } from './db.js';
-import { getSelfHostedStream, listSelfHostedTracks } from './selfhost-server-api.js';
+import { getSelfHostedStream, listSelfHostedTracks, mergeSelfHostedTrackMetadata } from './selfhost-server-api.js';
 import { getArtworkSources } from './artwork-media.js';
 
 const FALLBACK_COVER = '/assets/appicon.png';
@@ -184,20 +184,7 @@ export class LocalMusicAPI {
         const uploadedById = new Map(uploadedTracks.map((track) => [String(track.id), track]));
         const serverWithLocalMetadata = serverTracks.map((track) => {
             const local = uploadedById.get(String(track.id));
-            if (!local) return track;
-            return {
-                ...track,
-                ...local,
-                serverAudioUrl: track.serverAudioUrl,
-                serverCoverUrl: track.serverCoverUrl,
-                artist: { ...track.artist, ...local.artist },
-                artists: local.artists?.length ? local.artists : track.artists,
-                album: {
-                    ...track.album,
-                    ...local.album,
-                    artist: { ...track.album?.artist, ...local.album?.artist },
-                },
-            };
+            return mergeSelfHostedTrackMetadata(track, local);
         });
         return uniqueBy(
             mergeById(serverWithLocalMetadata, mergeById(uploadedTracks, localFiles))

@@ -62,6 +62,35 @@ ${body}
 </tt>`;
 }
 
+export function plainLyricsToTtml(content, durationSeconds = 0) {
+    if (typeof content !== 'string') return '';
+    const lines = content
+        .replace(/^\uFEFF/, '')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+    if (!lines.length) return '';
+
+    const totalMs = Math.max(lines.length * 3000, Number(durationSeconds || 0) * 1000);
+    const lineDuration = totalMs / lines.length;
+    const body = lines
+        .map((text, index) => {
+            const start = index * lineDuration;
+            const end = index === lines.length - 1 ? totalMs : (index + 1) * lineDuration;
+            return `      <p begin="${formatTtmlTime(start)}" end="${formatTtmlTime(end)}">${escapeXml(text)}</p>`;
+        })
+        .join('\n');
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml">
+  <body>
+    <div>
+${body}
+    </div>
+  </body>
+</tt>`;
+}
+
 export function isTtml(content) {
     if (typeof content !== 'string') return false;
     const source = content.replace(/^\uFEFF/, '').trim();

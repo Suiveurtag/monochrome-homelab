@@ -8,6 +8,7 @@ import {
     importRemoteSelfHostedTrack,
     listSelfHostedTracks,
     mapPocketBaseTrack,
+    mergeSelfHostedTrackMetadata,
     pocketBaseFileUrl,
     updateSelfHostedTrack,
 } from './selfhost-server-api.js';
@@ -57,6 +58,37 @@ describe('selfhost-server-api helpers', () => {
                 coverFallback: 'http://monochrome.local/api/files/cover.jpg',
             },
             serverAudioUrl: 'http://monochrome.local/api/files/song.flac',
+        });
+    });
+
+    test('keeps server lyrics when an older IndexedDB snapshot has empty lyrics', () => {
+        const merged = mergeSelfHostedTrackMetadata(
+            {
+                id: 'track1',
+                title: 'Server title',
+                lyrics: '<tt><body><div><p begin="1s" end="2s">Server lyrics</p></div></body></tt>',
+                isrc: 'SERVER-ISRC',
+                serverAudioUrl: '/server.flac',
+                album: { title: 'Album', cover: '/server.jpg', artist: { name: 'Server artist' } },
+                artist: { name: 'Server artist' },
+            },
+            {
+                id: 'track1',
+                title: 'Cached title',
+                lyrics: '',
+                isrc: null,
+                serverAudioUrl: 'stale.flac',
+                album: { title: 'Album', cover: '/stale.jpg' },
+                artist: { name: 'Cached artist' },
+            }
+        );
+
+        expect(merged).toMatchObject({
+            title: 'Cached title',
+            lyrics: expect.stringContaining('Server lyrics'),
+            isrc: 'SERVER-ISRC',
+            serverAudioUrl: '/server.flac',
+            album: { cover: '/server.jpg' },
         });
     });
 
