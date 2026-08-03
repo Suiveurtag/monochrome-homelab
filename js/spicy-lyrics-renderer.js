@@ -17,6 +17,7 @@ import simplebarCss from 'simplebar/dist/simplebar.css?raw';
 import { Spring } from './vendor/spicy-lyrics/Spring.js';
 import upstreamMainCss from './vendor/spicy-lyrics/upstream/main.css?raw';
 import upstreamMixedCss from './vendor/spicy-lyrics/upstream/Mixed.css?raw';
+import upstreamSimplebarCss from './vendor/spicy-lyrics/upstream/Simplebar.css?raw';
 import { Animate as animateUpstream } from './vendor/spicy-lyrics/upstream/LyricsAnimator.ts';
 import { notifyNewElementMounted, replaceSyllableLines } from './vendor/spicy-lyrics/upstream/AnimatorCompat.js';
 import { LyricsVirtualizer } from './vendor/spicy-lyrics/upstream/LyricsVirtualizer.ts';
@@ -361,7 +362,7 @@ export class SpicyLyricsElement extends HTMLElement {
         this._root.replaceChildren();
 
         const styles = document.createElement('style');
-        styles.textContent = `${simplebarCss}\n${upstreamMainCss}\n${upstreamMixedCss}\n${SHADOW_BRIDGE_CSS}`;
+        styles.textContent = `${simplebarCss}\n${upstreamSimplebarCss}\n${upstreamMainCss}\n${upstreamMixedCss}\n${SHADOW_BRIDGE_CSS}`;
 
         const page = document.createElement('section');
         page.id = 'SpicyLyricsPage';
