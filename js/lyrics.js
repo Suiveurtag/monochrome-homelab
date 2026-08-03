@@ -1066,6 +1066,7 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
         // Set initial Romaji mode
         lyricsManager.isRomajiMode = lyricsManager.getRomajiMode();
         lyricsManager.currentTrackId = track.id;
+        lyricsManager.timingOffset = lyricsManager.getTimingOffset(track.id);
 
         let ttml = lyricsPayloadToTtml(getEmbeddedLyricsPayload(track), track.duration);
         const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
@@ -1078,8 +1079,10 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
             durationSeconds: track.duration,
             api: lyricsManager.api,
             onSeek: (timestamp) => {
+                if (!audioPlayer) return;
                 audioPlayer.currentTime = timestamp / 1000;
-                audioPlayer.play();
+                const playPromise = audioPlayer.play?.();
+                playPromise?.catch?.(() => {});
             },
         });
 
@@ -1112,7 +1115,9 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
             lyricsManager.applyGeniusAnnotations(spicyLyrics.root, lyricsManager.currentGeniusData.referents);
         }
 
-        const cleanup = setupSync(audioPlayer, spicyLyrics, lyricsManager);
+        const cleanup = audioPlayer?.addEventListener
+            ? setupSync(audioPlayer, spicyLyrics, lyricsManager)
+            : () => spicyLyrics.destroy();
 
         // Attach cleanup to container for easy access
         container.lyricsCleanup = cleanup;
@@ -1127,8 +1132,6 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
 }
 
 function setupSync(audioPlayer, spicyLyrics, lyricsManager) {
-    let baseTimeMs = 0;
-    let lastTimestamp = performance.now();
     let animationFrameId = null;
 
     // Get timing offset from lyrics manager (in milliseconds)
@@ -1138,26 +1141,21 @@ function setupSync(audioPlayer, spicyLyrics, lyricsManager) {
 
     const updateTime = () => {
         const currentMs = audioPlayer.currentTime * 1000;
-        baseTimeMs = currentMs;
-        lastTimestamp = performance.now();
         // Apply timing offset: positive offset delays lyrics, negative advances them
         spicyLyrics.setCurrentTime(currentMs - getTimingOffset(), true);
     };
 
     const tick = () => {
         if (!audioPlayer.paused) {
-            const now = performance.now();
-            const elapsed = now - lastTimestamp;
-            const nextMs = baseTimeMs + elapsed;
-            // Apply timing offset: positive offset delays lyrics, negative advances them
-            spicyLyrics.setCurrentTime(nextMs - getTimingOffset());
+            // Read the media clock on every frame. This stays accurate through
+            // buffering, playback-rate changes and browser clock corrections.
+            spicyLyrics.setCurrentTime(audioPlayer.currentTime * 1000 - getTimingOffset());
             animationFrameId = requestAnimationFrame(tick);
         }
     };
 
     const onPlay = () => {
-        baseTimeMs = audioPlayer.currentTime * 1000;
-        lastTimestamp = performance.now();
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
         tick();
     };
 

@@ -16,7 +16,12 @@ import {
     decodeHtml,
     getShareUrl,
 } from './utils.js';
-import { openLyricsPanel, renderLyricsInFullscreen, clearFullscreenLyricsSync } from './lyrics.js';
+import {
+    openLyricsPanel,
+    renderLyricsInFullscreen,
+    clearFullscreenLyricsSync,
+    clearLyricsPanelSync,
+} from './lyrics.js';
 import {
     recentActivityManager,
     backgroundSettings,
@@ -1420,6 +1425,7 @@ export class UIRenderer {
             window.history.pushState({ fullscreen: true }, '', '#fullscreen');
         }
         const overlay = document.getElementById('fullscreen-cover-overlay');
+        if (!overlay) return;
         const isAlreadyOpen = overlay && window.getComputedStyle(overlay).display !== 'none';
         const nextTrackEl = document.getElementById('fullscreen-next-track');
         const lyricsPane = document.getElementById('fullscreen-lyrics-pane');
@@ -1427,6 +1433,17 @@ export class UIRenderer {
         const lyricsToggleBtn = document.getElementById('toggle-fullscreen-lyrics-btn');
         await this.updateFullscreenMetadata(track, nextTrack);
         this.applyFullscreenCdState();
+
+        if (sidePanelManager.isActive('lyrics')) {
+            clearLyricsPanelSync(activeElement, sidePanelManager.panel);
+            sidePanelManager.close();
+        } else if (sidePanelManager.isActive('queue')) {
+            sidePanelManager.close();
+        }
+
+        // The Spicy renderer needs a measurable viewport when it computes its
+        // initial centered position. Rendering inside display:none collapses it.
+        overlay.style.display = 'flex';
 
         if (nextTrack) {
             nextTrackEl.classList.remove('animate-in');
@@ -1436,9 +1453,7 @@ export class UIRenderer {
             nextTrackEl.classList.remove('animate-in');
         }
 
-        const canRenderLyrics = Boolean(
-            lyricsManager && activeElement && lyricsPane && lyricsContent && track.type !== 'video'
-        );
+        const canRenderLyrics = Boolean(lyricsManager && lyricsPane && lyricsContent && track.type !== 'video');
         if (canRenderLyrics) {
             this.fullscreenLyricsVisible = true;
             if (lyricsToggleBtn) lyricsToggleBtn.style.removeProperty('display');
@@ -1459,9 +1474,6 @@ export class UIRenderer {
 
         const playerBar = document.querySelector('.now-playing-bar');
         if (playerBar) playerBar.style.display = 'none';
-        if (sidePanelManager.isActive('lyrics') || sidePanelManager.isActive('queue')) {
-            sidePanelManager.close();
-        }
         const mainContent = document.querySelector('.main-content');
         if (mainContent instanceof HTMLElement && !isAlreadyOpen) {
             const computedStyles = window.getComputedStyle(mainContent);
@@ -1476,8 +1488,6 @@ export class UIRenderer {
         }
 
         this.setupFullscreenControls();
-        overlay.style.display = 'flex';
-
         if (fullscreenCoverNoRoundSettings.isEnabled()) {
             overlay.classList.add('fullscreen-cover-no-round');
         } else {

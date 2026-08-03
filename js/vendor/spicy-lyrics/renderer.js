@@ -45,6 +45,8 @@ function parseWordNodes(parent, lineStart, lineEnd) {
     if (timed.length) {
         return timed
             .map((span, index) => {
+                const rawText = span.textContent || '';
+                const nextRawText = timed[index + 1]?.textContent || '';
                 const start = elementTime(span, 'begin', lineStart);
                 const end = Math.max(
                     start + 80,
@@ -55,17 +57,15 @@ function parseWordNodes(parent, lineStart, lineEnd) {
                     )
                 );
                 return {
-                    text: span.textContent || '',
+                    text: rawText.trim(),
                     start,
                     end,
                     partOfWord:
                         span.getAttribute('itunes:key')?.includes('.') ||
-                        (/^\S/.test(span.textContent || '') &&
-                            index > 0 &&
-                            !/\s$/.test(timed[index - 1]?.textContent || '')),
+                        (index < timed.length - 1 && nextRawText.length > 0 && !/^\s/.test(nextRawText)),
                 };
             })
-            .filter((word) => word.text.trim());
+            .filter((word) => word.text);
     }
 
     const text = (parent.textContent || '').replace(/\s+/g, ' ').trim();
@@ -88,13 +88,15 @@ export function parseSpicyTtml(ttml, durationSeconds = 0) {
     if (documentNode.querySelector('parsererror')) return [];
     const paragraphs = Array.from(documentNode.getElementsByTagNameNS('*', 'p'));
 
-    return paragraphs
+    const parsedLines = paragraphs
         .map((paragraph, index) => {
             const start = elementTime(paragraph, 'begin', 0);
             const nextStart = paragraphs[index + 1] ? elementTime(paragraphs[index + 1], 'begin', start + 5000) : 0;
             const fallbackEnd = nextStart || Math.max(start + 5000, Number(durationSeconds) * 1000);
             const end = Math.max(start + 100, elementTime(paragraph, 'end', fallbackEnd));
             const role = paragraph.getAttribute('ttm:agent') || paragraph.getAttribute('agent') || '';
+            const ttmlRole = paragraph.getAttribute('ttm:role') || paragraph.getAttribute('role') || '';
+            const backgroundLine = ttmlRole.includes('x-bg');
             const opposite =
                 /v2|voice2|background|other/i.test(role) || paragraph.getAttribute('itunes:align') === 'right';
             const backgroundContainers = Array.from(paragraph.getElementsByTagNameNS('*', 'span')).filter((span) =>
@@ -106,9 +108,82 @@ export function parseSpicyTtml(ttml, durationSeconds = 0) {
                 end: elementTime(span, 'end', end),
                 words: parseWordNodes(span, start, end),
             }));
-            return { start, end, words, background, opposite };
+            return { start, end, words, background, opposite, backgroundLine };
         })
         .filter((line) => line.words.length);
+
+    const leadLines = parsedLines.filter((line) => !line.backgroundLine);
+    parsedLines
+        .filter((line) => line.backgroundLine)
+        .forEach((backgroundLine) => {
+            const parent = leadLines.reduce(
+                (best, line) => {
+                    const overlap = Math.max(
+                        0,
+                        Math.min(line.end, backgroundLine.end) - Math.max(line.start, backgroundLine.start)
+                    );
+                    return overlap > best.overlap ? { line, overlap } : best;
+                },
+                { line: null, overlap: 0 }
+            ).line;
+            const fallbackParent = [...leadLines].reverse().find((line) => line.start <= backgroundLine.start);
+            (parent || fallbackParent)?.background.push({
+                start: backgroundLine.start,
+                end: backgroundLine.end,
+                words: backgroundLine.words,
+            });
+        });
+
+    return leadLines;
+}
+
+const INTERLUDE_MINIMUM_MS = 3000;
+
+function createInterludeLine(start, end, opposite = false) {
+    const duration = Math.max(300, end - start);
+    const step = duration / 3;
+    return {
+        start,
+        end,
+        opposite,
+        musical: true,
+        words: [0, 1, 2].map((index) => ({
+            text: '•',
+            start: start + index * step,
+            end: index === 2 ? end : start + (index + 1) * step,
+            partOfWord: false,
+            dot: true,
+        })),
+    };
+}
+
+export function buildSpicyTimeline(parsedLines) {
+    if (!parsedLines.length) return [];
+    const timeline = [];
+
+    parsedLines.forEach((line, index) => {
+        if (index === 0 && line.start >= INTERLUDE_MINIMUM_MS) {
+            timeline.push(createInterludeLine(0, line.start, line.opposite));
+        }
+
+        timeline.push({ ...line, backgroundLine: false });
+        line.background.forEach((background) => {
+            if (!background.words.length) return;
+            timeline.push({
+                ...background,
+                opposite: line.opposite,
+                background: [],
+                backgroundLine: true,
+            });
+        });
+
+        const nextLine = parsedLines[index + 1];
+        if (nextLine && nextLine.start - line.end >= INTERLUDE_MINIMUM_MS) {
+            timeline.push(createInterludeLine(line.end, nextLine.start, nextLine.opposite));
+        }
+    });
+
+    return timeline;
 }
 
 export function getCenteredScrollTop(lineTop, lineHeight, viewportHeight, scrollHeight) {
@@ -160,15 +235,17 @@ const glowAt = (p) => glowSpline.at(clamp(p, 0, 1));
 
 function createAnimatedToken(word, isBackground = false) {
     const duration = word.end - word.start;
-    const letterCapable = [...word.text].length <= 12 && duration >= 1000 && !rtlPattern.test(word.text);
+    const text = word.text.trim();
+    const letterCapable = !word.dot && duration >= 1000 && !rtlPattern.test(text);
     const element = document.createElement(letterCapable ? 'div' : 'span');
     element.className = letterCapable ? 'letterGroup' : 'word';
     if (isBackground) element.classList.add(letterCapable ? 'bg-letterGroup' : 'bg-word');
     if (word.partOfWord) element.classList.add('PartOfWord');
+    if (word.dot) element.classList.add('dot');
 
-    const token = { ...word, element, letterCapable, springs: createSprings(), letters: [] };
+    const token = { ...word, text, element, letterCapable, springs: createSprings(), letters: [] };
     if (letterCapable) {
-        const letters = [...word.text];
+        const letters = [...text];
         const animationEnd = Math.max(word.start + 100, word.end - 250);
         const letterDuration = (animationEnd - word.start) / Math.max(1, letters.length);
         letters.forEach((letter, index) => {
@@ -185,7 +262,7 @@ function createAnimatedToken(word, isBackground = false) {
             });
         });
     } else {
-        element.textContent = word.text;
+        element.textContent = text;
     }
     return token;
 }
@@ -195,11 +272,37 @@ function createLine(line, index, seek) {
     element.className = 'line NotSung';
     element.dataset.lineIndex = String(index);
     if (line.opposite) element.classList.add('OppositeAligned');
+    if (line.backgroundLine) element.classList.add('bg-line');
+    if (line.musical) element.classList.add('musical-line');
     if (line.words.some((word) => rtlPattern.test(word.text))) element.classList.add('rtl');
-    const tokens = line.words.map((word) => createAnimatedToken(word));
+    const tokens = line.words.map((word) => createAnimatedToken(word, line.backgroundLine));
     tokens.at(-1)?.element.classList.add('LastWordInLine');
-    tokens.forEach((token) => element.appendChild(token.element));
-    element.addEventListener('click', () => seek(line.start));
+
+    if (line.musical) {
+        const dotGroup = document.createElement('div');
+        dotGroup.className = 'dotGroup';
+        tokens.forEach((token) => dotGroup.appendChild(token.element));
+        element.appendChild(dotGroup);
+    } else {
+        let currentWordGroup = null;
+        tokens.forEach((token, tokenIndex) => {
+            const previous = tokens[tokenIndex - 1];
+            if (token.partOfWord || (previous?.partOfWord && currentWordGroup)) {
+                if (!currentWordGroup) {
+                    currentWordGroup = document.createElement('span');
+                    currentWordGroup.className = 'word-group';
+                    element.appendChild(currentWordGroup);
+                }
+                currentWordGroup.appendChild(token.element);
+                if (!token.partOfWord && previous?.partOfWord) currentWordGroup = null;
+            } else {
+                currentWordGroup = null;
+                element.appendChild(token.element);
+            }
+        });
+    }
+
+    if (!line.musical) element.addEventListener('click', () => seek?.(line.start));
     return { ...line, element, tokens };
 }
 
@@ -246,6 +349,7 @@ function createBackground(root, track, api) {
 
 export function createSpicyLyricsRenderer({ container, track, ttml, durationSeconds, api, onSeek }) {
     const parsedLines = parseSpicyTtml(ttml, durationSeconds);
+    const timeline = buildSpicyTimeline(parsedLines);
     const fullscreen = container.id === 'fullscreen-lyrics-content';
     const root = document.createElement('div');
     root.id = 'SpicyLyricsPage';
@@ -270,7 +374,7 @@ export function createSpicyLyricsRenderer({ container, track, ttml, durationSeco
         return { root, lines: [], setCurrentTime() {}, destroy() {} };
     }
 
-    const lines = parsedLines.map((line, index) => createLine(line, index, onSeek));
+    const lines = timeline.map((line, index) => createLine(line, index, onSeek));
     lines.forEach((line) => scroll.appendChild(line.element));
     let activeIndex = -1;
     let lastFrame = performance.now();
@@ -314,35 +418,36 @@ export function createSpicyLyricsRenderer({ container, track, ttml, durationSeco
         const now = performance.now();
         const deltaTime = clamp((now - lastFrame) / 1000, 1 / 240, 1 / 20);
         lastFrame = now;
-        let nextActive = lines.findIndex((line) => milliseconds >= line.start && milliseconds < line.end);
-        if (nextActive < 0)
-            nextActive = Math.max(
-                0,
-                lines.findLastIndex((line) => milliseconds >= line.start)
-            );
+        const activeLines = lines.filter((line) => milliseconds >= line.start && milliseconds < line.end);
+        const primaryActive = activeLines.find((line) => !line.backgroundLine) || activeLines[0];
+        const nextActive = primaryActive ? lines.indexOf(primaryActive) : -1;
+        const nextUpcoming = lines.findIndex((line) => line.start > milliseconds && !line.backgroundLine);
+        const focusIndex = nextActive >= 0 ? nextActive : nextUpcoming >= 0 ? nextUpcoming : lines.length - 1;
 
         lines.forEach((line, index) => {
-            const state = index < nextActive ? 'Sung' : index === nextActive ? 'Active' : 'NotSung';
+            const state = milliseconds < line.start ? 'NotSung' : milliseconds >= line.end ? 'Sung' : 'Active';
             line.element.classList.toggle('Sung', state === 'Sung');
             line.element.classList.toggle('Active', state === 'Active');
             line.element.classList.toggle('NotSung', state === 'NotSung');
-            const distance = Math.abs(index - nextActive);
+            const distance = Math.abs(index - focusIndex);
             line.element.style.setProperty(
                 '--BlurAmount',
                 state === 'Active' ? '0px' : `${Math.min(distance * 1.5, 5.465)}px`
             );
-            if (distance <= 2) line.tokens.forEach((token) => animateToken(token, milliseconds, deltaTime));
+            if (state === 'Active' || distance <= 2) {
+                line.tokens.forEach((token) => animateToken(token, milliseconds, deltaTime));
+            }
         });
 
-        if (nextActive !== activeIndex) {
-            activeIndex = nextActive;
+        if (focusIndex !== activeIndex) {
+            activeIndex = focusIndex;
             centerLine(lines[activeIndex], immediate);
         }
     };
 
     const resizeObserver = new ResizeObserver(() => centerLine(lines[activeIndex], true));
     resizeObserver.observe(content);
-    requestAnimationFrame(() => setCurrentTime(0, true));
+    setCurrentTime(0, true);
 
     return {
         root,

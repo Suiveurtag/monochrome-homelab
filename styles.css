@@ -14650,6 +14650,8 @@ body:has(#side-panel.active) #close-fullscreen-cover-btn {
 
 #fullscreen-cover-overlay .fullscreen-lyrics-pane {
     display: flex;
+    height: 100%;
+    align-self: stretch;
     align-items: stretch;
     justify-content: flex-start;
     overflow: hidden;
@@ -14673,6 +14675,7 @@ body:has(#side-panel.active) #close-fullscreen-cover-btn {
 
 #fullscreen-cover-overlay .fullscreen-lyrics-shell {
     width: min(860px, 100%);
+    height: 100%;
     min-height: 0;
     margin-left: 0;
 }
