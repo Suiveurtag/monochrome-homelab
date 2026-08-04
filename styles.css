@@ -5327,9 +5327,7 @@ input:checked + .slider::before {
     animation-name: player-icon-cast;
 }
 
-#queue-btn.icon-activated svg,
-#now-playing-add-playlist-btn.icon-activated svg,
-#mobile-add-playlist-btn.icon-activated svg {
+#queue-btn.icon-activated svg {
     animation-name: player-icon-lines;
 }
 

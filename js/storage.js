@@ -399,7 +399,6 @@ export const playerBarEffectsSettings = {
 
 const DEFAULT_PLAYER_ACTION_ORDER = [
     'favorite',
-    'playlist',
     'mix',
     'lyrics',
     'download',
@@ -408,21 +407,31 @@ const DEFAULT_PLAYER_ACTION_ORDER = [
     'sleep-timer',
     'queue',
 ];
+const DEFAULT_HIDDEN_PLAYER_ACTIONS = ['download', 'cast'];
 
 export const playerBarLayoutSettings = {
     STORAGE_KEY: 'player-bar-action-layout',
     DEFAULT_ORDER: DEFAULT_PLAYER_ACTION_ORDER,
+    DEFAULT_HIDDEN: DEFAULT_HIDDEN_PLAYER_ACTIONS,
 
     getLayout() {
-        const fallback = { visible: [...this.DEFAULT_ORDER], hidden: [] };
+        const fallback = {
+            visible: this.DEFAULT_ORDER.filter((id) => !this.DEFAULT_HIDDEN.includes(id)),
+            hidden: [...this.DEFAULT_HIDDEN],
+        };
         try {
-            const saved = JSON.parse(localStorage.getItem(this.STORAGE_KEY));
+            const raw = localStorage.getItem(this.STORAGE_KEY);
+            if (!raw) return fallback;
+            const saved = JSON.parse(raw);
             const known = new Set(this.DEFAULT_ORDER);
             const visible = Array.isArray(saved?.visible) ? saved.visible.filter((id) => known.has(id)) : [];
             const hidden = Array.isArray(saved?.hidden) ? saved.hidden.filter((id) => known.has(id)) : [];
             const used = new Set([...visible, ...hidden]);
             this.DEFAULT_ORDER.forEach((id) => {
-                if (!used.has(id)) visible.push(id);
+                if (!used.has(id)) {
+                    if (this.DEFAULT_HIDDEN.includes(id)) hidden.push(id);
+                    else visible.push(id);
+                }
             });
             return { visible: [...new Set(visible)], hidden: [...new Set(hidden)] };
         } catch {
@@ -2982,13 +2991,15 @@ export const modalSettings = {
         if (document.querySelector('.modal-overlay')) {
             return true;
         }
+        if (document.querySelector('.player-floating-panel:not([hidden])')) {
+            return true;
+        }
         const modalIds = [
             'playlist-modal',
             'folder-modal',
             'playlist-select-modal',
             'shortcuts-modal',
             'missing-tracks-modal',
-            'sleep-timer-modal',
             'discography-download-modal',
             'custom-db-modal',
             'epilepsy-warning-modal',
@@ -3012,6 +3023,10 @@ export const modalSettings = {
         document.querySelectorAll('.modal.active').forEach((modal) => {
             modal.classList.remove('active');
         });
+        document.querySelectorAll('.player-floating-panel:not([hidden])').forEach((popover) => {
+            popover.classList.remove('is-open');
+            popover.hidden = true;
+        });
 
         // Close specific modals by ID
         const modalIds = [
@@ -3020,7 +3035,6 @@ export const modalSettings = {
             'playlist-select-modal',
             'shortcuts-modal',
             'missing-tracks-modal',
-            'sleep-timer-modal',
             'discography-download-modal',
             'custom-db-modal',
             'epilepsy-warning-modal',

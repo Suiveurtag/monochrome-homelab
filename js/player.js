@@ -25,6 +25,15 @@ import { isIos, isSafari } from './platform-detection.js';
 import { db } from './db.js';
 import { getProxyUrl } from './proxy-utils.js';
 import { isVideoArtwork } from './animated-artwork.js';
+import {
+    getApiQuality,
+    getAvailableQualityOptions,
+    getNextLowerQuality,
+    getQualityOption,
+    getTrackQualityAvailability,
+    normalizePlaybackQuality,
+    resolvePlaybackQuality,
+} from './player-quality.js';
 
 import { SVG_CLOCK, SVG_ATMOS } from './icons.js';
 import { UIRenderer } from './ui.js';
@@ -46,6 +55,12 @@ export class Player {
         this.video = document.getElementById('video-player');
         this.api = api;
         this.quality = quality;
+        this.requestedQualityProfile = normalizePlaybackQuality(
+            localStorage.getItem('adaptive-playback-quality') || 'auto'
+        );
+        this.effectiveQualityProfile = null;
+        this.qualityFallbackReason = null;
+        this.qualityFallbackInFlight = false;
         this.queue = [];
         this.shuffledQueue = [];
         this.originalQueueBeforeShuffle = [];
@@ -545,6 +560,118 @@ export class Player {
         this.quality = quality;
     }
 
+    getQualityVariants() {
+        if (!this.shakaInitialized || !this.shakaPlayer) return [];
+        try {
+            return this.shakaPlayer.getVariantTracks() || [];
+        } catch {
+            return [];
+        }
+    }
+
+    getQualityState() {
+        const variants = this.getQualityVariants();
+        const requested = normalizePlaybackQuality(this.requestedQualityProfile);
+        const effective =
+            this.effectiveQualityProfile ||
+            resolvePlaybackQuality(requested, this.currentTrack, variants, globalThis.navigator?.connection);
+        return {
+            requested,
+            effective,
+            fallbackReason: this.qualityFallbackReason,
+            availability: getTrackQualityAvailability(this.currentTrack, variants),
+            options: getAvailableQualityOptions(this.currentTrack, variants),
+        };
+    }
+
+    prepareQualityForTrack(track) {
+        this.requestedQualityProfile = normalizePlaybackQuality(
+            localStorage.getItem('adaptive-playback-quality') || this.requestedQualityProfile || 'auto'
+        );
+        this.effectiveQualityProfile = resolvePlaybackQuality(
+            this.requestedQualityProfile,
+            track,
+            [],
+            globalThis.navigator?.connection
+        );
+        this.qualityFallbackReason = null;
+        this.quality = getApiQuality(this.effectiveQualityProfile);
+    }
+
+    notifyQualityChanged() {
+        this.updateAdaptiveQualityBadge();
+        window.dispatchEvent(new CustomEvent('player-quality-changed', { detail: this.getQualityState() }));
+    }
+
+    async selectPlaybackQuality(profile) {
+        const normalized = normalizePlaybackQuality(profile);
+        this.requestedQualityProfile = normalized;
+        this.effectiveQualityProfile = resolvePlaybackQuality(
+            normalized,
+            this.currentTrack,
+            this.getQualityVariants(),
+            globalThis.navigator?.connection
+        );
+        this.qualityFallbackReason = null;
+        this.quality = getApiQuality(this.effectiveQualityProfile);
+        localStorage.setItem('adaptive-playback-quality', normalized);
+        localStorage.setItem('playback-quality', this.quality);
+        this.preloadCache.clear();
+
+        if (!this.currentTrack) {
+            this.notifyQualityChanged();
+            return;
+        }
+
+        if (this.shakaInitialized) {
+            this.forceQuality(this.effectiveQualityProfile);
+            this.notifyQualityChanged();
+            return;
+        }
+
+        const currentTime = Number.isFinite(this.activeElement?.currentTime) ? this.activeElement.currentTime : 0;
+        await this.playTrackFromQueue(currentTime, 0, true);
+        this.notifyQualityChanged();
+    }
+
+    stepDownPlaybackQuality(reason = 'Connection is unstable') {
+        const current =
+            this.effectiveQualityProfile ||
+            resolvePlaybackQuality(
+                this.requestedQualityProfile,
+                this.currentTrack,
+                this.getQualityVariants(),
+                globalThis.navigator?.connection
+            );
+        const next = getNextLowerQuality(current, this.currentTrack, this.getQualityVariants());
+        if (!next) return false;
+
+        this.effectiveQualityProfile = next;
+        this.quality = getApiQuality(next);
+        this.qualityFallbackReason = reason;
+        this.preloadCache.delete(this.currentTrack?.id);
+        this.notifyQualityChanged();
+        return true;
+    }
+
+    async fallbackPlaybackQuality(reason = 'Connection is unstable') {
+        if (this.qualityFallbackInFlight || !this.currentTrack || !this.stepDownPlaybackQuality(reason)) return false;
+        this.qualityFallbackInFlight = true;
+        try {
+            if (this.shakaInitialized) {
+                this.forceQuality(this.effectiveQualityProfile);
+            } else {
+                const currentTime = Number.isFinite(this.activeElement?.currentTime)
+                    ? this.activeElement.currentTime
+                    : 0;
+                await this.playTrackFromQueue(currentTime, 0, true);
+            }
+            return true;
+        } finally {
+            this.qualityFallbackInFlight = false;
+        }
+    }
+
     preloadNextTracks() {
         this._pendingPreload = true;
     }
@@ -780,8 +907,7 @@ export class Player {
                 }
 
                 this.applyAudioEffects();
-                const savedAdaptiveQuality = localStorage.getItem('adaptive-playback-quality') || 'auto';
-                this.forceQuality(savedAdaptiveQuality);
+                this.forceQuality(this.effectiveQualityProfile || this.requestedQualityProfile);
                 this.updateAdaptiveQualityBadge();
 
                 return this.safePlay(activeElement);
@@ -1004,6 +1130,7 @@ export class Player {
         }
 
         const track = currentQueue[this.currentQueueIndex];
+        if (!isRetry) this.prepareQualityForTrack(track);
         if (track.isUnavailable) {
             console.warn(`Attempted to play unavailable track: ${track.title}. Skipping...`);
             await this.playNext();
@@ -1319,8 +1446,7 @@ export class Player {
 
                     this.shakaInitialized = true;
 
-                    const savedAdaptiveQuality = localStorage.getItem('adaptive-playback-quality') || 'auto';
-                    this.forceQuality(savedAdaptiveQuality);
+                    this.forceQuality(this.effectiveQualityProfile || this.requestedQualityProfile);
 
                     this.updateAdaptiveQualityBadge();
                 } else {
@@ -1411,8 +1537,7 @@ export class Player {
                     this.shakaInitialized = true;
                     this.applyAudioEffects();
 
-                    const savedAdaptiveQuality = localStorage.getItem('adaptive-playback-quality') || 'auto';
-                    this.forceQuality(savedAdaptiveQuality);
+                    this.forceQuality(this.effectiveQualityProfile || this.requestedQualityProfile);
 
                     this.updateAdaptiveQualityBadge();
 
@@ -1447,18 +1572,15 @@ export class Player {
                 return;
             }
 
-            if (this.quality === 'HI_RES_LOSSLESS' && !this.isFallbackRetry) {
+            if (this.stepDownPlaybackQuality('Playback failed, using a lighter stream')) {
                 this.isFallbackRetry = true;
-                const originalQuality = this.quality;
-                this.quality = 'LOSSLESS';
                 this.isFallbackInProgress = true;
                 try {
                     await this.playTrackFromQueue(startTime, recursiveCount, true);
                     return;
                 } catch {
-                    // LOSSLESS fallback also failed - fall through to error handling below
+                    // The nested attempt applies the next step in the quality ladder.
                 } finally {
-                    this.quality = originalQuality;
                     this.isFallbackRetry = false;
                     this.isFallbackInProgress = false;
                 }
@@ -2361,7 +2483,7 @@ export class Player {
                 }
 
                 let isAtmosPlaying = isTrackAtmos && deviceSupportsAtmos;
-                const q = this.quality || localStorage.getItem('adaptive-playback-quality') || 'auto';
+                const q = this.effectiveQualityProfile || this.quality || 'HIGH';
 
                 if (!isAtmosPlaying) {
                     if (q === 'HI_RES_LOSSLESS') text = 'HD FLAC';
@@ -2381,7 +2503,28 @@ export class Player {
                 }
                 badgeEl.style.display = 'inline-flex';
             } else {
-                if (badgeEl) badgeEl.style.display = 'none';
+                if (!badgeEl) {
+                    badgeEl = document.createElement('span');
+                    badgeEl.className = 'quality-badge quality-hires shaka-quality-badge';
+                    titleEl.appendChild(badgeEl);
+                }
+                const option = getQualityOption(this.effectiveQualityProfile || 'HIGH');
+                badgeEl.textContent = option.id === 'HI_RES_LOSSLESS' ? 'HI-RES' : option.detail;
+                badgeEl.style.display = 'inline-flex';
+            }
+
+            if (badgeEl) {
+                const profile = this.effectiveQualityProfile || 'HIGH';
+                const option = getQualityOption(profile);
+                const staticBadge = titleEl.querySelector('.quality-badge:not(.shaka-quality-badge)');
+                if (staticBadge) staticBadge.style.display = 'none';
+                badgeEl.dataset.qualityProfile = profile;
+                badgeEl.classList.toggle('is-lossless-active', profile === 'LOSSLESS' || profile === 'HI_RES_LOSSLESS');
+                badgeEl.title = `${option.label} · ${option.detail}. Click to change playback quality`;
+                badgeEl.setAttribute('role', 'button');
+                badgeEl.setAttribute('tabindex', '0');
+                badgeEl.setAttribute('aria-haspopup', 'dialog');
+                badgeEl.setAttribute('aria-label', `Playback quality: ${option.label}, ${option.detail}`);
             }
         } catch (e) {
             console.error('Failed to update adaptive quality badge', e);
@@ -2448,8 +2591,8 @@ export class Player {
 
             let bestVariant = variants[0];
 
-            if (quality === 'LOW' || quality === 'HIGH') {
-                const targetBandwidth = quality === 'LOW' ? 96000 : 320000;
+            if (['LOWEST', 'LOW', 'NORMAL', 'HIGH'].includes(quality)) {
+                const targetBandwidth = getQualityOption(quality).targetBandwidth;
                 const aacVariants = variants.filter((v) => v.audioCodec && v.audioCodec.toLowerCase().includes('mp4a'));
                 const searchVariants = aacVariants.length > 0 ? aacVariants : variants;
 

@@ -1,0 +1,620 @@
+/* stylelint-disable no-descending-specificity */
+
+/* Player-only refinement layer. Loaded after styles.css so the redesign stays isolated and reversible. */
+@media (min-width: 769px) {
+    .now-playing-bar {
+        grid-template-columns: minmax(240px, 1.05fr) minmax(420px, 1.55fr) minmax(290px, 1.05fr);
+        height: 96px;
+        padding-inline: 1.1rem;
+    }
+}
+
+.now-playing-cover-button {
+    position: relative;
+    display: grid;
+    flex: 0 0 auto;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: var(--muted);
+    color: white;
+    cursor: pointer;
+    isolation: isolate;
+}
+
+.now-playing-cover-button .cover {
+    grid-area: 1 / 1;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    transition:
+        transform 360ms var(--ease-out-back),
+        filter 260ms ease;
+}
+
+.now-playing-cover-button::after {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    background: linear-gradient(145deg, rgb(0 0 0 / 0.16), rgb(0 0 0 / 0.78));
+    opacity: 0;
+    transition: opacity 240ms ease;
+}
+
+.cover-fullscreen-icon {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    transform: scale(0.72) rotate(-4deg);
+    transition:
+        opacity 220ms ease,
+        transform 360ms var(--ease-out-back);
+}
+
+.cover-fullscreen-icon svg {
+    width: 24px;
+    height: 24px;
+    filter: drop-shadow(0 2px 8px rgb(0 0 0 / 0.55));
+}
+
+.cover-fullscreen-icon path {
+    fill: currentcolor;
+}
+
+.now-playing-cover-button:hover .cover,
+.now-playing-cover-button:focus-visible .cover {
+    filter: brightness(0.72) saturate(0.9);
+    transform: scale(1.12);
+}
+
+.now-playing-cover-button:hover::after,
+.now-playing-cover-button:focus-visible::after,
+.now-playing-cover-button:hover .cover-fullscreen-icon,
+.now-playing-cover-button:focus-visible .cover-fullscreen-icon {
+    opacity: 1;
+}
+
+.now-playing-cover-button:hover .cover-fullscreen-icon,
+.now-playing-cover-button:focus-visible .cover-fullscreen-icon {
+    transform: scale(1) rotate(0);
+}
+
+.now-playing-cover-button:focus-visible {
+    outline: 2px solid rgb(var(--highlight-rgb) / 0.9);
+    outline-offset: 3px;
+}
+
+.track-info .details {
+    flex: 0 1 auto;
+    max-width: calc(100% - 112px);
+}
+
+.now-playing-like-btn {
+    flex: 0 0 auto;
+    align-self: center;
+    margin-left: 0.65rem;
+}
+
+.player-controls {
+    width: 100%;
+}
+
+.player-controls .progress-container {
+    order: initial;
+    width: min(100%, 680px);
+    max-width: 680px;
+    gap: 0.65rem;
+}
+
+.progress-track-shell {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    min-width: 0;
+}
+
+.progress-track-shell .progress-bar {
+    width: 100%;
+    flex: 1 1 auto;
+    overflow: visible;
+    transition:
+        height 180ms var(--ease-out),
+        background-color 180ms ease,
+        box-shadow 180ms ease;
+}
+
+.progress-track-shell .progress-bar:hover,
+.progress-track-shell .progress-bar:active {
+    height: 12px;
+    background-color: color-mix(in srgb, var(--muted-foreground) 24%, var(--secondary));
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.04);
+}
+
+.progress-hover-fill {
+    position: absolute;
+    z-index: 0;
+    inset: 0 auto 0 0;
+    width: 0;
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--muted-foreground) 58%, transparent);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+}
+
+.progress-bar.is-previewing .progress-hover-fill {
+    opacity: 1;
+}
+
+.progress-bar .progress-fill {
+    z-index: 1;
+}
+
+.progress-hover-time {
+    position: absolute;
+    z-index: 4;
+    bottom: calc(100% + 11px);
+    left: 0;
+    min-width: auto !important;
+    padding: 0.28rem 0.48rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--card) 94%, black);
+    color: var(--foreground);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+    font-size: 0.7rem;
+    font-weight: 650;
+    line-height: 1;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 5px) scale(0.94);
+    transition:
+        opacity 140ms ease,
+        transform 180ms var(--ease-out-back);
+}
+
+.progress-track-shell:has(.progress-bar.is-previewing) .progress-hover-time {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+}
+
+.volume-controls {
+    flex-flow: row nowrap !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 0.9rem !important;
+}
+
+.player-actions-row,
+.volume-slider-row {
+    flex: 0 0 auto;
+    align-items: center;
+}
+
+.elastic-volume #volume-slider.is-grabbing {
+    cursor: grabbing;
+}
+
+.now-playing-bar .quality-badge {
+    --quality-badge-color: var(--muted-foreground);
+
+    position: relative;
+    isolation: isolate;
+    cursor: pointer;
+    user-select: none;
+    opacity: 0;
+    transform: translateY(1px);
+    transition:
+        color 180ms ease,
+        border-color 180ms ease,
+        box-shadow 240ms ease,
+        transform 180ms ease;
+}
+
+.now-playing-bar .quality-badge:hover,
+.now-playing-bar .quality-badge:focus-visible {
+    color: var(--foreground);
+    border-color: rgb(var(--highlight-rgb) / 0.6);
+    transform: translateY(0) scale(1.04);
+    outline: none;
+}
+
+.now-playing-bar .quality-badge.is-lossless-active {
+    --quality-badge-color: rgb(var(--highlight-rgb));
+
+    color: rgb(var(--highlight-rgb));
+    border-color: rgb(var(--highlight-rgb) / 0.66);
+    box-shadow:
+        0 0 0 1px rgb(var(--highlight-rgb) / 0.1),
+        0 0 12px rgb(var(--highlight-rgb) / 0.42);
+}
+
+.now-playing-bar .quality-badge.dia-text-reveal {
+    opacity: 1;
+    background-image: linear-gradient(
+        90deg,
+        var(--quality-badge-color) 0 34%,
+        rgb(var(--highlight-rgb)) 45%,
+        white 50%,
+        rgb(var(--highlight-rgb)) 55%,
+        var(--quality-badge-color) 66% 100%
+    );
+    background-position: 135% 50%;
+    background-size: 280% 100%;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: dia-text-reveal 1.15s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
+@keyframes dia-text-reveal {
+    0% {
+        opacity: 0;
+        clip-path: inset(0 100% 0 0 round 3px);
+        background-position: -135% 50%;
+        transform: translateY(3px);
+    }
+
+    28% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 1;
+        clip-path: inset(0 0 0 0 round 3px);
+        background-position: 135% 50%;
+        transform: translateY(1px);
+    }
+}
+
+.player-floating-panel[hidden] {
+    display: none !important;
+}
+
+.player-floating-panel {
+    position: fixed;
+    z-index: 2300 !important;
+    padding: 0.85rem;
+    overflow: hidden;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    border-radius: 18px;
+    background:
+        radial-gradient(
+            circle at var(--panel-origin-x, 50%) var(--panel-origin-y, 100%),
+            rgb(var(--highlight-rgb) / 0.12),
+            transparent 42%
+        ),
+        color-mix(in srgb, var(--card) 94%, transparent);
+    color: var(--foreground);
+    box-shadow:
+        0 24px 70px rgb(0 0 0 / 0.48),
+        inset 0 1px 0 rgb(255 255 255 / 0.05);
+    opacity: 0;
+    backdrop-filter: blur(24px) saturate(1.2);
+    transform: translateY(8px) scale(0.94);
+    transform-origin: var(--panel-origin-x, 50%) var(--panel-origin-y, 100%);
+    transition:
+        opacity 180ms ease,
+        transform 300ms var(--ease-out-back);
+}
+
+.player-floating-panel.is-open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.player-popover-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.15rem 0.15rem 0.75rem;
+}
+
+.player-popover-header h3 {
+    margin: 0.12rem 0 0;
+    font-size: 1rem;
+    letter-spacing: -0.015em;
+}
+
+.player-popover-kicker {
+    color: rgb(var(--highlight-rgb));
+    font-size: 0.65rem;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.quality-auto-indicator {
+    padding: 0.24rem 0.48rem;
+    border: 1px solid rgb(var(--highlight-rgb) / 0.28);
+    border-radius: var(--radius-full);
+    background: rgb(var(--highlight-rgb) / 0.08);
+    color: rgb(var(--highlight-rgb));
+    font-size: 0.66rem;
+    font-weight: 700;
+}
+
+.quality-radio-group {
+    display: grid;
+    gap: 0.28rem;
+}
+
+.quality-radio-option {
+    position: relative;
+    display: grid;
+    grid-template-columns: 20px 1fr auto;
+    align-items: center;
+    gap: 0.68rem;
+    min-height: 48px;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition:
+        transform 180ms var(--ease-out-back),
+        border-color 180ms ease,
+        background-color 180ms ease;
+}
+
+.quality-radio-option:hover {
+    background: rgb(255 255 255 / 0.045);
+    transform: translateX(2px);
+}
+
+.quality-radio-option.is-selected {
+    border-color: rgb(var(--highlight-rgb) / 0.26);
+    background: rgb(var(--highlight-rgb) / 0.08);
+}
+
+.quality-radio-option input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.quality-radio-control {
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--muted-foreground);
+    border-radius: 50%;
+    transition:
+        border-color 180ms ease,
+        box-shadow 220ms ease,
+        transform 220ms var(--ease-out-back);
+}
+
+.quality-radio-control span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgb(var(--highlight-rgb));
+    opacity: 0;
+    transform: scale(0.2);
+    transition:
+        opacity 160ms ease,
+        transform 240ms var(--ease-out-back);
+}
+
+.quality-radio-option.is-selected .quality-radio-control {
+    border-color: rgb(var(--highlight-rgb));
+    transform: scale(1.04);
+}
+
+.quality-radio-option.is-selected .quality-radio-control span {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.quality-radio-option.is-selected.is-lossless .quality-radio-control {
+    box-shadow: 0 0 14px rgb(var(--highlight-rgb) / 0.72);
+}
+
+.quality-radio-copy {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.quality-radio-copy strong {
+    font-size: 0.82rem;
+    font-weight: 650;
+}
+
+.quality-radio-copy small {
+    color: var(--muted-foreground);
+    font-size: 0.69rem;
+    white-space: nowrap;
+}
+
+.quality-premium-mark {
+    padding: 0.18rem 0.32rem;
+    border: 1px solid rgb(var(--highlight-rgb) / 0.38);
+    border-radius: 4px;
+    color: rgb(var(--highlight-rgb));
+    font-size: 0.58rem;
+    font-weight: 800;
+}
+
+.quality-connection-note {
+    margin: 0.7rem 0.15rem 0;
+    padding-top: 0.65rem;
+    border-top: 1px solid rgb(255 255 255 / 0.07);
+    color: var(--muted-foreground);
+    font-size: 0.69rem;
+    line-height: 1.45;
+}
+
+.quality-connection-note.is-fallback {
+    color: #fbbf24;
+}
+
+.sleep-timer-popover {
+    padding: 1rem;
+}
+
+.player-popover-close {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 9px;
+    background: rgb(255 255 255 / 0.05);
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition:
+        color 160ms ease,
+        background-color 160ms ease,
+        transform 180ms var(--ease-out-back);
+}
+
+.player-popover-close:hover {
+    background: rgb(255 255 255 / 0.1);
+    color: var(--foreground);
+    transform: rotate(5deg) scale(1.04);
+}
+
+.sleep-timer-description {
+    margin: -0.1rem 0 0.85rem;
+    color: var(--muted-foreground);
+    font-size: 0.74rem;
+}
+
+.sleep-timer-popover .timer-options {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.38rem;
+}
+
+.sleep-timer-popover .timer-option {
+    display: flex;
+    min-width: 0;
+    min-height: 54px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.05rem;
+    padding: 0.45rem 0.2rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    border-radius: 11px;
+    background: rgb(255 255 255 / 0.035);
+    color: var(--foreground);
+    cursor: pointer;
+    transition:
+        transform 220ms var(--ease-out-back),
+        border-color 180ms ease,
+        background-color 180ms ease,
+        box-shadow 180ms ease;
+}
+
+.sleep-timer-popover .timer-option:hover,
+.sleep-timer-popover .timer-option:focus-visible {
+    border-color: rgb(var(--highlight-rgb) / 0.38);
+    background: rgb(var(--highlight-rgb) / 0.1);
+    box-shadow: 0 8px 24px rgb(var(--highlight-rgb) / 0.08);
+    transform: translateY(-3px);
+    outline: none;
+}
+
+.sleep-timer-popover .timer-option strong {
+    font-size: 0.92rem;
+}
+
+.sleep-timer-popover .timer-option span {
+    color: var(--muted-foreground);
+    font-size: 0.62rem;
+}
+
+.custom-timer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgb(255 255 255 / 0.07);
+    font-size: 0.74rem;
+}
+
+.custom-timer-control {
+    display: flex;
+    align-items: center;
+    gap: 0.36rem;
+}
+
+.custom-timer-control input {
+    width: 58px;
+    height: 34px;
+    padding: 0 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: rgb(255 255 255 / 0.04);
+    color: var(--foreground);
+    text-align: right;
+}
+
+.custom-timer-control > span {
+    color: var(--muted-foreground);
+    font-size: 0.68rem;
+}
+
+.custom-timer-control #custom-timer-btn {
+    min-height: 34px;
+    padding-inline: 0.7rem;
+}
+
+@media (max-width: 768px) {
+    .now-playing-cover-button {
+        width: 48px;
+        height: 48px;
+    }
+
+    .now-playing-like-btn {
+        margin-left: 0;
+    }
+
+    .player-controls .progress-container {
+        order: initial;
+    }
+
+    .now-playing-bar .player-controls {
+        padding-bottom: 0 !important;
+    }
+
+    .volume-controls {
+        justify-content: flex-end !important;
+    }
+
+    .player-floating-panel {
+        max-width: calc(100vw - 20px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .now-playing-cover-button *,
+    .player-floating-panel,
+    .quality-radio-option,
+    .sleep-timer-popover .timer-option,
+    .progress-hover-time {
+        animation: none !important;
+        transition-duration: 0ms !important;
+    }
+
+    .now-playing-bar .quality-badge.dia-text-reveal {
+        opacity: 1;
+    }
+}

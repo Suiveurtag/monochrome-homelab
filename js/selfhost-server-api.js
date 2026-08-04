@@ -38,6 +38,10 @@ export function mapPocketBaseTrack(record, client = pb) {
     const albumTitle = record.album || 'Unknown Album';
     const albumArtist = record.album_artist || artistName;
     const audioUrl = pocketBaseFileUrl(client, record, record.audio);
+    const audioFileName = String(record.audio || '');
+    const declaredAudioQuality = record.audio_quality || record.quality || null;
+    const isFlac = /\.flac(?:$|[?#])/i.test(audioFileName);
+    const audioQuality = declaredAudioQuality || (isFlac ? 'LOSSLESS' : null);
     const coverUrl = pocketBaseFileUrl(client, record, record.cover) || FALLBACK_COVER;
     const videoCoverUrl = isVideoArtwork(coverUrl) ? coverUrl : null;
     const artist = {
@@ -64,6 +68,8 @@ export function mapPocketBaseTrack(record, client = pb) {
         spotifyId: record.spotify_id || null,
         spotifyUrl: record.spotify_url || null,
         isrc: record.isrc || null,
+        audioQuality,
+        fileName: audioFileName,
         artist,
         artists: [artist],
         album: {
@@ -77,7 +83,7 @@ export function mapPocketBaseTrack(record, client = pb) {
         serverAudioUrl: audioUrl,
         serverCoverUrl: coverUrl,
         videoCoverUrl,
-        mediaMetadata: { tags: ['Self-hosted'] },
+        mediaMetadata: { tags: ['Self-hosted', ...(isFlac ? ['FLAC', 'LOSSLESS'] : [])] },
         lyrics: record.lyrics || '',
         importSource: record.source_provider || null,
     };

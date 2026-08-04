@@ -77,6 +77,7 @@
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/assets/logo.svg" type="image/svg+xml" />
         <link rel="stylesheet" href="/styles.css" />
+        <link rel="stylesheet" href="/player-refined.css" />
     </head>
 
     <body>
@@ -406,9 +407,6 @@
                                 <div class="fullscreen-actions">
                                     <button id="fs-like-btn" class="btn-icon like-btn" title="Like">
                                         <use svg="!lucide/heart.svg" class="heart-icon" size="24" />
-                                    </button>
-                                    <button id="fs-add-playlist-btn" class="btn-icon" title="Add to Playlist">
-                                        <use svg="!lucide/square-pen.svg" size="24" />
                                     </button>
                                     <button id="fs-download-btn" class="btn-icon" title="Download">
                                         <use svg="!lucide/download.svg" size="24" />
@@ -1267,32 +1265,45 @@
             </div>
         </div>
 
-        <div id="sleep-timer-modal" class="modal">
-            <div class="modal-overlay"></div>
-            <div class="modal-content" style="max-width: 300px">
-                <h3 style="text-align: center; margin-bottom: 1.5rem">Sleep Timer</h3>
-                <div class="timer-options">
-                    <button class="timer-option btn-secondary" data-minutes="5">5 minutes</button>
-                    <button class="timer-option btn-secondary" data-minutes="15">15 minutes</button>
-                    <button class="timer-option btn-secondary" data-minutes="30">30 minutes</button>
-                    <button class="timer-option btn-secondary" data-minutes="60">1 hour</button>
-                    <button class="timer-option btn-secondary" data-minutes="120">2 hours</button>
-                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem">
-                        <input
-                            type="number"
-                            id="custom-minutes"
-                            class="template-input"
-                            placeholder="Custom"
-                            min="1"
-                            max="480"
-                        />
-                        <button class="timer-option btn-primary" id="custom-timer-btn" style="padding: 0.5rem 1rem">
-                            Set
-                        </button>
-                    </div>
+        <div
+            id="sleep-timer-popover"
+            class="player-floating-panel sleep-timer-popover"
+            role="dialog"
+            aria-modal="false"
+            aria-labelledby="sleep-timer-title"
+            hidden
+        >
+            <div class="player-popover-header">
+                <div>
+                    <span class="player-popover-kicker">Playback</span>
+                    <h3 id="sleep-timer-title">Sleep timer</h3>
                 </div>
-                <div class="modal-actions" style="justify-content: center">
-                    <button id="cancel-sleep-timer" class="btn-secondary">Cancel</button>
+                <button id="cancel-sleep-timer" class="player-popover-close" type="button" aria-label="Close">
+                    <use svg="!lucide/x.svg" size="18" />
+                </button>
+            </div>
+            <p class="sleep-timer-description">Monochrome will gently pause when the timer ends.</p>
+            <div class="timer-options" aria-label="Timer duration">
+                <button class="timer-option" type="button" data-minutes="5"><strong>5</strong><span>min</span></button>
+                <button class="timer-option" type="button" data-minutes="15">
+                    <strong>15</strong><span>min</span>
+                </button>
+                <button class="timer-option" type="button" data-minutes="30">
+                    <strong>30</strong><span>min</span>
+                </button>
+                <button class="timer-option" type="button" data-minutes="60">
+                    <strong>1</strong><span>hour</span>
+                </button>
+                <button class="timer-option" type="button" data-minutes="120">
+                    <strong>2</strong><span>hours</span>
+                </button>
+            </div>
+            <div class="custom-timer-row">
+                <label for="custom-minutes">Custom</label>
+                <div class="custom-timer-control">
+                    <input type="number" id="custom-minutes" placeholder="45" min="1" max="480" inputmode="numeric" />
+                    <span>min</span>
+                    <button class="timer-option" id="custom-timer-btn" type="button">Set</button>
                 </div>
             </div>
         </div>
@@ -4510,8 +4521,10 @@
                                         <option value="auto">Auto (Adaptive)</option>
                                         <option value="HI_RES_LOSSLESS">Hi-Res Lossless (24-bit)</option>
                                         <option value="LOSSLESS">Lossless (16-bit)</option>
-                                        <option value="HIGH">AAC 320kbps</option>
-                                        <option value="LOW">AAC 96kbps</option>
+                                        <option value="HIGH">Very High (320 kb/s)</option>
+                                        <option value="NORMAL">High (160 kb/s)</option>
+                                        <option value="LOW">Normal (96 kb/s)</option>
+                                        <option value="LOWEST">Low (24 kb/s)</option>
                                     </select>
                                 </div>
                                 <div class="setting-item">
@@ -6472,12 +6485,38 @@
                 <div class="player-magic-rings" aria-hidden="true"></div>
                 <div class="edge-light" aria-hidden="true"></div>
                 <div class="track-info">
-                    <img src="/assets/appicon.png" alt="Current Track Cover" class="cover" fetchpriority="high" />
+                    <button
+                        id="now-playing-cover-button"
+                        class="now-playing-cover-button"
+                        type="button"
+                        aria-label="Open current track in fullscreen"
+                    >
+                        <img src="/assets/appicon.png" alt="Current Track Cover" class="cover" fetchpriority="high" />
+                        <span class="cover-fullscreen-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none">
+                                <path
+                                    d="M21.71 2.3A1 1 0 0 1 22 3v6a1 1 0 1 1-2 0V5.41l-5.29 5.3a1 1 0 0 1-1.42-1.42L18.59 4H15a1 1 0 1 1 0-2h6a1 1 0 0 1 .71.3Z"
+                                />
+                                <path
+                                    d="M10.71 14.71 5.41 20H9a1 1 0 1 1 0 2H3a1 1 0 0 1-1-1v-6a1 1 0 1 1 2 0v3.59l5.29-5.3a1 1 0 0 1 1.42 1.42Z"
+                                />
+                            </svg>
+                        </span>
+                    </button>
                     <div class="details">
                         <div class="title">Select a song</div>
                         <div class="album"></div>
                         <div class="artist"></div>
                     </div>
+                    <button
+                        id="now-playing-like-btn"
+                        data-player-action="favorite"
+                        class="like-btn now-playing-like-btn"
+                        data-action="toggle-like"
+                        title="Save to Favorites"
+                        aria-label="Save to Favorites"
+                        style="display: none"
+                    ></button>
                 </div>
                 <div class="player-controls">
                     <div id="radio-loading-indicator">
@@ -6507,32 +6546,18 @@
                     </div>
                     <div class="progress-container">
                         <span id="current-time">0:00</span>
-                        <div id="progress-bar" class="progress-bar">
-                            <div id="progress-fill" class="progress-fill"></div>
+                        <div class="progress-track-shell">
+                            <span id="progress-hover-time" class="progress-hover-time" aria-hidden="true">0:00</span>
+                            <div id="progress-bar" class="progress-bar">
+                                <div id="progress-hover-fill" class="progress-hover-fill"></div>
+                                <div id="progress-fill" class="progress-fill"></div>
+                            </div>
                         </div>
                         <span id="total-duration">0:00</span>
                     </div>
                 </div>
                 <div class="volume-controls">
                     <div class="player-actions-row">
-                        <button
-                            id="now-playing-like-btn"
-                            data-player-action="favorite"
-                            class="like-btn"
-                            data-action="toggle-like"
-                            title="Save to Favorites"
-                            style="display: none"
-                        ></button>
-                        <button
-                            id="now-playing-add-playlist-btn"
-                            data-player-action="playlist"
-                            title="Add to playlist"
-                            class="desktop-only"
-                            aria-label="Add to playlist"
-                        >
-                            <use svg="!lucide/list-plus.svg" size="20" />
-                        </button>
-
                         <button
                             id="now-playing-mix-btn"
                             data-player-action="mix"
@@ -6563,16 +6588,6 @@
                         <button id="cast-btn" data-player-action="cast" title="Cast">
                             <use svg="!lucide/cast.svg" size="20" />
                         </button>
-
-                        <button
-                            id="mobile-add-playlist-btn"
-                            data-player-action="playlist"
-                            class="mobile-only"
-                            title="Add to playlist"
-                            aria-label="Add to playlist"
-                        >
-                            <use svg="!lucide/list-plus.svg" size="20" />
-                        </button>
                         <button
                             id="equalizer-player-btn"
                             data-player-action="equalizer"
@@ -6588,6 +6603,8 @@
                             data-player-action="sleep-timer"
                             title="Sleep Timer"
                             class="mobile-only"
+                            aria-haspopup="dialog"
+                            aria-expanded="false"
                         >
                             <use svg="!lucide/clock.svg" size="20" />
                         </button>
@@ -6596,6 +6613,8 @@
                             data-player-action="sleep-timer"
                             title="Sleep Timer"
                             class="desktop-only"
+                            aria-haspopup="dialog"
+                            aria-expanded="false"
                         >
                             <use svg="!lucide/clock.svg" size="20" />
                         </button>
@@ -6620,6 +6639,14 @@
                     </div>
                 </div>
             </footer>
+            <div
+                id="quality-popover"
+                class="player-floating-panel quality-popover"
+                role="dialog"
+                aria-modal="false"
+                aria-labelledby="quality-popover-title"
+                hidden
+            ></div>
         </div>
         <script type="module" src="/js/app.js"></script>
     </body>

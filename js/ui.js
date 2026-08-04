@@ -364,15 +364,12 @@ export class UIRenderer {
         await this.updateGlobalTheme();
 
         const likeBtn = document.getElementById('now-playing-like-btn');
-        const addPlaylistBtn = document.getElementById('now-playing-add-playlist-btn');
-        const mobileAddPlaylistBtn = document.getElementById('mobile-add-playlist-btn');
         const lyricsBtn = document.getElementById('toggle-lyrics-btn');
         const fsLikeBtn = document.getElementById('fs-like-btn');
-        const fsAddPlaylistBtn = document.getElementById('fs-add-playlist-btn');
 
         if (track) {
             const isLocal = track.isLocal;
-            const shouldHideLikes = isLocal;
+            const shouldHideLikes = false;
 
             if (likeBtn) {
                 if (shouldHideLikes) {
@@ -383,22 +380,6 @@ export class UIRenderer {
                 }
             }
 
-            if (addPlaylistBtn) {
-                if (isLocal) {
-                    addPlaylistBtn.style.setProperty('display', 'none', 'important');
-                } else {
-                    addPlaylistBtn.style.removeProperty('display');
-                    addPlaylistBtn.style.display = 'flex';
-                }
-            }
-            if (mobileAddPlaylistBtn) {
-                if (isLocal) {
-                    mobileAddPlaylistBtn.style.setProperty('display', 'none', 'important');
-                } else {
-                    mobileAddPlaylistBtn.style.removeProperty('display');
-                    mobileAddPlaylistBtn.style.display = 'flex';
-                }
-            }
             if (lyricsBtn) {
                 if (isLocal) lyricsBtn.style.display = 'none';
                 else lyricsBtn.style.removeProperty('display');
@@ -412,17 +393,10 @@ export class UIRenderer {
                     await this.updateLikeState(fsLikeBtn.parentElement, track.type || 'track', track.id);
                 }
             }
-            if (fsAddPlaylistBtn) {
-                if (shouldHideLikes) fsAddPlaylistBtn.style.display = 'none';
-                else fsAddPlaylistBtn.style.display = 'flex';
-            }
         } else {
             if (likeBtn) likeBtn.style.display = 'none';
-            if (addPlaylistBtn) addPlaylistBtn.style.setProperty('display', 'none', 'important');
-            if (mobileAddPlaylistBtn) mobileAddPlaylistBtn.style.setProperty('display', 'none', 'important');
             if (lyricsBtn) lyricsBtn.style.display = 'none';
             if (fsLikeBtn) fsLikeBtn.style.display = 'none';
-            if (fsAddPlaylistBtn) fsAddPlaylistBtn.style.display = 'none';
         }
     }
 
@@ -2144,7 +2118,6 @@ export class UIRenderer {
         const currentTimeEl = document.getElementById('fs-current-time');
         const totalDurationEl = document.getElementById('fs-total-duration');
         const fsLikeBtn = document.getElementById('fs-like-btn');
-        const fsAddPlaylistBtn = document.getElementById('fs-add-playlist-btn');
         const fsDownloadBtn = document.getElementById('fs-download-btn');
         const fsCastBtn = document.getElementById('fs-cast-btn');
         const fsQueueBtn = document.getElementById('fs-queue-btn');
@@ -2298,9 +2271,6 @@ export class UIRenderer {
 
         if (fsLikeBtn) {
             fsLikeBtn.onclick = () => document.getElementById('now-playing-like-btn')?.click();
-        }
-        if (fsAddPlaylistBtn) {
-            fsAddPlaylistBtn.onclick = () => document.getElementById('now-playing-add-playlist-btn')?.click();
         }
         if (fsDownloadBtn) {
             fsDownloadBtn.onclick = () => document.getElementById('download-current-btn')?.click();

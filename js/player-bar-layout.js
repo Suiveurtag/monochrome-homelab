@@ -3,7 +3,6 @@ import { playerBarLayoutSettings } from './storage.js';
 const ICONS = {
     favorite:
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.7-7.5 1.1-1.1a5.5 5.5 0 0 0 0-7.8Z"/></svg>',
-    playlist: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6H3m8 6H3m5 6H3m13-3V9m-3 3h6"/></svg>',
     mix: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l10 10h3M17 7h3v3M4 17h3l3-3m4-4 3-3h3"/></svg>',
     lyrics: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l10-2v13M9 9l10-2M6 21c-2 0-3-1-3-2.5S4 16 6 16s3 1 3 2.5S8 21 6 21Zm10-2c-2 0-3-1-3-2.5s1-2.5 3-2.5 3 1 3 2.5S18 19 16 19Z"/></svg>',
     download: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 21h14"/></svg>',
@@ -17,7 +16,6 @@ const ICONS = {
 
 export const PLAYER_ACTIONS = [
     ['favorite', 'Favorites'],
-    ['playlist', 'Add to playlist'],
     ['mix', 'Track Mix'],
     ['lyrics', 'Lyrics'],
     ['download', 'Download'],

@@ -870,22 +870,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
             ? savedAdaptiveQuality
             : localStorage.getItem('playback-quality') || 'auto';
 
-        // Apply initially
-        if (player.forceQuality) player.forceQuality(streamingQualitySetting.value);
-        const apiQuality = streamingQualitySetting.value === 'auto' ? 'LOSSLESS' : streamingQualitySetting.value;
-        player.setQuality(localStorage.getItem('playback-quality') || apiQuality);
-
-        streamingQualitySetting.addEventListener('change', (e) => {
-            const val = e.target.value;
-
-            // Set adaptive DASH quality
-            localStorage.setItem('adaptive-playback-quality', val);
-            if (player.forceQuality) player.forceQuality(val);
-
-            // Set fallback API quality
-            const newApiQuality = val === 'auto' ? 'LOSSLESS' : val;
-            player.setQuality(newApiQuality);
-            localStorage.setItem('playback-quality', newApiQuality);
+        streamingQualitySetting.addEventListener('change', async (e) => {
+            await player.selectPlaybackQuality(e.target.value);
         });
     }
 
