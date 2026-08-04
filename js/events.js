@@ -314,14 +314,59 @@ function setupQualityPopover(player) {
     if (!title || !panel) return;
 
     let trigger = null;
-    let closeTimer = 0;
-    const close = () => {
+    let panelAnimation = null;
+    let animationRun = 0;
+    const backdrop = document.createElement('div');
+    backdrop.className = 'quality-floating-backdrop';
+    backdrop.hidden = true;
+    backdrop.setAttribute('aria-hidden', 'true');
+    panel.before(backdrop);
+
+    const getFloatingPanelFrames = () => {
+        const triggerRect = trigger.getBoundingClientRect();
+        const panelRect = panel.getBoundingClientRect();
+        return {
+            collapsed: {
+                opacity: 0,
+                borderRadius: getComputedStyle(trigger).borderRadius,
+                transform: `translate(${triggerRect.left - panelRect.left}px, ${
+                    triggerRect.top - panelRect.top
+                }px) scale(${Math.max(0.08, triggerRect.width / panelRect.width)}, ${Math.max(
+                    0.04,
+                    triggerRect.height / panelRect.height
+                )})`,
+            },
+            expanded: {
+                opacity: 1,
+                borderRadius: '18px',
+                transform: 'translate(0, 0) scale(1)',
+            },
+        };
+    };
+
+    const close = ({ restoreFocus = false } = {}) => {
+        if (panel.hidden) return;
+        const run = ++animationRun;
+        const { collapsed, expanded } = getFloatingPanelFrames();
+        panelAnimation?.cancel();
         panel.classList.remove('is-open');
+        backdrop.classList.remove('is-open');
+        trigger?.classList.remove('is-floating-panel-open');
         trigger?.setAttribute('aria-expanded', 'false');
-        window.clearTimeout(closeTimer);
-        closeTimer = window.setTimeout(() => {
-            panel.hidden = true;
-        }, 180);
+        panelAnimation = panel.animate([expanded, collapsed], {
+            duration: 260,
+            easing: 'cubic-bezier(0.4, 0, 0.7, 0.2)',
+            fill: 'both',
+        });
+        void panelAnimation.finished
+            .then(() => {
+                if (run !== animationRun) return;
+                panel.hidden = true;
+                backdrop.hidden = true;
+                panelAnimation?.cancel();
+                if (restoreFocus) trigger?.focus({ preventScroll: true });
+            })
+            .catch(() => {});
     };
     const render = () => {
         const state = player.getQualityState();
@@ -363,13 +408,30 @@ function setupQualityPopover(player) {
             </p>`;
     };
     const open = (badge) => {
-        window.clearTimeout(closeTimer);
+        const run = ++animationRun;
         trigger = badge;
         render();
         panel.hidden = false;
+        backdrop.hidden = false;
         trigger.setAttribute('aria-expanded', 'true');
         positionPlayerPopover(panel, trigger, 336);
-        requestAnimationFrame(() => panel.classList.add('is-open'));
+        const { collapsed, expanded } = getFloatingPanelFrames();
+        panelAnimation?.cancel();
+        panel.classList.add('is-open');
+        backdrop.classList.add('is-open');
+        trigger.classList.add('is-floating-panel-open');
+        panelAnimation = panel.animate([collapsed, expanded], {
+            duration: 400,
+            easing: 'cubic-bezier(0.2, 0.9, 0.24, 1.08)',
+            fill: 'both',
+        });
+        void panelAnimation.finished
+            .then(() => {
+                if (run !== animationRun) return;
+                panelAnimation?.cancel();
+                panel.querySelector('input:checked')?.focus({ preventScroll: true });
+            })
+            .catch(() => {});
     };
 
     title.addEventListener('click', (event) => {
@@ -377,14 +439,14 @@ function setupQualityPopover(player) {
         if (!badge) return;
         event.preventDefault();
         event.stopPropagation();
-        if (!panel.hidden) close();
+        if (!panel.hidden) close({ restoreFocus: true });
         else open(badge);
     });
     title.addEventListener('keydown', (event) => {
         const badge = event.target.closest('.quality-badge');
         if (!badge || (event.key !== 'Enter' && event.key !== ' ')) return;
         event.preventDefault();
-        if (!panel.hidden) close();
+        if (!panel.hidden) close({ restoreFocus: true });
         else open(badge);
     });
     panel.addEventListener('change', async (event) => {
@@ -392,14 +454,14 @@ function setupQualityPopover(player) {
         if (!input) return;
         await player.selectPlaybackQuality(input.value);
         render();
-        close();
+        close({ restoreFocus: true });
     });
     document.addEventListener('pointerdown', (event) => {
         if (panel.hidden || panel.contains(event.target) || trigger?.contains(event.target)) return;
         close();
     });
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !panel.hidden) close();
+        if (event.key === 'Escape' && !panel.hidden) close({ restoreFocus: true });
     });
     window.addEventListener('resize', () => {
         if (!panel.hidden && trigger) positionPlayerPopover(panel, trigger, 336);
@@ -517,7 +579,6 @@ async function handleSelectionAction(action) {
 
 export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui) {
     playerBarEffects.init();
-    setupQualityPopover(player);
     document.getElementById('now-playing-cover-button')?.addEventListener('click', () => {
         void ui.openCurrentTrackFullscreen();
     });
@@ -897,6 +958,7 @@ export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui)
     updateVolumeUI();
 
     initializeSmoothSliders(player);
+    setupQualityPopover(player);
 }
 
 function initializeSmoothSliders(player) {
@@ -936,10 +998,12 @@ function initializeSmoothSliders(player) {
         };
         const releaseElasticShape = (event) => {
             volumeBar.classList.remove('is-stretched');
+            volumeBar.classList.add('is-release-reset');
             volumeSlider.classList.remove('is-grabbing');
             if (event?.pointerId != null && volumeSlider.hasPointerCapture(event.pointerId)) {
                 volumeSlider.releasePointerCapture(event.pointerId);
             }
+            volumeSlider.blur();
             returnAnimation?.cancel();
             if (!reduceMotion.matches) {
                 returnAnimation = volumeBar.animate(
@@ -974,6 +1038,7 @@ function initializeSmoothSliders(player) {
         volumeSlider.addEventListener('pointerdown', (event) => {
             event.stopPropagation();
             returnAnimation?.cancel();
+            volumeBar.classList.remove('is-release-reset');
             volumeSlider.setPointerCapture(event.pointerId);
             volumeBar.classList.add('is-stretched');
             volumeSlider.classList.add('is-grabbing');
@@ -989,6 +1054,7 @@ function initializeSmoothSliders(player) {
         volumeSlider.addEventListener('lostpointercapture', releaseElasticShape);
         window.addEventListener('pointerup', releaseElasticShape);
         window.addEventListener('blur', releaseElasticShape);
+        volumeBar.addEventListener('pointerleave', () => volumeBar.classList.remove('is-release-reset'));
         volumeSlider.addEventListener('click', (event) => event.stopPropagation());
     }
 

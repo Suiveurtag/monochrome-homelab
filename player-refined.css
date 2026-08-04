@@ -23,6 +23,9 @@
     color: white;
     cursor: pointer;
     isolation: isolate;
+    transition:
+        transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 260ms ease;
 }
 
 .now-playing-cover-button .cover {
@@ -31,7 +34,7 @@
     height: 100%;
     border-radius: inherit;
     transition:
-        transform 360ms var(--ease-out-back),
+        transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
         filter 260ms ease;
 }
 
@@ -71,7 +74,14 @@
 .now-playing-cover-button:hover .cover,
 .now-playing-cover-button:focus-visible .cover {
     filter: brightness(0.72) saturate(0.9);
-    transform: scale(1.12);
+    transform: scale(1.08);
+}
+
+.now-playing-cover-button:hover,
+.now-playing-cover-button:focus-visible {
+    z-index: 4;
+    box-shadow: 0 10px 24px rgb(0 0 0 / 0.34);
+    transform: scale(1.08);
 }
 
 .now-playing-cover-button:hover::after,
@@ -190,17 +200,34 @@
     flex-flow: row nowrap !important;
     align-items: center !important;
     justify-content: flex-end !important;
-    gap: 0.9rem !important;
+    gap: 0.55rem !important;
 }
 
-.player-actions-row,
+.player-actions-row {
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.32rem !important;
+}
+
 .volume-slider-row {
     flex: 0 0 auto;
     align-items: center;
+    gap: 0.45rem !important;
 }
 
 .elastic-volume #volume-slider.is-grabbing {
     cursor: grabbing;
+}
+
+.volume-controls .elastic-volume:hover:not(.is-release-reset),
+.volume-controls .elastic-volume.is-stretched {
+    height: 12px;
+}
+
+.volume-controls .elastic-volume.is-release-reset,
+.volume-controls .elastic-volume.is-release-reset:hover,
+.volume-controls .elastic-volume.is-release-reset:focus-within {
+    height: 6px;
 }
 
 .now-playing-bar .quality-badge {
@@ -308,6 +335,94 @@
 .player-floating-panel.is-open {
     opacity: 1;
     transform: translateY(0) scale(1);
+}
+
+.quality-floating-backdrop[hidden] {
+    display: none !important;
+}
+
+.quality-floating-backdrop {
+    position: fixed;
+    z-index: 2290;
+    inset: 0;
+    background: rgb(0 0 0 / 0.01);
+    opacity: 0;
+    pointer-events: none;
+    backdrop-filter: blur(0);
+    transition:
+        opacity 220ms ease,
+        backdrop-filter 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.quality-floating-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+    backdrop-filter: blur(4px);
+}
+
+.quality-popover {
+    transform-origin: top left;
+    transition: none;
+    will-change: transform, opacity, border-radius;
+}
+
+.quality-popover.is-open {
+    opacity: 1;
+    transform: none;
+}
+
+.quality-popover .player-popover-header,
+.quality-popover .quality-radio-option,
+.quality-popover .quality-connection-note {
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+        opacity 220ms ease,
+        transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.quality-popover.is-open .player-popover-header,
+.quality-popover.is-open .quality-radio-option,
+.quality-popover.is-open .quality-connection-note {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.quality-popover.is-open .player-popover-header {
+    transition-delay: 90ms;
+}
+
+.quality-popover.is-open .quality-radio-option:nth-child(1) {
+    transition-delay: 115ms;
+}
+
+.quality-popover.is-open .quality-radio-option:nth-child(2) {
+    transition-delay: 135ms;
+}
+
+.quality-popover.is-open .quality-radio-option:nth-child(3) {
+    transition-delay: 155ms;
+}
+
+.quality-popover.is-open .quality-radio-option:nth-child(4) {
+    transition-delay: 175ms;
+}
+
+.quality-popover.is-open .quality-radio-option:nth-child(5) {
+    transition-delay: 195ms;
+}
+
+.quality-popover.is-open .quality-radio-option:nth-child(6) {
+    transition-delay: 215ms;
+}
+
+.quality-popover.is-open .quality-connection-note {
+    transition-delay: 235ms;
+}
+
+.now-playing-bar .quality-badge.is-floating-panel-open {
+    opacity: 0;
+    transform: scale(0.92);
 }
 
 .player-popover-header {
