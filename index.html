@@ -6524,10 +6524,10 @@
                         <span>Finding more songs for you...</span>
                     </div>
                     <div class="buttons">
-                        <button id="shuffle-btn" title="Shuffle">
+                        <button id="shuffle-btn" title="Shuffle" aria-label="Shuffle">
                             <use svg="!lucide/shuffle.svg" size="24" />
                         </button>
-                        <button id="prev-btn" title="Previous">
+                        <button id="prev-btn" title="Previous" aria-label="Previous track">
                             <use svg="!lucide/arrow-left-to-line.svg" size="24" />
                         </button>
                         <button class="play-pause-btn" title="Play" aria-label="Play" aria-pressed="false">
@@ -6537,10 +6537,10 @@
                                 <path class="morph-pause-right" d="M13.5 5.5H17V18.5H13.5Z"></path>
                             </svg>
                         </button>
-                        <button id="next-btn" title="Next">
+                        <button id="next-btn" title="Next" aria-label="Next track">
                             <use svg="!lucide/arrow-right-to-line.svg" size="24" />
                         </button>
-                        <button id="repeat-btn" title="Repeat">
+                        <button id="repeat-btn" title="Repeat" aria-label="Repeat">
                             <use svg="!lucide/repeat.svg" size="24" />
                         </button>
                     </div>
@@ -6548,7 +6548,17 @@
                         <span id="current-time">0:00</span>
                         <div class="progress-track-shell">
                             <span id="progress-hover-time" class="progress-hover-time" aria-hidden="true">0:00</span>
-                            <div id="progress-bar" class="progress-bar">
+                            <div
+                                id="progress-bar"
+                                class="progress-bar"
+                                role="slider"
+                                tabindex="0"
+                                aria-label="Playback position"
+                                aria-valuemin="0"
+                                aria-valuemax="0"
+                                aria-valuenow="0"
+                                aria-valuetext="0:00 of 0:00"
+                            >
                                 <div id="progress-hover-fill" class="progress-hover-fill"></div>
                                 <div id="progress-fill" class="progress-fill"></div>
                             </div>

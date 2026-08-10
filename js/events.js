@@ -692,8 +692,12 @@ export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui)
             if (duration) {
                 const progressFill = document.getElementById('progress-fill');
                 const currentTimeEl = document.getElementById('current-time');
+                const progressBar = document.getElementById('progress-bar');
                 progressFill.style.width = `${(currentTime / duration) * 100}%`;
                 currentTimeEl.textContent = formatTime(currentTime);
+                progressBar?.setAttribute('aria-valuemax', String(Math.round(duration)));
+                progressBar?.setAttribute('aria-valuenow', String(Math.round(currentTime)));
+                progressBar?.setAttribute('aria-valuetext', `${formatTime(currentTime)} of ${formatTime(duration)}`);
 
                 listeningTracker.onTimeUpdate(currentTime, duration);
 
@@ -713,6 +717,9 @@ export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui)
             if (player.activeElement !== element) return;
             const totalDurationEl = document.getElementById('total-duration');
             totalDurationEl.textContent = formatTime(element.duration);
+            document
+                .getElementById('progress-bar')
+                ?.setAttribute('aria-valuemax', String(Math.round(element.duration)));
             player.updateMediaSessionPositionState();
         });
 
@@ -1091,6 +1098,25 @@ function initializeSmoothSliders(player) {
     });
     progressBar.addEventListener('pointermove', updateProgressHover);
     progressBar.addEventListener('pointerleave', () => progressBar.classList.remove('is-previewing'));
+    progressBar.addEventListener('keydown', (event) => {
+        const activeEl = player.activeElement;
+        const duration = activeEl?.duration || player.currentTrack?.duration || 0;
+        if (!Number.isFinite(duration) || duration <= 0) return;
+
+        let nextTime = activeEl.currentTime || 0;
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') nextTime -= 5;
+        else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') nextTime += 5;
+        else if (event.key === 'Home') nextTime = 0;
+        else if (event.key === 'End') nextTime = duration;
+        else return;
+
+        event.preventDefault();
+        activeEl.currentTime = Math.max(0, Math.min(duration, nextTime));
+        updateSeekUI(activeEl.currentTime / duration);
+        progressBar.setAttribute('aria-valuenow', String(Math.round(activeEl.currentTime)));
+        progressBar.setAttribute('aria-valuetext', `${formatTime(activeEl.currentTime)} of ${formatTime(duration)}`);
+        player.updateMediaSessionPositionState();
+    });
 
     // Progress bar with smooth dragging
     progressBar.addEventListener('mousedown', (e) => {
