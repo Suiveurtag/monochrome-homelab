@@ -19,6 +19,7 @@ import {
     autoplaySettings,
     binauralDspSettings,
     contentBlockingSettings,
+    gaplessPlaybackSettings,
 } from './storage.js';
 import { audioContextManager } from './audio-context.js';
 import { isIos, isSafari } from './platform-detection.js';
@@ -52,6 +53,7 @@ export class Player {
     /** @private */
     constructor(audioElement, api, quality = 'LOSSLESS') {
         this.audio = audioElement;
+        this.audioDecks = [audioElement, document.getElementById('audio-player-gapless')].filter(Boolean);
         this.video = document.getElementById('video-player');
         this.api = api;
         this.quality = quality;
@@ -678,6 +680,23 @@ export class Player {
         this._pendingPreload = true;
     }
 
+    getAudioElements() {
+        return [...this.audioDecks];
+    }
+
+    getStandbyAudioElement() {
+        return this.audioDecks.find((element) => element !== this.audio) || null;
+    }
+
+    isRemotePlaybackActive() {
+        return this.audio?.remote?.state === 'connected' || Boolean(this.audio?.webkitCurrentPlaybackTargetIsWireless);
+    }
+
+    isConstrainedConnection() {
+        const connection = globalThis.navigator?.connection;
+        return Boolean(connection?.saveData || ['slow-2g', '2g', '3g'].includes(connection?.effectiveType));
+    }
+
     async checkPreloadConditions() {
         if (!this._pendingPreload || !this.activeElement || this.activeElement.paused) return;
 
@@ -685,8 +704,11 @@ export class Player {
         const duration = this.activeElement.duration || 0;
         const timeRemaining = duration - currentTime;
 
-        // Preload if we are in last 30 seconds of song
-        const shouldPreload = duration > 0 && timeRemaining <= 30;
+        // Slow connections need a larger head start. The browser still fetches
+        // media progressively (usually with byte ranges), so playback never
+        // waits for an entire FLAC to be downloaded.
+        const preloadLeadSeconds = this.isConstrainedConnection() ? 90 : 30;
+        const shouldPreload = duration > 0 && timeRemaining <= preloadLeadSeconds;
 
         if (shouldPreload) {
             this._pendingPreload = false;
@@ -714,12 +736,15 @@ export class Player {
         for (const { track } of tracksToPreload) {
             if (this.preloadCache.has(track.id)) continue;
             const isPodcast = track.isPodcast || (track.id && String(track.id).startsWith('podcast_'));
-            if (track.isLocal || isPodcast || (track.audioUrl && !track.isLocal)) continue;
+            const isDeviceOnlyLocalTrack = track.isLocal && track.file && !track.serverAudioUrl;
+            if (isDeviceOnlyLocalTrack || isPodcast) continue;
             try {
                 const streamInfo =
                     track.type == 'video'
                         ? await this.api.getVideoStreamUrl(track.id)
-                        : await this.api.getStreamUrl(track.id, this.quality);
+                        : track.audioUrl && !track.isLocal
+                          ? { url: track.audioUrl }
+                          : await this.api.getStreamUrl(track.id, this.quality);
 
                 if (this.preloadAbortController.signal.aborted) break;
 
@@ -791,12 +816,24 @@ export class Player {
                             );
                         }
                     } else {
-                        // For static files (FLAC, MP3), the audio element completely primes the cache.
-                        const preloader = new Audio();
-                        preloader.preload = 'auto';
-                        preloader.muted = true;
-                        preloader.src = getProxyUrl(streamUrl);
-                        streamInfo.preloader = preloader; // Hold reference
+                        // Prepare the next static track in the inactive deck. Reusing this exact
+                        // element for playback avoids tearing down and rebuilding the decoder at
+                        // the album boundary. Constrained connections request metadata first;
+                        // normal connections let the browser progressively fill the buffer.
+                        const preloader =
+                            gaplessPlaybackSettings.isEnabled() && !this.isRemotePlaybackActive()
+                                ? this.getStandbyAudioElement()
+                                : null;
+                        if (preloader) {
+                            preloader.pause();
+                            preloader.preload = this.isConstrainedConnection() ? 'metadata' : 'auto';
+                            preloader.setAttribute('fetchpriority', 'low');
+                            preloader.muted = this.audio.muted;
+                            preloader.volume = this.audio.volume;
+                            preloader.src = getProxyUrl(streamUrl);
+                            preloader.load();
+                            streamInfo.preloader = preloader;
+                        }
                     }
                 }
             } catch (error) {
@@ -862,7 +899,9 @@ export class Player {
     }) {
         const streamInfo = this.preloadCache.get(track.id);
         const streamUrl = streamInfo?.url;
-        const canReuseAudioElement = previousActiveElement === this.audio && activeElement === this.audio;
+        const isDecodedStandbyDeck = streamInfo?.preloader === activeElement;
+        const canReuseAudioElement =
+            (previousActiveElement === this.audio && activeElement === this.audio) || isDecodedStandbyDeck;
 
         if (!canReuseAudioElement || !streamUrl) {
             return false;
@@ -915,7 +954,9 @@ export class Player {
                 return this.safePlay(activeElement);
             });
         } else {
-            activeElement.src = streamUrl;
+            if (!isDecodedStandbyDeck) {
+                activeElement.src = streamUrl;
+            }
             this.applyAudioEffects();
             this.updateAdaptiveQualityBadge();
 
@@ -1176,6 +1217,14 @@ export class Player {
 
         this.currentTrack = track;
         this.addToRecentlyPlayed(track.id);
+        const preloadedAudioDeck =
+            shouldPreserveGestureToken &&
+            gaplessPlaybackSettings.isEnabled() &&
+            !this.isRemotePlaybackActive() &&
+            this.preloadCache.get(track.id)?.preloader;
+        if (preloadedAudioDeck) {
+            this.audio = preloadedAudioDeck;
+        }
         const trackTitle = getTrackTitle(track);
         const artistName = getTrackArtists(track);
         const trackArtistsHTML = getTrackArtistsHTML(track);
@@ -1229,11 +1278,15 @@ export class Player {
         if (activeElement) {
             // Let Shaka overwrite the activeElement's decoder pipeline gracefully if we're carrying it over.
             // It manages its own buffering teardown implicitly when `load()` is executed.
-            if (!this.shakaInitialized) {
+            if (!this.shakaInitialized && activeElement !== preloadedAudioDeck) {
                 activeElement.pause();
                 activeElement.src = '';
                 activeElement.removeAttribute('src');
             }
+        }
+
+        if (preloadedAudioDeck && previousActiveElement !== activeElement) {
+            previousActiveElement.pause();
         }
 
         audioContextManager.changeSource(activeElement);
@@ -1359,6 +1412,7 @@ export class Player {
                 if (!played) return;
             } else if (track.audioUrl && !track.isLocal) {
                 streamUrl = track.audioUrl;
+                const isPreloadedDirectStream = this.preloadCache.get(track.id)?.preloader === activeElement;
 
                 if (
                     (!streamUrl || (typeof streamUrl === 'string' && streamUrl.startsWith('blob:'))) &&
@@ -1379,12 +1433,16 @@ export class Player {
                 this.currentRgValues = null;
                 this.applyReplayGain();
 
-                activeElement.src = streamUrl;
+                if (!isPreloadedDirectStream) {
+                    activeElement.src = streamUrl;
+                }
                 this.applyAudioEffects();
 
-                // Wait for audio to be ready before playing (prevents restart issues with blob URLs)
-                const canPlay = await this.waitForCanPlayOrTimeout(activeElement);
-                if (!canPlay || this.playbackSequence !== currentSequence) return;
+                if (!isPreloadedDirectStream) {
+                    // Wait for audio to be ready before playing (prevents restart issues with blob URLs)
+                    const canPlay = await this.waitForCanPlayOrTimeout(activeElement);
+                    if (!canPlay || this.playbackSequence !== currentSequence) return;
+                }
 
                 if (startTime > 0) {
                     activeElement.currentTime = startTime;

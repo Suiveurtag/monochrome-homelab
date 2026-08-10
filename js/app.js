@@ -624,30 +624,48 @@ async function loadMetadataModule() {
     return metadataModule;
 }
 
-function initializeCasting(audioPlayer, castBtn) {
+function initializeCasting(player, castBtn) {
     if (!castBtn) return;
+    const audioElements = player.getAudioElements();
+    const remoteAudioElements = audioElements.filter((element) => 'remote' in element);
+    const airplayAudioElements = audioElements.filter((element) => element.webkitShowPlaybackTargetPicker);
 
-    if ('remote' in audioPlayer) {
-        audioPlayer.remote
-            .watchAvailability((available) => {
-                if (available) {
-                    castBtn.style.display = 'flex';
-                    castBtn.classList.add('available');
-                }
-            })
-            .catch((err) => {
-                console.log('Remote playback not available:', err);
-                if (window.innerWidth > 768) {
-                    castBtn.style.display = 'flex';
+    if (remoteAudioElements.length > 0) {
+        remoteAudioElements.forEach((element) => {
+            element.remote
+                .watchAvailability((available) => {
+                    if (available) {
+                        castBtn.style.display = 'flex';
+                        castBtn.classList.add('available');
+                    }
+                })
+                .catch((err) => {
+                    console.log('Remote playback not available:', err);
+                    if (window.innerWidth > 768) {
+                        castBtn.style.display = 'flex';
+                    }
+                });
+
+            element.addEventListener('playing', () => {
+                if (element.remote?.state === 'connected') {
+                    castBtn.classList.add('connected');
                 }
             });
 
+            element.addEventListener('pause', () => {
+                if (element.remote?.state === 'disconnected') {
+                    castBtn.classList.remove('connected');
+                }
+            });
+        });
+
         castBtn.addEventListener('click', () => {
-            if (!audioPlayer.src) {
+            const activeAudio = player.audio;
+            if (!activeAudio.src) {
                 alert('Please play a track first to enable casting.');
                 return;
             }
-            audioPlayer.remote.prompt().catch((err) => {
+            activeAudio.remote.prompt().catch((err) => {
                 if (err.name === 'NotAllowedError') return;
                 if (err.name === 'NotFoundError') {
                     alert('No remote playback devices (Chromecast/AirPlay) were found on your network.');
@@ -656,38 +674,24 @@ function initializeCasting(audioPlayer, castBtn) {
                 console.log('Cast prompt error:', err);
             });
         });
-
-        audioPlayer.addEventListener('playing', () => {
-            if (audioPlayer.remote && audioPlayer.remote.state === 'connected') {
-                castBtn.classList.add('connected');
-            }
-        });
-
-        audioPlayer.addEventListener('pause', () => {
-            if (audioPlayer.remote && audioPlayer.remote.state === 'disconnected') {
-                castBtn.classList.remove('connected');
-            }
-        });
-    } else if (audioPlayer.webkitShowPlaybackTargetPicker) {
+    } else if (airplayAudioElements.length > 0) {
         castBtn.style.display = 'flex';
         castBtn.classList.add('available');
 
         castBtn.addEventListener('click', () => {
-            audioPlayer.webkitShowPlaybackTargetPicker();
+            player.audio.webkitShowPlaybackTargetPicker();
         });
 
-        audioPlayer.addEventListener('webkitplaybacktargetavailabilitychanged', (e) => {
-            if (e.availability === 'available') {
-                castBtn.classList.add('available');
-            }
-        });
+        airplayAudioElements.forEach((element) => {
+            element.addEventListener('webkitplaybacktargetavailabilitychanged', (e) => {
+                if (e.availability === 'available') {
+                    castBtn.classList.add('available');
+                }
+            });
 
-        audioPlayer.addEventListener('webkitcurrentplaybacktargetiswirelesschanged', () => {
-            if (audioPlayer.webkitCurrentPlaybackTargetIsWireless) {
-                castBtn.classList.add('connected');
-            } else {
-                castBtn.classList.remove('connected');
-            }
+            element.addEventListener('webkitcurrentplaybacktargetiswirelesschanged', () => {
+                castBtn.classList.toggle('connected', element.webkitCurrentPlaybackTargetIsWireless);
+            });
         });
     } else if (window.innerWidth > 768) {
         castBtn.style.display = 'flex';
@@ -930,7 +934,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await fetchcontributors();
     const castBtn = document.getElementById('cast-btn');
-    initializeCasting(audioPlayer, castBtn);
+    initializeCasting(Player.instance, castBtn);
 
     await UIRenderer.initialize(MusicAPI.instance, Player.instance);
 
@@ -1442,7 +1446,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Auto-update lyrics when track changes
     let previousTrackId = null;
-    audioPlayer.addEventListener('play', async () => {
+    const handleAudioTrackStarted = async () => {
         if (!Player.instance.currentTrack) return;
 
         // Update UI with current track info for theme
@@ -1476,6 +1480,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         ) {
             await UIRenderer.instance.openCurrentTrackFullscreen();
         }
+    };
+    Player.instance.getAudioElements().forEach((element) => {
+        element.addEventListener('play', handleAudioTrackStarted);
     });
 
     document.addEventListener('click', async (e) => {
@@ -2966,8 +2973,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    audioPlayer.addEventListener('play', () => {
-        updateTabTitle(Player.instance);
+    Player.instance.getAudioElements().forEach((element) => {
+        element.addEventListener('play', () => {
+            updateTabTitle(Player.instance);
+        });
     });
 
     // PWA Update Logic

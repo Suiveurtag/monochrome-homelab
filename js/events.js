@@ -813,7 +813,7 @@ async function handleSelectionAction(action) {
     }
 }
 
-export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui) {
+export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui) {
     playerBarEffects.init();
     window.addEventListener('player-playback-intent', (event) => {
         playerBarEffects.setPlaying(Boolean(event.detail?.playing));
@@ -1022,7 +1022,7 @@ export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui)
 
     window.addEventListener('volume-change', updateVolumeUI);
 
-    setupMediaListeners(audioPlayer);
+    player.getAudioElements().forEach(setupMediaListeners);
     if (player.video) {
         setupMediaListeners(player.video);
     }
@@ -1196,15 +1196,18 @@ export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui)
             activeEl.muted = !activeEl.muted;
             localStorage.setItem('muted', activeEl.muted);
 
-            const inactiveEl = player.currentTrack?.type === 'video' ? player.audio : player.video;
-            if (inactiveEl) inactiveEl.muted = activeEl.muted;
+            [...player.getAudioElements(), player.video].filter(Boolean).forEach((element) => {
+                element.muted = activeEl.muted;
+            });
 
             updateVolumeUI();
             window.setTimeout(() => _volumeBar?.classList.remove('is-mute-animating'), 360);
         });
     }
     const isMuted = localStorage.getItem('muted') === 'true';
-    audioPlayer.muted = isMuted;
+    player.getAudioElements().forEach((element) => {
+        element.muted = isMuted;
+    });
     if (player.video) player.video.muted = isMuted;
     updateVolumeUI();
 

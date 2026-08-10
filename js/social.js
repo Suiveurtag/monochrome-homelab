@@ -443,7 +443,7 @@ export class SocialManager {
     attachPlayerPresence() {
         if (!this.player || this.player.__socialPresenceAttached) return;
         this.player.__socialPresenceAttached = true;
-        for (const element of [this.player.audio, this.player.video].filter(Boolean)) {
+        for (const element of [...this.player.getAudioElements(), this.player.video].filter(Boolean)) {
             element.addEventListener('play', () => this.publishPresence().catch(console.error));
             element.addEventListener('pause', () => this.publishPresence().catch(console.error));
             element.addEventListener('ended', () => this.publishPresence(null).catch(console.error));

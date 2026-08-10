@@ -649,7 +649,7 @@ export class ListeningPartyManager {
             } catch (_e) {}
         };
         ['play', 'pause', 'seeked'].forEach((ev) => {
-            player.audio.addEventListener(ev, updateParty);
+            player.getAudioElements().forEach((element) => element.addEventListener(ev, updateParty));
             if (player.video) player.video.addEventListener(ev, updateParty);
         });
         const originalPlayTrackFromQueue = player.playTrackFromQueue.bind(player);

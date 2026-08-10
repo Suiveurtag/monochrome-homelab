@@ -105,6 +105,7 @@ describe('Player', () => {
     beforeEach(async () => {
         document.body.innerHTML = `
             <audio id="audio-player"></audio>
+            <audio id="audio-player-gapless"></audio>
             <video id="video-player"></video>
             <div class="now-playing-bar">
                 <img class="cover" src="">
@@ -133,6 +134,7 @@ describe('Player', () => {
     test('initialization sets up initial state', async () => {
         player = new Player(audioElement, api);
         expect(player.audio).toBe(audioElement);
+        expect(player.getAudioElements()).toHaveLength(2);
         expect(player.api).toBe(api);
         expect(player.queue).toEqual([]);
         expect(player.shuffleActive).toBe(false);
@@ -178,6 +180,68 @@ describe('Player', () => {
         await player.addToQueue([{ id: 2 }, { id: 3 }]);
         expect(player.queue.length).toBe(3);
         expect(player.queue[2].id).toBe(3);
+    });
+
+    test('preloads a static next track into the inactive gapless deck', async () => {
+        const standby = document.getElementById('audio-player-gapless');
+        vi.spyOn(standby, 'pause').mockImplementation(() => {});
+        vi.spyOn(standby, 'load').mockImplementation(() => {});
+        api.getStreamUrl.mockResolvedValue({ url: 'https://media.test/next.flac' });
+
+        player = new Player(audioElement, api);
+        player.queue = [{ id: 'current' }, { id: 'next' }];
+        player.currentQueueIndex = 0;
+
+        await player._executePreloadNextTracks();
+
+        expect(api.getStreamUrl).toHaveBeenCalledWith('next', player.quality);
+        expect(player.preloadCache.get('next').preloader).toBe(standby);
+        expect(standby.src).toBe('https://media.test/next.flac');
+        expect(standby.preload).toBe('auto');
+        expect(standby.load).toHaveBeenCalledOnce();
+    });
+
+    test('limits background preload on a constrained connection', async () => {
+        const standby = document.getElementById('audio-player-gapless');
+        vi.spyOn(standby, 'pause').mockImplementation(() => {});
+        vi.spyOn(standby, 'load').mockImplementation(() => {});
+        api.getStreamUrl.mockResolvedValue({ url: 'https://media.test/next.flac' });
+
+        player = new Player(audioElement, api);
+        vi.spyOn(player, 'isConstrainedConnection').mockReturnValue(true);
+        player.queue = [{ id: 'current' }, { id: 'next' }];
+        player.currentQueueIndex = 0;
+
+        await player._executePreloadNextTracks();
+
+        expect(standby.preload).toBe('metadata');
+        expect(standby.getAttribute('fetchpriority')).toBe('low');
+    });
+
+    test('starts playback from the preloaded standby deck without reassigning its source', async () => {
+        const standby = document.getElementById('audio-player-gapless');
+        standby.src = 'https://media.test/next.flac';
+        player = new Player(audioElement, api);
+        player.audio = standby;
+        player.currentTrack = { id: 'next' };
+        player.playbackSequence = 4;
+        player.preloadCache.set('next', {
+            url: 'https://media.test/next.flac',
+            preloader: standby,
+        });
+        vi.spyOn(player, 'safePlay').mockResolvedValue(true);
+
+        const started = player.tryStartPreloadedTrackImmediately({
+            track: player.currentTrack,
+            activeElement: standby,
+            previousActiveElement: audioElement,
+            currentSequence: 4,
+        });
+        await Promise.resolve();
+
+        expect(started).toBe(true);
+        expect(player.safePlay).toHaveBeenCalledWith(standby);
+        expect(standby.src).toBe('https://media.test/next.flac');
     });
 
     test('clearQueue resets queue state', async () => {
