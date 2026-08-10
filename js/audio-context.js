@@ -132,6 +132,7 @@ class AudioContextManager {
         this.msMerger = null;
         this.msOutputNode = null;
         this.currentVolume = 1.0;
+        this.playbackFadePrepared = false;
 
         // Band configuration
         this.bandCount = equalizerSettings.getBandCount();
@@ -808,6 +809,69 @@ class AudioContextManager {
             this.volumeNode.gain.setTargetAtTime(this.currentVolume, now, 0.01);
             window.dispatchEvent(new CustomEvent('volume-change'));
         }
+    }
+
+    /**
+     * Arm a fade-in before resuming a paused media element. This flag is kept
+     * even if Web Audio has not been initialized yet, so the play listener can
+     * apply the envelope immediately after creating the graph.
+     */
+    preparePlaybackFadeIn() {
+        this.playbackFadePrepared = true;
+        if (!this.volumeNode || !this.audioContext) return;
+
+        const now = this.audioContext.currentTime;
+        this.volumeNode.gain.cancelScheduledValues(now);
+        this.volumeNode.gain.setValueAtTime(0, now);
+    }
+
+    /**
+     * Fade the master Web Audio output back to its configured level.
+     */
+    fadePlaybackIn(durationMs = 220) {
+        if (!this.playbackFadePrepared || !this.volumeNode || !this.audioContext) return false;
+
+        this.playbackFadePrepared = false;
+        const now = this.audioContext.currentTime;
+        const duration = Math.max(0.05, durationMs / 1000);
+        this.volumeNode.gain.cancelScheduledValues(now);
+        this.volumeNode.gain.setValueAtTime(0, now);
+        this.volumeNode.gain.linearRampToValueAtTime(this.currentVolume, now + duration);
+        return true;
+    }
+
+    /**
+     * Fade the master output to silence before pausing the media element.
+     */
+    async fadePlaybackOut(durationMs = 170) {
+        this.playbackFadePrepared = false;
+        if (!this.volumeNode || !this.audioContext || this.audioContext.state !== 'running') return false;
+
+        const now = this.audioContext.currentTime;
+        const duration = Math.max(0.05, durationMs / 1000);
+        const gain = this.volumeNode.gain;
+        if (typeof gain.cancelAndHoldAtTime === 'function') {
+            gain.cancelAndHoldAtTime(now);
+        } else {
+            const currentValue = gain.value;
+            gain.cancelScheduledValues(now);
+            gain.setValueAtTime(currentValue, now);
+        }
+        gain.linearRampToValueAtTime(0, now + duration);
+        await new Promise((resolve) => window.setTimeout(resolve, durationMs));
+        return true;
+    }
+
+    /**
+     * Restore the master output after a cancelled fade or once media is paused.
+     */
+    resetPlaybackFade() {
+        this.playbackFadePrepared = false;
+        if (!this.volumeNode || !this.audioContext) return;
+
+        const now = this.audioContext.currentTime;
+        this.volumeNode.gain.cancelScheduledValues(now);
+        this.volumeNode.gain.setValueAtTime(this.currentVolume, now);
     }
 
     /**

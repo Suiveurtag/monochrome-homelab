@@ -23,7 +23,20 @@ import { syncManager } from './accounts/pocketbase.js';
 import { waveformGenerator } from './waveform.js';
 import { audioContextManager } from './audio-context.js';
 import { hapticLongPress, hapticMedium, hapticLight } from './haptics.js';
-import { SVG_BIN, SVG_MUTE, SVG_VOLUME, SVG_CHECKBOX, SVG_CHECKBOX_CHECKED } from './icons.js';
+import {
+    SVG_BIN,
+    SVG_CHECK,
+    SVG_CHECKBOX,
+    SVG_CHECKBOX_CHECKED,
+    SVG_INFORMATION_CIRCLE,
+    SVG_MUTE,
+    SVG_QUALITY_LOSSLESS,
+    SVG_QUALITY_WAVE_SAW,
+    SVG_QUALITY_WAVE_SINE,
+    SVG_QUALITY_WAVE_SQUARE,
+    SVG_QUALITY_WAVES_ELECTRICITY,
+    SVG_VOLUME,
+} from './icons.js';
 import { partyManager } from './listening-party.js';
 import { MusicAPI } from './music-api.js';
 import { LyricsManager } from './lyrics.js';
@@ -279,8 +292,22 @@ const updateVolumeUI = () => {
     if (slider) slider.value = String(effectiveVolume);
 };
 
-function positionPlayerPopover(panel, trigger, preferredWidth = 320) {
-    const triggerRect = trigger.getBoundingClientRect();
+function getRectSnapshot(element) {
+    if (!element?.isConnected) return null;
+    const rect = element.getBoundingClientRect();
+    if (!Number.isFinite(rect.left) || !Number.isFinite(rect.top) || rect.width <= 0 || rect.height <= 0) return null;
+    return {
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+    };
+}
+
+function positionPlayerPopover(panel, triggerRect, preferredWidth = 320) {
+    if (!triggerRect) return false;
     const gutter = 12;
     const width = Math.min(preferredWidth, window.innerWidth - gutter * 2);
     const panelHeight = panel.offsetHeight || 360;
@@ -298,6 +325,7 @@ function positionPlayerPopover(panel, trigger, preferredWidth = 320) {
     panel.style.top = `${Math.max(gutter, top)}px`;
     panel.style.setProperty('--panel-origin-x', `${triggerRect.left + triggerRect.width / 2 - left}px`);
     panel.style.setProperty('--panel-origin-y', fitsAbove ? '100%' : '0%');
+    return true;
 }
 
 function revealCurrentQualityBadge(player) {
@@ -316,55 +344,227 @@ function setupQualityPopover(player) {
     let trigger = null;
     let panelAnimation = null;
     let animationRun = 0;
+    let qualityChangeInFlight = false;
+    let magicTimer = 0;
+    let lastTriggerRect = null;
+    let lastTriggerRadius = '999px';
     const backdrop = document.createElement('div');
     backdrop.className = 'quality-floating-backdrop';
     backdrop.hidden = true;
     backdrop.setAttribute('aria-hidden', 'true');
     panel.before(backdrop);
 
-    const getFloatingPanelFrames = () => {
-        const triggerRect = trigger.getBoundingClientRect();
+    const qualityVisuals = {
+        LOWEST: { rgb: '148 163 184', icon: SVG_QUALITY_WAVE_SINE(22) },
+        LOW: { rgb: '96 165 250', icon: SVG_QUALITY_WAVE_SQUARE(22) },
+        NORMAL: { rgb: '168 85 247', icon: SVG_QUALITY_WAVE_SAW(22) },
+        HIGH: { rgb: '249 115 22', icon: SVG_QUALITY_WAVES_ELECTRICITY(22) },
+        LOSSLESS: { rgb: '45 212 191', icon: SVG_QUALITY_LOSSLESS(22) },
+        HI_RES_LOSSLESS: { rgb: '45 212 191', icon: SVG_QUALITY_LOSSLESS(22) },
+    };
+
+    const getConnectionMessage = (state) => {
+        if (state.fallbackReason) {
+            return `${escapeHtml(state.fallbackReason)}. Monochrome stepped down automatically.`;
+        }
+        if (state.requested === 'auto') {
+            return 'Selected from your live connection and reduced automatically if buffering persists.';
+        }
+        return 'Your choice is kept, with an automatic step-down only when playback cannot keep up.';
+    };
+
+    const syncSelectionIndicator = () => {
+        const indicator = panel.querySelector('.quality-selection-indicator');
+        const selected = panel.querySelector('.quality-radio-option.is-selected');
+        if (!indicator || !selected) return;
+        const rgb = selected.dataset.tierRgb || '168 85 247';
+        indicator.style.height = `${selected.offsetHeight}px`;
+        indicator.style.transform = `translateY(${selected.offsetTop}px)`;
+        indicator.style.backgroundColor = `rgb(${rgb} / 0.055)`;
+        indicator.style.borderColor = `rgb(${rgb} / 0.62)`;
+        indicator.style.boxShadow = `-18px 0 34px rgb(${rgb} / 0.22), inset 18px 0 28px -24px rgb(${rgb} / 0.78)`;
+        indicator.style.setProperty('--quality-selected-rgb', rgb);
+        indicator.dataset.tierRgb = rgb;
+        panel.dataset.selectedQuality = selected.dataset.qualityProfile;
+    };
+
+    const playLosslessMagic = () => {
+        window.clearTimeout(magicTimer);
+        panel.classList.remove('is-lossless-magic');
+        void panel.offsetWidth;
+        panel.classList.add('is-lossless-magic');
+        magicTimer = window.setTimeout(() => panel.classList.remove('is-lossless-magic'), 1250);
+    };
+
+    const getCurrentTrigger = () => {
+        if (getRectSnapshot(trigger)) return trigger;
+        return [...title.querySelectorAll('.quality-badge')].find((badge) => getRectSnapshot(badge)) || null;
+    };
+
+    const refreshTriggerRect = () => {
+        const currentTrigger = getCurrentTrigger();
+        const currentRect = getRectSnapshot(currentTrigger);
+        if (currentRect) {
+            trigger = currentTrigger;
+            lastTriggerRect = currentRect;
+            if (!panel.hidden) {
+                trigger.classList.add('is-floating-panel-open');
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+        }
+        return lastTriggerRect;
+    };
+
+    const syncTriggerElement = () => {
+        const currentTrigger = getCurrentTrigger();
+        if (!currentTrigger) return null;
+        if (trigger !== currentTrigger) trigger?.classList.remove('is-floating-panel-open');
+        trigger = currentTrigger;
+        if (!panel.hidden) {
+            trigger.classList.add('is-floating-panel-open');
+            trigger.setAttribute('aria-expanded', 'true');
+        }
+        return trigger;
+    };
+
+    const animateSelection = async (profile) => {
+        const group = panel.querySelector('.quality-radio-group');
+        const indicator = panel.querySelector('.quality-selection-indicator');
+        const next = panel.querySelector(`.quality-radio-option[data-quality-profile="${profile}"]`);
+        const previous = panel.querySelector('.quality-radio-option.is-selected');
+        if (!group || !indicator || !next || previous === next) return;
+
+        const previousRgb = indicator.dataset.tierRgb || previous?.dataset.tierRgb || '168 85 247';
+        const nextRgb = next.dataset.tierRgb || '168 85 247';
+        const previousY = previous?.offsetTop ?? next.offsetTop;
+        const previousHeight = previous?.offsetHeight ?? next.offsetHeight;
+
+        group.querySelectorAll('.quality-radio-option').forEach((option) => {
+            const isSelected = option === next;
+            option.classList.toggle('is-selected', isSelected);
+            const input = option.querySelector('input');
+            if (input) input.checked = isSelected;
+        });
+
+        indicator.style.height = `${next.offsetHeight}px`;
+        indicator.style.transform = `translateY(${next.offsetTop}px)`;
+        indicator.style.backgroundColor = `rgb(${nextRgb} / 0.055)`;
+        indicator.style.borderColor = `rgb(${nextRgb} / 0.72)`;
+        indicator.style.boxShadow = `-18px 0 34px rgb(${nextRgb} / 0.24), inset 18px 0 28px -24px rgb(${nextRgb} / 0.82)`;
+        indicator.style.setProperty('--quality-selected-rgb', nextRgb);
+        indicator.dataset.tierRgb = nextRgb;
+        panel.dataset.selectedQuality = profile;
+
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            return;
+        }
+
+        const sharedTransition = indicator.animate(
+            [
+                {
+                    height: `${previousHeight}px`,
+                    transform: `translateY(${previousY}px)`,
+                    backgroundColor: `rgb(${previousRgb} / 0.055)`,
+                    borderColor: `rgb(${previousRgb} / 0.58)`,
+                    boxShadow: `-16px 0 28px rgb(${previousRgb} / 0.18), inset 16px 0 24px -22px rgb(${previousRgb} / 0.68)`,
+                },
+                {
+                    offset: 0.62,
+                    height: `${next.offsetHeight}px`,
+                    transform: `translateY(${next.offsetTop}px) scale(1.012)`,
+                    backgroundColor: `rgb(${nextRgb} / 0.09)`,
+                    borderColor: `rgb(${nextRgb} / 0.92)`,
+                    boxShadow: `-24px 0 48px rgb(${nextRgb} / 0.58), inset 24px 0 34px -20px rgb(${nextRgb} / 0.94)`,
+                },
+                {
+                    height: `${next.offsetHeight}px`,
+                    transform: `translateY(${next.offsetTop}px) scale(1)`,
+                    backgroundColor: `rgb(${nextRgb} / 0.055)`,
+                    borderColor: `rgb(${nextRgb} / 0.72)`,
+                    boxShadow: `-18px 0 34px rgb(${nextRgb} / 0.24), inset 18px 0 28px -24px rgb(${nextRgb} / 0.82)`,
+                },
+            ],
+            { duration: 740, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
+        );
+        const rowArrival = next.animate(
+            [
+                { transform: 'translateX(0) scale(0.985)' },
+                { transform: 'translateX(2px) scale(1.008)', offset: 0.58 },
+                { transform: 'translateX(0) scale(1)' },
+            ],
+            { duration: 640, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
+        );
+        if (profile.endsWith('LOSSLESS')) playLosslessMagic();
+        await Promise.all([sharedTransition.finished.catch(() => {}), rowArrival.finished.catch(() => {})]);
+    };
+
+    const getFloatingPanelFrames = (triggerRect = lastTriggerRect) => {
         const panelRect = panel.getBoundingClientRect();
+        const safeTriggerRect = triggerRect || {
+            left: panelRect.left + panelRect.width / 2,
+            top: panelRect.top + panelRect.height,
+            width: 1,
+            height: 1,
+        };
         return {
             collapsed: {
                 opacity: 0,
-                borderRadius: getComputedStyle(trigger).borderRadius,
-                transform: `translate(${triggerRect.left - panelRect.left}px, ${
-                    triggerRect.top - panelRect.top
-                }px) scale(${Math.max(0.08, triggerRect.width / panelRect.width)}, ${Math.max(
+                borderRadius: lastTriggerRadius,
+                clipPath: 'inset(0 round 999px)',
+                transform: `translate(${safeTriggerRect.left - panelRect.left}px, ${
+                    safeTriggerRect.top - panelRect.top
+                }px) scale(${Math.max(0.08, safeTriggerRect.width / panelRect.width)}, ${Math.max(
                     0.04,
-                    triggerRect.height / panelRect.height
+                    safeTriggerRect.height / panelRect.height
                 )})`,
             },
             expanded: {
                 opacity: 1,
-                borderRadius: '18px',
+                borderRadius: '24px',
+                clipPath: 'inset(0 round 24px)',
                 transform: 'translate(0, 0) scale(1)',
             },
         };
     };
 
+    const setPanelFrameStyles = (frame) => {
+        panel.style.opacity = String(frame.opacity);
+        panel.style.borderRadius = frame.borderRadius;
+        panel.style.clipPath = frame.clipPath;
+        panel.style.transform = frame.transform;
+    };
+
+    const clearPanelFrameStyles = () => {
+        panel.style.removeProperty('opacity');
+        panel.style.removeProperty('border-radius');
+        panel.style.removeProperty('clip-path');
+        panel.style.removeProperty('transform');
+    };
+
     const close = ({ restoreFocus = false } = {}) => {
         if (panel.hidden) return;
         const run = ++animationRun;
-        const { collapsed, expanded } = getFloatingPanelFrames();
+        const currentTrigger = getCurrentTrigger();
+        const targetRect = getRectSnapshot(currentTrigger) || lastTriggerRect;
+        const { collapsed, expanded } = getFloatingPanelFrames(targetRect);
         panelAnimation?.cancel();
-        panel.classList.remove('is-open');
-        backdrop.classList.remove('is-open');
-        trigger?.classList.remove('is-floating-panel-open');
-        trigger?.setAttribute('aria-expanded', 'false');
         panelAnimation = panel.animate([expanded, collapsed], {
             duration: 260,
             easing: 'cubic-bezier(0.4, 0, 0.7, 0.2)',
             fill: 'both',
         });
+        panel.classList.remove('is-open');
+        backdrop.classList.remove('is-open');
+        trigger?.classList.remove('is-floating-panel-open');
+        currentTrigger?.classList.remove('is-floating-panel-open');
+        currentTrigger?.setAttribute('aria-expanded', 'false');
         void panelAnimation.finished
             .then(() => {
                 if (run !== animationRun) return;
                 panel.hidden = true;
                 backdrop.hidden = true;
                 panelAnimation?.cancel();
-                if (restoreFocus) trigger?.focus({ preventScroll: true });
+                if (restoreFocus) getCurrentTrigger()?.focus({ preventScroll: true });
             })
             .catch(() => {});
     };
@@ -376,48 +576,68 @@ function setupQualityPopover(player) {
                     <span class="player-popover-kicker">Streaming</span>
                     <h3 id="quality-popover-title">Playback quality</h3>
                 </div>
-                <span class="quality-auto-indicator">${state.requested === 'auto' ? 'Auto' : 'Manual'}</span>
             </div>
             <div class="quality-radio-group" role="radiogroup" aria-label="Playback quality">
+                <span class="quality-selection-indicator" aria-hidden="true"></span>
                 ${state.options
-                    .map(
-                        (option) => `
+                    .map((option) => {
+                        const visual = qualityVisuals[option.id] || qualityVisuals.NORMAL;
+                        return `
                             <label class="quality-radio-option ${
                                 option.id === state.effective ? 'is-selected' : ''
-                            } ${option.id.endsWith('LOSSLESS') ? 'is-lossless' : ''}">
+                            } ${option.id.endsWith('LOSSLESS') ? 'is-lossless' : ''}"
+                                data-quality-profile="${option.id}"
+                                data-tier-rgb="${visual.rgb}"
+                                style="--quality-tier-rgb: ${visual.rgb}">
                                 <input type="radio" name="playback-quality" value="${option.id}" ${
                                     option.id === state.effective ? 'checked' : ''
                                 } />
-                                <span class="quality-radio-control" aria-hidden="true"><span></span></span>
-                                <span class="quality-radio-copy"><strong>${option.label}</strong><small>${
-                                    option.detail
-                                }</small></span>
-                                ${option.id === 'HI_RES_LOSSLESS' ? '<span class="quality-premium-mark">HD</span>' : ''}
-                            </label>`
-                    )
+                                <span class="quality-waveform-icon" aria-hidden="true">${visual.icon}</span>
+                                <span class="quality-radio-copy">
+                                    <strong>
+                                        ${option.label}
+                                        ${
+                                            option.id.endsWith('LOSSLESS')
+                                                ? `<span class="quality-lossless-sparks" aria-hidden="true">
+                                                    <span>${SVG_QUALITY_LOSSLESS(11)}</span>
+                                                    <span>${SVG_QUALITY_LOSSLESS(8)}</span>
+                                                    <span>${SVG_QUALITY_LOSSLESS(6)}</span>
+                                                </span>`
+                                                : ''
+                                        }
+                                    </strong>
+                                    <span>${option.description}</span>
+                                </span>
+                                <span class="quality-radio-meta">
+                                    <small class="quality-radio-bitrate">${option.detail}</small>
+                                    <span class="quality-radio-check" aria-hidden="true">${SVG_CHECK(18)}</span>
+                                </span>
+                            </label>`;
+                    })
                     .join('')}
             </div>
-            <p class="quality-connection-note ${state.fallbackReason ? 'is-fallback' : ''}">
-                ${
-                    state.fallbackReason
-                        ? `${escapeHtml(state.fallbackReason)}. Monochrome stepped down automatically.`
-                        : state.requested === 'auto'
-                          ? 'Selected from your live connection and reduced automatically if buffering persists.'
-                          : 'Your choice is kept, with an automatic step-down only when playback cannot keep up.'
-                }
-            </p>`;
+            <div class="quality-connection-note ${state.fallbackReason ? 'is-fallback' : ''}">
+                <span class="quality-connection-icon" aria-hidden="true">${SVG_INFORMATION_CIRCLE(18)}</span>
+                <span class="quality-connection-copy">${getConnectionMessage(state)}</span>
+            </div>`;
     };
     const open = (badge) => {
         const run = ++animationRun;
         trigger = badge;
+        lastTriggerRect = getRectSnapshot(badge);
+        if (!lastTriggerRect) return;
+        lastTriggerRadius = getComputedStyle(badge).borderRadius || '999px';
         render();
+        panel.style.visibility = 'hidden';
         panel.hidden = false;
         backdrop.hidden = false;
         trigger.setAttribute('aria-expanded', 'true');
-        positionPlayerPopover(panel, trigger, 336);
-        const { collapsed, expanded } = getFloatingPanelFrames();
+        positionPlayerPopover(panel, lastTriggerRect, 500);
+        syncSelectionIndicator();
+        const { collapsed, expanded } = getFloatingPanelFrames(lastTriggerRect);
         panelAnimation?.cancel();
-        panel.classList.add('is-open');
+        setPanelFrameStyles(collapsed);
+        void panel.offsetWidth;
         backdrop.classList.add('is-open');
         trigger.classList.add('is-floating-panel-open');
         panelAnimation = panel.animate([collapsed, expanded], {
@@ -425,6 +645,9 @@ function setupQualityPopover(player) {
             easing: 'cubic-bezier(0.2, 0.9, 0.24, 1.08)',
             fill: 'both',
         });
+        panel.classList.add('is-open');
+        clearPanelFrameStyles();
+        panel.style.removeProperty('visibility');
         void panelAnimation.finished
             .then(() => {
                 if (run !== animationRun) return;
@@ -452,24 +675,37 @@ function setupQualityPopover(player) {
     panel.addEventListener('change', async (event) => {
         const input = event.target.closest('input[name="playback-quality"]');
         if (!input) return;
-        await player.selectPlaybackQuality(input.value);
-        render();
-        close({ restoreFocus: true });
+        qualityChangeInFlight = true;
+        try {
+            await Promise.all([animateSelection(input.value), player.selectPlaybackQuality(input.value)]);
+            const state = player.getQualityState();
+            const note = panel.querySelector('.quality-connection-note');
+            const noteCopy = panel.querySelector('.quality-connection-copy');
+            if (note) {
+                note.classList.toggle('is-fallback', Boolean(state.fallbackReason));
+            }
+            if (noteCopy) noteCopy.innerHTML = getConnectionMessage(state);
+            if (state.effective !== input.value) await animateSelection(state.effective);
+            syncTriggerElement();
+        } finally {
+            qualityChangeInFlight = false;
+        }
     });
     document.addEventListener('pointerdown', (event) => {
-        if (panel.hidden || panel.contains(event.target) || trigger?.contains(event.target)) return;
+        if (panel.hidden || panel.contains(event.target) || getCurrentTrigger()?.contains(event.target)) return;
         close();
     });
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && !panel.hidden) close({ restoreFocus: true });
     });
     window.addEventListener('resize', () => {
-        if (!panel.hidden && trigger) positionPlayerPopover(panel, trigger, 336);
+        if (!panel.hidden) positionPlayerPopover(panel, refreshTriggerRect(), 500);
     });
     window.addEventListener('player-quality-changed', () => {
-        if (!panel.hidden) {
+        if (!panel.hidden && !qualityChangeInFlight) {
             render();
-            positionPlayerPopover(panel, trigger, 336);
+            syncTriggerElement();
+            syncSelectionIndicator();
         }
     });
 }
@@ -579,6 +815,9 @@ async function handleSelectionAction(action) {
 
 export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui) {
     playerBarEffects.init();
+    window.addEventListener('player-playback-intent', (event) => {
+        playerBarEffects.setPlaying(Boolean(event.detail?.playing));
+    });
     document.getElementById('now-playing-cover-button')?.addEventListener('click', () => {
         void ui.openCurrentTrackFullscreen();
     });
@@ -620,6 +859,7 @@ export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui)
                 audioContextManager.init(element);
             }
             await audioContextManager.resume();
+            audioContextManager.fadePlaybackIn(230);
 
             if (player.currentTrack) {
                 const currentId = player.currentTrack.id;
@@ -950,6 +1190,9 @@ export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui)
     if (volumeBtn) {
         volumeBtn.addEventListener('click', () => {
             const activeEl = player.activeElement;
+            _volumeBar?.classList.remove('is-mute-animating');
+            void _volumeBar?.offsetWidth;
+            _volumeBar?.classList.add('is-mute-animating');
             activeEl.muted = !activeEl.muted;
             localStorage.setItem('muted', activeEl.muted);
 
@@ -957,6 +1200,7 @@ export async function initializePlayerEvents(player, audioPlayer, scrobbler, ui)
             if (inactiveEl) inactiveEl.muted = activeEl.muted;
 
             updateVolumeUI();
+            window.setTimeout(() => _volumeBar?.classList.remove('is-mute-animating'), 360);
         });
     }
     const isMuted = localStorage.getItem('muted') === 'true';
@@ -2860,7 +3104,7 @@ function showSleepTimerPopover(player, trigger) {
         document.removeEventListener('keydown', handleKeyDown);
         window.removeEventListener('resize', reposition);
     };
-    const reposition = () => positionPlayerPopover(popover, trigger, 340);
+    const reposition = () => positionPlayerPopover(popover, getRectSnapshot(trigger), 340);
 
     popover.addEventListener('click', handleOptionClick);
     document.addEventListener('pointerdown', handlePointerDown);

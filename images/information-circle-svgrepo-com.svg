@@ -1,0 +1,7 @@
+<!-- User-provided asset from SVG Repo: information-circle-svgrepo-com.svg -->
+<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <title>information-circle</title>
+  <path d="M24 2a22 22 0 1 0 22 22A21.9 21.9 0 0 0 24 2Zm0 40a18 18 0 1 1 18-18 18.1 18.1 0 0 1-18 18Z"/>
+  <path d="M24 20a2 2 0 0 0-2 2v12a2 2 0 0 0 4 0V22a2 2 0 0 0-2-2Z"/>
+  <circle cx="24" cy="14" r="2"/>
+</svg>

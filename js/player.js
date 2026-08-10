@@ -426,7 +426,9 @@ export class Player {
                 }
                 if (titleEl) {
                     const qualityBadge = createQualityBadgeHTML(track);
-                    titleEl.innerHTML = `${escapeHtml(trackTitle)} ${qualityBadge}`;
+                    titleEl.innerHTML = `<span class="now-playing-title-text">${escapeHtml(
+                        trackTitle
+                    )}</span>${qualityBadge}`;
                 }
                 if (albumEl) {
                     const albumTitle = track.album?.title || '';
@@ -487,7 +489,7 @@ export class Player {
                 await audioContextManager.resume();
 
                 try {
-                    await el.play();
+                    await this.playWithFade(el);
                 } catch (e) {
                     console.error('MediaSession play failed:', e);
                     // If play fails, try to handle it like a regular play/pause
@@ -495,8 +497,8 @@ export class Player {
                 }
             });
 
-            await MediaSession.setActionHandler({ action: 'pause' }, () => {
-                this.activeElement.pause();
+            await MediaSession.setActionHandler({ action: 'pause' }, async () => {
+                await this.pauseWithFade(this.activeElement);
             });
 
             await MediaSession.setActionHandler({ action: 'previoustrack' }, async () => {
@@ -1295,7 +1297,7 @@ export class Player {
             }
         }
         document.querySelector('.now-playing-bar .title').innerHTML =
-            `${escapeHtml(trackTitle)} ${createQualityBadgeHTML(track)}`;
+            `<span class="now-playing-title-text">${escapeHtml(trackTitle)}</span>${createQualityBadgeHTML(track)}`;
         const albumEl = document.querySelector('.now-playing-bar .album');
         if (albumEl) {
             const albumTitle = track.album?.title || '';
@@ -1999,6 +2001,25 @@ export class Player {
         return this.currentTrack?.type === 'video' ? this.video : this.audio;
     }
 
+    async playWithFade(element = this.activeElement) {
+        audioContextManager.preparePlaybackFadeIn();
+        try {
+            const started = await this.safePlay(element);
+            if (!started) audioContextManager.resetPlaybackFade();
+            return started;
+        } catch (error) {
+            audioContextManager.resetPlaybackFade();
+            throw error;
+        }
+    }
+
+    async pauseWithFade(element = this.activeElement) {
+        if (element.paused) return;
+        await audioContextManager.fadePlaybackOut(170);
+        if (!element.paused) element.pause();
+        audioContextManager.resetPlaybackFade();
+    }
+
     async handlePlayPause() {
         const el = this.activeElement;
         const hasSource = el.src || el.currentSrc || el.srcObject || this.shakaInitialized;
@@ -2010,16 +2031,28 @@ export class Player {
             return;
         }
 
+        window.dispatchEvent(
+            new CustomEvent('player-playback-intent', {
+                detail: { playing: el.paused },
+            })
+        );
+
         if (el.paused) {
-            this.safePlay(el).catch(async (e) => {
-                if (e.name === 'NotAllowedError' || e.name === 'AbortError') return;
+            try {
+                await this.playWithFade(el);
+            } catch (e) {
+                window.dispatchEvent(
+                    new CustomEvent('player-playback-intent', {
+                        detail: { playing: !el.paused },
+                    })
+                );
                 console.error('Play failed, reloading track:', e);
                 if (this.currentTrack) {
                     await this.playTrackFromQueue(0, 0);
                 }
-            });
+            }
         } else {
-            el.pause();
+            await this.pauseWithFade(el);
             await this.saveQueueState();
         }
     }
@@ -2518,6 +2551,7 @@ export class Player {
                 const option = getQualityOption(profile);
                 const staticBadge = titleEl.querySelector('.quality-badge:not(.shaka-quality-badge)');
                 if (staticBadge) staticBadge.style.display = 'none';
+                badgeEl.textContent = profile === 'HI_RES_LOSSLESS' ? 'Hi-Res' : option.label;
                 badgeEl.dataset.qualityProfile = profile;
                 badgeEl.classList.toggle('is-lossless-active', profile === 'LOSSLESS' || profile === 'HI_RES_LOSSLESS');
                 badgeEl.title = `${option.label} · ${option.detail}. Click to change playback quality`;
