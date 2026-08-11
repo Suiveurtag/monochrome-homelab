@@ -49,7 +49,6 @@ function initializeSoggyEasterEgg() {
             trigger.classList.add('is-revealed');
             sequence = '';
         }
-
     });
 
     trigger.addEventListener('click', open);

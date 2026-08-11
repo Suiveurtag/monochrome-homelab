@@ -52,38 +52,143 @@ export class MetallicPaint {
     constructor(canvas, imageSrc, options = {}) {
         this.canvas = canvas;
         this.imageSrc = imageSrc;
-        this.options = { seed: 42, scale: 4, refraction: 0.01, blur: 0.015, liquid: 0.75, speed: 0.3, brightness: 1.45, contrast: 0.68, angle: 0, fresnel: 1, lightColor: '#ffffff', darkColor: '#050507', patternSharpness: 1, waveAmplitude: 1, noiseScale: 0.5, chromaticSpread: 2, distortion: 1, contour: 0.2, tintColor: '#d5cbff', ...options };
+        this.options = {
+            seed: 42,
+            scale: 4,
+            refraction: 0.01,
+            blur: 0.015,
+            liquid: 0.75,
+            speed: 0.3,
+            brightness: 1.45,
+            contrast: 0.68,
+            angle: 0,
+            fresnel: 1,
+            lightColor: '#ffffff',
+            darkColor: '#050507',
+            patternSharpness: 1,
+            waveAmplitude: 1,
+            noiseScale: 0.5,
+            chromaticSpread: 2,
+            distortion: 1,
+            contour: 0.2,
+            tintColor: '#d5cbff',
+            ...options,
+        };
         this.frame = null;
         this.start();
     }
 
     start() {
         const gl = this.canvas.getContext('webgl2', { alpha: true, antialias: true });
-        if (!gl) { this.canvas.classList.add('metallic-paint--unsupported'); return; }
-        const compile = (source, type) => { const shader = gl.createShader(type); gl.shaderSource(shader, source); gl.compileShader(shader); return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null; };
-        const vertex = compile(vertexShader, gl.VERTEX_SHADER), fragment = compile(fragmentShader, gl.FRAGMENT_SHADER);
+        if (!gl) {
+            this.canvas.classList.add('metallic-paint--unsupported');
+            return;
+        }
+        const compile = (source, type) => {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
+        };
+        const vertex = compile(vertexShader, gl.VERTEX_SHADER),
+            fragment = compile(fragmentShader, gl.FRAGMENT_SHADER);
         if (!vertex || !fragment) return;
-        const program = gl.createProgram(); gl.attachShader(program, vertex); gl.attachShader(program, fragment); gl.linkProgram(program);
+        const program = gl.createProgram();
+        gl.attachShader(program, vertex);
+        gl.attachShader(program, fragment);
+        gl.linkProgram(program);
         if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return;
-        this.gl = gl; this.program = program; gl.useProgram(program);
-        this.uniforms = Object.fromEntries(['u_tex','u_time','u_ratio','u_imgRatio','u_seed','u_scale','u_refract','u_blur','u_liquid','u_bright','u_contrast','u_angle','u_fresnel','u_sharp','u_wave','u_noise','u_chroma','u_distort','u_contour','u_lightColor','u_darkColor','u_tint'].map((name) => [name, gl.getUniformLocation(program, name)]));
-        const buffer = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buffer); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
-        const position = gl.getAttribLocation(program, 'a_position'); gl.enableVertexAttribArray(position); gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-        const image = new Image(); image.onload = () => this.upload(processImage(image)); image.src = this.imageSrc;
+        this.gl = gl;
+        this.program = program;
+        gl.useProgram(program);
+        this.uniforms = Object.fromEntries(
+            [
+                'u_tex',
+                'u_time',
+                'u_ratio',
+                'u_imgRatio',
+                'u_seed',
+                'u_scale',
+                'u_refract',
+                'u_blur',
+                'u_liquid',
+                'u_bright',
+                'u_contrast',
+                'u_angle',
+                'u_fresnel',
+                'u_sharp',
+                'u_wave',
+                'u_noise',
+                'u_chroma',
+                'u_distort',
+                'u_contour',
+                'u_lightColor',
+                'u_darkColor',
+                'u_tint',
+            ].map((name) => [name, gl.getUniformLocation(program, name)])
+        );
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+        const position = gl.getAttribLocation(program, 'a_position');
+        gl.enableVertexAttribArray(position);
+        gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+        const image = new Image();
+        image.onload = () => this.upload(processImage(image));
+        image.src = this.imageSrc;
     }
 
     upload(data) {
         const { gl, uniforms: u, options: o } = this;
-        const texture = gl.createTexture(); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texture);
-        ['TEXTURE_MIN_FILTER','TEXTURE_MAG_FILTER'].forEach((key) => gl.texParameteri(gl.TEXTURE_2D, gl[key], gl.LINEAR));
-        ['TEXTURE_WRAP_S','TEXTURE_WRAP_T'].forEach((key) => gl.texParameteri(gl.TEXTURE_2D, gl[key], gl.CLAMP_TO_EDGE));
+        const texture = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        ['TEXTURE_MIN_FILTER', 'TEXTURE_MAG_FILTER'].forEach((key) =>
+            gl.texParameteri(gl.TEXTURE_2D, gl[key], gl.LINEAR)
+        );
+        ['TEXTURE_WRAP_S', 'TEXTURE_WRAP_T'].forEach((key) =>
+            gl.texParameteri(gl.TEXTURE_2D, gl[key], gl.CLAMP_TO_EDGE)
+        );
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.width, data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data.data);
-        gl.uniform1i(u.u_tex, 0); gl.uniform1f(u.u_imgRatio, 1);
-        [['u_seed',o.seed],['u_scale',o.scale],['u_refract',o.refraction],['u_blur',o.blur],['u_liquid',o.liquid],['u_bright',o.brightness],['u_contrast',o.contrast],['u_angle',o.angle],['u_fresnel',o.fresnel],['u_sharp',o.patternSharpness],['u_wave',o.waveAmplitude],['u_noise',o.noiseScale],['u_chroma',o.chromaticSpread],['u_distort',o.distortion],['u_contour',o.contour]].forEach(([name, value]) => gl.uniform1f(u[name], value));
-        [['u_lightColor',o.lightColor],['u_darkColor',o.darkColor],['u_tint',o.tintColor]].forEach(([name, color]) => gl.uniform3fv(u[name], rgb(color)));
-        const render = (time) => { const size = Math.min(1000, Math.round(this.canvas.clientWidth * Math.min(devicePixelRatio, 2))); if (this.canvas.width !== size) { this.canvas.width = this.canvas.height = size; gl.viewport(0, 0, size, size); } gl.uniform1f(u.u_ratio, 1); gl.uniform1f(u.u_time, time * o.speed); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); this.frame = requestAnimationFrame(render); };
+        gl.uniform1i(u.u_tex, 0);
+        gl.uniform1f(u.u_imgRatio, 1);
+        [
+            ['u_seed', o.seed],
+            ['u_scale', o.scale],
+            ['u_refract', o.refraction],
+            ['u_blur', o.blur],
+            ['u_liquid', o.liquid],
+            ['u_bright', o.brightness],
+            ['u_contrast', o.contrast],
+            ['u_angle', o.angle],
+            ['u_fresnel', o.fresnel],
+            ['u_sharp', o.patternSharpness],
+            ['u_wave', o.waveAmplitude],
+            ['u_noise', o.noiseScale],
+            ['u_chroma', o.chromaticSpread],
+            ['u_distort', o.distortion],
+            ['u_contour', o.contour],
+        ].forEach(([name, value]) => gl.uniform1f(u[name], value));
+        [
+            ['u_lightColor', o.lightColor],
+            ['u_darkColor', o.darkColor],
+            ['u_tint', o.tintColor],
+        ].forEach(([name, color]) => gl.uniform3fv(u[name], rgb(color)));
+        const render = (time) => {
+            const size = Math.min(1000, Math.round(this.canvas.clientWidth * Math.min(devicePixelRatio, 2)));
+            if (this.canvas.width !== size) {
+                this.canvas.width = this.canvas.height = size;
+                gl.viewport(0, 0, size, size);
+            }
+            gl.uniform1f(u.u_ratio, 1);
+            gl.uniform1f(u.u_time, time * o.speed);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            this.frame = requestAnimationFrame(render);
+        };
         this.frame = requestAnimationFrame(render);
     }
 
-    destroy() { if (this.frame) cancelAnimationFrame(this.frame); }
+    destroy() {
+        if (this.frame) cancelAnimationFrame(this.frame);
+    }
 }
