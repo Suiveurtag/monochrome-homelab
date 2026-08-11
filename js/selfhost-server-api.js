@@ -1,5 +1,6 @@
 import { pb } from './accounts/config.js';
 import { isVideoArtwork } from './animated-artwork.js';
+import { getTrackThemeColor, normalizeTrackThemeColor } from './track-theme-color.js';
 
 export const SELFHOST_TRACKS_COLLECTION = 'music_tracks';
 export const FALLBACK_COVER = '/assets/appicon.png';
@@ -59,6 +60,7 @@ export function mapPocketBaseTrack(record, client = pb) {
         title,
         duration: Number(record.duration || 0),
         explicit: Boolean(record.explicit),
+        themeColor: normalizeTrackThemeColor(record.theme_color),
         uploadedAt: record.created ? Date.parse(record.created) : Date.now(),
         updatedAt: record.updated ? Date.parse(record.updated) : Date.now(),
         trackNumber: Number(record.track_number || 0) || null,
@@ -157,6 +159,7 @@ export function createTrackFormData(track, file, ownerId, coverFile = null) {
     formData.set('track_number', String(track?.trackNumber || track?.track || ''));
     formData.set('duration', String(Number(track?.duration || 0)));
     formData.set('explicit', String(Boolean(track?.explicit)));
+    formData.set('theme_color', getTrackThemeColor(track));
     formData.set('lyrics', track?.lyrics || '');
     formData.set('audio', file);
     if (coverFile) formData.set('cover', coverFile);
@@ -223,6 +226,7 @@ export async function updateSelfHostedTrack(id, track, coverFile = null, client 
     formData.set('track_number', String(track?.trackNumber || track?.track || ''));
     formData.set('duration', String(Number(track?.duration || 0)));
     formData.set('explicit', String(Boolean(track?.explicit)));
+    formData.set('theme_color', getTrackThemeColor(track));
     formData.set('lyrics', track?.lyrics || '');
     if (coverFile) formData.set('cover', coverFile);
 

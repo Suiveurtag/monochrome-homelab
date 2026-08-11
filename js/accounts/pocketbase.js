@@ -200,6 +200,7 @@ const syncManager = {
                 title: item.title || null,
                 duration: item.duration || null,
                 explicit: item.explicit || false,
+                themeColor: item.themeColor || null,
                 artist: item.artist || (item.artists && item.artists.length > 0 ? item.artists[0] : null) || null,
                 artists: item.artists?.map((a) => ({ id: a.id, name: a.name || null })) || [],
                 album: item.album

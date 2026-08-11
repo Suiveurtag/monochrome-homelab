@@ -23,6 +23,7 @@ import {
     SVG_EQUAL,
 } from './icons.js';
 import { hapticSuccess } from './haptics.js';
+import { updateContextMenuLikeState } from './events.js';
 
 export function initializeUIInteractions(player, api, ui) {
     const sidebar = document.querySelector('.sidebar');
@@ -331,20 +332,16 @@ export function initializeUIInteractions(player, api, ui) {
             if (contextMenu) {
                 const track = player.getCurrentQueue()[index];
                 if (track) {
-                    const isLiked = await db.isFavorite('track', track.id);
-                    const likeItem = contextMenu.querySelector('li[data-action="toggle-like"]');
-                    if (likeItem) {
-                        likeItem.textContent = isLiked ? 'Unlike' : 'Like';
+                    if (contextMenu._originalHTML) {
+                        contextMenu.innerHTML = contextMenu._originalHTML;
+                        contextMenu._originalHTML = null;
                     }
-
-                    const trackMixItem = contextMenu.querySelector('li[data-action="track-mix"]');
-                    if (trackMixItem) {
-                        const hasMix = track.mixes && track.mixes.TRACK_MIX;
-                        trackMixItem.style.display = hasMix ? 'block' : 'none';
-                    }
-
-                    positionMenu(contextMenu, e.clientX, e.clientY);
                     contextMenu._contextTrack = track;
+                    contextMenu._contextType = track.type || 'track';
+                    contextMenu._selectedTracks = [];
+                    contextMenu._contextHref = null;
+                    await updateContextMenuLikeState(contextMenu, track);
+                    positionMenu(contextMenu, e.clientX, e.clientY);
                 }
             }
         });

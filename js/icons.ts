@@ -38,6 +38,7 @@ export { default as SVG_LOG_IN } from '!lucide/log-in.svg?svg&icon';
 export { default as SVG_LOG_OUT } from '!lucide/log-out.svg?svg&icon';
 export { default as SVG_MAXIMIZE } from '!lucide/maximize.svg?svg&icon';
 export { default as SVG_MENU } from '!lucide/ellipsis-vertical.svg?svg&icon';
+export { default as SVG_MESSAGES_SQUARE } from '!lucide/messages-square.svg?svg&icon';
 export { default as SVG_MIC } from '!lucide/mic.svg?svg&icon';
 export { default as SVG_MINUS } from '!lucide/minus.svg?svg&icon';
 export { default as SVG_MIX } from '../images/mix.svg?svg&icon';

@@ -86,6 +86,7 @@ export class SocialManager {
         this.selectedProfile = null;
         this.messages = [];
         this.shareItems = new Map();
+        this.pendingShare = null;
         this.unsubscribe = [];
         this.initialized = false;
         this.lastPresenceProgress = 0;
@@ -194,23 +195,33 @@ export class SocialManager {
             return;
         }
 
-        list.innerHTML = filtered
-            .map((profile) => {
-                const state = presenceState(this.presence.get(profile.user));
-                const isSelf = profile.user === this.userId;
-                const selected = profile.user === this.selectedProfile?.user;
-                const status = state.track
-                    ? `${state.playing ? 'Listening' : 'Paused'} · ${state.track.title}`
-                    : state.online
-                      ? 'Online'
-                      : 'Offline';
-                return `<button class="social-person${selected ? ' is-active' : ''}${isSelf ? ' is-self' : ''}" type="button" data-social-user="${escapeHtml(profile.user)}" ${isSelf ? 'data-self="true"' : ''}>
+        const pendingShareNotice = this.pendingShare
+            ? `<div class="social-pending-share" role="status">
+                <span class="social-pending-share-kicker">Choose someone to share</span>
+                <strong>${escapeHtml(this.pendingShare.title)}</strong>
+                <small>${escapeHtml(this.pendingShare.subtitle || this.pendingShare.type)}</small>
+            </div>`
+            : '';
+
+        list.innerHTML =
+            pendingShareNotice +
+            filtered
+                .map((profile) => {
+                    const state = presenceState(this.presence.get(profile.user));
+                    const isSelf = profile.user === this.userId;
+                    const selected = profile.user === this.selectedProfile?.user;
+                    const status = state.track
+                        ? `${state.playing ? 'Listening' : 'Paused'} · ${state.track.title}`
+                        : state.online
+                          ? 'Online'
+                          : 'Offline';
+                    return `<button class="social-person${selected ? ' is-active' : ''}${isSelf ? ' is-self' : ''}" type="button" data-social-user="${escapeHtml(profile.user)}" ${isSelf ? 'data-self="true"' : ''}>
                     <span class="social-avatar-wrap"><img src="${escapeHtml(avatarFor(profile))}" alt="" /><span class="social-presence-dot${state.online ? ' is-online' : ''}${state.playing ? ' is-listening' : ''}"></span></span>
                     <span class="social-person-copy"><span><strong>${escapeHtml(displayName(profile))}</strong>${isSelf ? '<em>You</em>' : ''}</span><small>${escapeHtml(status)}</small></span>
                     ${state.playing ? '<span class="social-equalizer" aria-label="Listening now"><i></i><i></i><i></i></span>' : ''}
                 </button>`;
-            })
-            .join('');
+                })
+                .join('');
     }
 
     async renderPage(username = '') {
@@ -243,6 +254,12 @@ export class SocialManager {
         this.updateThreadHeader();
         await this.loadConversation();
         history.replaceState({}, '', `/social/@${encodeURIComponent(profile.username || '')}`);
+        if (this.pendingShare) {
+            const panel = document.getElementById('social-share-panel');
+            if (panel) panel.hidden = false;
+            this.updateNowPlayingShare();
+            requestAnimationFrame(() => document.getElementById('social-share-now-playing')?.focus());
+        }
     }
 
     updateThreadHeader() {
@@ -376,11 +393,25 @@ export class SocialManager {
 
     updateNowPlayingShare() {
         const button = document.getElementById('social-share-now-playing');
-        const track = this.player?.currentTrack;
+        const track = this.pendingShare || this.player?.currentTrack;
         if (!button) return;
         button.hidden = !track;
         if (!track) return;
-        button.innerHTML = `<span>NOW PLAYING</span><strong>${escapeHtml(track.title || 'Untitled')}</strong><small>${escapeHtml(getTrackArtists(track))}</small><b>Send</b>`;
+        const subtitle = this.pendingShare?.subtitle || getTrackArtists(track);
+        button.innerHTML = `<span>${this.pendingShare ? 'READY TO SHARE' : 'NOW PLAYING'}</span><strong>${escapeHtml(track.title || 'Untitled')}</strong><small>${escapeHtml(subtitle || '')}</small><b>Send</b>`;
+    }
+
+    prepareShare(kind, item) {
+        this.pendingShare = sharePayload(kind, item);
+        if (document.getElementById('page-social')?.classList.contains('active')) {
+            this.renderDirectory(document.getElementById('social-user-search')?.value || '');
+            if (this.selectedProfile) {
+                const panel = document.getElementById('social-share-panel');
+                if (panel) panel.hidden = false;
+                this.updateNowPlayingShare();
+                requestAnimationFrame(() => document.getElementById('social-share-now-playing')?.focus());
+            }
+        }
     }
 
     bindUI() {
@@ -413,7 +444,9 @@ export class SocialManager {
             if (!panel.hidden) document.getElementById('social-share-search')?.focus();
         });
         document.getElementById('social-share-close')?.addEventListener('click', () => {
+            this.pendingShare = null;
             document.getElementById('social-share-panel').hidden = true;
+            this.renderDirectory(document.getElementById('social-user-search')?.value || '');
         });
         document.getElementById('social-share-search')?.addEventListener('input', (event) => {
             clearTimeout(this.searchTimer);
@@ -425,16 +458,21 @@ export class SocialManager {
             if (!entry) return;
             this.sendMessage('', sharePayload(entry.kind, entry.item))
                 .then(() => {
+                    this.pendingShare = null;
                     document.getElementById('social-share-panel').hidden = true;
                 })
                 .catch((error) => showNotification(error.message, 'error'));
         });
         document.getElementById('social-share-now-playing')?.addEventListener('click', () => {
-            const track = this.player?.currentTrack;
-            if (!track) return;
-            this.sendMessage('', sharePayload('track', track))
+            const share =
+                this.pendingShare ||
+                (this.player?.currentTrack ? sharePayload('track', this.player.currentTrack) : null);
+            if (!share) return;
+            this.sendMessage('', share)
                 .then(() => {
+                    this.pendingShare = null;
                     document.getElementById('social-share-panel').hidden = true;
+                    this.renderDirectory(document.getElementById('social-user-search')?.value || '');
                 })
                 .catch((error) => showNotification(error.message, 'error'));
         });

@@ -48,6 +48,7 @@ import { deleteSelfHostedTrack, listSelfHostedTracks } from './selfhost-server-a
 import { openMetadataEditor } from './metadata-editor.js';
 import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
 import { isVideoArtwork, setArtworkBackground } from './animated-artwork.js';
+import { getTrackThemeColor } from './track-theme-color.js';
 import { listeningTracker } from './listening-tracker.js';
 import {
     applyTrackSaveStateToButton,
@@ -273,6 +274,12 @@ export class UIRenderer {
         // Listen for theme changes to re-apply vibrant colors
         window.addEventListener('theme-changed', async () => {
             await this.updateGlobalTheme();
+        });
+
+        window.addEventListener('track-metadata-updated', (event) => {
+            if (String(event.detail?.trackId) !== String(this.currentTrack?.id)) return;
+            if (event.detail?.track) Object.assign(this.currentTrack, event.detail.track);
+            void this.updateGlobalTheme();
         });
 
         window.addEventListener('visualizer-dim-change', () => {
@@ -540,8 +547,27 @@ export class UIRenderer {
             return;
         }
 
-        if (backgroundSettings.isEnabled() && this.currentTrack?.album?.cover) {
-            await this.extractAndApplyColor(this.api.getCoverUrl(this.currentTrack.album.cover, '80'));
+        if (backgroundSettings.isEnabled() && this.currentTrack) {
+            await this.applyTrackThemeColor(this.currentTrack, '80');
+        } else {
+            this.resetVibrantColor();
+        }
+    }
+
+    async applyTrackThemeColor(track, coverSize = '80') {
+        if (!dynamicColorSettings.isEnabled()) {
+            this.resetVibrantColor();
+            return;
+        }
+
+        const customColor = getTrackThemeColor(track);
+        if (customColor) {
+            this.setVibrantColor(customColor);
+            return;
+        }
+
+        if (track?.album?.cover) {
+            await this.extractAndApplyColor(this.api.getCoverUrl(track.album.cover, coverSize));
         } else {
             this.resetVibrantColor();
         }
@@ -1500,7 +1526,7 @@ export class UIRenderer {
                     currentImage.src = coverUrl;
                 }
             }
-            await this.extractAndApplyColor(this.api.getCoverUrl(track.album?.cover, '80'));
+            await this.applyTrackThemeColor(track, '80');
         }
 
         this.updateFullscreenQualityBadgePlacement(track, overlay);
@@ -6197,8 +6223,11 @@ export class UIRenderer {
             imageEl.style.backgroundColor = '';
 
             this.setPageBackground(coverUrl);
-            if (backgroundSettings.isEnabled() && track.album?.cover && !isVideoArtwork(track.album.cover)) {
-                await this.extractAndApplyColor(this.api.getCoverUrl(track.album.cover, '80'));
+            if (
+                backgroundSettings.isEnabled() &&
+                (getTrackThemeColor(track) || (track.album?.cover && !isVideoArtwork(track.album.cover)))
+            ) {
+                await this.applyTrackThemeColor(track, '80');
             }
 
             const explicitBadge = hasExplicitContent(track) ? this.createExplicitBadge() : '';

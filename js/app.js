@@ -3056,23 +3056,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             mutations.forEach((mutation) => {
                 if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
                     if (contextMenu.style.display === 'block') {
-                        const track = contextMenu._contextTrack;
-                        const albumItem = contextMenu.querySelector('[data-action="go-to-album"]');
-
-                        if (track) {
-                            if (albumItem) {
-                                let label = 'album';
-                                const albumType = track.album?.type?.toUpperCase();
-                                const trackCount = track.album?.numberOfTracks;
-
-                                if (albumType === 'SINGLE' || trackCount === 1) label = 'single';
-                                else if (albumType === 'EP') label = 'EP';
-                                else if (trackCount && trackCount <= 6) label = 'EP';
-
-                                albumItem.textContent = `Go to ${label}`;
-                                albumItem.style.display = track.album ? 'block' : 'none';
-                            }
-                        }
+                        contextMenu.setAttribute('aria-hidden', 'false');
+                    } else {
+                        contextMenu.setAttribute('aria-hidden', 'true');
+                        contextMenu.classList.remove('is-opening');
                     }
                 }
             });

@@ -87,4 +87,23 @@ describe('fullscreen animated artwork', () => {
         expect(renderer.setVibrantColor).toHaveBeenCalledWith('#663399');
         expect(renderer.resetVibrantColor).not.toHaveBeenCalled();
     });
+
+    test('uses a custom song color instead of extracting one from artwork', async () => {
+        localStorage.setItem('dynamic-color-enabled', 'true');
+        const renderer = {
+            api: { getCoverUrl: vi.fn((source) => source) },
+            setVibrantColor: vi.fn(),
+            extractAndApplyColor: vi.fn(),
+            resetVibrantColor: vi.fn(),
+        };
+
+        await UIRenderer.prototype.applyTrackThemeColor.call(renderer, {
+            themeColor: '#4A90E2',
+            album: { cover: '/cover.jpg' },
+        });
+
+        expect(renderer.setVibrantColor).toHaveBeenCalledWith('#4a90e2');
+        expect(renderer.extractAndApplyColor).not.toHaveBeenCalled();
+        expect(renderer.resetVibrantColor).not.toHaveBeenCalled();
+    });
 });

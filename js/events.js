@@ -5,6 +5,7 @@ import {
     formatTime,
     getTrackArtists,
     positionMenu,
+    prepareContextMenu,
     getShareUrl,
     escapeHtml,
 } from './utils.js';
@@ -31,6 +32,7 @@ import {
     SVG_CHECKBOX_CHECKED,
     SVG_CLOSE,
     SVG_INFORMATION_CIRCLE,
+    SVG_LEFT_ARROW,
     SVG_PLUS,
     SVG_SEARCH,
     SVG_MUTE,
@@ -43,6 +45,7 @@ import {
     SVG_SETTINGS,
     SVG_SHUFFLE,
     SVG_VOLUME,
+    SVG_USER,
 } from './icons.js';
 import { partyManager } from './listening-party.js';
 import { MusicAPI } from './music-api.js';
@@ -50,6 +53,7 @@ import { LyricsManager } from './lyrics.js';
 import { Player } from './player.js';
 import { playerBarEffects } from './player-bar-effects.js';
 import { initializePlayerActionLayout, PLAYER_ACTIONS } from './player-bar-layout.js';
+import { socialManager } from './social.js';
 
 let currentTrackIdForWaveform = null;
 
@@ -3079,19 +3083,6 @@ export async function handleTrackAction(
             closeBtn.onclick = () => modal.remove();
         }
         document.body.appendChild(modal);
-    } else if (action === 'open-original-url') {
-        // Open the original source URL for the track
-        let url = null;
-
-        if (item.remoteUrl) {
-            url = item.remoteUrl;
-        }
-
-        if (url) {
-            window.open(url, '_blank');
-        } else {
-            showNotification('No original URL available for this track.');
-        }
     } else if (action === 'block-track') {
         const { contentBlockingSettings } = await import('./storage.js');
         if (contentBlockingSettings.isTrackBlocked(item.id)) {
@@ -3124,8 +3115,8 @@ export async function handleTrackAction(
         }
     } else if (action === 'block-artist') {
         const { contentBlockingSettings } = await import('./storage.js');
-        const artistId = item.artist?.id || item.artists?.[0]?.id;
-        const artistName = item.artist?.name || item.artists?.[0]?.name || item.name;
+        const artistId = type === 'artist' ? item.id : item.artist?.id || item.artists?.[0]?.id;
+        const artistName = type === 'artist' ? item.name || item.title : item.artist?.name || item.artists?.[0]?.name;
 
         if (!artistId) {
             showNotification('No artist information available');
@@ -3144,7 +3135,35 @@ export async function handleTrackAction(
     }
 }
 
-async function updateContextMenuLikeState(contextMenu, contextTrack) {
+function setContextMenuLabel(item, label) {
+    if (!item) return;
+    const labelElement = item.querySelector('.context-menu-label');
+    if (labelElement) labelElement.textContent = label;
+    else item.textContent = label;
+}
+
+function setContextMenuItemVisible(item, visible) {
+    if (!item) return;
+    item.style.display = visible ? 'flex' : 'none';
+    item.setAttribute('aria-hidden', visible ? 'false' : 'true');
+}
+
+function refreshContextMenuSections(contextMenu) {
+    contextMenu.querySelectorAll('[data-menu-section]').forEach((section) => {
+        let sibling = section.nextElementSibling;
+        let hasVisibleAction = false;
+        while (sibling && !sibling.hasAttribute('data-menu-section')) {
+            if (sibling.matches('[data-action]') && sibling.style.display !== 'none') {
+                hasVisibleAction = true;
+                break;
+            }
+            sibling = sibling.nextElementSibling;
+        }
+        section.style.display = hasVisibleAction ? 'flex' : 'none';
+    });
+}
+
+export async function updateContextMenuLikeState(contextMenu, contextTrack) {
     if (!contextMenu || !contextTrack) return;
 
     const type = contextMenu._contextType || 'track';
@@ -3159,19 +3178,13 @@ async function updateContextMenuLikeState(contextMenu, contextTrack) {
     const pinItem = contextMenu.querySelector('li[data-action="toggle-pin"]');
     if (pinItem) {
         const isPinned = await db.isPinned(contextTrack.id || contextTrack.uuid);
-        pinItem.textContent = isPinned ? 'Unpin' : 'Pin';
+        setContextMenuLabel(pinItem, isPinned ? 'Unpin' : 'Pin');
     }
 
     const trackMixItem = contextMenu.querySelector('li[data-action="track-mix"]');
     if (trackMixItem) {
         const hasMix = contextTrack.mixes && contextTrack.mixes.TRACK_MIX;
-        trackMixItem.style.display = hasMix ? 'block' : 'none';
-    }
-
-    // Show "Open Original URL" for tracks backed by a remote source.
-    const openOriginalUrlItem = contextMenu.querySelector('li[data-action="open-original-url"]');
-    if (openOriginalUrlItem) {
-        openOriginalUrlItem.style.display = contextTrack.remoteUrl ? 'block' : 'none';
+        setContextMenuItemVisible(trackMixItem, hasMix);
     }
 
     // Update block/unblock labels
@@ -3180,27 +3193,39 @@ async function updateContextMenuLikeState(contextMenu, contextTrack) {
     const blockTrackItem = contextMenu.querySelector('li[data-action="block-track"]');
     if (blockTrackItem) {
         const isBlocked = contentBlockingSettings.isTrackBlocked(contextTrack.id);
-        blockTrackItem.textContent = isBlocked
-            ? blockTrackItem.dataset.labelUnblock || 'Unblock track'
-            : blockTrackItem.dataset.labelBlock || 'Block track';
+        setContextMenuLabel(
+            blockTrackItem,
+            isBlocked
+                ? blockTrackItem.dataset.labelUnblock || 'Unblock track'
+                : blockTrackItem.dataset.labelBlock || 'Block track'
+        );
+        blockTrackItem.classList.toggle('context-menu-danger', !isBlocked);
     }
 
     const blockAlbumItem = contextMenu.querySelector('li[data-action="block-album"]');
     if (blockAlbumItem) {
         const albumId = type === 'album' ? contextTrack.id : contextTrack.album?.id;
         const isBlocked = albumId ? contentBlockingSettings.isAlbumBlocked(albumId) : false;
-        blockAlbumItem.textContent = isBlocked
-            ? blockAlbumItem.dataset.labelUnblock || 'Unblock album'
-            : blockAlbumItem.dataset.labelBlock || 'Block album';
+        setContextMenuLabel(
+            blockAlbumItem,
+            isBlocked
+                ? blockAlbumItem.dataset.labelUnblock || 'Unblock album'
+                : blockAlbumItem.dataset.labelBlock || 'Block album'
+        );
+        blockAlbumItem.classList.toggle('context-menu-danger', !isBlocked);
     }
 
     const blockArtistItem = contextMenu.querySelector('li[data-action="block-artist"]');
     if (blockArtistItem) {
-        const artistId = contextTrack.artist?.id || contextTrack.artists?.[0]?.id;
+        const artistId = type === 'artist' ? contextTrack.id : contextTrack.artist?.id || contextTrack.artists?.[0]?.id;
         const isBlocked = artistId ? contentBlockingSettings.isArtistBlocked(artistId) : false;
-        blockArtistItem.textContent = isBlocked
-            ? blockArtistItem.dataset.labelUnblock || 'Unblock artist'
-            : blockArtistItem.dataset.labelBlock || 'Block artist';
+        setContextMenuLabel(
+            blockArtistItem,
+            isBlocked
+                ? blockArtistItem.dataset.labelUnblock || 'Unblock artist'
+                : blockArtistItem.dataset.labelBlock || 'Block artist'
+        );
+        blockArtistItem.classList.toggle('context-menu-danger', !isBlocked);
     }
 
     // Filter items based on type
@@ -3208,14 +3233,29 @@ async function updateContextMenuLikeState(contextMenu, contextTrack) {
         const filter = item.dataset.typeFilter;
         if (filter) {
             const types = filter.split(',');
-            item.style.display = types.includes(type) ? 'block' : 'none';
+            setContextMenuItemVisible(item, types.includes(type));
         } else {
-            item.style.display = 'block';
+            setContextMenuItemVisible(item, true);
         }
         if (item.dataset.action === 'request-song') {
-            if (!partyManager.currentParty) {
-                item.style.display = 'none';
-            }
+            setContextMenuItemVisible(item, Boolean(partyManager.currentParty) && !contextTrack.isLocal);
+        }
+        if (item.dataset.action === 'edit-metadata') {
+            setContextMenuItemVisible(item, type === 'track' && Boolean(contextTrack.isLocal));
+        }
+        if (
+            contextTrack.isLocal &&
+            ['share-menu', 'open-in-new-tab', 'block-track', 'block-album', 'block-artist'].includes(
+                item.dataset.action
+            )
+        ) {
+            setContextMenuItemVisible(item, false);
+        }
+        if (
+            contextTrack.isUnavailable &&
+            ['play-next', 'add-to-queue', 'download', 'track-mix'].includes(item.dataset.action)
+        ) {
+            setContextMenuItemVisible(item, false);
         }
 
         // Update labels for Like/Save
@@ -3224,9 +3264,36 @@ async function updateContextMenuLikeState(contextMenu, contextTrack) {
             const labelKey = `${labelPrefix}${type.charAt(0).toUpperCase() + type.slice(1).replace('User-playlist', 'Playlist')}`;
             const fallbackKey = isLiked ? 'labelUnlikeTrack' : 'labelTrack';
             const label = item.dataset[labelKey] || item.dataset[fallbackKey] || (isLiked ? 'Unlike' : 'Like');
-            item.textContent = label;
+            setContextMenuLabel(item, label);
         }
     });
+
+    const goToAlbumItem = contextMenu.querySelector('li[data-action="go-to-album"]');
+    if (goToAlbumItem) {
+        const album = contextTrack.album;
+        setContextMenuItemVisible(goToAlbumItem, ['track', 'video'].includes(type) && Boolean(album?.id));
+        if (album) {
+            const albumType = album.type?.toUpperCase();
+            const trackCount = album.numberOfTracks;
+            const label =
+                albumType === 'SINGLE' || trackCount === 1
+                    ? 'single'
+                    : albumType === 'EP' || (trackCount && trackCount <= 6)
+                      ? 'EP'
+                      : 'album';
+            setContextMenuLabel(goToAlbumItem, `Go to ${label}`);
+        }
+    }
+
+    if (blockAlbumItem) {
+        const albumId = type === 'album' ? contextTrack.id : contextTrack.album?.id;
+        setContextMenuItemVisible(blockAlbumItem, !contextTrack.isLocal && Boolean(albumId));
+    }
+
+    if (blockArtistItem) {
+        const artistId = type === 'artist' ? contextTrack.id : contextTrack.artist?.id || contextTrack.artists?.[0]?.id;
+        setContextMenuItemVisible(blockArtistItem, !contextTrack.isLocal && Boolean(artistId));
+    }
 
     // Handle multiple artists for "Go to artist"
     const artistItem = contextMenu.querySelector('li[data-action="go-to-artist"]');
@@ -3239,17 +3306,68 @@ async function updateContextMenuLikeState(contextMenu, contextTrack) {
         const canShowArtist = type === 'track' || type === 'album';
 
         if (artists.length > 1 && canShowArtist) {
-            artistItem.style.display = 'block';
-            artistItem.textContent = 'Go to artists';
+            setContextMenuItemVisible(artistItem, true);
+            setContextMenuLabel(artistItem, 'Go to artists');
             artistItem.dataset.hasMultipleArtists = 'true';
         } else {
             const hasArtist = artists.length > 0;
-            artistItem.style.display = hasArtist && canShowArtist ? 'block' : 'none';
+            setContextMenuItemVisible(artistItem, hasArtist && canShowArtist);
             artistItem.dataset.hasMultipleArtists = 'false';
-            artistItem.textContent = artists.length > 1 ? 'Go to artists' : 'Go to artist';
+            setContextMenuLabel(artistItem, artists.length > 1 ? 'Go to artists' : 'Go to artist');
             delete artistItem.dataset.artistId;
             delete artistItem.dataset.trackerSheetId;
         }
+    }
+
+    const selectedTrackCount = contextMenu._selectedTracks?.length || 0;
+    if (selectedTrackCount > 1) {
+        const multiSelectActions = new Set(['play-next', 'add-to-queue', 'add-to-playlist', 'download']);
+        contextMenu.querySelectorAll('li[data-action]').forEach((item) => {
+            if (!multiSelectActions.has(item.dataset.action)) setContextMenuItemVisible(item, false);
+        });
+    }
+
+    refreshContextMenuSections(contextMenu);
+}
+
+function renderContextSubmenu(contextMenu, title, items) {
+    const itemMarkup = items
+        .map(
+            ({ action, label, icon, data = '' }) => `
+                <li role="menuitem" tabindex="-1" data-action="${action}" ${data}>
+                    ${icon(18)}
+                    <span class="context-menu-label">${escapeHtml(label)}</span>
+                </li>`
+        )
+        .join('');
+    contextMenu.innerHTML = `<ul role="none">
+        <li role="menuitem" tabindex="-1" data-action="back-to-main-menu">
+            ${SVG_LEFT_ARROW(18)}
+            <span class="context-menu-label">Back</span>
+        </li>
+        <li class="context-menu-section" data-menu-section role="presentation"><span>${escapeHtml(title)}</span></li>
+        ${itemMarkup}
+    </ul>`;
+    refreshContextMenuSections(contextMenu);
+    prepareContextMenu(contextMenu);
+}
+
+function openShareSubmenu(contextMenu, shouldOpen, shouldFocus = false) {
+    const shareItem = contextMenu.querySelector('.context-menu-share');
+    const submenu = shareItem?.querySelector('.context-menu-submenu');
+    if (!shareItem || !submenu) return;
+
+    if (shouldOpen) {
+        const shareRect = shareItem.getBoundingClientRect();
+        const submenuWidth = submenu.offsetWidth;
+        shareItem.classList.toggle('opens-left', shareRect.right + submenuWidth + 8 > window.innerWidth - 10);
+    }
+
+    shareItem.classList.toggle('is-share-open', shouldOpen);
+    shareItem.setAttribute('aria-expanded', String(shouldOpen));
+
+    if (shouldOpen && shouldFocus) {
+        requestAnimationFrame(() => submenu.querySelector('li[data-action]:not([aria-hidden="true"])')?.focus());
     }
 }
 
@@ -3340,6 +3458,7 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
             contextTrack = item;
             contextMenu._contextTrack = item;
             contextMenu._contextType = type;
+            contextMenu._contextHref = card?.dataset.href || null;
 
             await updateContextMenuLikeState(contextMenu, item);
             const rect = cardMenuBtn.getBoundingClientRect();
@@ -3379,6 +3498,7 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
                     }
                     contextMenu._contextTrack = contextTrack;
                     contextMenu._contextType = menuBtn.dataset.type || trackItem.dataset.type || 'track';
+                    contextMenu._contextHref = null;
                     if (trackSelection.isSelecting && trackSelection.selectedIds.size > 0) {
                         const selectedTracks = [];
                         document.querySelectorAll('.track-item.selected').forEach((item) => {
@@ -3564,8 +3684,6 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
             }
 
             if (contextTrack) {
-                if (contextTrack.isLocal) return;
-
                 if (contextMenu._originalHTML) {
                     contextMenu.innerHTML = contextMenu._originalHTML;
                     contextMenu._originalHTML = null;
@@ -3580,17 +3698,10 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
                     });
                 }
 
-                // Hide actions for unavailable tracks
-                const unavailableActions = ['play-next', 'add-to-queue', 'download', 'track-mix'];
-                contextMenu.querySelectorAll('[data-action]').forEach((btn) => {
-                    if (unavailableActions.includes(btn.dataset.action)) {
-                        btn.style.display = contextTrack.isUnavailable ? 'none' : 'block';
-                    }
-                });
-
                 contextMenu._contextTrack = contextTrack;
                 contextMenu._contextType = contextTrack.type || 'track';
                 contextMenu._selectedTracks = selectedTracks;
+                contextMenu._contextHref = null;
                 await updateContextMenuLikeState(contextMenu, contextTrack);
                 positionMenu(contextMenu, e.clientX, e.clientY);
             }
@@ -3631,7 +3742,6 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
     document.querySelector('.now-playing-bar')?.addEventListener('contextmenu', async (e) => {
         if (!player.currentTrack) return;
         const track = player.currentTrack;
-        if (track.isLocal) return;
 
         const target = e.target.closest('.cover, .title, .album, .artist');
         if (!target) return;
@@ -3648,13 +3758,7 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
         contextMenu._contextTrack = track;
         contextMenu._contextType = track.type || 'track';
         contextMenu._selectedTracks = [];
-
-        const unavailableActions = ['play-next', 'add-to-queue', 'download', 'track-mix'];
-        contextMenu.querySelectorAll('[data-action]').forEach((btn) => {
-            if (unavailableActions.includes(btn.dataset.action)) {
-                btn.style.display = track.isUnavailable ? 'none' : 'block';
-            }
-        });
+        contextMenu._contextHref = null;
 
         await updateContextMenuLikeState(contextMenu, track);
         positionMenu(contextMenu, e.clientX, e.clientY);
@@ -3681,9 +3785,69 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
     });
 
     document.addEventListener('keydown', async (e) => {
+        if (contextMenu.style.display === 'block' && e.key === 'Escape') {
+            e.preventDefault();
+            if (contextMenu._originalHTML) contextMenu.innerHTML = contextMenu._originalHTML;
+            contextMenu.style.display = 'none';
+            contextMenu.setAttribute('aria-hidden', 'true');
+            contextMenu.classList.remove('is-opening');
+            contextMenu._contextType = null;
+            contextMenu._originalHTML = null;
+            contextMenu._triggerElement?.focus?.({ preventScroll: true });
+            return;
+        }
         if (e.key === 'Escape' && trackSelection.isSelecting) {
             clearSelection();
         }
+    });
+
+    contextMenu.addEventListener('keydown', (e) => {
+        const actions = [...contextMenu.querySelectorAll('li[data-action]')].filter((item) => {
+            const style = getComputedStyle(item);
+            return style.display !== 'none' && style.visibility !== 'hidden';
+        });
+        if (!actions.length) return;
+
+        const currentIndex = actions.indexOf(document.activeElement);
+        let nextIndex = currentIndex;
+        if (e.key === 'ArrowRight' && document.activeElement?.matches('.context-menu-share')) {
+            e.preventDefault();
+            openShareSubmenu(contextMenu, true, true);
+            return;
+        }
+        if (e.key === 'ArrowDown') nextIndex = (currentIndex + 1) % actions.length;
+        else if (e.key === 'ArrowUp') nextIndex = (currentIndex - 1 + actions.length) % actions.length;
+        else if (e.key === 'Home') nextIndex = 0;
+        else if (e.key === 'End') nextIndex = actions.length - 1;
+        else if ((e.key === 'Enter' || e.key === ' ') && currentIndex >= 0) {
+            e.preventDefault();
+            actions[currentIndex].click();
+            return;
+        } else return;
+
+        e.preventDefault();
+        actions.forEach((item) => item.classList.remove('is-keyboard-active'));
+        actions[nextIndex].classList.add('is-keyboard-active');
+        actions[nextIndex].focus({ preventScroll: true });
+    });
+
+    contextMenu.addEventListener('pointerover', (e) => {
+        const shareItem = e.target.closest('.context-menu-share');
+        if (shareItem && contextMenu.contains(shareItem)) openShareSubmenu(contextMenu, true);
+    });
+
+    contextMenu.addEventListener('pointerout', (e) => {
+        const shareItem = e.target.closest('.context-menu-share');
+        if (shareItem && !shareItem.contains(e.relatedTarget)) openShareSubmenu(contextMenu, false);
+    });
+
+    contextMenu.addEventListener('focusin', (e) => {
+        if (e.target.closest('.context-menu-share')) openShareSubmenu(contextMenu, true);
+    });
+
+    contextMenu.addEventListener('focusout', (e) => {
+        const shareItem = e.target.closest('.context-menu-share');
+        if (shareItem && !shareItem.contains(e.relatedTarget)) openShareSubmenu(contextMenu, false);
     });
 
     contextMenu.addEventListener('click', async (e) => {
@@ -3695,6 +3859,11 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
         const track = contextMenu._contextTrack || contextTrack;
         const type = contextMenu._contextType || 'track';
 
+        if (action === 'share-menu') {
+            openShareSubmenu(contextMenu, true, true);
+            return;
+        }
+
         if (action === 'go-to-artists' || (action === 'go-to-artist' && target.dataset.hasMultipleArtists === 'true')) {
             const artists = Array.isArray(track.artists) ? track.artists : track.artist ? [track.artist] : [];
             if (artists.length > 1) {
@@ -3703,13 +3872,16 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
                     contextMenu._originalHTML = contextMenu.innerHTML;
                 }
 
-                // Render sub-menu
-                let subMenuHTML =
-                    '<li data-action="back-to-main-menu" style="font-weight: bold; border-bottom: 1px solid var(--border); margin-bottom: 0.5rem; padding: 0.75rem 1rem; cursor: pointer;">← Back</li>';
-                artists.forEach((artist) => {
-                    subMenuHTML += `<li data-action="go-to-artist" data-artist-id="${artist.id}" style="padding: 0.75rem 1rem; cursor: pointer;">${escapeHtml(artist.name || 'Unknown Artist')}</li>`;
-                });
-                contextMenu.innerHTML = `<ul>${subMenuHTML}</ul>`;
+                renderContextSubmenu(
+                    contextMenu,
+                    'Choose artist',
+                    artists.map((artist) => ({
+                        action: 'go-to-artist',
+                        label: artist.name || 'Unknown Artist',
+                        icon: SVG_USER,
+                        data: `data-artist-id="${escapeHtml(String(artist.id))}"`,
+                    }))
+                );
                 return;
             }
         }
@@ -3720,11 +3892,16 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
                 contextMenu._originalHTML = null;
                 // Re-update like state since we replaced the HTML
                 await updateContextMenuLikeState(contextMenu, track);
+                prepareContextMenu(contextMenu);
             }
             return;
         }
 
-        if (action && track) {
+        if (action === 'share-social' && track) {
+            const shareType = ['track', 'album', 'artist'].includes(type) ? type : 'track';
+            socialManager.prepareShare(shareType, track);
+            navigate('/social');
+        } else if (action && track) {
             const selectedTracks = contextMenu._selectedTracks || [];
             const isMultiSelect = selectedTracks.length > 1;
 
@@ -3784,8 +3961,11 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
             contextMenu._originalHTML = null;
         }
         contextMenu.style.display = 'none';
+        contextMenu.setAttribute('aria-hidden', 'true');
+        contextMenu.classList.remove('is-opening');
         contextMenu._contextType = null;
         contextMenu._selectedTracks = null;
+        contextMenu._contextHref = null;
     });
 
     // Now playing bar interactions

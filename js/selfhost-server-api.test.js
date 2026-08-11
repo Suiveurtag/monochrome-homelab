@@ -29,6 +29,7 @@ describe('selfhost-server-api helpers', () => {
             track_number: 7,
             release_date: '2026-06-24',
             explicit: true,
+            theme_color: '#4A90E2',
             lyrics: '[00:01.00] Local lyrics',
             audio: 'song.flac',
             cover: 'cover.jpg',
@@ -46,6 +47,7 @@ describe('selfhost-server-api helpers', () => {
             duration: 123,
             trackNumber: 7,
             explicit: true,
+            themeColor: '#4a90e2',
             lyrics: '[00:01.00] Local lyrics',
             artist: { name: 'Artist' },
             album: {
@@ -67,6 +69,7 @@ describe('selfhost-server-api helpers', () => {
             album: { title: 'Album', artist: { name: 'Album Artist' }, releaseDate: '2026-01-02', cover: 'blob:cover' },
             trackNumber: 2,
             explicit: false,
+            themeColor: '#c084fc',
         };
 
         const formData = createTrackFormData(track, file, 'user123');
@@ -80,6 +83,7 @@ describe('selfhost-server-api helpers', () => {
         expect(formData.get('track_number')).toBe('2');
         expect(formData.get('duration')).toBe('10');
         expect(formData.get('explicit')).toBe('false');
+        expect(formData.get('theme_color')).toBe('#c084fc');
         expect(formData.get('audio')).toBe(file);
     });
 
@@ -123,6 +127,7 @@ describe('selfhost-server-api helpers', () => {
                 trackNumber: 4,
                 duration: 180,
                 explicit: true,
+                themeColor: '#22c55e',
                 lyrics: '[00:01.00] Local lyrics',
             },
             cover,
@@ -136,6 +141,7 @@ describe('selfhost-server-api helpers', () => {
         expect(formData.get('album')).toBe('New album');
         expect(formData.get('release_date')).toBe('2026-06-27');
         expect(formData.get('explicit')).toBe('true');
+        expect(formData.get('theme_color')).toBe('#22c55e');
         expect(formData.get('lyrics')).toBe('[00:01.00] Local lyrics');
         expect(formData.get('cover')).toBe(cover);
         expect(formData.has('audio')).toBe(false);

@@ -1,0 +1,101 @@
+#soggy-easter-egg-trigger {
+    position: fixed;
+    top: max(1rem, env(safe-area-inset-top));
+    right: max(1rem, env(safe-area-inset-right));
+    z-index: 1800;
+    width: 3.5rem;
+    height: 3.5rem;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid rgb(var(--highlight-rgb), 0.52);
+    border-radius: 50%;
+    background: var(--card);
+    box-shadow: 0 10px 28px rgb(0 0 0 / 0.28);
+    cursor: pointer;
+}
+
+#soggy-easter-egg-trigger[hidden] { display: none; }
+
+#soggy-easter-egg-trigger img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 35%;
+}
+
+#soggy-easter-egg-trigger.is-revealed { animation: soggy-trigger-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+#soggy-easter-egg-trigger:hover { transform: scale(1.08) rotate(-3deg); }
+#soggy-easter-egg-trigger:focus-visible,
+#soggy-easter-egg-close:focus-visible { outline: 2px solid var(--highlight); outline-offset: 3px; }
+
+.soggy-easter-egg-modal {
+    position: fixed;
+    z-index: 1801;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 1.25rem;
+    background: rgb(0 0 0 / 0.72);
+    backdrop-filter: blur(10px);
+}
+
+.soggy-easter-egg-modal[hidden] { display: none; }
+
+.soggy-easter-egg-panel {
+    position: relative;
+    width: min(33rem, 100%);
+    overflow: hidden;
+    border-radius: 1.25rem;
+    background: var(--card);
+    box-shadow: 0 22px 64px rgb(0 0 0 / 0.44);
+    animation: soggy-panel-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.soggy-easter-egg-panel > img {
+    display: block;
+    width: 100%;
+    max-height: min(62vh, 42rem);
+    object-fit: cover;
+    object-position: center 37%;
+}
+
+.soggy-easter-egg-panel footer {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem 1rem;
+}
+
+.soggy-easter-egg-panel audio { width: 100%; height: 2.25rem; }
+
+#soggy-easter-egg-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 0;
+    border-radius: 50%;
+    color: white;
+    background: rgb(0 0 0 / 0.58);
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+#soggy-easter-egg-close:hover { background: rgb(0 0 0 / 0.8); }
+
+@keyframes soggy-trigger-in {
+    from { opacity: 0; transform: scale(0.55) rotate(12deg); }
+    to { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@keyframes soggy-panel-in {
+    from { opacity: 0; transform: translateY(1rem) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #soggy-easter-egg-trigger.is-revealed,
+    .soggy-easter-egg-panel { animation: none; }
+}

@@ -5,6 +5,7 @@ import { createModal, escapeHtml } from './utils.js';
 import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
 import { isTtml, parseLrc } from './lyrics-format.js';
 import { ARTWORK_ACCEPT, MAX_ARTWORK_BYTES, isSupportedArtworkFile, renderArtworkElement } from './animated-artwork.js';
+import { getTrackThemeColor, normalizeTrackThemeColor } from './track-theme-color.js';
 
 function fileToDataUrl(file) {
     if (!file?.size) return Promise.resolve('');
@@ -63,6 +64,26 @@ function lyricsFilePicker() {
         </label>`;
 }
 
+function themeColorPicker(track) {
+    const color = getTrackThemeColor(track);
+    return `
+        <div class="metadata-theme-color" data-theme-color-control>
+            <label class="metadata-theme-color-swatch">
+                <span class="sr-only">Song theme color</span>
+                <input type="color" name="themeColorPicker" value="${color || '#a78bfa'}" />
+            </label>
+            <div class="metadata-theme-color-copy">
+                <strong>Theme color</strong>
+                <small>Overrides the color picked from this song's artwork.</small>
+                <output data-theme-color-value aria-live="polite">${color ? color.toUpperCase() : 'Automatic'}</output>
+            </div>
+            <button type="button" class="btn-secondary metadata-theme-color-reset" data-theme-color-reset>
+                Use artwork color
+            </button>
+            <input type="hidden" name="themeColor" value="${color}" />
+        </div>`;
+}
+
 function buildTrackForm(track) {
     return `
         <div class="metadata-editor-intro">
@@ -80,6 +101,9 @@ function buildTrackForm(track) {
             ${field('Copyright', 'copyright', track.copyright, { placeholder: '© Label, year' })}
             <label class="metadata-switch is-wide"><input type="checkbox" name="explicit" ${track.explicit ? 'checked' : ''} /><span></span><div><strong>Explicit content</strong><small>Display the E badge in your library</small></div></label>
         </div></div>
+        <div class="metadata-editor-section"><h5>Song color</h5>
+            ${themeColorPicker(track)}
+        </div>
         <div class="metadata-editor-section"><h5>Lyrics</h5><div class="metadata-fields">
             ${lyricsFilePicker()}
             ${textarea('Synced lyrics (LRC or TTML)', 'lyrics', track.lyrics, 'Paste LRC or TTML lyrics here…', 7)}
@@ -165,11 +189,12 @@ async function saveTrack(track, form) {
         genre: value(form, 'genre'),
         copyright: value(form, 'copyright'),
         explicit: form.get('explicit') === 'on',
+        themeColor: normalizeTrackThemeColor(value(form, 'themeColor')),
         lyrics: String(form.get('lyrics') || ''),
     };
     await persistTrack(track, updated, coverFile?.size ? coverFile : null);
     Object.assign(track, updated);
-    window.dispatchEvent(new CustomEvent('track-metadata-updated', { detail: { trackId: track.id } }));
+    window.dispatchEvent(new CustomEvent('track-metadata-updated', { detail: { trackId: track.id, track: updated } }));
     await Promise.all([db.putLocalArtist(artist), db.putLocalAlbum(album)]);
 }
 
@@ -328,6 +353,37 @@ function setupLyricsFilePicker(form) {
     });
 }
 
+function setupThemeColorPicker(form) {
+    const control = form.querySelector('[data-theme-color-control]');
+    if (!control) return;
+
+    const picker = control.querySelector('input[type="color"]');
+    const stored = control.querySelector('input[name="themeColor"]');
+    const output = control.querySelector('[data-theme-color-value]');
+    const reset = control.querySelector('[data-theme-color-reset]');
+    const inheritedColor = normalizeTrackThemeColor(
+        getComputedStyle(document.documentElement).getPropertyValue('--highlight')
+    );
+
+    if (!stored.value) picker.value = inheritedColor || '#a78bfa';
+
+    const render = (color) => {
+        const normalized = normalizeTrackThemeColor(color);
+        stored.value = normalized;
+        output.value = normalized ? normalized.toUpperCase() : 'Automatic';
+        control.classList.toggle('is-custom', Boolean(normalized));
+        reset.disabled = !normalized;
+    };
+
+    picker.addEventListener('input', () => render(picker.value));
+    reset.addEventListener('click', () => {
+        picker.value = inheritedColor || '#a78bfa';
+        render('');
+        picker.focus();
+    });
+    render(stored.value);
+}
+
 export function openMetadataEditor({ type, entity, tracks = [], onSaved }) {
     const form = document.createElement('form');
     form.className = 'metadata-editor-form';
@@ -347,6 +403,7 @@ export function openMetadataEditor({ type, entity, tracks = [], onSaved }) {
     modal.setAttribute('aria-modal', 'true');
     setupArtworkPreviews(form);
     setupLyricsFilePicker(form);
+    setupThemeColorPicker(form);
     form.querySelector('[data-metadata-cancel]').addEventListener('click', close);
 
     const escapeHandler = (event) => {

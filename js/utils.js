@@ -554,6 +554,36 @@ export async function getCoverBlob(api, coverId) {
 }
 
 /**
+ * Prepares the primary media context menu for its authored entrance and keyboard use.
+ * @param {HTMLElement} menu - The menu element to prepare
+ * @param {boolean} [focusMenu=true] - Whether focus should move into the menu
+ */
+export function prepareContextMenu(menu, focusMenu = true) {
+    if (menu?.id !== 'context-menu') return;
+
+    if (!menu.contains(document.activeElement)) menu._triggerElement = document.activeElement;
+
+    const visibleActions = [...menu.querySelectorAll('li[data-action]')].filter((item) => {
+        const style = getComputedStyle(item);
+        return style.display !== 'none' && style.visibility !== 'hidden';
+    });
+    visibleActions.forEach((item, index) => {
+        item.style.setProperty('--menu-index', index);
+        item.setAttribute('tabindex', '-1');
+        item.setAttribute('role', 'menuitem');
+    });
+
+    menu.setAttribute('aria-hidden', 'false');
+    menu.classList.remove('is-opening');
+    void menu.offsetWidth;
+    menu.classList.add('is-opening');
+
+    if (focusMenu) {
+        requestAnimationFrame(() => menu.focus({ preventScroll: true }));
+    }
+}
+
+/**
  * Positions a menu element relative to a point or an anchor rectangle,
  * ensuring it stays within the viewport and becomes scrollable if too tall.
  * @param {HTMLElement} menu - The menu element to position
@@ -562,11 +592,17 @@ export async function getCoverBlob(api, coverId) {
  * @param {DOMRect} [anchorRect] - Optional anchor element rectangle
  */
 export function positionMenu(menu, x, y, anchorRect = null) {
+    const menuList = menu.id === 'context-menu' ? menu.querySelector(':scope > ul') : null;
+
     // Temporarily show to measure dimensions
     menu.style.visibility = 'hidden';
     menu.style.display = 'block';
     menu.style.maxHeight = '';
     menu.style.overflowY = '';
+    if (menuList) {
+        menuList.style.maxHeight = '';
+        menuList.style.overflowY = '';
+    }
 
     const menuWidth = menu.offsetWidth;
     const menuHeight = menu.offsetHeight;
@@ -604,13 +640,20 @@ export function positionMenu(menu, x, y, anchorRect = null) {
     // We measure again because max-height might be needed
     const currentMenuHeight = menu.offsetHeight;
     if (top + currentMenuHeight > windowHeight - 10) {
-        menu.style.maxHeight = `${windowHeight - top - 10}px`;
-        menu.style.overflowY = 'auto';
+        const availableHeight = windowHeight - top - 10;
+        if (menuList) {
+            menuList.style.maxHeight = `${Math.max(120, availableHeight - 12)}px`;
+            menuList.style.overflowY = 'auto';
+        } else {
+            menu.style.maxHeight = `${availableHeight}px`;
+            menu.style.overflowY = 'auto';
+        }
     }
 
     menu.style.top = `${top}px`;
     menu.style.left = `${left}px`;
     menu.style.visibility = 'visible';
+    prepareContextMenu(menu);
 }
 
 export const getShareUrl = (path) => {

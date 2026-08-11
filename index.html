@@ -78,6 +78,7 @@
         <link rel="icon" href="/assets/logo.svg" type="image/svg+xml" />
         <link rel="stylesheet" href="/styles.css" />
         <link rel="stylesheet" href="/player-refined.css" />
+        <link rel="stylesheet" href="/soggy-easter-egg.css" />
     </head>
 
     <body>
@@ -226,18 +227,47 @@
         <audio id="audio-player-gapless" crossorigin="anonymous" preload="auto" style="display: none"></audio>
         <video id="video-player" crossorigin="anonymous" style="display: none"></video>
 
-        <div id="context-menu">
-            <ul>
-                <li data-action="shuffle-play-card" data-type-filter="album,playlist,mix,user-playlist">
-                    Shuffle play
-                </li>
-                <li data-action="start-infinite-radio" data-type-filter="track,album,playlist,user-playlist">
-                    Start Infinite Radio
-                </li>
-                <li data-action="start-mix" data-type-filter="album,track,video">Start mix</li>
-                <li data-action="play-next">Play next</li>
-                <li data-action="add-to-queue">Add to queue</li>
+        <div id="context-menu" role="menu" tabindex="-1" aria-label="Actions" aria-hidden="true">
+            <ul role="none">
+                <li class="context-menu-section" data-menu-section role="presentation"><span>Listen</span></li>
                 <li
+                    role="menuitem"
+                    tabindex="-1"
+                    data-action="shuffle-play-card"
+                    data-type-filter="album,playlist,mix,user-playlist"
+                >
+                    <use svg="!lucide/shuffle.svg" size="18" /><span class="context-menu-label">Shuffle play</span>
+                </li>
+                <li
+                    role="menuitem"
+                    tabindex="-1"
+                    data-action="start-infinite-radio"
+                    data-type-filter="track,album,playlist,user-playlist"
+                >
+                    <use svg="!lucide/radio.svg" size="18" /><span class="context-menu-label">Start song radio</span>
+                </li>
+                <li
+                    role="menuitem"
+                    tabindex="-1"
+                    data-action="play-next"
+                    data-type-filter="track,video,album,playlist,user-playlist,mix"
+                >
+                    <use svg="!lucide/list-start.svg" size="18" /><span class="context-menu-label">Play next</span>
+                </li>
+                <li
+                    role="menuitem"
+                    tabindex="-1"
+                    data-action="add-to-queue"
+                    data-type-filter="track,video,album,playlist,user-playlist,mix"
+                >
+                    <use svg="!lucide/list-plus.svg" size="18" /><span class="context-menu-label">Add to queue</span>
+                </li>
+                <li class="context-menu-section" data-menu-section role="presentation">
+                    <span>Save &amp; share</span>
+                </li>
+                <li
+                    role="menuitem"
+                    tabindex="-1"
                     data-action="toggle-like"
                     data-type-filter="album,artist,playlist,mix,user-playlist"
                     data-label-album="Save album to library"
@@ -245,43 +275,121 @@
                     data-label-playlist="Save playlist to library"
                     data-label-unlike-playlist="Remove playlist from library"
                 >
-                    Like
+                    <use svg="!lucide/heart.svg" size="18" /><span class="context-menu-label">Like</span>
                 </li>
-                <li data-action="toggle-pin" data-type-filter="album,artist,playlist,user-playlist">Pin</li>
-                <li data-action="add-to-playlist" data-type-filter="track,video">Add to playlist</li>
-                <li data-action="request-song" data-type-filter="track,video">Request song</li>
-                <li data-action="go-to-artist" data-type-filter="track,album,video">Go to artist</li>
-                <li data-action="go-to-album" data-type-filter="track,video">Go to album</li>
-                <li data-action="copy-link">Copy link</li>
-                <li data-action="open-in-new-tab">Open in new tab</li>
-                <li data-action="open-in-harmony" data-type-filter="album">Open in Harmony</li>
-                <li data-action="track-info" data-type-filter="track,video">Track info</li>
-                <li data-action="open-original-url" data-type-filter="track,video">Open original URL</li>
-                <li data-action="download">Download</li>
-                <li class="separator"></li>
                 <li
+                    role="menuitem"
+                    tabindex="-1"
+                    data-action="toggle-pin"
+                    data-type-filter="album,artist,playlist,user-playlist"
+                >
+                    <use svg="!lucide/pin.svg" size="18" /><span class="context-menu-label">Pin</span>
+                </li>
+                <li role="menuitem" tabindex="-1" data-action="add-to-playlist" data-type-filter="track,video">
+                    <use svg="!lucide/list-music.svg" size="18" /><span class="context-menu-label"
+                        >Add to playlist</span
+                    >
+                </li>
+                <li
+                    class="context-menu-share"
+                    role="menuitem"
+                    tabindex="-1"
+                    data-action="share-menu"
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                >
+                    <use svg="!lucide/share-2.svg" size="18" /><span class="context-menu-label">Share</span
+                    ><use class="context-menu-chevron" svg="!lucide/chevron-right.svg" size="16" />
+                    <ul class="context-menu-submenu" role="menu" aria-label="Share options">
+                        <li role="menuitem" tabindex="-1" data-action="copy-link">
+                            <use svg="!lucide/link.svg" size="18" /><span class="context-menu-label">Copy link</span>
+                        </li>
+                        <li
+                            role="menuitem"
+                            tabindex="-1"
+                            data-action="share-social"
+                            data-type-filter="track,album,artist"
+                        >
+                            <use svg="!lucide/messages-square.svg" size="18" /><span class="context-menu-label"
+                                >Share in Monochrome</span
+                            >
+                        </li>
+                    </ul>
+                </li>
+                <li
+                    role="menuitem"
+                    tabindex="-1"
+                    data-action="download"
+                    data-type-filter="track,video,album,playlist,user-playlist,mix"
+                >
+                    <use svg="!lucide/download.svg" size="18" /><span class="context-menu-label">Download</span>
+                </li>
+                <li role="menuitem" tabindex="-1" data-action="request-song" data-type-filter="track,video">
+                    <use svg="!lucide/message-circle-plus.svg" size="18" /><span class="context-menu-label"
+                        >Request song</span
+                    >
+                </li>
+                <li class="context-menu-section" data-menu-section role="presentation"><span>Explore</span></li>
+                <li role="menuitem" tabindex="-1" data-action="go-to-artist" data-type-filter="track,album,video">
+                    <use svg="!lucide/users.svg" size="18" /><span class="context-menu-label">Go to artist</span
+                    ><use
+                        class="context-menu-chevron context-menu-artists-chevron"
+                        svg="!lucide/chevron-right.svg"
+                        size="16"
+                    />
+                </li>
+                <li role="menuitem" tabindex="-1" data-action="go-to-album" data-type-filter="track,video">
+                    <use svg="!lucide/disc-album.svg" size="18" /><span class="context-menu-label">Go to album</span>
+                </li>
+                <li role="menuitem" tabindex="-1" data-action="track-info" data-type-filter="track,video">
+                    <use svg="!lucide/info.svg" size="18" /><span class="context-menu-label">Track info</span>
+                </li>
+                <li role="menuitem" tabindex="-1" data-action="open-in-new-tab">
+                    <use svg="!lucide/external-link.svg" size="18" /><span class="context-menu-label"
+                        >Open in new tab</span
+                    >
+                </li>
+                <li role="menuitem" tabindex="-1" data-action="open-in-harmony" data-type-filter="album">
+                    <use svg="!lucide/audio-lines.svg" size="18" /><span class="context-menu-label"
+                        >Open in Harmony</span
+                    >
+                </li>
+                <li class="context-menu-section" data-menu-section role="presentation"><span>Manage</span></li>
+                <li role="menuitem" tabindex="-1" data-action="edit-metadata" data-type-filter="track">
+                    <use svg="!lucide/pencil.svg" size="18" /><span class="context-menu-label">Edit track</span>
+                </li>
+                <li
+                    role="menuitem"
+                    tabindex="-1"
+                    class="context-menu-danger"
                     data-action="block-track"
                     data-type-filter="track"
                     data-label-block="Block track"
                     data-label-unblock="Unblock track"
                 >
-                    Block track
+                    <use svg="!lucide/ban.svg" size="18" /><span class="context-menu-label">Block track</span>
                 </li>
                 <li
+                    role="menuitem"
+                    tabindex="-1"
+                    class="context-menu-danger"
                     data-action="block-album"
                     data-type-filter="album,track"
                     data-label-block="Block album"
                     data-label-unblock="Unblock album"
                 >
-                    Block album
+                    <use svg="!lucide/disc-3.svg" size="18" /><span class="context-menu-label">Block album</span>
                 </li>
                 <li
+                    role="menuitem"
+                    tabindex="-1"
+                    class="context-menu-danger"
                     data-action="block-artist"
                     data-type-filter="track,album,artist"
                     data-label-block="Block artist"
                     data-label-unblock="Unblock artist"
                 >
-                    Block artist
+                    <use svg="!lucide/user-x.svg" size="18" /><span class="context-menu-label">Block artist</span>
                 </li>
             </ul>
         </div>
@@ -6756,6 +6864,19 @@
                 hidden
             ></div>
         </div>
+        <button id="soggy-easter-egg-trigger" type="button" hidden aria-label="Open Soggy's secret">
+            <img src="/assets/easter-eggs/soggy-cat.png" alt="Soggy the wet cat" />
+        </button>
+        <div id="soggy-easter-egg-modal" class="soggy-easter-egg-modal" role="dialog" aria-modal="true" aria-label="Soggy's secret" hidden>
+            <section class="soggy-easter-egg-panel">
+                <button id="soggy-easter-egg-close" type="button" aria-label="Close Soggy's secret">×</button>
+                <img src="/assets/easter-eggs/soggy-cat.png" alt="Soggy, an extremely soggy cat" />
+                <footer>
+                    <audio id="soggy-easter-egg-audio" src="/assets/easter-eggs/sneaky-snitch.mp3" controls preload="metadata"></audio>
+                </footer>
+            </section>
+        </div>
         <script type="module" src="/js/app.js"></script>
+        <script type="module" src="/js/soggy-easter-egg.js"></script>
     </body>
 </html>
