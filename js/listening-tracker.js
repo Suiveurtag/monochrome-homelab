@@ -4,7 +4,7 @@ const MAX_ARTISTS = 500;
 const SKIP_THRESHOLD_S = 5;
 const COMPLETION_RATIO_THRESHOLD = 0.3;
 
-class ListeningTracker {
+export class ListeningTracker {
     constructor() {
         this._data = null;
         this._currentTrackId = null;
@@ -149,6 +149,12 @@ class ListeningTracker {
         } else if (playTimeS >= durationS * 0.9 || completionRatio >= 0.9) {
             t.completionCount++;
         }
+
+        window.dispatchEvent(
+            new CustomEvent('listening-data-updated', {
+                detail: { trackId, playCount: t.playCount },
+            })
+        );
     }
 
     updateArtistAffinity(track, playTimeS, durationS, wasSkipped) {

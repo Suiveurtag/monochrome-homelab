@@ -45,7 +45,7 @@ export function applyTrackSaveStateToButton(button, state, { animate = false } =
 
     const savedElsewhere = !state.isFavorite && state.playlistIds.length > 0;
     button.title = state.isFavorite
-        ? 'Remove from Liked Songs · Right-click for playlists'
+        ? 'Add to playlist · Right-click to remove'
         : savedElsewhere
           ? 'Saved in a playlist · Add to Liked Songs'
           : 'Add to Liked Songs · Right-click for playlists';

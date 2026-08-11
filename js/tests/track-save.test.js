@@ -42,7 +42,7 @@ describe('track save button', () => {
         expect(button.title).toContain('Saved in a playlist');
     });
 
-    test('exposes favorite state independently from saved state', () => {
+    test('exposes favorite state and its playlist-on-click affordance independently from saved state', () => {
         applyTrackSaveStateToButton(button, {
             isFavorite: true,
             isSaved: true,
@@ -51,7 +51,8 @@ describe('track save button', () => {
 
         expect(button.dataset.isFavorite).toBe('true');
         expect(button.getAttribute('aria-pressed')).toBe('true');
-        expect(button.title).toContain('Remove from Liked Songs');
+        expect(button.title).toContain('Add to playlist');
+        expect(button.title).toContain('Right-click to remove');
     });
 
     test('marks a track saved when it exists only in a playlist', () => {

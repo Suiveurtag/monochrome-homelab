@@ -48,6 +48,7 @@ import { deleteSelfHostedTrack, listSelfHostedTracks } from './selfhost-server-a
 import { openMetadataEditor } from './metadata-editor.js';
 import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
 import { isVideoArtwork, setArtworkBackground } from './animated-artwork.js';
+import { listeningTracker } from './listening-tracker.js';
 import {
     applyTrackSaveStateToButton,
     buildTrackSaveStateSnapshot,
@@ -91,7 +92,7 @@ import {
     SVG_REPEAT_ONE,
     SVG_PLAY_LARGE,
     SVG_PAUSE_LARGE,
-    SVG_MINUS,
+    SVG_PLUS,
     SVG_SQUARE_PEN,
     SVG_SHARE,
     SVG_UPLOAD,
@@ -171,6 +172,51 @@ const TRACKLIST_HEADER_WITH_LIKE_COL_HTML = `
     </div>
 `;
 
+const COLLECTION_TRACKLIST_HEADER_HTML = `
+    <div class="track-list-header collection-track-list-header">
+        <span class="collection-track-number">#</span>
+        <span>Title</span>
+        <span class="collection-track-album">Album</span>
+        <span class="collection-track-added">Date added</span>
+        <span aria-hidden="true"></span>
+        <span class="duration-header" aria-label="Duration">${SVG_CLOCK(16)}</span>
+        <span aria-hidden="true"></span>
+    </div>
+`;
+
+const ALBUM_TRACKLIST_HEADER_HTML = `
+    <div class="track-list-header album-track-list-header">
+        <span class="album-track-number">#</span>
+        <span>Title</span>
+        <span class="album-track-plays">Plays</span>
+        <span aria-hidden="true"></span>
+        <span class="duration-header" aria-label="Duration">${SVG_CLOCK(16)}</span>
+        <span aria-hidden="true"></span>
+    </div>
+`;
+
+function formatRelativeDate(value) {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+
+    const seconds = Math.round((date.getTime() - Date.now()) / 1000);
+    const intervals = [
+        ['year', 31536000],
+        ['month', 2592000],
+        ['week', 604800],
+        ['day', 86400],
+        ['hour', 3600],
+        ['minute', 60],
+    ];
+    const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+
+    for (const [unit, size] of intervals) {
+        if (Math.abs(seconds) >= size) return formatter.format(Math.round(seconds / size), unit);
+    }
+    return formatter.format(seconds, 'second');
+}
+
 export class UIRenderer {
     static #instance = null;
 
@@ -206,6 +252,18 @@ export class UIRenderer {
         };
         window.addEventListener('favorites-changed', invalidateTrackSaveState);
         window.addEventListener('playlist-tracks-changed', invalidateTrackSaveState);
+        window.addEventListener('listening-data-updated', (event) => {
+            const trackId = event.detail?.trackId;
+            if (trackId == null) return;
+            document
+                .querySelectorAll(
+                    `#album-detail-tracklist .album-track-item[data-track-id="${CSS.escape(String(trackId))}"]`
+                )
+                .forEach((row) => {
+                    const plays = row.querySelector('.album-track-plays');
+                    if (plays) plays.textContent = Number(event.detail?.playCount || 0).toLocaleString();
+                });
+        });
 
         // Listen for dynamic color reset events
         window.addEventListener('reset-dynamic-color', () => {
@@ -509,7 +567,8 @@ export class UIRenderer {
         showCover = false,
         hasMultipleDiscs = false,
         useTrackNumber = false,
-        inlineLike = true
+        inlineLike = true,
+        tracklistLayout = 'default'
     ) {
         const isUnavailable = track.isUnavailable;
         const isBlocked = contentBlockingSettings?.shouldHideTrack(track);
@@ -566,6 +625,9 @@ export class UIRenderer {
         }
 
         const yearDisplay = getTrackYearDisplay(track);
+        const albumTitle = track.album?.title || track.album?.name || track.albumTitle || '—';
+        const addedDate = formatRelativeDate(track.addedAt || track.dateAdded);
+        const playCount = listeningTracker.getTrackSignal(track.id)?.playCount || 0;
 
         const actionsHTML = isUnavailable
             ? ''
@@ -603,6 +665,8 @@ export class UIRenderer {
             showRowLike ? 'track-item--inline-like' : '',
             persistSavedTrackButton ? 'track-save-persist-when-saved' : '',
             this.currentPage === 'search' ? 'no-duration' : '',
+            tracklistLayout === 'collection' ? 'collection-track-item' : '',
+            tracklistLayout === 'album' ? 'album-track-item' : '',
         ]
             .filter(Boolean)
             .join(' ');
@@ -627,6 +691,13 @@ export class UIRenderer {
                         <div class="artist">${getTrackArtistsHTML(track)}${yearDisplay}</div>
                     </div>
                 </div>
+                ${
+                    tracklistLayout === 'collection'
+                        ? `<div class="collection-track-album" title="${escapeHtml(albumTitle)}">${escapeHtml(albumTitle)}</div>
+                <div class="collection-track-added">${escapeHtml(addedDate)}</div>`
+                        : ''
+                }
+                ${tracklistLayout === 'album' ? `<div class="album-track-plays">${playCount.toLocaleString()}</div>` : ''}
                 ${inlineLikeHTML}
                 <div class="track-item-duration">${isUnavailable || isBlocked ? '--:--' : track.duration ? formatTime(track.duration) : '--:--'}</div>
                 <div class="track-item-actions">
@@ -1116,7 +1187,8 @@ export class UIRenderer {
         showCover,
         append = false,
         useTrackNumber = false,
-        inlineLike = true
+        inlineLike = true,
+        tracklistLayout = 'default'
     ) {
         const fragment = document.createDocumentFragment();
         const tempDiv = document.createElement('div');
@@ -1126,7 +1198,15 @@ export class UIRenderer {
 
         tempDiv.innerHTML = tracks
             .map((track, i) =>
-                this.createTrackItemHTML(track, i, showCover, hasMultipleDiscs, useTrackNumber, inlineLike)
+                this.createTrackItemHTML(
+                    track,
+                    i,
+                    showCover,
+                    hasMultipleDiscs,
+                    useTrackNumber,
+                    inlineLike,
+                    tracklistLayout
+                )
             )
             .join('');
 
@@ -1146,6 +1226,24 @@ export class UIRenderer {
 
         if (!append) container.innerHTML = '';
         container.appendChild(fragment);
+    }
+
+    async configureOwnedPlaylistTrackRows(container, tracks) {
+        const trackItems = Array.from(container.querySelectorAll('.track-item'));
+        await Promise.all(
+            trackItems.map(async (item, index) => {
+                const track = tracks[index];
+                const removeBtn = item.querySelector('.track-save-btn');
+                if (!track || !removeBtn) return;
+
+                await this.updateLikeState(item, track.type || 'track', track.id);
+                removeBtn.classList.remove('remove-from-playlist-btn');
+                removeBtn.dataset.action = 'toggle-like';
+                removeBtn.dataset.trackSaveId = String(track.id);
+                removeBtn.dataset.sourcePlaylistId = container.dataset.playlistId;
+                removeBtn.dataset.type = track.type || 'track';
+            })
+        );
     }
 
     setPageBackground(imageUrl) {
@@ -2696,7 +2794,8 @@ export class UIRenderer {
             } else {
                 tracksContainer.classList.remove('card-grid');
                 tracksContainer.classList.add('track-list');
-                await this.renderListWithTracks(tracksContainer, likedTracks, true, false, false, true);
+                tracksContainer.innerHTML = COLLECTION_TRACKLIST_HEADER_HTML;
+                await this.renderListWithTracks(tracksContainer, likedTracks, true, true, false, true, 'collection');
             }
             this.setupLibraryLikedTracksSearch(tracksContainer);
         } else {
@@ -3971,12 +4070,14 @@ export class UIRenderer {
         await this.showPage('album');
 
         const imageEl = document.getElementById('album-detail-image');
+        const typeEl = document.getElementById('album-detail-type');
         const titleEl = document.getElementById('album-detail-title');
         const metaEl = document.getElementById('album-detail-meta');
         const prodEl = document.getElementById('album-detail-producer');
         const rateCriticsEl = document.getElementById('album-detail-ratings-critics');
         const rateUsersEl = document.getElementById('album-detail-ratings-users');
         const tracklistContainer = document.getElementById('album-detail-tracklist');
+        const footerEl = document.getElementById('album-detail-footer');
         const playBtn = document.getElementById('play-album-btn');
         if (playBtn) playBtn.innerHTML = `${SVG_PLAY(20)}<span>Play Album</span>`;
         const dlBtn = document.getElementById('download-album-btn');
@@ -3988,18 +4089,15 @@ export class UIRenderer {
 
         imageEl.src = '';
         imageEl.style.backgroundColor = 'var(--muted)';
+        typeEl.textContent = '';
         titleEl.innerHTML = '<div class="skeleton" style="height: 48px; width: 300px; max-width: 90%;"></div>';
         metaEl.innerHTML = '<div class="skeleton" style="height: 16px; width: 200px; max-width: 80%;"></div>';
         prodEl.innerHTML = '<div class="skeleton" style="height: 16px; width: 200px; max-width: 80%;"></div>';
         rateCriticsEl.innerHTML = '<div class="skeleton" style="height: 16px; width: 200px; max-width: 80%;"></div>';
         rateUsersEl.innerHTML = '<div class="skeleton" style="height: 16px; width: 200px; max-width: 80%;"></div>';
+        footerEl.innerHTML = '';
         tracklistContainer.innerHTML = `
-            <div class="track-list-header">
-                <span style="width: 40px; text-align: center;">#</span>
-                <span>Title</span>
-                <span class="duration-header">Duration</span>
-                <span style="display: flex; justify-content: flex-end; opacity: 0.8;">Menu</span>
-            </div>
+            ${ALBUM_TRACKLIST_HEADER_HTML}
             ${this.createSkeletonTracks(10, false)}
         `;
 
@@ -4012,11 +4110,13 @@ export class UIRenderer {
             if (_isBlockedCopyright(album.copyright)) {
                 imageEl.src = '';
                 imageEl.style.backgroundColor = 'transparent';
+                typeEl.textContent = '';
                 titleEl.textContent = '';
                 metaEl.textContent = '';
                 prodEl.textContent = '';
                 rateCriticsEl.textContent = '';
                 rateUsersEl.textContent = '';
+                footerEl.textContent = '';
                 tracklistContainer.innerHTML = '';
                 if (playBtn) playBtn.style.display = 'none';
                 if (dlBtn) dlBtn.style.display = 'none';
@@ -4091,16 +4191,20 @@ export class UIRenderer {
             }
 
             const explicitBadge = hasExplicitContent(album) ? this.createExplicitBadge() : '';
+            const albumType = String(album.type || 'Album').toLowerCase();
+            typeEl.textContent = albumType.charAt(0).toUpperCase() + albumType.slice(1);
             titleEl.innerHTML = `${escapeHtml(album.title)} ${explicitBadge}`;
 
             this.adjustTitleFontSize(titleEl, album.title);
 
             const totalDuration = calculateTotalDuration(tracks);
             let dateDisplay = '';
+            let releaseYear = '';
             if (album.releaseDate) {
                 const releaseDate = new Date(album.releaseDate);
                 if (!isNaN(releaseDate.getTime())) {
                     const year = releaseDate.getFullYear();
+                    releaseYear = String(year);
                     dateDisplay =
                         window.innerWidth > 768
                             ? releaseDate.toLocaleDateString('en-US', {
@@ -4114,17 +4218,14 @@ export class UIRenderer {
 
             const firstCopyright = tracks.find((track) => track.copyright)?.copyright;
 
-            metaEl.innerHTML =
-                (dateDisplay ? `${dateDisplay} • ` : '') + `${tracks.length} tracks • ${formatDuration(totalDuration)}`;
+            metaEl.textContent = '';
+            prodEl.innerHTML = `<a href="/artist/${album.artist.id}">${escapeHtml(album.artist.name)}</a>${releaseYear ? ` • ${releaseYear}` : ''} • ${tracks.length} ${tracks.length === 1 ? 'song' : 'songs'}, ${formatDuration(totalDuration)}`;
 
-            prodEl.innerHTML =
-                `By <a href="/artist/${album.artist.id}">${album.artist.name}</a>` +
-                (firstCopyright ? ` • ${firstCopyright}` : '');
-
-            rateCriticsEl.textContent = 'Local album';
+            rateCriticsEl.textContent = '';
             rateUsersEl.textContent = '';
+            footerEl.innerHTML = `${dateDisplay ? `<div>${escapeHtml(dateDisplay)}</div>` : ''}${firstCopyright ? `<div>${escapeHtml(firstCopyright)}</div>` : ''}`;
 
-            tracklistContainer.innerHTML = TRACKLIST_HEADER_WITH_LIKE_COL_HTML;
+            tracklistContainer.innerHTML = ALBUM_TRACKLIST_HEADER_HTML;
 
             tracks.sort((a, b) => {
                 const discA = a.volumeNumber ?? a.discNumber ?? 1;
@@ -4132,7 +4233,7 @@ export class UIRenderer {
                 if (discA !== discB) return discA - discB;
                 return a.trackNumber - b.trackNumber;
             });
-            await this.renderListWithTracks(tracklistContainer, tracks, false, true);
+            await this.renderListWithTracks(tracklistContainer, tracks, false, true, true, true, 'album');
 
             recentActivityManager.addAlbum(album);
 
@@ -4172,11 +4273,8 @@ export class UIRenderer {
             const similarArtistsSection = document.getElementById('album-section-similar-artists');
             const similarArtistsContainer = document.getElementById('album-detail-similar-artists');
 
-            const similarAlbumsSection = document.getElementById('album-section-similar-albums');
-            const similarAlbumsContainer = document.getElementById('album-detail-similar-albums');
-
             // Hide all initially
-            [moreAlbumsSection, epsSection, similarArtistsSection, similarAlbumsSection].forEach((el) => {
+            [moreAlbumsSection, epsSection, similarArtistsSection].forEach((el) => {
                 if (el) el.style.display = 'none';
             });
 
@@ -4254,31 +4352,6 @@ export class UIRenderer {
                         }
                     })
                     .catch((e) => console.warn('Failed to load similar artists:', e));
-
-                // Similar Albums
-                this.api
-                    .getSimilarAlbums(albumId)
-                    .then(async (similar) => {
-                        // Filter out blocked albums
-                        const { contentBlockingSettings } = await import('./storage.js');
-                        const filteredSimilar = contentBlockingSettings.filterAlbums(similar || []);
-
-                        if (filteredSimilar.length > 0 && similarAlbumsContainer && similarAlbumsSection) {
-                            similarAlbumsContainer.innerHTML = filteredSimilar
-                                .map((a) => this.createAlbumCardHTML(a))
-                                .join('');
-                            similarAlbumsSection.style.display = 'block';
-
-                            for (const a of filteredSimilar) {
-                                const el = similarAlbumsContainer.querySelector(`[data-album-id="${a.id}"]`);
-                                if (el) {
-                                    trackDataStore.set(el, a);
-                                    await this.updateLikeState(el, 'album', a.id);
-                                }
-                            }
-                        }
-                    })
-                    .catch((e) => console.warn('Failed to load similar albums:', e));
             } catch (err) {
                 console.warn('Failed to load "More from artist":', err);
             }
@@ -4320,7 +4393,7 @@ export class UIRenderer {
                         const addToPlaylistBtn = document.createElement('button');
                         addToPlaylistBtn.className = 'track-action-btn add-to-playlist-btn';
                         addToPlaylistBtn.title = 'Add to this playlist';
-                        addToPlaylistBtn.innerHTML = SVG_MINUS(20);
+                        addToPlaylistBtn.innerHTML = SVG_PLUS(20);
                         addToPlaylistBtn.onclick = async (e) => {
                             e.stopPropagation();
                             const trackData = trackDataStore.get(item);
@@ -4336,24 +4409,26 @@ export class UIRenderer {
 
                                         const tracklistContainer = document.getElementById('playlist-detail-tracklist');
                                         if (tracklistContainer && updatedPlaylist.tracks) {
-                                            tracklistContainer.innerHTML = TRACKLIST_HEADER_WITH_LIKE_COL_HTML;
+                                            tracklistContainer.innerHTML = COLLECTION_TRACKLIST_HEADER_HTML;
                                             await this.renderListWithTracks(
                                                 tracklistContainer,
                                                 updatedPlaylist.tracks,
                                                 true,
                                                 true,
                                                 false,
-                                                true
+                                                true,
+                                                'collection'
                                             );
-
-                                            if (document.querySelector('.remove-from-playlist-btn')) {
-                                                this.enableTrackReordering(
-                                                    tracklistContainer,
-                                                    updatedPlaylist.tracks,
-                                                    playlistId,
-                                                    syncManager
-                                                );
-                                            }
+                                            await this.configureOwnedPlaylistTrackRows(
+                                                tracklistContainer,
+                                                updatedPlaylist.tracks
+                                            );
+                                            this.enableTrackReordering(
+                                                tracklistContainer,
+                                                updatedPlaylist.tracks,
+                                                playlistId,
+                                                syncManager
+                                            );
 
                                             // Update the playlist metadata
                                             const metaEl = document.getElementById('playlist-detail-meta');
@@ -4404,6 +4479,7 @@ export class UIRenderer {
         const metaEl = document.getElementById('playlist-detail-meta');
         const descEl = document.getElementById('playlist-detail-description');
         const tracklistContainer = document.getElementById('playlist-detail-tracklist');
+        delete tracklistContainer.dataset.playlistId;
         const playBtn = document.getElementById('play-playlist-btn');
         if (playBtn) playBtn.innerHTML = `${SVG_PLAY(20)}<span>Play</span>`;
         const dlBtn = document.getElementById('download-playlist-btn');
@@ -4415,7 +4491,7 @@ export class UIRenderer {
         titleEl.innerHTML = '<div class="skeleton" style="height: 48px; width: 300px; max-width: 90%;"></div>';
         metaEl.innerHTML = '<div class="skeleton" style="height: 16px; width: 200px; max-width: 80%;"></div>';
         descEl.innerHTML = '<div class="skeleton" style="height: 16px; width: 100%;"></div>';
-        tracklistContainer.innerHTML = `${TRACKLIST_HEADER_WITH_LIKE_COL_HTML}${this.createSkeletonTracks(10, true)}`;
+        tracklistContainer.innerHTML = `${COLLECTION_TRACKLIST_HEADER_HTML}${this.createSkeletonTracks(10, true)}`;
 
         try {
             // Check if it's a user playlist (UUID format)
@@ -4436,6 +4512,7 @@ export class UIRenderer {
             }
 
             if (playlistData) {
+                if (ownedPlaylist) tracklistContainer.dataset.playlistId = playlistId;
                 // ... (rest of the logic)
                 if (addPlaylistBtn) addPlaylistBtn.style.display = 'none';
 
@@ -4496,35 +4573,17 @@ export class UIRenderer {
                 const renderTracks = async () => {
                     // Re-fetch container each time because enableTrackReordering clones it
                     const container = document.getElementById('playlist-detail-tracklist');
-                    container.innerHTML = TRACKLIST_HEADER_WITH_LIKE_COL_HTML;
-                    await this.renderListWithTracks(container, currentTracks, true, true, false, true);
+                    container.innerHTML = COLLECTION_TRACKLIST_HEADER_HTML;
+                    await this.renderListWithTracks(container, currentTracks, true, true, false, true, 'collection');
 
-                    // Add remove buttons and enable reordering ONLY IF OWNED
+                    // In an owned playlist, the save control removes that track directly.
                     if (ownedPlaylist) {
-                        const trackItems = container.querySelectorAll('.track-item');
-                        trackItems.forEach((item, index) => {
-                            const actionsDiv = item.querySelector('.track-item-actions');
-                            const removeBtn = document.createElement('button');
-                            removeBtn.className = 'track-action-btn remove-from-playlist-btn';
-                            removeBtn.title = 'Remove from playlist';
-                            removeBtn.innerHTML = SVG_BIN(20);
-                            removeBtn.dataset.trackId = currentTracks[index].id;
-                            removeBtn.dataset.type = currentTracks[index].type || 'track';
-
-                            const menuBtn = actionsDiv.querySelector('.track-menu-btn');
-                            actionsDiv.insertBefore(removeBtn, menuBtn);
-                        });
-
-                        // Always add is-editable class for owned playlists to fix layout
-                        // This expands the grid columns to accommodate the remove button
-                        container.classList.add('is-editable');
+                        await this.configureOwnedPlaylistTrackRows(container, currentTracks);
 
                         // Only enable drag-and-drop reordering in custom sort mode
                         if (currentSort === 'custom') {
                             this.enableTrackReordering(container, currentTracks, playlistId, syncManager);
                         }
-                    } else {
-                        container.classList.remove('is-editable');
                     }
                 };
 
@@ -4640,8 +4699,16 @@ export class UIRenderer {
                 let currentTracks = sortTracks(originalTracks, currentSort);
 
                 const renderTracks = async () => {
-                    tracklistContainer.innerHTML = TRACKLIST_HEADER_WITH_LIKE_COL_HTML;
-                    await this.renderListWithTracks(tracklistContainer, currentTracks, true, true, false, true);
+                    tracklistContainer.innerHTML = COLLECTION_TRACKLIST_HEADER_HTML;
+                    await this.renderListWithTracks(
+                        tracklistContainer,
+                        currentTracks,
+                        true,
+                        true,
+                        false,
+                        true,
+                        'collection'
+                    );
                 };
 
                 const applySort = async (sortType) => {
@@ -5697,7 +5764,6 @@ export class UIRenderer {
         // Cleanup existing dynamic buttons
         [
             'shuffle-playlist-btn',
-            'edit-playlist-btn',
             'delete-playlist-btn',
             'share-playlist-btn',
             'sort-playlist-btn',
@@ -5768,14 +5834,8 @@ export class UIRenderer {
             };
         }
 
-        // Edit/Delete (Owned Only)
+        // Playlist management (Owned Only)
         if (isOwned) {
-            const editBtn = document.createElement('button');
-            editBtn.id = 'edit-playlist-btn';
-            editBtn.className = 'btn-secondary';
-            editBtn.innerHTML = `${SVG_SQUARE_PEN(24)}<span>Edit</span>`;
-            fragment.appendChild(editBtn);
-
             const exportBtn = document.createElement('button');
             exportBtn.id = 'export-playlist-btn';
             exportBtn.className = 'btn-secondary';

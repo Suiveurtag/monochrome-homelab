@@ -3673,7 +3673,13 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 #playlist-detail-recommended .track-item {
-    grid-template-columns: 40px 1fr 32px auto;
+    grid-template-columns: 40px minmax(0, 1fr) 3.25rem 60px 48px;
+}
+
+@media (max-width: 700px) {
+    #playlist-detail-recommended .track-item {
+        grid-template-columns: 36px minmax(0, 1fr) 3.25rem 56px 40px;
+    }
 }
 
 @media (max-width: 1100px) {
@@ -3686,61 +3692,16 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 .album-content-layout {
-    display: block;
+    display: flex;
+    flex-direction: column;
 }
 
-.album-content-layout::after {
-    content: '';
-    display: table;
-    clear: both;
+.album-content-layout .content-section {
+    margin-bottom: var(--spacing-2xl);
 }
 
-@media (min-width: 1200px) {
-    #album-detail-tracklist {
-        float: left;
-        width: 55%;
-        margin-right: var(--spacing-2xl);
-        margin-bottom: var(--spacing-2xl);
-    }
-
-    .album-content-layout .content-section {
-        /* Default flow to allow wrapping around the float */
-        margin-top: 0 !important;
-        margin-bottom: var(--spacing-2xl);
-    }
-
-    /* Switch to inline-block layout for flow behavior */
-    .album-content-layout .content-section .card-grid {
-        display: block;
-        gap: 0;
-    }
-
-    .album-content-layout .content-section .card-grid .card {
-        display: inline-block;
-        vertical-align: top;
-        width: 155px;
-
-        /* Fixed width to ensure consistent flow */
-        margin: 0 var(--spacing-md) var(--spacing-md) 0;
-        white-space: normal;
-
-        /* Reset in case inherited */
-    }
-
-    .album-content-layout .content-section .card-grid .card.compact {
-        display: inline-flex;
-        vertical-align: top;
-        width: 220px;
-        margin-right: var(--spacing-sm);
-    }
-
-    .album-content-layout .section-title {
-        font-size: 1.4rem;
-        margin-bottom: var(--spacing-md);
-        clear: none;
-
-        /* Allow sitting next to float */
-    }
+.album-content-layout .section-title {
+    margin-bottom: var(--spacing-md);
 }
 
 .track-list-header {
@@ -3757,6 +3718,47 @@ input[type='search']::-webkit-search-cancel-button {
 
 .track-list-header--with-save {
     grid-template-columns: 40px 1fr 3.25rem 80px 48px;
+}
+
+.collection-track-list-header,
+.collection-track-item {
+    grid-template-columns: 40px minmax(14rem, 1.45fr) minmax(9rem, 1fr) minmax(8rem, 0.65fr) 3.25rem 60px 48px;
+}
+
+.collection-track-number {
+    text-align: center;
+}
+
+.collection-track-album,
+.collection-track-added {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--muted-foreground);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 900px) {
+    .collection-track-list-header,
+    .collection-track-item {
+        grid-template-columns: 40px minmax(0, 1fr) 3.25rem 60px 48px;
+    }
+
+    .collection-track-list-header .collection-track-album,
+    .collection-track-list-header .collection-track-added,
+    .collection-track-item .collection-track-album,
+    .collection-track-item .collection-track-added {
+        display: none;
+    }
+}
+
+.album-detail-footer {
+    display: grid;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-xl);
+    color: var(--muted-foreground);
+    font-size: 0.8rem;
+    line-height: 1.35;
 }
 
 .track-list-header .duration-header {
@@ -5160,6 +5162,61 @@ body.multi-select-mode .track-item:hover {
 .detail-header-actions .btn-primary span,
 .detail-header-actions .btn-secondary span {
     display: none;
+}
+
+#page-album .detail-header {
+    align-items: flex-end;
+    min-height: 232px;
+    margin-bottom: var(--spacing-xl);
+}
+
+#page-album .detail-header-image {
+    width: 232px;
+    height: 232px;
+}
+
+#page-album .detail-header-info {
+    min-width: 0;
+}
+
+#page-album .detail-header-info .type {
+    margin-bottom: var(--spacing-sm);
+    color: var(--foreground);
+    font-size: 0.9rem;
+}
+
+#page-album .detail-header-info .meta {
+    margin-top: var(--spacing-sm);
+}
+
+@media (max-width: 768px) {
+    #page-album .detail-header {
+        min-height: 144px;
+        align-items: flex-end;
+    }
+
+    #page-album .detail-header-image {
+        width: 144px;
+        height: 144px;
+    }
+
+    #page-album .detail-header-info .title,
+    #page-album .detail-header-info .title.long-title,
+    #page-album .detail-header-info .title.very-long-title {
+        font-size: clamp(1.5rem, 7vw, 2.25rem);
+    }
+}
+
+@media (max-width: 480px) {
+    #page-album .detail-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    #page-album .detail-header-image {
+        width: min(64vw, 220px);
+        height: min(64vw, 220px);
+    }
 }
 
 .btn-primary {
@@ -9656,6 +9713,57 @@ input:checked + .slider::before {
 #playlist-detail-tracklist .track-list-header .duration-header,
 #mix-detail-tracklist .track-list-header .duration-header {
     justify-self: flex-end;
+}
+
+#playlist-detail-tracklist .collection-track-list-header {
+    grid-template-columns: 40px minmax(14rem, 1.45fr) minmax(9rem, 1fr) minmax(8rem, 0.65fr) 3.25rem 60px 48px;
+}
+
+#playlist-detail-tracklist .collection-track-item,
+#library-tracks-container .collection-track-item {
+    grid-template-columns: 40px minmax(14rem, 1.45fr) minmax(9rem, 1fr) minmax(8rem, 0.65fr) 3.25rem 60px 48px;
+}
+
+#album-detail-tracklist .album-track-list-header,
+#album-detail-tracklist .album-track-item {
+    grid-template-columns: 40px minmax(14rem, 1fr) minmax(7rem, 0.45fr) 3.25rem 60px 48px;
+}
+
+#album-detail-tracklist .album-track-number {
+    text-align: center;
+}
+
+#album-detail-tracklist .album-track-plays {
+    color: var(--muted-foreground);
+    font-variant-numeric: tabular-nums;
+}
+
+#album-detail-tracklist .duration-header svg,
+#playlist-detail-tracklist .duration-header svg,
+#library-tracks-container .duration-header svg {
+    display: block;
+}
+
+@media (max-width: 900px) {
+    #playlist-detail-tracklist .collection-track-list-header {
+        grid-template-columns: 40px minmax(0, 1fr) 3.25rem 60px 48px;
+    }
+
+    #playlist-detail-tracklist .collection-track-item,
+    #library-tracks-container .collection-track-item {
+        grid-template-columns: 40px minmax(0, 1fr) 3.25rem 60px 48px;
+    }
+}
+
+@media (max-width: 700px) {
+    #album-detail-tracklist .album-track-list-header,
+    #album-detail-tracklist .album-track-item {
+        grid-template-columns: 36px minmax(0, 1fr) 3.25rem 56px 40px;
+    }
+
+    #album-detail-tracklist .album-track-plays {
+        display: none;
+    }
 }
 
 /* Responsive Design */

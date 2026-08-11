@@ -2212,6 +2212,19 @@ function setupTrackSaveFloatingPanel(player, api, ui) {
         return trackDataStore.get(itemElement) || trackDataStore.get(button) || null;
     };
 
+    const removeFromSourcePlaylist = async (button, track) => {
+        const playlistId = button.dataset.sourcePlaylistId;
+        const trackType = track.type === 'video' ? 'video' : 'track';
+        if (!playlistId) return false;
+
+        await db.removeTrackFromPlaylist(playlistId, track.id, trackType);
+        const updatedPlaylist = await db.getPlaylist(playlistId);
+        await syncManager.syncUserPlaylist(updatedPlaylist, 'update');
+        showNotification(`Removed from playlist: ${updatedPlaylist.name}`);
+        await ui.renderPlaylistPage(playlistId, 'user');
+        return true;
+    };
+
     const openCreatePlaylist = () => {
         const createModal = document.getElementById('playlist-modal');
         if (!createModal || !currentTrack) return;
@@ -2229,17 +2242,30 @@ function setupTrackSaveFloatingPanel(player, api, ui) {
 
     document.addEventListener(
         'contextmenu',
-        (event) => {
+        async (event) => {
             const button = event.target.closest('.track-save-btn');
             if (!button) return;
             const track = resolveTrack(button);
             if (!track) return;
             event.preventDefault();
             event.stopImmediatePropagation();
+
+            const trackType = track.type === 'video' ? 'video' : 'track';
+            if (await db.isFavorite(trackType, track.id)) {
+                if (await removeFromSourcePlaylist(button, track)) return;
+                await handleTrackAction('toggle-like', track, player, api, null, trackType, ui, null);
+                return;
+            }
             void open(track, button);
         },
         true
     );
+
+    document.addEventListener('track-save-panel-open', (event) => {
+        const button = event.detail?.button;
+        const track = button && resolveTrack(button);
+        if (track) void open(track, button);
+    });
 
     panel.addEventListener('input', (event) => {
         if (!event.target.matches('.track-save-search input')) return;
@@ -3273,6 +3299,14 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
                 }
             }
 
+            if (item && action === 'toggle-like' && actionBtn.classList.contains('track-save-btn')) {
+                const trackType = item.type === 'video' ? 'video' : 'track';
+                if (await db.isFavorite(trackType, item.id)) {
+                    document.dispatchEvent(new CustomEvent('track-save-panel-open', { detail: { button: actionBtn } }));
+                    return;
+                }
+            }
+
             if (item) {
                 await handleTrackAction(action, item, player, api, lyricsManager, type, ui, scrobbler);
             }
@@ -3786,13 +3820,20 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
         nowPlayingLikeBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
             if (player.currentTrack) {
+                const trackType = player.currentTrack.type === 'video' ? 'video' : 'track';
+                if (await db.isFavorite(trackType, player.currentTrack.id)) {
+                    document.dispatchEvent(
+                        new CustomEvent('track-save-panel-open', { detail: { button: nowPlayingLikeBtn } })
+                    );
+                    return;
+                }
                 await handleTrackAction(
                     'toggle-like',
                     player.currentTrack,
                     player,
                     api,
                     lyricsManager,
-                    player.currentTrack.type || 'track',
+                    trackType,
                     ui,
                     scrobbler
                 );
