@@ -1,0 +1,95 @@
+.metallic-logo-easter-egg {
+    position: fixed;
+    z-index: 1900;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: clamp(1.5rem, 5vw, 5rem);
+    overflow: hidden;
+    background: rgb(4 4 7 / 0.52);
+    backdrop-filter: blur(18px) saturate(0.72);
+}
+
+.metallic-logo-easter-egg[hidden] {
+    display: none;
+}
+
+.metallic-logo-easter-egg__stage {
+    position: relative;
+    width: min(74vmin, 44rem);
+    aspect-ratio: 1;
+    isolation: isolate;
+    animation: metallic-logo-arrive 650ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.metallic-logo-easter-egg__stage::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 12%;
+    border-radius: 50%;
+    background: rgb(var(--highlight-rgb, 167 139 250) / .42);
+    filter: blur(5rem);
+}
+
+.metallic-logo-paint {
+    display: block;
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 2rem 3rem rgb(0 0 0 / .48));
+}
+
+.metallic-paint--unsupported {
+    background: url('/images/monochrome-logo.svg') center / contain no-repeat;
+}
+
+.metallic-logo-easter-egg__close {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 1;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid rgb(255 255 255 / .28);
+    border-radius: 50%;
+    color: #fff;
+    background: rgb(8 8 12 / .58);
+    font-size: 1.75rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 150ms ease, transform 150ms ease;
+}
+
+.metallic-logo-easter-egg__close:hover {
+    background: rgb(255 255 255 / .18);
+    transform: scale(1.06);
+}
+
+.metallic-logo-easter-egg__close:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 4px;
+}
+
+body.metallic-easter-egg-open {
+    overflow: hidden;
+}
+
+@keyframes metallic-logo-arrive {
+    from {
+        opacity: 0;
+        transform: scale(.82);
+        filter: blur(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .metallic-logo-easter-egg__stage {
+        animation: none;
+    }
+}
