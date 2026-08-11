@@ -14,6 +14,7 @@ import {
     listenBrainzSettings,
     waveformSettings,
     keyboardShortcuts,
+    recentActivityManager,
 } from './storage.js';
 import { showNotification, downloadTrackWithMetadata, downloadAlbum, downloadPlaylist } from './downloads.js';
 import { downloadQualitySettings } from './storage.js';
@@ -28,13 +29,19 @@ import {
     SVG_CHECK,
     SVG_CHECKBOX,
     SVG_CHECKBOX_CHECKED,
+    SVG_CLOSE,
     SVG_INFORMATION_CIRCLE,
+    SVG_PLUS,
+    SVG_SEARCH,
     SVG_MUTE,
     SVG_QUALITY_LOSSLESS,
     SVG_QUALITY_WAVE_SAW,
     SVG_QUALITY_WAVE_SINE,
     SVG_QUALITY_WAVE_SQUARE,
     SVG_QUALITY_WAVES_ELECTRICITY,
+    SVG_REPEAT,
+    SVG_SETTINGS,
+    SVG_SHUFFLE,
     SVG_VOLUME,
 } from './icons.js';
 import { partyManager } from './listening-party.js';
@@ -42,7 +49,7 @@ import { MusicAPI } from './music-api.js';
 import { LyricsManager } from './lyrics.js';
 import { Player } from './player.js';
 import { playerBarEffects } from './player-bar-effects.js';
-import { initializePlayerActionLayout } from './player-bar-layout.js';
+import { initializePlayerActionLayout, PLAYER_ACTIONS } from './player-bar-layout.js';
 
 let currentTrackIdForWaveform = null;
 
@@ -345,7 +352,8 @@ function setupQualityPopover(player) {
     let panelAnimation = null;
     let animationRun = 0;
     let qualityChangeInFlight = false;
-    let magicTimer = 0;
+    let selectionRun = 0;
+    let losslessMagicTimer = 0;
     let lastTriggerRect = null;
     let lastTriggerRadius = '999px';
     const backdrop = document.createElement('div');
@@ -355,45 +363,43 @@ function setupQualityPopover(player) {
     panel.before(backdrop);
 
     const qualityVisuals = {
-        LOWEST: { rgb: '148 163 184', icon: SVG_QUALITY_WAVE_SINE(22) },
-        LOW: { rgb: '96 165 250', icon: SVG_QUALITY_WAVE_SQUARE(22) },
-        NORMAL: { rgb: '168 85 247', icon: SVG_QUALITY_WAVE_SAW(22) },
-        HIGH: { rgb: '249 115 22', icon: SVG_QUALITY_WAVES_ELECTRICITY(22) },
-        LOSSLESS: { rgb: '45 212 191', icon: SVG_QUALITY_LOSSLESS(22) },
-        HI_RES_LOSSLESS: { rgb: '45 212 191', icon: SVG_QUALITY_LOSSLESS(22) },
+        auto: { rgb: '148 163 184', icon: SVG_SETTINGS(20) },
+        LOWEST: { rgb: '148 163 184', icon: SVG_QUALITY_WAVE_SINE(20) },
+        LOW: { rgb: '96 165 250', icon: SVG_QUALITY_WAVE_SQUARE(20) },
+        NORMAL: { rgb: '168 85 247', icon: SVG_QUALITY_WAVE_SAW(20) },
+        HIGH: { rgb: '249 115 22', icon: SVG_QUALITY_WAVES_ELECTRICITY(20) },
+        LOSSLESS: { rgb: '45 212 191', icon: SVG_QUALITY_LOSSLESS(20) },
+        HI_RES_LOSSLESS: { rgb: '45 212 191', icon: SVG_QUALITY_LOSSLESS(20) },
     };
 
     const getConnectionMessage = (state) => {
+        const effectiveLabel =
+            state.options.find((option) => option.id === state.effective)?.label || 'a lower quality';
         if (state.fallbackReason) {
-            return `${escapeHtml(state.fallbackReason)}. Monochrome stepped down automatically.`;
+            return `${escapeHtml(state.fallbackReason)}. Playing at ${escapeHtml(effectiveLabel)} for now.`;
         }
         if (state.requested === 'auto') {
-            return 'Selected from your live connection and reduced automatically if buffering persists.';
+            return `Auto is using ${escapeHtml(effectiveLabel)} for this track and connection.`;
         }
-        return 'Your choice is kept, with an automatic step-down only when playback cannot keep up.';
+        return 'Monochrome may temporarily step down if playback cannot keep up.';
     };
 
     const syncSelectionIndicator = () => {
         const indicator = panel.querySelector('.quality-selection-indicator');
         const selected = panel.querySelector('.quality-radio-option.is-selected');
         if (!indicator || !selected) return;
-        const rgb = selected.dataset.tierRgb || '168 85 247';
+        indicator.style.setProperty('--quality-tier-rgb', selected.dataset.tierRgb || '148 163 184');
         indicator.style.height = `${selected.offsetHeight}px`;
         indicator.style.transform = `translateY(${selected.offsetTop}px)`;
-        indicator.style.backgroundColor = `rgb(${rgb} / 0.055)`;
-        indicator.style.borderColor = `rgb(${rgb} / 0.62)`;
-        indicator.style.boxShadow = `-18px 0 34px rgb(${rgb} / 0.22), inset 18px 0 28px -24px rgb(${rgb} / 0.78)`;
-        indicator.style.setProperty('--quality-selected-rgb', rgb);
-        indicator.dataset.tierRgb = rgb;
         panel.dataset.selectedQuality = selected.dataset.qualityProfile;
     };
 
     const playLosslessMagic = () => {
-        window.clearTimeout(magicTimer);
+        window.clearTimeout(losslessMagicTimer);
         panel.classList.remove('is-lossless-magic');
         void panel.offsetWidth;
         panel.classList.add('is-lossless-magic');
-        magicTimer = window.setTimeout(() => panel.classList.remove('is-lossless-magic'), 1250);
+        losslessMagicTimer = window.setTimeout(() => panel.classList.remove('is-lossless-magic'), 720);
     };
 
     const getCurrentTrigger = () => {
@@ -434,8 +440,6 @@ function setupQualityPopover(player) {
         const previous = panel.querySelector('.quality-radio-option.is-selected');
         if (!group || !indicator || !next || previous === next) return;
 
-        const previousRgb = indicator.dataset.tierRgb || previous?.dataset.tierRgb || '168 85 247';
-        const nextRgb = next.dataset.tierRgb || '168 85 247';
         const previousY = previous?.offsetTop ?? next.offsetTop;
         const previousHeight = previous?.offsetHeight ?? next.offsetHeight;
 
@@ -448,54 +452,29 @@ function setupQualityPopover(player) {
 
         indicator.style.height = `${next.offsetHeight}px`;
         indicator.style.transform = `translateY(${next.offsetTop}px)`;
-        indicator.style.backgroundColor = `rgb(${nextRgb} / 0.055)`;
-        indicator.style.borderColor = `rgb(${nextRgb} / 0.72)`;
-        indicator.style.boxShadow = `-18px 0 34px rgb(${nextRgb} / 0.24), inset 18px 0 28px -24px rgb(${nextRgb} / 0.82)`;
-        indicator.style.setProperty('--quality-selected-rgb', nextRgb);
-        indicator.dataset.tierRgb = nextRgb;
+        indicator.style.setProperty('--quality-tier-rgb', next.dataset.tierRgb || '148 163 184');
         panel.dataset.selectedQuality = profile;
+
+        if (profile.endsWith('LOSSLESS')) playLosslessMagic();
 
         if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
             return;
         }
 
-        const sharedTransition = indicator.animate(
+        const selectionTransition = indicator.animate(
             [
                 {
                     height: `${previousHeight}px`,
                     transform: `translateY(${previousY}px)`,
-                    backgroundColor: `rgb(${previousRgb} / 0.055)`,
-                    borderColor: `rgb(${previousRgb} / 0.58)`,
-                    boxShadow: `-16px 0 28px rgb(${previousRgb} / 0.18), inset 16px 0 24px -22px rgb(${previousRgb} / 0.68)`,
-                },
-                {
-                    offset: 0.62,
-                    height: `${next.offsetHeight}px`,
-                    transform: `translateY(${next.offsetTop}px) scale(1.012)`,
-                    backgroundColor: `rgb(${nextRgb} / 0.09)`,
-                    borderColor: `rgb(${nextRgb} / 0.92)`,
-                    boxShadow: `-24px 0 48px rgb(${nextRgb} / 0.58), inset 24px 0 34px -20px rgb(${nextRgb} / 0.94)`,
                 },
                 {
                     height: `${next.offsetHeight}px`,
-                    transform: `translateY(${next.offsetTop}px) scale(1)`,
-                    backgroundColor: `rgb(${nextRgb} / 0.055)`,
-                    borderColor: `rgb(${nextRgb} / 0.72)`,
-                    boxShadow: `-18px 0 34px rgb(${nextRgb} / 0.24), inset 18px 0 28px -24px rgb(${nextRgb} / 0.82)`,
+                    transform: `translateY(${next.offsetTop}px)`,
                 },
             ],
-            { duration: 740, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
+            { duration: 240, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }
         );
-        const rowArrival = next.animate(
-            [
-                { transform: 'translateX(0) scale(0.985)' },
-                { transform: 'translateX(2px) scale(1.008)', offset: 0.58 },
-                { transform: 'translateX(0) scale(1)' },
-            ],
-            { duration: 640, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
-        );
-        if (profile.endsWith('LOSSLESS')) playLosslessMagic();
-        await Promise.all([sharedTransition.finished.catch(() => {}), rowArrival.finished.catch(() => {})]);
+        await selectionTransition.finished.catch(() => {});
     };
 
     const getFloatingPanelFrames = (triggerRect = lastTriggerRect) => {
@@ -520,8 +499,8 @@ function setupQualityPopover(player) {
             },
             expanded: {
                 opacity: 1,
-                borderRadius: '24px',
-                clipPath: 'inset(0 round 24px)',
+                borderRadius: '16px',
+                clipPath: 'inset(0 round 16px)',
                 transform: 'translate(0, 0) scale(1)',
             },
         };
@@ -544,68 +523,79 @@ function setupQualityPopover(player) {
     const close = ({ restoreFocus = false } = {}) => {
         if (panel.hidden) return;
         const run = ++animationRun;
+        const shouldRestoreFocus = restoreFocus || panel.contains(document.activeElement);
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const currentTrigger = getCurrentTrigger();
         const targetRect = getRectSnapshot(currentTrigger) || lastTriggerRect;
         const { collapsed, expanded } = getFloatingPanelFrames(targetRect);
+        const computedPanel = getComputedStyle(panel);
+        const currentFrame = {
+            opacity: Number.parseFloat(computedPanel.opacity) || 0,
+            borderRadius: computedPanel.borderRadius || expanded.borderRadius,
+            clipPath: computedPanel.clipPath === 'none' ? expanded.clipPath : computedPanel.clipPath,
+            transform: computedPanel.transform === 'none' ? expanded.transform : computedPanel.transform,
+        };
         panelAnimation?.cancel();
-        panelAnimation = panel.animate([expanded, collapsed], {
-            duration: 260,
-            easing: 'cubic-bezier(0.4, 0, 0.7, 0.2)',
-            fill: 'both',
-        });
         panel.classList.remove('is-open');
         backdrop.classList.remove('is-open');
         trigger?.classList.remove('is-floating-panel-open');
         currentTrigger?.classList.remove('is-floating-panel-open');
         currentTrigger?.setAttribute('aria-expanded', 'false');
+        if (reduceMotion) {
+            panel.hidden = true;
+            backdrop.hidden = true;
+            if (shouldRestoreFocus) currentTrigger?.focus({ preventScroll: true });
+            return;
+        }
+        panelAnimation = panel.animate([currentFrame, collapsed], {
+            duration: 200,
+            easing: 'cubic-bezier(0.4, 0, 1, 1)',
+            fill: 'both',
+        });
         void panelAnimation.finished
             .then(() => {
                 if (run !== animationRun) return;
                 panel.hidden = true;
                 backdrop.hidden = true;
                 panelAnimation?.cancel();
-                if (restoreFocus) getCurrentTrigger()?.focus({ preventScroll: true });
+                if (shouldRestoreFocus) getCurrentTrigger()?.focus({ preventScroll: true });
             })
             .catch(() => {});
     };
     const render = () => {
         const state = player.getQualityState();
+        const choices = [
+            {
+                id: 'auto',
+                label: 'Auto',
+                description: 'Adjusts to the track and your connection',
+                detail: 'Recommended',
+            },
+            ...state.options,
+        ];
         panel.innerHTML = `
             <div class="player-popover-header">
-                <div>
-                    <span class="player-popover-kicker">Streaming</span>
-                    <h3 id="quality-popover-title">Playback quality</h3>
-                </div>
+                <h3 id="quality-popover-title">Playback quality</h3>
             </div>
             <div class="quality-radio-group" role="radiogroup" aria-label="Playback quality">
                 <span class="quality-selection-indicator" aria-hidden="true"></span>
-                ${state.options
+                ${choices
                     .map((option) => {
-                        const visual = qualityVisuals[option.id] || qualityVisuals.NORMAL;
+                        const isSelected = option.id === state.requested;
+                        const visual = qualityVisuals[option.id] || qualityVisuals.auto;
                         return `
-                            <label class="quality-radio-option ${
-                                option.id === state.effective ? 'is-selected' : ''
-                            } ${option.id.endsWith('LOSSLESS') ? 'is-lossless' : ''}"
+                            <label class="quality-radio-option ${isSelected ? 'is-selected' : ''} ${
+                                option.id.endsWith('LOSSLESS') ? 'is-lossless' : ''
+                            }"
                                 data-quality-profile="${option.id}"
                                 data-tier-rgb="${visual.rgb}"
                                 style="--quality-tier-rgb: ${visual.rgb}">
                                 <input type="radio" name="playback-quality" value="${option.id}" ${
-                                    option.id === state.effective ? 'checked' : ''
+                                    isSelected ? 'checked' : ''
                                 } />
-                                <span class="quality-waveform-icon" aria-hidden="true">${visual.icon}</span>
+                                <span class="quality-tier-icon" aria-hidden="true">${visual.icon}</span>
                                 <span class="quality-radio-copy">
-                                    <strong>
-                                        ${option.label}
-                                        ${
-                                            option.id.endsWith('LOSSLESS')
-                                                ? `<span class="quality-lossless-sparks" aria-hidden="true">
-                                                    <span>${SVG_QUALITY_LOSSLESS(11)}</span>
-                                                    <span>${SVG_QUALITY_LOSSLESS(8)}</span>
-                                                    <span>${SVG_QUALITY_LOSSLESS(6)}</span>
-                                                </span>`
-                                                : ''
-                                        }
-                                    </strong>
+                                    <strong>${option.label}</strong>
                                     <span>${option.description}</span>
                                 </span>
                                 <span class="quality-radio-meta">
@@ -616,7 +606,7 @@ function setupQualityPopover(player) {
                     })
                     .join('')}
             </div>
-            <div class="quality-connection-note ${state.fallbackReason ? 'is-fallback' : ''}">
+            <div class="quality-connection-note ${state.fallbackReason ? 'is-fallback' : ''}" role="status" aria-live="polite">
                 <span class="quality-connection-icon" aria-hidden="true">${SVG_INFORMATION_CIRCLE(18)}</span>
                 <span class="quality-connection-copy">${getConnectionMessage(state)}</span>
             </div>`;
@@ -632,7 +622,7 @@ function setupQualityPopover(player) {
         panel.hidden = false;
         backdrop.hidden = false;
         trigger.setAttribute('aria-expanded', 'true');
-        positionPlayerPopover(panel, lastTriggerRect, 500);
+        positionPlayerPopover(panel, lastTriggerRect, 420);
         syncSelectionIndicator();
         const { collapsed, expanded } = getFloatingPanelFrames(lastTriggerRect);
         panelAnimation?.cancel();
@@ -640,14 +630,18 @@ function setupQualityPopover(player) {
         void panel.offsetWidth;
         backdrop.classList.add('is-open');
         trigger.classList.add('is-floating-panel-open');
-        panelAnimation = panel.animate([collapsed, expanded], {
-            duration: 400,
-            easing: 'cubic-bezier(0.2, 0.9, 0.24, 1.08)',
-            fill: 'both',
-        });
         panel.classList.add('is-open');
         clearPanelFrameStyles();
         panel.style.removeProperty('visibility');
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            panel.querySelector('input:checked')?.focus({ preventScroll: true });
+            return;
+        }
+        panelAnimation = panel.animate([collapsed, expanded], {
+            duration: 320,
+            easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+            fill: 'both',
+        });
         void panelAnimation.finished
             .then(() => {
                 if (run !== animationRun) return;
@@ -662,6 +656,7 @@ function setupQualityPopover(player) {
         if (!badge) return;
         event.preventDefault();
         event.stopPropagation();
+        window.dispatchEvent(new CustomEvent('player-actions-close'));
         if (!panel.hidden) close({ restoreFocus: true });
         else open(badge);
     });
@@ -674,10 +669,18 @@ function setupQualityPopover(player) {
     });
     panel.addEventListener('change', async (event) => {
         const input = event.target.closest('input[name="playback-quality"]');
-        if (!input) return;
+        if (!input || qualityChangeInFlight) return;
+        const run = ++selectionRun;
         qualityChangeInFlight = true;
+        const group = panel.querySelector('.quality-radio-group');
+        group?.setAttribute('aria-busy', 'true');
+        panel.querySelectorAll('input[name="playback-quality"]').forEach((radio) => {
+            radio.disabled = true;
+        });
         try {
-            await Promise.all([animateSelection(input.value), player.selectPlaybackQuality(input.value)]);
+            void animateSelection(input.value);
+            await player.selectPlaybackQuality(input.value);
+            if (run !== selectionRun || panel.hidden) return;
             const state = player.getQualityState();
             const note = panel.querySelector('.quality-connection-note');
             const noteCopy = panel.querySelector('.quality-connection-copy');
@@ -685,10 +688,25 @@ function setupQualityPopover(player) {
                 note.classList.toggle('is-fallback', Boolean(state.fallbackReason));
             }
             if (noteCopy) noteCopy.innerHTML = getConnectionMessage(state);
-            if (state.effective !== input.value) await animateSelection(state.effective);
             syncTriggerElement();
+        } catch (error) {
+            if (run !== selectionRun || panel.hidden) return;
+            render();
+            syncSelectionIndicator();
+            const note = panel.querySelector('.quality-connection-note');
+            const noteCopy = panel.querySelector('.quality-connection-copy');
+            note?.classList.add('is-fallback');
+            if (noteCopy)
+                noteCopy.textContent = 'Could not change quality. Playback is still using the previous setting.';
+            console.error('Failed to change playback quality:', error);
         } finally {
-            qualityChangeInFlight = false;
+            if (run === selectionRun) {
+                qualityChangeInFlight = false;
+                group?.removeAttribute('aria-busy');
+                panel.querySelectorAll('input[name="playback-quality"]').forEach((radio) => {
+                    radio.disabled = false;
+                });
+            }
         }
     });
     document.addEventListener('pointerdown', (event) => {
@@ -696,10 +714,18 @@ function setupQualityPopover(player) {
         close();
     });
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !panel.hidden) close({ restoreFocus: true });
+        if (panel.hidden) return;
+        if (event.key === 'Escape') {
+            close({ restoreFocus: true });
+            return;
+        }
+        if (event.key === 'Tab') {
+            event.preventDefault();
+            panel.querySelector('input:checked:not(:disabled)')?.focus({ preventScroll: true });
+        }
     });
     window.addEventListener('resize', () => {
-        if (!panel.hidden) positionPlayerPopover(panel, refreshTriggerRect(), 500);
+        if (!panel.hidden) positionPlayerPopover(panel, refreshTriggerRect(), 420);
     });
     window.addEventListener('player-quality-changed', () => {
         if (!panel.hidden && !qualityChangeInFlight) {
@@ -708,6 +734,258 @@ function setupQualityPopover(player) {
             syncSelectionIndicator();
         }
     });
+}
+
+function setupPlayerStatus(player) {
+    const bar = document.querySelector('.now-playing-bar');
+    const status = document.getElementById('player-status');
+    const message = document.getElementById('player-status-message');
+    const progress = bar?.querySelector('.progress-container');
+    if (!bar || !status || !message || !progress) return () => {};
+
+    let successTimer = 0;
+    const setStatus = ({ state = 'ready', message: nextMessage = '', actions = [] } = {}) => {
+        window.clearTimeout(successTimer);
+        bar.dataset.playerState = state;
+        status.dataset.state = state;
+        const isReady = state === 'ready';
+        status.hidden = isReady;
+        progress.hidden = !isReady;
+        if (nextMessage) message.textContent = nextMessage;
+        status.querySelectorAll('[data-player-recovery]').forEach((button) => {
+            button.hidden = !actions.includes(button.dataset.playerRecovery);
+            button.disabled = false;
+        });
+        if (state === 'success') {
+            successTimer = window.setTimeout(() => setStatus({ state: 'ready' }), 3200);
+        }
+    };
+
+    window.addEventListener('player-playback-status', (event) => setStatus(event.detail));
+    status.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-player-recovery]');
+        if (!button) return;
+        const action = button.dataset.playerRecovery;
+        button.disabled = true;
+        try {
+            if (action === 'browse') {
+                navigate('/search');
+                return;
+            }
+            if (action === 'retry') {
+                const currentTime = Number.isFinite(player.activeElement?.currentTime)
+                    ? player.activeElement.currentTime
+                    : 0;
+                setStatus({ state: 'loading', message: 'Retrying playback…', actions: ['skip'] });
+                await player.playTrackFromQueue(currentTime, 0, true);
+                return;
+            }
+            if (action === 'lower-quality') {
+                const recovered = await player.fallbackPlaybackQuality('Lower quality selected');
+                if (!recovered) {
+                    setStatus({
+                        state: 'error',
+                        message: 'No lower quality is available',
+                        actions: ['retry', 'skip'],
+                    });
+                }
+                return;
+            }
+            if (action === 'skip') {
+                setStatus({ state: 'loading', message: 'Skipping to the next track…' });
+                await player.playNext(0, { preserveGestureToken: true });
+            }
+        } catch (error) {
+            console.error('Player recovery action failed:', error);
+            setStatus({
+                state: 'error',
+                message: 'Playback still isn’t available',
+                actions: ['retry', 'lower-quality', 'skip'],
+            });
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    setStatus(
+        player.currentTrack
+            ? { state: 'ready' }
+            : { state: 'idle', message: 'Choose something to play', actions: ['browse'] }
+    );
+    return setStatus;
+}
+
+function setupPlayerActionsPopover() {
+    const trigger = document.getElementById('more-player-actions-btn');
+    const panel = document.getElementById('player-actions-popover');
+    if (!trigger || !panel) return;
+
+    let animation = null;
+    const backdrop = document.createElement('div');
+    backdrop.className = 'quality-floating-backdrop player-actions-backdrop';
+    backdrop.hidden = true;
+    backdrop.setAttribute('aria-hidden', 'true');
+    panel.before(backdrop);
+
+    const findSourceButton = (actionId) => {
+        if (actionId === 'shuffle') return document.getElementById('shuffle-btn');
+        if (actionId === 'repeat') return document.getElementById('repeat-btn');
+        const buttons = [...document.querySelectorAll(`.now-playing-bar [data-player-action="${actionId}"]`)];
+        const preferredId =
+            actionId === 'sleep-timer'
+                ? window.innerWidth <= 768
+                    ? 'sleep-timer-btn'
+                    : 'sleep-timer-btn-desktop'
+                : null;
+        return (
+            buttons.find(
+                (button) =>
+                    (!preferredId || button.id === preferredId) &&
+                    !button.classList.contains('player-action-user-hidden') &&
+                    button.style.display !== 'none'
+            ) ||
+            buttons.find(
+                (button) => !button.classList.contains('player-action-user-hidden') && button.style.display !== 'none'
+            )
+        );
+    };
+
+    const render = () => {
+        const transportActions =
+            window.innerWidth <= 900
+                ? [
+                      {
+                          id: 'shuffle',
+                          label: document.getElementById('shuffle-btn')?.classList.contains('active')
+                              ? 'Shuffle on'
+                              : 'Shuffle',
+                          icon: SVG_SHUFFLE(20),
+                      },
+                      {
+                          id: 'repeat',
+                          label: document.getElementById('repeat-btn')?.classList.contains('repeat-one')
+                              ? 'Repeat one'
+                              : document.getElementById('repeat-btn')?.classList.contains('active')
+                                ? 'Repeat queue'
+                                : 'Repeat',
+                          icon: SVG_REPEAT(20),
+                      },
+                  ]
+                : [];
+        const actions = [...transportActions, ...PLAYER_ACTIONS]
+            .map((action) => ({ action, source: findSourceButton(action.id) }))
+            .filter(({ source }) => source && !source.disabled);
+        panel.innerHTML = `
+            <div class="player-popover-header">
+                <h3 id="player-actions-popover-title">Player actions</h3>
+            </div>
+            <div class="player-actions-popover-list">
+                ${actions
+                    .map(
+                        ({ action }) => `
+                            <button type="button" class="player-actions-popover-item" data-player-action-proxy="${action.id}">
+                                <span aria-hidden="true">${action.icon}</span>
+                                <span>${action.label}</span>
+                            </button>`
+                    )
+                    .join('')}
+            </div>`;
+    };
+
+    const close = ({ restoreFocus = false } = {}) => {
+        if (panel.hidden) return;
+        animation?.cancel();
+        panel.classList.remove('is-open');
+        backdrop.classList.remove('is-open');
+        trigger.classList.remove('is-floating-panel-open');
+        trigger.setAttribute('aria-expanded', 'false');
+        const finish = () => {
+            panel.hidden = true;
+            backdrop.hidden = true;
+            if (restoreFocus) trigger.focus({ preventScroll: true });
+        };
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            finish();
+            return;
+        }
+        animation = panel.animate(
+            [
+                { opacity: 1, transform: 'translateY(0) scale(1)', clipPath: 'inset(0 round 16px)' },
+                { opacity: 0, transform: 'translateY(12px) scale(0.92)', clipPath: 'inset(48% round 999px)' },
+            ],
+            { duration: 180, easing: 'cubic-bezier(0.4, 0, 1, 1)' }
+        );
+        void animation.finished.then(finish).catch(() => {});
+    };
+
+    const open = () => {
+        window.dispatchEvent(new CustomEvent('player-actions-opening'));
+        document.querySelector('.quality-badge[aria-expanded="true"]')?.click();
+        render();
+        const rect = getRectSnapshot(trigger);
+        if (!rect || !panel.querySelector('.player-actions-popover-item')) return;
+        panel.hidden = false;
+        backdrop.hidden = false;
+        positionPlayerPopover(panel, rect, 300);
+        trigger.setAttribute('aria-expanded', 'true');
+        trigger.classList.add('is-floating-panel-open');
+        panel.classList.add('is-open');
+        backdrop.classList.add('is-open');
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            panel.querySelector('button')?.focus({ preventScroll: true });
+            return;
+        }
+        animation?.cancel();
+        animation = panel.animate(
+            [
+                { opacity: 0, transform: 'translateY(12px) scale(0.92)', clipPath: 'inset(48% round 999px)' },
+                { opacity: 1, transform: 'translateY(0) scale(1)', clipPath: 'inset(0 round 16px)' },
+            ],
+            { duration: 300, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }
+        );
+        void animation.finished
+            .then(() => panel.querySelector('button')?.focus({ preventScroll: true }))
+            .catch(() => {});
+    };
+
+    trigger.addEventListener('click', () => {
+        if (panel.hidden) open();
+        else close({ restoreFocus: true });
+    });
+    panel.addEventListener('click', (event) => {
+        const proxy = event.target.closest('[data-player-action-proxy]');
+        if (!proxy) return;
+        const source = findSourceButton(proxy.dataset.playerActionProxy);
+        close();
+        source?.click();
+    });
+    document.addEventListener('pointerdown', (event) => {
+        if (panel.hidden || panel.contains(event.target) || trigger.contains(event.target)) return;
+        close();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (panel.hidden) return;
+        if (event.key === 'Escape') {
+            close({ restoreFocus: true });
+            return;
+        }
+        if (event.key !== 'Tab') return;
+        const focusable = [...panel.querySelectorAll('button:not(:disabled)')];
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    });
+    window.addEventListener('resize', () => {
+        if (!panel.hidden) positionPlayerPopover(panel, getRectSnapshot(trigger), 300);
+    });
+    window.addEventListener('player-actions-close', () => close());
 }
 
 function clearSelection() {
@@ -815,6 +1093,8 @@ async function handleSelectionAction(action) {
 
 export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui) {
     playerBarEffects.init();
+    const setPlayerStatus = setupPlayerStatus(player);
+    setupPlayerActionsPopover();
     window.addEventListener('player-playback-intent', (event) => {
         playerBarEffects.setPlaying(Boolean(event.detail?.playing));
     });
@@ -842,6 +1122,11 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
         const scheduleBufferingFallback = () => {
             if (player.activeElement !== element || element.paused) return;
             clearBufferingFallback();
+            setPlayerStatus({
+                state: 'recovering',
+                message: 'Connection interrupted — stabilizing playback…',
+                actions: ['skip'],
+            });
             bufferingFallbackTimer = window.setTimeout(() => {
                 void player.fallbackPlaybackQuality('Buffering detected');
             }, 6000);
@@ -868,12 +1153,22 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
                         const prevSignal = listeningTracker.getSessionSignals();
                         const prevPlayTime = prevSignal.accumulatedPlayTime || 0;
                         const prevDuration = prevSignal.trackDuration || 0;
-                        listeningTracker.onSkip();
+                        const completedByCrossfade = player.isCrossfadeTransitionFrom(_previousTrackId);
+                        if (completedByCrossfade) {
+                            listeningTracker.onTrackEnd();
+                        } else {
+                            listeningTracker.onSkip();
+                        }
                         const prevTrack =
                             player.getCurrentQueue()[player.currentQueueIndex - 1] ||
                             player.getCurrentQueue().find((t) => t.id === _previousTrackId);
                         if (prevTrack && prevPlayTime > 0) {
-                            listeningTracker.updateArtistAffinity(prevTrack, prevPlayTime, prevDuration, true);
+                            listeningTracker.updateArtistAffinity(
+                                prevTrack,
+                                prevPlayTime,
+                                prevDuration,
+                                !completedByCrossfade
+                            );
                         }
                         listeningTracker.forceFlush();
                     }
@@ -890,6 +1185,7 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
             }
 
             playerBarEffects.setPlaying(true);
+            setPlayerStatus({ state: 'ready' });
             revealCurrentQualityBadge(player);
             player.updateMediaSessionPlaybackState();
             player.updateMediaSessionPositionState();
@@ -899,6 +1195,7 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
         element.addEventListener('playing', () => {
             if (player.activeElement !== element) return;
             clearBufferingFallback();
+            setPlayerStatus({ state: 'ready' });
             player.updateMediaSessionPlaybackState();
             player.updateMediaSessionPositionState();
         });
@@ -940,6 +1237,7 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
                 progressBar?.setAttribute('aria-valuetext', `${formatTime(currentTime)} of ${formatTime(duration)}`);
 
                 listeningTracker.onTimeUpdate(currentTime, duration);
+                void player.startCrossfadeIfNeeded(element);
 
                 if (currentTime >= 10 && player.currentTrack && player.currentTrack.id !== historyLoggedTrackId) {
                     historyLoggedTrackId = player.currentTrack.id;
@@ -1005,13 +1303,29 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
                 if (player.isFallbackInProgress || canFallback) {
                     return;
                 }
-                void player.fallbackPlaybackQuality(errorMsg);
+                setPlayerStatus({
+                    state: 'recovering',
+                    message: 'Playback interrupted — trying a lighter stream…',
+                    actions: ['skip'],
+                });
+                void player.fallbackPlaybackQuality(errorMsg).then((recovered) => {
+                    if (!recovered) {
+                        setPlayerStatus({
+                            state: 'error',
+                            message: `Couldn’t play ${player.currentTrack?.title || 'this track'}`,
+                            actions: ['retry', 'lower-quality', 'skip'],
+                        });
+                    }
+                });
             }
         });
 
         element.addEventListener('waiting', scheduleBufferingFallback);
         element.addEventListener('stalled', scheduleBufferingFallback);
-        element.addEventListener('canplay', clearBufferingFallback);
+        element.addEventListener('canplay', () => {
+            clearBufferingFallback();
+            if (player.activeElement === element) setPlayerStatus({ state: 'ready' });
+        });
 
         element.addEventListener('volumechange', () => {
             if (player.activeElement === element) {
@@ -1040,20 +1354,45 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
         player.playPrev();
     });
 
+    const syncShuffleButton = () => {
+        const active = Boolean(player.shuffleActive);
+        shuffleBtn.classList.toggle('active', active);
+        shuffleBtn.setAttribute('aria-pressed', String(active));
+        shuffleBtn.title = active ? 'Shuffle on' : 'Shuffle off';
+        shuffleBtn.setAttribute('aria-label', active ? 'Turn shuffle off' : 'Turn shuffle on');
+    };
+    const syncRepeatButton = (mode = player.repeatMode) => {
+        const active = mode !== REPEAT_MODE.OFF;
+        repeatBtn.classList.toggle('active', active);
+        repeatBtn.classList.toggle('repeat-one', mode === REPEAT_MODE.ONE);
+        repeatBtn.setAttribute('aria-pressed', String(active));
+        const label =
+            mode === REPEAT_MODE.OFF ? 'Repeat off' : mode === REPEAT_MODE.ALL ? 'Repeat queue' : 'Repeat one';
+        repeatBtn.title = label;
+        repeatBtn.setAttribute(
+            'aria-label',
+            mode === REPEAT_MODE.OFF
+                ? 'Turn repeat on'
+                : mode === REPEAT_MODE.ALL
+                  ? 'Repeat queue enabled. Switch to repeat one'
+                  : 'Repeat one enabled. Turn repeat off'
+        );
+    };
+
+    syncShuffleButton();
+    syncRepeatButton();
+
     shuffleBtn.addEventListener('click', async () => {
         await hapticLight();
-        player.toggleShuffle();
-        shuffleBtn.classList.toggle('active', player.shuffleActive);
+        await player.toggleShuffle();
+        syncShuffleButton();
         if (window.renderQueueFunction) await window.renderQueueFunction();
     });
 
     repeatBtn.addEventListener('click', async () => {
         await hapticLight();
         const mode = await player.toggleRepeat();
-        repeatBtn.classList.toggle('active', mode !== REPEAT_MODE.OFF);
-        repeatBtn.classList.toggle('repeat-one', mode === REPEAT_MODE.ONE);
-        repeatBtn.title =
-            mode === REPEAT_MODE.OFF ? 'Repeat' : mode === REPEAT_MODE.ALL ? 'Repeat Queue' : 'Repeat One';
+        syncRepeatButton(mode);
     });
 
     window.addEventListener('radio-state-changed', (e) => {
@@ -1545,6 +1884,438 @@ function initializeSmoothSliders(player) {
     );
 }
 
+function setupTrackSaveFloatingPanel(player, api, ui) {
+    const panel = document.getElementById('track-save-floating-panel');
+    if (!panel || panel.dataset.initialized === 'true') return;
+    panel.dataset.initialized = 'true';
+
+    let currentTrack = null;
+    let currentTrigger = null;
+    let currentQuery = '';
+    let panelAnimation = null;
+    let animationRun = 0;
+    let renderRun = 0;
+
+    const getPlaylistCoverUrl = (playlist) => {
+        const candidate =
+            playlist.cover ||
+            playlist.images?.[0] ||
+            playlist.tracks?.find((track) => track.album?.cover)?.album?.cover ||
+            null;
+        if (!candidate) return '/assets/appicon.png';
+        const value = String(candidate);
+        if (/^(?:data:|blob:|https?:|\/)/.test(value)) return value;
+        return api.getCoverUrl(candidate);
+    };
+
+    const playlistRowHTML = (playlist, isSaved) => `
+        <button
+            type="button"
+            class="track-save-playlist-row${isSaved ? ' is-saved' : ''}"
+            data-playlist-id="${escapeHtml(String(playlist.id))}"
+            role="checkbox"
+            aria-checked="${String(isSaved)}"
+        >
+            <img src="${escapeHtml(getPlaylistCoverUrl(playlist))}" alt="" class="track-save-playlist-cover" />
+            <span class="track-save-playlist-copy">
+                <strong>${escapeHtml(playlist.name || playlist.title || 'Untitled playlist')}</strong>
+                <small>${playlist.tracks?.length || playlist.numberOfTracks || 0} songs</small>
+            </span>
+            <span class="track-save-playlist-check" aria-hidden="true">${isSaved ? SVG_CHECK(13) : ''}</span>
+        </button>
+    `;
+
+    const likedSongsRowHTML = (isFavorite) => `
+        <button
+            type="button"
+            class="track-save-playlist-row track-save-liked-row${isFavorite ? ' is-saved' : ''}"
+            data-save-location="liked"
+            role="checkbox"
+            aria-checked="${String(isFavorite)}"
+        >
+            <img src="/assets/appicon.png" alt="" class="track-save-playlist-cover" />
+            <span class="track-save-playlist-copy">
+                <strong>Liked Songs</strong>
+                <small>Your liked tracks</small>
+            </span>
+            <span class="track-save-playlist-check" aria-hidden="true">${isFavorite ? SVG_CHECK(13) : ''}</span>
+        </button>
+    `;
+
+    const sortRecentPlaylists = (playlists) => {
+        const recentIds = new Map(
+            (recentActivityManager.getRecents().playlists || []).map((playlist, index) => [String(playlist.id), index])
+        );
+        return [...playlists].sort((a, b) => {
+            const rankA = recentIds.has(String(a.id)) ? recentIds.get(String(a.id)) : Number.MAX_SAFE_INTEGER;
+            const rankB = recentIds.has(String(b.id)) ? recentIds.get(String(b.id)) : Number.MAX_SAFE_INTEGER;
+            if (rankA !== rankB) return rankA - rankB;
+            return Number(b.updatedAt || b.createdAt || 0) - Number(a.updatedAt || a.createdAt || 0);
+        });
+    };
+
+    const render = async ({ animateResults = false } = {}) => {
+        if (!currentTrack) return;
+        const run = ++renderRun;
+        const renderedQuery = currentQuery;
+        const trackType = currentTrack.type === 'video' ? 'video' : 'track';
+        const [playlists, saveState] = await Promise.all([
+            db.getPlaylists(true),
+            ui.getTrackSaveState(trackType, currentTrack.id),
+        ]);
+        if (run !== renderRun) return false;
+        const savedIds = new Set(saveState.playlistIds.map(String));
+        const query = renderedQuery.trim().toLocaleLowerCase();
+        const matches = (playlist) => (playlist.name || playlist.title || '').toLocaleLowerCase().includes(query);
+        const savedPlaylists = playlists.filter((playlist) => savedIds.has(String(playlist.id)) && matches(playlist));
+        const recentPlaylists = sortRecentPlaylists(playlists)
+            .filter((playlist) => !savedIds.has(String(playlist.id)) && matches(playlist))
+            .slice(0, query ? playlists.length : 8);
+        const likedMatches = 'liked songs'.includes(query);
+
+        const sections = [];
+        if (!query && (saveState.isFavorite || savedPlaylists.length)) {
+            sections.push(`
+                <section class="track-save-panel-section" aria-labelledby="track-save-saved-label">
+                    <h4 id="track-save-saved-label">Saved in</h4>
+                    ${saveState.isFavorite ? likedSongsRowHTML(true) : ''}
+                    ${savedPlaylists.map((playlist) => playlistRowHTML(playlist, true)).join('')}
+                </section>
+            `);
+        }
+
+        if (query) {
+            const filteredPlaylists = sortRecentPlaylists(playlists).filter(matches);
+            sections.push(`
+                <section class="track-save-panel-section" aria-labelledby="track-save-results-label">
+                    <h4 id="track-save-results-label">Playlists</h4>
+                    ${likedMatches ? likedSongsRowHTML(saveState.isFavorite) : ''}
+                    ${filteredPlaylists
+                        .map((playlist) => playlistRowHTML(playlist, savedIds.has(String(playlist.id))))
+                        .join('')}
+                    ${!likedMatches && filteredPlaylists.length === 0 ? `<p class="track-save-empty">No playlists match “${escapeHtml(renderedQuery.trim())}”.</p>` : ''}
+                </section>
+            `);
+        } else {
+            sections.push(`
+                <section class="track-save-panel-section" aria-labelledby="track-save-recent-label">
+                    <h4 id="track-save-recent-label">Recent playlists</h4>
+                    ${recentPlaylists.map((playlist) => playlistRowHTML(playlist, false)).join('')}
+                    ${recentPlaylists.length === 0 ? '<p class="track-save-empty">Create a playlist to save this track somewhere new.</p>' : ''}
+                </section>
+            `);
+        }
+
+        const resultCount = query
+            ? sortRecentPlaylists(playlists).filter(matches).length + Number(likedMatches)
+            : savedPlaylists.length + Number(saveState.isFavorite) + recentPlaylists.length;
+        panel.innerHTML = `
+            <div class="track-save-panel-shell">
+                <header class="track-save-panel-header">
+                    <div class="track-save-panel-title-row">
+                        <div class="track-save-panel-title-copy">
+                            <h3 id="track-save-floating-title">Add to playlist</h3>
+                            <p title="${escapeHtml(currentTrack.title || 'Current track')}">${escapeHtml(currentTrack.title || 'Current track')}</p>
+                        </div>
+                        <span class="track-save-title-mark${panel.hidden ? ' is-entering' : ''}" aria-hidden="true">
+                            <i></i><i></i><i></i><i></i>
+                        </span>
+                    </div>
+                    <div class="track-save-search${query ? ' has-query' : ''}">
+                        <span class="track-save-search-icon" aria-hidden="true">${SVG_SEARCH(19)}</span>
+                        <input type="search" value="${escapeHtml(renderedQuery)}" placeholder="Find a playlist" aria-label="Find a playlist" />
+                        ${query ? `<output class="track-save-result-count" aria-label="${resultCount} results">${resultCount}</output>` : ''}
+                        ${query ? `<button type="button" class="track-save-search-clear" aria-label="Clear search">${SVG_CLOSE(15)}</button>` : ''}
+                    </div>
+                    <button type="button" class="track-save-new-playlist">
+                        <span class="track-save-new-playlist-icon" aria-hidden="true">${SVG_PLUS(21)}</span>
+                        <span class="track-save-new-playlist-copy">
+                            <strong>New playlist</strong>
+                            <small>Start with this track</small>
+                        </span>
+                    </button>
+                </header>
+                <div class="track-save-panel-list">${sections.join('')}</div>
+                <footer class="track-save-panel-footer">
+                    <button type="button" class="track-save-panel-cancel">Cancel</button>
+                </footer>
+            </div>
+        `;
+
+        if (animateResults && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            const list = panel.querySelector('.track-save-panel-list');
+            const resultAnimation = list?.animate(
+                [
+                    { opacity: 0.25, clipPath: 'inset(0 0 14% 0)', transform: 'translateY(-5px)' },
+                    { opacity: 1, clipPath: 'inset(0 0 0 0)', transform: 'translateY(0)' },
+                ],
+                { duration: 220, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
+            );
+            if (resultAnimation) void resultAnimation.finished.catch(() => {});
+        }
+        return true;
+    };
+
+    const animateRowConfirmation = (row, isSaved) => {
+        row.classList.toggle('is-saved', isSaved);
+        row.classList.toggle('is-releasing', !isSaved);
+        row.classList.add('is-confirming');
+        row.setAttribute('aria-checked', String(isSaved));
+        row.setAttribute('aria-busy', 'true');
+        row.querySelector('.track-save-playlist-check').innerHTML = isSaved ? SVG_CHECK(13) : '';
+
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+        const animation = row.animate(
+            [{ transform: 'scale(1)' }, { transform: 'scale(0.985)', offset: 0.35 }, { transform: 'scale(1)' }],
+            { duration: 260, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
+        );
+        return animation.finished.catch(() => {});
+    };
+
+    const animateNewPlaylist = (button) => {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+        const icon = button.querySelector('.track-save-new-playlist-icon');
+        const animation = icon.animate(
+            [
+                { transform: 'rotate(0deg) scale(1)' },
+                { transform: 'rotate(90deg) scale(1.12)' },
+                { transform: 'rotate(90deg) scale(1)' },
+            ],
+            { duration: 210, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
+        );
+        return animation.finished.catch(() => {});
+    };
+
+    const position = () => {
+        const triggerRect = getRectSnapshot(currentTrigger);
+        if (!triggerRect) return null;
+        const mobile = window.matchMedia('(max-width: 600px)').matches;
+        const gutter = mobile ? 0 : 10;
+        const width = mobile ? window.innerWidth - gutter * 2 : Math.min(360, window.innerWidth - gutter * 2);
+        panel.style.width = `${width}px`;
+        panel.style.maxHeight = `${Math.min(520, window.innerHeight - gutter * 2)}px`;
+
+        const panelHeight = panel.offsetHeight || Math.min(500, window.innerHeight - gutter * 2);
+        let left = gutter;
+        let top = window.innerHeight - panelHeight - gutter;
+        if (!mobile) {
+            left = Math.min(Math.max(gutter, triggerRect.right - width), window.innerWidth - width - gutter);
+            const fitsAbove = triggerRect.top - panelHeight - 8 >= gutter;
+            top = fitsAbove ? triggerRect.top - panelHeight - 8 : triggerRect.bottom + 8;
+            top = Math.min(Math.max(gutter, top), window.innerHeight - panelHeight - gutter);
+        }
+
+        panel.style.left = `${left}px`;
+        panel.style.top = `${top}px`;
+        return triggerRect;
+    };
+
+    const getFrames = (triggerRect) => {
+        const panelRect = panel.getBoundingClientRect();
+        return {
+            collapsed: {
+                opacity: 0,
+                borderRadius: '999px',
+                clipPath: 'inset(0 round 999px)',
+                transform: `translate(${triggerRect.left - panelRect.left}px, ${triggerRect.top - panelRect.top}px) scale(${Math.max(0.06, triggerRect.width / panelRect.width)}, ${Math.max(0.035, triggerRect.height / panelRect.height)})`,
+            },
+            expanded: {
+                opacity: 1,
+                borderRadius: '16px',
+                clipPath: 'inset(0 round 16px)',
+                transform: 'translate(0, 0) scale(1)',
+            },
+        };
+    };
+
+    const close = ({ restoreFocus = false } = {}) => {
+        if (panel.hidden) return;
+        const run = ++animationRun;
+        const triggerRect = getRectSnapshot(currentTrigger);
+        panel.classList.remove('is-open');
+        currentTrigger?.classList.remove('is-floating-panel-open');
+        currentTrigger?.setAttribute('aria-expanded', 'false');
+        panelAnimation?.cancel();
+
+        if (!triggerRect || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            panel.hidden = true;
+            if (restoreFocus) currentTrigger?.focus({ preventScroll: true });
+            return;
+        }
+
+        const { collapsed, expanded } = getFrames(triggerRect);
+        panelAnimation = panel.animate([expanded, collapsed], {
+            duration: 240,
+            easing: 'cubic-bezier(0.4, 0, 0.7, 0.2)',
+            fill: 'both',
+        });
+        void panelAnimation.finished
+            .then(() => {
+                if (run !== animationRun) return;
+                panel.hidden = true;
+                panelAnimation?.cancel();
+                if (restoreFocus) currentTrigger?.focus({ preventScroll: true });
+            })
+            .catch(() => {});
+    };
+
+    const open = async (track, trigger) => {
+        const run = ++animationRun;
+        currentTrack = track;
+        currentTrigger?.classList.remove('is-floating-panel-open');
+        currentTrigger = trigger;
+        currentQuery = '';
+        await render();
+        if (run !== animationRun) return;
+
+        panel.hidden = false;
+        panel.style.visibility = 'hidden';
+        const triggerRect = position();
+        if (!triggerRect) {
+            panel.hidden = true;
+            return;
+        }
+
+        currentTrigger.classList.add('is-floating-panel-open');
+        currentTrigger.setAttribute('aria-haspopup', 'dialog');
+        currentTrigger.setAttribute('aria-expanded', 'true');
+        panelAnimation?.cancel();
+        const { collapsed, expanded } = getFrames(triggerRect);
+        panel.style.visibility = '';
+        panel.classList.add('is-open');
+
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            panel.style.opacity = '1';
+            panel.querySelector('input')?.focus({ preventScroll: true });
+            return;
+        }
+
+        panelAnimation = panel.animate([collapsed, expanded], {
+            duration: 400,
+            easing: 'cubic-bezier(0.2, 0.9, 0.24, 1.08)',
+            fill: 'both',
+        });
+        void panelAnimation.finished
+            .then(() => {
+                if (run !== animationRun) return;
+                panelAnimation?.cancel();
+                panel.querySelector('input')?.focus({ preventScroll: true });
+            })
+            .catch(() => {});
+    };
+
+    const resolveTrack = (button) => {
+        if (button.id === 'now-playing-like-btn' || button.id === 'fs-like-btn') return player.currentTrack;
+        const queueItem = button.closest('.queue-track-item');
+        if (queueItem) return player.getCurrentQueue()[Number(queueItem.dataset.queueIndex)];
+        const itemElement = button.closest('.track-item, .card');
+        return trackDataStore.get(itemElement) || trackDataStore.get(button) || null;
+    };
+
+    const openCreatePlaylist = () => {
+        const createModal = document.getElementById('playlist-modal');
+        if (!createModal || !currentTrack) return;
+        document.getElementById('playlist-modal-title').textContent = 'Create Playlist';
+        document.getElementById('playlist-name-input').value = '';
+        document.getElementById('playlist-cover-input').value = '';
+        document.getElementById('playlist-cover-file-input').value = '';
+        document.getElementById('playlist-description-input').value = '';
+        createModal.dataset.editingId = '';
+        document.getElementById('import-section').style.display = 'none';
+        createModal._pendingTracks = [currentTrack];
+        createModal.classList.add('active');
+        document.getElementById('playlist-name-input').focus();
+    };
+
+    document.addEventListener(
+        'contextmenu',
+        (event) => {
+            const button = event.target.closest('.track-save-btn');
+            if (!button) return;
+            const track = resolveTrack(button);
+            if (!track) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            void open(track, button);
+        },
+        true
+    );
+
+    panel.addEventListener('input', (event) => {
+        if (!event.target.matches('.track-save-search input')) return;
+        currentQuery = event.target.value;
+        const selectionStart = event.target.selectionStart;
+        void render({ animateResults: true }).then((didRender) => {
+            if (!didRender) return;
+            const input = panel.querySelector('.track-save-search input');
+            input?.focus({ preventScroll: true });
+            input?.setSelectionRange(selectionStart, selectionStart);
+        });
+    });
+
+    panel.addEventListener('click', async (event) => {
+        if (event.target.closest('.track-save-panel-cancel')) {
+            close({ restoreFocus: true });
+            return;
+        }
+        if (event.target.closest('.track-save-search-clear')) {
+            currentQuery = '';
+            await render({ animateResults: true });
+            panel.querySelector('.track-save-search input')?.focus({ preventScroll: true });
+            return;
+        }
+        const newPlaylistButton = event.target.closest('.track-save-new-playlist');
+        if (newPlaylistButton) {
+            await animateNewPlaylist(newPlaylistButton);
+            close();
+            openCreatePlaylist();
+            return;
+        }
+        if (!currentTrack) return;
+
+        const trackType = currentTrack.type === 'video' ? 'video' : 'track';
+        const likedRow = event.target.closest('[data-save-location="liked"]');
+        if (likedRow) {
+            const isSaved = likedRow.getAttribute('aria-checked') === 'true';
+            const feedback = animateRowConfirmation(likedRow, !isSaved);
+            const added = await db.toggleFavorite(trackType, currentTrack);
+            await syncManager.syncLibraryItem(trackType, currentTrack, added);
+            await ui.refreshTrackSaveButtons(trackType, currentTrack.id, { animate: true });
+            showNotification(
+                added ? `Added to Liked: ${currentTrack.title}` : `Removed from Liked: ${currentTrack.title}`
+            );
+            await feedback;
+            await render();
+            return;
+        }
+
+        const playlistRow = event.target.closest('[data-playlist-id]');
+        if (!playlistRow) return;
+        const playlistId = playlistRow.dataset.playlistId;
+        const isSaved = playlistRow.getAttribute('aria-checked') === 'true';
+        const feedback = animateRowConfirmation(playlistRow, !isSaved);
+        if (isSaved) await db.removeTrackFromPlaylist(playlistId, currentTrack.id, trackType);
+        else await db.addTrackToPlaylist(playlistId, currentTrack);
+        const updatedPlaylist = await db.getPlaylist(playlistId);
+        await syncManager.syncUserPlaylist(updatedPlaylist, 'update');
+        await ui.refreshTrackSaveButtons(trackType, currentTrack.id, { animate: true });
+        showNotification(`${isSaved ? 'Removed from' : 'Added to'} playlist: ${updatedPlaylist.name}`);
+        await feedback;
+        await render();
+    });
+
+    document.addEventListener('pointerdown', (event) => {
+        if (panel.hidden || panel.contains(event.target) || currentTrigger?.contains(event.target)) return;
+        close();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !panel.hidden) close({ restoreFocus: true });
+    });
+    window.addEventListener('resize', () => {
+        if (!panel.hidden) position();
+    });
+}
+
 // Standalone function to show add to playlist modal
 export async function showAddToPlaylistModal(track) {
     const modal = document.getElementById('playlist-select-modal');
@@ -1941,17 +2712,21 @@ export async function handleTrackAction(
             elementsToUpdate.push(fsLikeBtn);
         }
 
-        elementsToUpdate.forEach((btn) => {
-            const heartIcon = btn.querySelector('svg');
-            if (heartIcon) {
-                heartIcon.classList.toggle('filled', added);
-                if (heartIcon.hasAttribute('fill')) {
-                    heartIcon.setAttribute('fill', added ? 'currentColor' : 'none');
+        if ((type === 'track' || type === 'video') && ui) {
+            await ui.refreshTrackSaveButtons(type, id, { animate: true });
+        } else {
+            elementsToUpdate.forEach((btn) => {
+                const heartIcon = btn.querySelector('svg');
+                if (heartIcon) {
+                    heartIcon.classList.toggle('filled', added);
+                    if (heartIcon.hasAttribute('fill')) {
+                        heartIcon.setAttribute('fill', added ? 'currentColor' : 'none');
+                    }
                 }
-            }
-            btn.classList.toggle('active', added);
-            btn.title = added ? 'Remove from Favorites' : 'Add to Favorites';
-        });
+                btn.classList.toggle('active', added);
+                btn.title = added ? 'Remove from Favorites' : 'Add to Favorites';
+            });
+        }
 
         // Handle Library Page Update
         if (window.location.pathname.split('/').filter(Boolean)[0] === 'library') {
@@ -2454,6 +3229,8 @@ async function updateContextMenuLikeState(contextMenu, contextTrack) {
 
 export function initializeTrackInteractions(player, api, mainContent, contextMenu, lyricsManager, ui, scrobbler) {
     let contextTrack = null;
+
+    setupTrackSaveFloatingPanel(player, api, ui);
 
     mainContent.addEventListener('touchstart', handleTrackTouchStart, { passive: true });
     mainContent.addEventListener('touchmove', handleTrackTouchMove, { passive: true });
@@ -2979,7 +3756,7 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
 
     // Now playing bar interactions
     document.querySelector('.now-playing-bar .title').addEventListener('click', (event) => {
-        if (event.target.closest('.quality-badge')) return;
+        if (!event.target.closest('.now-playing-title-link')) return;
         const track = player.currentTrack;
         if (track?.album?.id) {
             navigate(`/album/${track.album.id}`);
@@ -2994,21 +3771,12 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
     });
 
     document.querySelector('.now-playing-bar .artist').addEventListener('click', (e) => {
-        const link = e.target.closest('.artist-link');
+        const link = e.target.closest('button.artist-link');
         if (link) {
             e.stopPropagation();
             const artistId = link.dataset.artistId;
             if (artistId) {
                 navigate(`/artist/${artistId}`);
-            }
-            return;
-        }
-
-        // Fallback for non-link clicks (e.g. separators) or single artist legacy
-        const track = player.currentTrack;
-        if (track) {
-            if (track.artist?.id) {
-                navigate(`/artist/${track.artist.id}`);
             }
         }
     });
@@ -3033,6 +3801,7 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
     }
 
     const nowPlayingMixBtn = document.getElementById('now-playing-mix-btn');
+    const compactMixBtn = document.getElementById('compact-mix-btn');
     if (nowPlayingMixBtn) {
         nowPlayingMixBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -3050,6 +3819,10 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
             }
         });
     }
+    compactMixBtn?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        nowPlayingMixBtn?.click();
+    });
 }
 
 function showSleepTimerPopover(player, trigger) {

@@ -100,6 +100,8 @@ class AudioContextManager {
         this.audioContext = null;
         this.source = null;
         this.sources = new Map();
+        this.sourceGains = new Map();
+        this.sourceMixer = null;
         this.analyser = null;
         this.filters = [];
         this.outputNode = null;
@@ -133,6 +135,9 @@ class AudioContextManager {
         this.msOutputNode = null;
         this.currentVolume = 1.0;
         this.playbackFadePrepared = false;
+        this.crossfadeCleanupTimer = 0;
+        this.crossfadeElements = null;
+        this.crossfadePreparedElements = null;
 
         // Band configuration
         this.bandCount = equalizerSettings.getBandCount();
@@ -487,11 +492,8 @@ class AudioContextManager {
             }
 
             if (true) {
-                if (!this.sources.has(audioElement)) {
-                    const src = this.audioContext.createMediaElementSource(audioElement);
-                    this.sources.set(audioElement, src);
-                }
-                this.source = this.sources.get(audioElement);
+                this.sourceMixer = this.audioContext.createGain();
+                this.source = this._ensureMediaSource(audioElement);
 
                 try {
                     this.audioContext.destination.channelCount = Math.min(
@@ -558,20 +560,9 @@ class AudioContextManager {
 
         if (true) {
             try {
-                if (this.source) {
-                    try {
-                        this.source.disconnect();
-                    } catch {
-                        // node may already be disconnected
-                    }
-                }
-
                 this.audio = audioElement;
-
-                if (!this.sources.has(audioElement)) {
-                    this.sources.set(audioElement, this.audioContext.createMediaElementSource(audioElement));
-                }
-                this.source = this.sources.get(audioElement);
+                this.source = this._ensureMediaSource(audioElement);
+                this._setSourceGain(audioElement, 1);
 
                 if (this.isInitialized) {
                     this._connectGraph();
@@ -582,6 +573,91 @@ class AudioContextManager {
         } else {
             this.audio = audioElement;
         }
+    }
+
+    _ensureMediaSource(audioElement) {
+        if (!this.audioContext || !audioElement) return null;
+        if (!this.sources.has(audioElement)) {
+            const source = this.audioContext.createMediaElementSource(audioElement);
+            const gain = this.audioContext.createGain();
+            gain.gain.value = 1;
+            source.connect(gain);
+            gain.connect(this.sourceMixer);
+            this.sources.set(audioElement, source);
+            this.sourceGains.set(audioElement, gain);
+        }
+        return this.sources.get(audioElement);
+    }
+
+    _setSourceGain(audioElement, value) {
+        const gainNode = this.sourceGains.get(audioElement);
+        if (!gainNode || !this.audioContext) return;
+        const now = this.audioContext.currentTime;
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(value, now);
+    }
+
+    prepareCrossfade(outgoingElement, incomingElement) {
+        if (!this.audioContext || !outgoingElement || !incomingElement || outgoingElement === incomingElement) {
+            return false;
+        }
+        this._ensureMediaSource(outgoingElement);
+        this._ensureMediaSource(incomingElement);
+        this._setSourceGain(outgoingElement, 1);
+        this._setSourceGain(incomingElement, 0);
+        this.crossfadePreparedElements = { outgoingElement, incomingElement };
+        return true;
+    }
+
+    startCrossfade(outgoingElement, incomingElement, durationSeconds) {
+        const outgoingGain = this.sourceGains.get(outgoingElement)?.gain;
+        const incomingGain = this.sourceGains.get(incomingElement)?.gain;
+        if (!this.audioContext || !outgoingGain || !incomingGain) return false;
+
+        if (this.crossfadeElements) this.finishCrossfade();
+        this.crossfadePreparedElements = null;
+        const now = this.audioContext.currentTime;
+        const duration = Math.max(0.05, Math.min(12, Number(durationSeconds) || 0));
+        const steps = 64;
+        const fadeOut = new Float32Array(steps);
+        const fadeIn = new Float32Array(steps);
+        for (let index = 0; index < steps; index++) {
+            const progress = index / (steps - 1);
+            fadeOut[index] = Math.cos(progress * Math.PI * 0.5);
+            fadeIn[index] = Math.sin(progress * Math.PI * 0.5);
+        }
+
+        outgoingGain.cancelScheduledValues(now);
+        incomingGain.cancelScheduledValues(now);
+        outgoingGain.setValueCurveAtTime(fadeOut, now, duration);
+        incomingGain.setValueCurveAtTime(fadeIn, now, duration);
+        this.crossfadeElements = { outgoingElement, incomingElement };
+        this.crossfadeCleanupTimer = window.setTimeout(() => this.finishCrossfade(), duration * 1000 + 50);
+        return true;
+    }
+
+    finishCrossfade() {
+        if (this.crossfadeCleanupTimer) window.clearTimeout(this.crossfadeCleanupTimer);
+        this.crossfadeCleanupTimer = 0;
+        if (!this.crossfadeElements) return;
+        const { outgoingElement, incomingElement } = this.crossfadeElements;
+        this.crossfadeElements = null;
+        this._setSourceGain(outgoingElement, 0);
+        this._setSourceGain(incomingElement, 1);
+        if (!outgoingElement.paused) outgoingElement.pause();
+    }
+
+    cancelCrossfade() {
+        if (this.crossfadeElements) {
+            this.finishCrossfade();
+            return;
+        }
+        if (!this.crossfadePreparedElements) return;
+        const { outgoingElement, incomingElement } = this.crossfadePreparedElements;
+        this.crossfadePreparedElements = null;
+        this._setSourceGain(outgoingElement, 0);
+        this._setSourceGain(incomingElement, 1);
+        if (!outgoingElement.paused) outgoingElement.pause();
     }
 
     /**
@@ -623,7 +699,7 @@ class AudioContextManager {
                     node?.disconnect();
                 } catch {}
             };
-            safeDisconnect(this.source);
+            safeDisconnect(this.sourceMixer);
             safeDisconnect(this.monoGainNode);
             safeDisconnect(this.monoMergerNode);
             if (this.binauralDsp) {
@@ -659,10 +735,10 @@ class AudioContextManager {
             safeDisconnect(this.analyser);
             safeDisconnect(this.volumeNode);
 
-            let lastNode = this.source;
+            let lastNode = this.sourceMixer;
 
             if (this.isMonoAudioEnabled && this.monoMergerNode) {
-                this.source.connect(this.monoGainNode);
+                lastNode.connect(this.monoGainNode);
                 this.monoGainNode.connect(this.monoMergerNode, 0, 0);
                 this.monoGainNode.connect(this.monoMergerNode, 0, 1);
                 lastNode = this.monoMergerNode;
@@ -739,7 +815,7 @@ class AudioContextManager {
         } catch (e) {
             console.warn('[AudioContext] Failed to connect graph:', e);
             try {
-                this.source.connect(this.audioContext.destination);
+                this.sourceMixer?.connect(this.audioContext.destination);
             } catch {}
         }
     }

@@ -23,6 +23,8 @@ export { default as SVG_GLOBE } from '!lucide/globe.svg?svg&icon';
 export { default as SVG_HAND_HEART } from '!lucide/hand-heart.svg?svg&icon';
 export { default as SVG_HEART } from '!lucide/heart.svg?svg&icon&class=heart-icon';
 export { default as SVG_HEART_FILLED } from '!lucide/heart.svg?svg&icon&class=heart-icon+filled';
+export { default as SVG_TRACK_SAVED } from '../images/liked.svg?svg&icon&class=track-save-icon';
+export { default as SVG_TRACK_UNSAVED } from '../images/unliked.svg?svg&icon&class=track-save-icon';
 export { default as SVG_HOUSE } from '!lucide/house.svg?svg&icon';
 export { default as SVG_INFO } from '!lucide/info.svg?svg&icon';
 export { default as SVG_INFORMATION_CIRCLE } from '../images/information-circle-svgrepo-com.svg?svg&icon';

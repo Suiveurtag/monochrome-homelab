@@ -1,7 +1,7 @@
 import { expect, test, describe, beforeEach, vi, afterEach } from 'vitest';
 import { Player } from '../player.js';
 import { REPEAT_MODE } from '../utils.js';
-import { audioEffectsSettings } from '../storage.js';
+import { audioEffectsSettings, crossfadeSettings } from '../storage.js';
 
 vi.mock('../audio-context.js', () => ({
     audioContextManager: {
@@ -10,6 +10,19 @@ vi.mock('../audio-context.js', () => ({
         isReady: vi.fn(() => false),
         setVolume: vi.fn(),
         changeSource: vi.fn(),
+        prepareCrossfade: vi.fn(),
+        startCrossfade: vi.fn(),
+        finishCrossfade: vi.fn(),
+        cancelCrossfade: vi.fn(),
+    },
+}));
+
+vi.mock('@capgo/capacitor-media-session', () => ({
+    MediaSession: {
+        setActionHandler: vi.fn(() => Promise.resolve()),
+        setMetadata: vi.fn(() => Promise.resolve()),
+        setPlaybackState: vi.fn(() => Promise.resolve()),
+        setPositionState: vi.fn(() => Promise.resolve()),
     },
 }));
 
@@ -50,6 +63,10 @@ vi.mock('../storage.js', () => ({
     lastFMStorage: { isEnabled: vi.fn(() => false) },
     nowPlayingSettings: { getMode: vi.fn(() => 'cover') },
     gaplessPlaybackSettings: { isEnabled: vi.fn(() => true) },
+    crossfadeSettings: {
+        isEnabled: vi.fn(() => false),
+        getDuration: vi.fn(() => 5),
+    },
 }));
 
 vi.mock('../db.js', () => ({
@@ -121,6 +138,7 @@ describe('Player', () => {
             getCoverUrl: vi.fn((id) => `url-${id}`),
             getCoverSrcset: vi.fn(),
             getStreamUrl: vi.fn(),
+            getTrack: vi.fn(() => Promise.resolve(null)),
             getVideoArtwork: vi.fn(() => Promise.resolve(null)),
         };
 
@@ -244,6 +262,41 @@ describe('Player', () => {
         expect(standby.src).toBe('https://media.test/next.flac');
     });
 
+    test('starts an enabled crossfade within the configured twelve second window', async () => {
+        const standby = document.getElementById('audio-player-gapless');
+        player = new Player(audioElement, api);
+        player.queue = [{ id: 'current' }, { id: 'next' }];
+        player.currentQueueIndex = 0;
+        player.currentTrack = player.queue[0];
+        player.preloadCache.set('next', { url: 'https://media.test/next.flac', preloader: standby });
+        Object.defineProperty(audioElement, 'duration', { configurable: true, value: 100 });
+        Object.defineProperty(audioElement, 'currentTime', { configurable: true, value: 88.5 });
+        crossfadeSettings.isEnabled.mockReturnValue(true);
+        crossfadeSettings.getDuration.mockReturnValue(12);
+        vi.spyOn(player, 'playNext').mockResolvedValue();
+
+        const started = await player.startCrossfadeIfNeeded(audioElement);
+
+        expect(started).toBe(true);
+        expect(player.playNext).toHaveBeenCalledWith(0, {
+            preserveGestureToken: true,
+            crossfadeFrom: audioElement,
+            crossfadeDuration: 11.5,
+        });
+    });
+
+    test('does not crossfade when the option is disabled', async () => {
+        player = new Player(audioElement, api);
+        player.queue = [{ id: 'current' }, { id: 'next' }];
+        player.currentQueueIndex = 0;
+        player.currentTrack = player.queue[0];
+        crossfadeSettings.isEnabled.mockReturnValue(false);
+        vi.spyOn(player, 'playNext').mockResolvedValue();
+
+        expect(await player.startCrossfadeIfNeeded(audioElement)).toBe(false);
+        expect(player.playNext).not.toHaveBeenCalled();
+    });
+
     test('clearQueue resets queue state', async () => {
         player = new Player(audioElement, api);
         player.queue = [{ id: 1 }];
@@ -258,9 +311,9 @@ describe('Player', () => {
         player = new Player(audioElement, api);
 
         player.setPlaybackSpeed(2.0);
-        expect(audioEffectsSettings.setSpeed).toHaveBeenCalledWith(2.0);
+        expect(audioEffectsSettings.setSpeed.mock.calls).toContainEqual([2.0]);
 
         player.setPlaybackSpeed(0);
-        expect(audioEffectsSettings.setSpeed).toHaveBeenCalledWith(0.01);
+        expect(audioEffectsSettings.setSpeed.mock.calls).toContainEqual([0.01]);
     });
 });

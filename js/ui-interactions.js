@@ -17,8 +17,8 @@ import {
     SVG_BIN,
     SVG_HEART,
     SVG_DOWNLOAD,
-    SVG_HEART_FILLED,
     SVG_SQUARE_PEN,
+    SVG_TRACK_UNSAVED,
     SVG_TRASH,
     SVG_EQUAL,
 } from './icons.js';
@@ -272,8 +272,8 @@ export function initializeUIInteractions(player, api, ui) {
                 </div>
             </div>
             <div class="track-item-duration">${isBlocked ? '--:--' : formatTime(track.duration)}</div>
-            <button class="queue-like-btn" data-action="toggle-like" title="Add to Liked">
-                ${SVG_HEART(20)}
+            <button class="queue-like-btn track-save-btn" data-action="toggle-like" data-track-save-id="${escapeHtml(String(track.id))}" title="Add to Liked Songs">
+                ${SVG_TRACK_UNSAVED(20)}
             </button>
             <button class="queue-remove-btn" data-track-index="${index}" title="Remove from queue">
                 ${SVG_BIN(20)}
@@ -303,11 +303,11 @@ export function initializeUIInteractions(player, api, ui) {
                 e.stopPropagation();
                 const track = player.getCurrentQueue()[index];
                 if (track) {
-                    const added = await db.toggleFavorite('track', track);
-                    await syncManager.syncLibraryItem('track', track, added);
+                    const trackType = track.type === 'video' ? 'video' : 'track';
+                    const added = await db.toggleFavorite(trackType, track);
+                    await syncManager.syncLibraryItem(trackType, track, added);
 
-                    likeBtn.classList.toggle('active', added);
-                    likeBtn.innerHTML = added ? SVG_HEART_FILLED(20) : SVG_HEART(20);
+                    await ui.refreshTrackSaveButtons(trackType, track.id, { animate: true });
 
                     await hapticSuccess();
                     showNotification(added ? `Added to Liked: ${track.title}` : `Removed from Liked: ${track.title}`);
@@ -459,9 +459,8 @@ export function initializeUIInteractions(player, api, ui) {
             const track = currentQueue[index];
             const likeBtn = item.querySelector('.queue-like-btn');
             if (likeBtn && track) {
-                const isLiked = await db.isFavorite('track', track.id);
-                likeBtn.classList.toggle('active', isLiked);
-                likeBtn.innerHTML = isLiked ? SVG_HEART_FILLED(20) : SVG_HEART(20);
+                const state = await ui.getTrackSaveState(track.type || 'track', track.id);
+                ui.applyTrackSaveButtonState(likeBtn, state);
             }
         });
 

@@ -477,6 +477,45 @@ export const gaplessPlaybackSettings = {
     },
 };
 
+export const crossfadeSettings = {
+    ENABLED_STORAGE_KEY: 'crossfade-enabled',
+    DURATION_STORAGE_KEY: 'crossfade-duration',
+    DEFAULT_DURATION: 5,
+    MAX_DURATION: 12,
+
+    isEnabled() {
+        try {
+            return localStorage.getItem(this.ENABLED_STORAGE_KEY) === 'true';
+        } catch {
+            return false;
+        }
+    },
+
+    setEnabled(enabled) {
+        localStorage.setItem(this.ENABLED_STORAGE_KEY, enabled ? 'true' : 'false');
+    },
+
+    getDuration() {
+        try {
+            const duration = Number.parseFloat(localStorage.getItem(this.DURATION_STORAGE_KEY));
+            return Number.isFinite(duration)
+                ? Math.max(1, Math.min(this.MAX_DURATION, duration))
+                : this.DEFAULT_DURATION;
+        } catch {
+            return this.DEFAULT_DURATION;
+        }
+    },
+
+    setDuration(duration) {
+        const safeDuration = Math.max(
+            1,
+            Math.min(this.MAX_DURATION, Number.parseFloat(duration) || this.DEFAULT_DURATION)
+        );
+        localStorage.setItem(this.DURATION_STORAGE_KEY, String(safeDuration));
+        return safeDuration;
+    },
+};
+
 export const fullscreenCoverClickSettings = {
     STORAGE_KEY: 'fullscreen-cover-click-action',
 

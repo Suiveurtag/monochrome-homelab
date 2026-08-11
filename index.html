@@ -406,8 +406,14 @@
                                     <h3 id="fullscreen-track-artist"></h3>
                                 </div>
                                 <div class="fullscreen-actions">
-                                    <button id="fs-like-btn" class="btn-icon like-btn" title="Like">
-                                        <use svg="!lucide/heart.svg" class="heart-icon" size="24" />
+                                    <button
+                                        id="fs-like-btn"
+                                        class="btn-icon like-btn track-save-btn"
+                                        data-action="toggle-like"
+                                        data-type="track"
+                                        title="Add to Liked Songs"
+                                    >
+                                        <use svg="./images/unliked.svg" class="track-save-icon" size="20" />
                                     </button>
                                     <button id="fs-download-btn" class="btn-icon" title="Download">
                                         <use svg="!lucide/download.svg" size="24" />
@@ -2997,13 +3003,12 @@
                                 </button>
                                 <button
                                     id="like-track-btn"
-                                    class="btn-secondary like-btn"
+                                    class="btn-secondary like-btn track-save-btn"
                                     data-action="toggle-like"
                                     data-type="track"
-                                    title="Save to Favorites"
+                                    title="Add to Liked Songs"
                                 >
-                                    <use svg="!lucide/heart.svg" class="heart-icon" size="20" />
-                                    <span>Save</span>
+                                    <use svg="./images/unliked.svg" class="track-save-icon" size="20" />
                                 </button>
                                 <button id="download-track-btn" class="btn-secondary" title="Download">
                                     <use svg="!lucide/download.svg" size="20" />
@@ -4559,6 +4564,34 @@
                                         <input type="checkbox" id="gapless-playback-toggle" checked />
                                         <span class="slider"></span>
                                     </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="info">
+                                        <span class="label">Crossfade</span>
+                                        <span class="description">Overlap the end of a song with the next one</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="crossfade-toggle" />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="info">
+                                        <span class="label">Crossfade duration</span>
+                                        <span class="description">Choose an overlap from 1 to 12 seconds</span>
+                                    </div>
+                                    <div class="crossfade-duration-control">
+                                        <input
+                                            type="range"
+                                            id="crossfade-duration"
+                                            min="1"
+                                            max="12"
+                                            step="1"
+                                            value="5"
+                                            aria-label="Crossfade duration"
+                                        />
+                                        <output id="crossfade-duration-value" for="crossfade-duration">5 s</output>
+                                    </div>
                                 </div>
                             </div>
 
@@ -6491,8 +6524,15 @@
                         class="now-playing-cover-button"
                         type="button"
                         aria-label="Open current track in fullscreen"
+                        data-requires-track
+                        disabled
                     >
-                        <img src="/assets/appicon.png" alt="Current Track Cover" class="cover" fetchpriority="high" />
+                        <img
+                            src="/assets/appicon.png"
+                            alt="Monochrome app artwork"
+                            class="cover"
+                            fetchpriority="high"
+                        />
                         <span class="cover-fullscreen-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none">
                                 <path
@@ -6505,17 +6545,21 @@
                         </span>
                     </button>
                     <div class="details">
-                        <div class="title">Select a song</div>
-                        <div class="album"></div>
+                        <div class="title">
+                            <button class="now-playing-title-link" type="button" data-requires-track disabled>
+                                Nothing playing
+                            </button>
+                        </div>
+                        <button class="album" type="button" data-requires-track disabled hidden></button>
                         <div class="artist"></div>
                     </div>
                     <button
                         id="now-playing-like-btn"
                         data-player-action="favorite"
-                        class="like-btn now-playing-like-btn"
+                        class="like-btn track-save-btn now-playing-like-btn"
                         data-action="toggle-like"
-                        title="Save to Favorites"
-                        aria-label="Save to Favorites"
+                        title="Add to Liked Songs"
+                        aria-label="Add to Liked Songs"
                         style="display: none"
                     ></button>
                 </div>
@@ -6525,23 +6569,56 @@
                         <span>Finding more songs for you...</span>
                     </div>
                     <div class="buttons">
-                        <button id="shuffle-btn" title="Shuffle" aria-label="Shuffle">
+                        <button
+                            id="compact-mix-btn"
+                            class="compact-mix-btn"
+                            type="button"
+                            title="Track Mix"
+                            aria-label="Start a mix from this track"
+                            data-requires-track
+                            disabled
+                            hidden
+                        >
+                            <use svg="./images/mix.svg" size="20" />
+                        </button>
+                        <button
+                            id="shuffle-btn"
+                            title="Shuffle off"
+                            aria-label="Turn shuffle on"
+                            aria-pressed="false"
+                            data-requires-track
+                            disabled
+                        >
                             <use svg="!lucide/shuffle.svg" size="24" />
                         </button>
-                        <button id="prev-btn" title="Previous" aria-label="Previous track">
+                        <button id="prev-btn" title="Previous" aria-label="Previous track" data-requires-track disabled>
                             <use svg="!lucide/arrow-left-to-line.svg" size="24" />
                         </button>
-                        <button class="play-pause-btn" title="Play" aria-label="Play" aria-pressed="false">
+                        <button
+                            class="play-pause-btn"
+                            title="Play"
+                            aria-label="Play"
+                            aria-pressed="false"
+                            data-requires-track
+                            disabled
+                        >
                             <svg class="morph-play-icon" viewBox="0 0 24 24" aria-hidden="true">
                                 <path class="morph-play-triangle" d="M8 5.5L19 12L8 18.5Z"></path>
                                 <path class="morph-pause-left" d="M7 5.5H10.5V18.5H7Z"></path>
                                 <path class="morph-pause-right" d="M13.5 5.5H17V18.5H13.5Z"></path>
                             </svg>
                         </button>
-                        <button id="next-btn" title="Next" aria-label="Next track">
+                        <button id="next-btn" title="Next" aria-label="Next track" data-requires-track disabled>
                             <use svg="!lucide/arrow-right-to-line.svg" size="24" />
                         </button>
-                        <button id="repeat-btn" title="Repeat" aria-label="Repeat">
+                        <button
+                            id="repeat-btn"
+                            title="Repeat off"
+                            aria-label="Turn repeat on"
+                            aria-pressed="false"
+                            data-requires-track
+                            disabled
+                        >
                             <use svg="!lucide/repeat.svg" size="24" />
                         </button>
                     </div>
@@ -6566,6 +6643,22 @@
                         </div>
                         <span id="total-duration">0:00</span>
                     </div>
+                    <div id="player-status" class="player-status" data-state="idle">
+                        <span
+                            id="player-status-message"
+                            class="player-status-message"
+                            role="status"
+                            aria-live="polite"
+                            aria-atomic="true"
+                            >Choose something to play</span
+                        >
+                        <div class="player-status-actions" aria-label="Player recovery actions">
+                            <button type="button" data-player-recovery="browse">Browse music</button>
+                            <button type="button" data-player-recovery="retry" hidden>Retry</button>
+                            <button type="button" data-player-recovery="lower-quality" hidden>Lower quality</button>
+                            <button type="button" data-player-recovery="skip" hidden>Skip</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="volume-controls">
                     <div class="player-actions-row">
@@ -6575,6 +6668,7 @@
                             class="mix-btn"
                             data-action="track-mix"
                             title="Track Mix"
+                            aria-label="Start a mix from this track"
                             style="display: none"
                         >
                             <use svg="./images/mix.svg" size="20" />
@@ -6592,11 +6686,12 @@
                             id="download-current-btn"
                             data-player-action="download"
                             title="Download current track"
+                            aria-label="Download current track"
                             class="desktop-only"
                         >
                             <use svg="!lucide/download.svg" size="20" />
                         </button>
-                        <button id="cast-btn" data-player-action="cast" title="Cast">
+                        <button id="cast-btn" data-player-action="cast" title="Cast" aria-label="Cast playback">
                             <use svg="!lucide/cast.svg" size="20" />
                         </button>
                         <button
@@ -6614,6 +6709,7 @@
                             data-player-action="sleep-timer"
                             title="Sleep Timer"
                             class="mobile-only"
+                            aria-label="Set a sleep timer"
                             aria-haspopup="dialog"
                             aria-expanded="false"
                         >
@@ -6624,12 +6720,13 @@
                             data-player-action="sleep-timer"
                             title="Sleep Timer"
                             class="desktop-only"
+                            aria-label="Set a sleep timer"
                             aria-haspopup="dialog"
                             aria-expanded="false"
                         >
                             <use svg="!lucide/clock.svg" size="20" />
                         </button>
-                        <button id="queue-btn" data-player-action="queue" title="Queue">
+                        <button id="queue-btn" data-player-action="queue" title="Queue" aria-label="Open queue">
                             <use svg="!lucide/list.svg" size="24" />
                         </button>
                     </div>
@@ -6656,6 +6753,14 @@
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="quality-popover-title"
+                hidden
+            ></div>
+            <div
+                id="track-save-floating-panel"
+                class="track-save-floating-panel"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="track-save-floating-title"
                 hidden
             ></div>
         </div>

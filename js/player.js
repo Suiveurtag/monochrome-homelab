@@ -20,6 +20,7 @@ import {
     binauralDspSettings,
     contentBlockingSettings,
     gaplessPlaybackSettings,
+    crossfadeSettings,
 } from './storage.js';
 import { audioContextManager } from './audio-context.js';
 import { isIos, isSafari } from './platform-detection.js';
@@ -81,6 +82,8 @@ export class Player {
         this.autoplayBlocked = false;
         this._recentlyPlayedIds = [];
         this._maxRecentlyPlayed = 100;
+        this._crossfadeInFlight = false;
+        this._crossfadeOutgoingTrackId = null;
         this.isIOS = isIos;
         this.isPwa =
             typeof window !== 'undefined' &&
@@ -375,7 +378,7 @@ export class Player {
                 // Restore UI
                 const track = this.currentTrack;
                 const trackTitle = getTrackTitle(track);
-                const trackArtistsHTML = getTrackArtistsHTML(track);
+                const trackArtistsHTML = getTrackArtistsHTML(track, { asButtons: true });
                 const yearDisplay = getTrackYearDisplay(track);
 
                 const coverEl = document.querySelector('.now-playing-bar .cover');
@@ -425,20 +428,27 @@ export class Player {
                             setImgSrcset(coverEl);
                         }
                     }
+                    const currentCover = document.querySelector('.now-playing-bar .cover');
+                    if (currentCover?.tagName === 'IMG') {
+                        currentCover.alt = `${trackTitle} by ${getTrackArtists(track)} artwork`;
+                    }
                 }
                 if (titleEl) {
                     const qualityBadge = createQualityBadgeHTML(track);
-                    titleEl.innerHTML = `<span class="now-playing-title-text">${escapeHtml(
+                    titleEl.innerHTML = `<button type="button" class="now-playing-title-link">${escapeHtml(
                         trackTitle
-                    )}</span>${qualityBadge}`;
+                    )}</button>${qualityBadge}`;
                 }
                 if (albumEl) {
                     const albumTitle = track.album?.title || '';
                     if (albumTitle && albumTitle !== trackTitle) {
                         albumEl.textContent = albumTitle;
+                        albumEl.hidden = false;
+                        albumEl.disabled = false;
                         albumEl.style.display = 'block';
                     } else {
                         albumEl.textContent = '';
+                        albumEl.hidden = true;
                         albumEl.style.display = 'none';
                     }
                 }
@@ -450,15 +460,19 @@ export class Player {
                 }
 
                 const mixBtn = document.getElementById('now-playing-mix-btn');
+                const compactMixBtn = document.getElementById('compact-mix-btn');
+                const hasTrackMix = Boolean(track.mixes?.TRACK_MIX);
                 if (mixBtn) {
-                    mixBtn.style.display = track.mixes && track.mixes.TRACK_MIX ? 'flex' : 'none';
+                    mixBtn.style.display = hasTrackMix ? 'flex' : 'none';
                 }
+                if (compactMixBtn) compactMixBtn.hidden = !hasTrackMix;
                 const totalDurationEl = document.getElementById('total-duration');
                 if (totalDurationEl) totalDurationEl.textContent = formatTime(track.duration);
                 document.title = `${trackTitle} • ${getTrackArtists(track)}`;
 
                 this.updatePlayingTrackIndicator();
                 this.updateMediaSession(track);
+                this.setCompactPlayerAvailability(true);
             }
         }
     }
@@ -607,6 +621,64 @@ export class Player {
         window.dispatchEvent(new CustomEvent('player-quality-changed', { detail: this.getQualityState() }));
     }
 
+    notifyPlaybackStatus(state, message, actions = []) {
+        window.dispatchEvent(
+            new CustomEvent('player-playback-status', {
+                detail: { state, message, actions },
+            })
+        );
+    }
+
+    setCompactPlayerAvailability(hasTrack) {
+        document
+            .querySelectorAll('.now-playing-bar [data-requires-track], .now-playing-bar [data-player-action]')
+            .forEach((control) => {
+                control.disabled = !hasTrack;
+            });
+        const progress = document.getElementById('progress-bar');
+        if (progress) {
+            progress.tabIndex = hasTrack ? 0 : -1;
+            progress.setAttribute('aria-disabled', String(!hasTrack));
+        }
+    }
+
+    resetCompactPlayerUI() {
+        const title = document.querySelector('.now-playing-bar .title');
+        const album = document.querySelector('.now-playing-bar .album');
+        const artist = document.querySelector('.now-playing-bar .artist');
+        const currentCover = document.querySelector('.now-playing-bar .cover');
+        if (title) {
+            title.innerHTML =
+                '<button type="button" class="now-playing-title-link" data-requires-track disabled>Nothing playing</button>';
+        }
+        if (album) {
+            album.textContent = '';
+            album.hidden = true;
+            album.disabled = true;
+        }
+        if (artist) artist.textContent = '';
+        if (currentCover?.tagName === 'VIDEO') {
+            const image = document.createElement('img');
+            image.src = '/assets/appicon.png';
+            image.alt = 'Monochrome app artwork';
+            image.className = currentCover.className;
+            currentCover.replaceWith(image);
+        } else if (currentCover) {
+            currentCover.src = '/assets/appicon.png';
+            currentCover.alt = 'Monochrome app artwork';
+            currentCover.removeAttribute('srcset');
+            currentCover.removeAttribute('sizes');
+        }
+        const currentTime = document.getElementById('current-time');
+        const totalDuration = document.getElementById('total-duration');
+        const progressFill = document.getElementById('progress-fill');
+        if (currentTime) currentTime.textContent = '0:00';
+        if (totalDuration) totalDuration.textContent = '0:00';
+        if (progressFill) progressFill.style.width = '0%';
+        const compactMixBtn = document.getElementById('compact-mix-btn');
+        if (compactMixBtn) compactMixBtn.hidden = true;
+    }
+
     async selectPlaybackQuality(profile) {
         const normalized = normalizePlaybackQuality(profile);
         this.requestedQualityProfile = normalized;
@@ -661,6 +733,9 @@ export class Player {
     async fallbackPlaybackQuality(reason = 'Connection is unstable') {
         if (this.qualityFallbackInFlight || !this.currentTrack || !this.stepDownPlaybackQuality(reason)) return false;
         this.qualityFallbackInFlight = true;
+        const state = this.getQualityState();
+        const effectiveLabel = state.options.find((option) => option.id === state.effective)?.label || 'lower quality';
+        this.notifyPlaybackStatus('recovering', `Trying ${effectiveLabel}…`, ['skip']);
         try {
             if (this.shakaInitialized) {
                 this.forceQuality(this.effectiveQualityProfile);
@@ -670,6 +745,7 @@ export class Player {
                     : 0;
                 await this.playTrackFromQueue(currentTime, 0, true);
             }
+            this.notifyPlaybackStatus('success', `Continuing in ${effectiveLabel}`);
             return true;
         } finally {
             this.qualityFallbackInFlight = false;
@@ -821,7 +897,8 @@ export class Player {
                         // the album boundary. Constrained connections request metadata first;
                         // normal connections let the browser progressively fill the buffer.
                         const preloader =
-                            gaplessPlaybackSettings.isEnabled() && !this.isRemotePlaybackActive()
+                            (gaplessPlaybackSettings.isEnabled() || crossfadeSettings.isEnabled()) &&
+                            !this.isRemotePlaybackActive()
                                 ? this.getStandbyAudioElement()
                                 : null;
                         if (preloader) {
@@ -896,6 +973,7 @@ export class Player {
         currentSequence,
         startTime = 0,
         recursiveCount = 0,
+        crossfadeDuration = 0,
     }) {
         const streamInfo = this.preloadCache.get(track.id);
         const streamUrl = streamInfo?.url;
@@ -982,6 +1060,14 @@ export class Player {
                     return;
                 }
 
+                if (crossfadeDuration > 0) {
+                    const started = audioContextManager.startCrossfade(
+                        previousActiveElement,
+                        activeElement,
+                        crossfadeDuration
+                    );
+                    if (!started && !previousActiveElement.paused) previousActiveElement.pause();
+                }
                 this.preloadNextTracks();
             })
             .catch((error) => retryImmediateHandoff(error).catch(console.error));
@@ -1161,7 +1247,7 @@ export class Player {
     }
 
     async playTrackFromQueue(startTime = 0, recursiveCount = 0, isRetry = false, options = {}) {
-        const { preserveGestureToken = false } = options;
+        const { preserveGestureToken = false, crossfadeFrom = null, crossfadeDuration = 0 } = options;
         if (!isRetry) {
             this.isFallbackRetry = false;
         }
@@ -1216,6 +1302,8 @@ export class Player {
         }
 
         this.currentTrack = track;
+        this.setCompactPlayerAvailability(true);
+        this.notifyPlaybackStatus('loading', `Loading ${getTrackTitle(track)}…`, ['skip']);
         this.addToRecentlyPlayed(track.id);
         const preloadedAudioDeck =
             shouldPreserveGestureToken &&
@@ -1227,7 +1315,7 @@ export class Player {
         }
         const trackTitle = getTrackTitle(track);
         const artistName = getTrackArtists(track);
-        const trackArtistsHTML = getTrackArtistsHTML(track);
+        const trackArtistsHTML = getTrackArtistsHTML(track, { asButtons: true });
         const yearDisplay = getTrackYearDisplay(track);
 
         if (!track.videoUrl && !track.videoCoverUrl && !track.album?.videoCoverUrl) {
@@ -1252,6 +1340,13 @@ export class Player {
         const isVideoTrack = track.type === 'video';
         const activeElement = isVideoTrack ? this.video : this.audio;
         const inactiveElement = isVideoTrack ? this.audio : this.video;
+        const shouldCrossfade = Boolean(
+            crossfadeFrom &&
+            crossfadeFrom === previousActiveElement &&
+            preloadedAudioDeck === activeElement &&
+            activeElement !== previousActiveElement &&
+            !isVideoTrack
+        );
         if (this.hls) {
             this.hls.destroy();
             this.hls = null;
@@ -1285,11 +1380,16 @@ export class Player {
             }
         }
 
-        if (preloadedAudioDeck && previousActiveElement !== activeElement) {
+        audioContextManager.changeSource(activeElement);
+        const crossfadePrepared = shouldCrossfade
+            ? audioContextManager.prepareCrossfade(previousActiveElement, activeElement)
+            : false;
+        if (!crossfadePrepared) {
+            audioContextManager.cancelCrossfade();
+        }
+        if (preloadedAudioDeck && previousActiveElement !== activeElement && !crossfadePrepared) {
             previousActiveElement.pause();
         }
-
-        audioContextManager.changeSource(activeElement);
 
         if (isVideoTrack) {
             if (coverEl) coverEl.style.display = 'none';
@@ -1340,6 +1440,7 @@ export class Player {
                             imgEl.removeAttribute('sizes');
                         }
                     }
+                    imgEl.alt = `${trackTitle} by ${artistName} artwork`;
                 }
             }
             if (this.audio) {
@@ -1350,15 +1451,20 @@ export class Player {
             }
         }
         document.querySelector('.now-playing-bar .title').innerHTML =
-            `<span class="now-playing-title-text">${escapeHtml(trackTitle)}</span>${createQualityBadgeHTML(track)}`;
+            `<button type="button" class="now-playing-title-link">${escapeHtml(
+                trackTitle
+            )}</button>${createQualityBadgeHTML(track)}`;
         const albumEl = document.querySelector('.now-playing-bar .album');
         if (albumEl) {
             const albumTitle = track.album?.title || '';
             if (albumTitle && albumTitle !== trackTitle) {
                 albumEl.textContent = albumTitle;
+                albumEl.hidden = false;
+                albumEl.disabled = false;
                 albumEl.style.display = 'block';
             } else {
                 albumEl.textContent = '';
+                albumEl.hidden = true;
                 albumEl.style.display = 'none';
             }
         }
@@ -1371,9 +1477,12 @@ export class Player {
         }
 
         const mixBtn = document.getElementById('now-playing-mix-btn');
+        const compactMixBtn = document.getElementById('compact-mix-btn');
+        const hasTrackMix = Boolean(track.mixes?.TRACK_MIX);
         if (mixBtn) {
-            mixBtn.style.display = track.mixes && track.mixes.TRACK_MIX ? 'flex' : 'none';
+            mixBtn.style.display = hasTrackMix ? 'flex' : 'none';
         }
+        if (compactMixBtn) compactMixBtn.hidden = !hasTrackMix;
         document.title = `${trackTitle} • ${getTrackArtists(track)}`;
 
         this.updatePlayingTrackIndicator();
@@ -1530,6 +1639,7 @@ export class Player {
                         currentSequence,
                         startTime,
                         recursiveCount,
+                        crossfadeDuration: crossfadePrepared ? crossfadeDuration : 0,
                     })
                 ) {
                     return;
@@ -1649,6 +1759,7 @@ export class Player {
             }
 
             console.error(`Could not play track: ${trackTitle}`, error);
+            this.notifyPlaybackStatus('error', `Couldn’t play ${trackTitle}`, ['retry', 'lower-quality', 'skip']);
         }
     }
 
@@ -1761,6 +1872,63 @@ export class Player {
         } catch (error) {
             console.error(error);
         }
+    }
+
+    async startCrossfadeIfNeeded(element = this.activeElement) {
+        if (
+            this._crossfadeInFlight ||
+            !crossfadeSettings.isEnabled() ||
+            element !== this.activeElement ||
+            this.currentTrack?.type === 'video' ||
+            this.repeatMode === REPEAT_MODE.ONE ||
+            this.isRemotePlaybackActive()
+        ) {
+            return false;
+        }
+
+        const duration = crossfadeSettings.getDuration();
+        const remaining = element.duration - element.currentTime;
+        if (!Number.isFinite(remaining) || remaining <= 0 || remaining > duration || element.currentTime < 1) {
+            return false;
+        }
+
+        const currentQueue = this.getCurrentQueue();
+        const nextTrack = currentQueue[this.currentQueueIndex + 1];
+        const preload = nextTrack ? this.preloadCache.get(nextTrack.id) : null;
+        if (
+            !nextTrack ||
+            nextTrack.type === 'video' ||
+            nextTrack.isPodcast ||
+            nextTrack.isUnavailable ||
+            contentBlockingSettings.shouldHideTrack(nextTrack) ||
+            !preload?.preloader ||
+            preload.preloader === element
+        ) {
+            return false;
+        }
+
+        this._crossfadeInFlight = true;
+        this._crossfadeOutgoingTrackId = this.currentTrack?.id ?? null;
+        try {
+            await this.playNext(0, {
+                preserveGestureToken: true,
+                crossfadeFrom: element,
+                crossfadeDuration: Math.min(duration, remaining),
+            });
+            return true;
+        } finally {
+            this._crossfadeInFlight = false;
+            window.setTimeout(
+                () => {
+                    this._crossfadeOutgoingTrackId = null;
+                },
+                duration * 1000 + 250
+            );
+        }
+    }
+
+    isCrossfadeTransitionFrom(trackId) {
+        return this._crossfadeOutgoingTrackId !== null && this._crossfadeOutgoingTrackId === trackId;
     }
 
     async enableRadio(seeds = []) {
@@ -2073,6 +2241,7 @@ export class Player {
 
     async pauseWithFade(element = this.activeElement) {
         if (element.paused) return;
+        audioContextManager.finishCrossfade();
         await audioContextManager.fadePlaybackOut(170);
         if (!element.paused) element.pause();
         audioContextManager.resetPlaybackFade();
@@ -2365,6 +2534,9 @@ export class Player {
         el.pause();
         el.src = '';
         this.currentTrack = null;
+        this.setCompactPlayerAvailability(false);
+        this.resetCompactPlayerUI();
+        this.notifyPlaybackStatus('idle', 'Choose something to play', ['browse']);
         this.queue = [];
         this.shuffledQueue = [];
         this.originalQueueBeforeShuffle = [];

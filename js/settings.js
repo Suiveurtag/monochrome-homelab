@@ -33,6 +33,7 @@ import {
     contentBlockingSettings,
     musicProviderSettings,
     gaplessPlaybackSettings,
+    crossfadeSettings,
     analyticsSettings,
     modalSettings,
     preferDolbyAtmosSettings,
@@ -1168,6 +1169,37 @@ export async function initializeSettings(scrobbler, player, api, ui) {
             gaplessPlaybackSettings.setEnabled(e.target.checked);
         });
     }
+
+    const crossfadeToggle = document.getElementById('crossfade-toggle');
+    const crossfadeDuration = document.getElementById('crossfade-duration');
+    const crossfadeDurationValue = document.getElementById('crossfade-duration-value');
+    const updateCrossfadeUI = () => {
+        const enabled = crossfadeSettings.isEnabled();
+        const duration = crossfadeSettings.getDuration();
+        if (crossfadeToggle) crossfadeToggle.checked = enabled;
+        if (crossfadeDuration) {
+            crossfadeDuration.value = duration;
+            crossfadeDuration.disabled = !enabled;
+        }
+        if (crossfadeDurationValue) {
+            crossfadeDurationValue.textContent = `${duration} s`;
+            crossfadeDurationValue.classList.toggle('is-disabled', !enabled);
+        }
+    };
+
+    if (crossfadeToggle) {
+        crossfadeToggle.addEventListener('change', (e) => {
+            crossfadeSettings.setEnabled(e.target.checked);
+            updateCrossfadeUI();
+        });
+    }
+    if (crossfadeDuration) {
+        crossfadeDuration.addEventListener('input', (e) => {
+            const duration = crossfadeSettings.setDuration(e.target.value);
+            if (crossfadeDurationValue) crossfadeDurationValue.textContent = `${duration} s`;
+        });
+    }
+    updateCrossfadeUI();
 
     // ReplayGain Settings
     const replayGainMode = document.getElementById('replay-gain-mode');

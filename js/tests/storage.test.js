@@ -5,6 +5,7 @@ import {
     lastFMStorage,
     nowPlayingSettings,
     gaplessPlaybackSettings,
+    crossfadeSettings,
     exponentialVolumeSettings,
     audioEffectsSettings,
 } from '../storage.js';
@@ -87,6 +88,20 @@ describe('storage.js', () => {
         test('sets enabled state', () => {
             gaplessPlaybackSettings.setEnabled(false);
             expect(gaplessPlaybackSettings.isEnabled()).toBe(false);
+        });
+    });
+
+    describe('crossfadeSettings', () => {
+        test('is disabled by default with a five second duration', () => {
+            expect(crossfadeSettings.isEnabled()).toBe(false);
+            expect(crossfadeSettings.getDuration()).toBe(5);
+        });
+
+        test('persists its enabled state and clamps duration to twelve seconds', () => {
+            crossfadeSettings.setEnabled(true);
+            crossfadeSettings.setDuration(20);
+            expect(crossfadeSettings.isEnabled()).toBe(true);
+            expect(crossfadeSettings.getDuration()).toBe(12);
         });
     });
 

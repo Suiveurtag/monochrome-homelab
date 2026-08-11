@@ -403,12 +403,15 @@ export const getTrackArtists = (track = {}, { fallback = 'Unknown Artist' } = {}
     return fallback;
 };
 
-export const getTrackArtistsHTML = (track = {}, { fallback = 'Unknown Artist' } = {}) => {
+export const getTrackArtistsHTML = (track = {}, { fallback = 'Unknown Artist', asButtons = false } = {}) => {
     if (track?.artists?.length) {
         return track.artists
             .map((artist) => {
                 const escapedName = escapeHtml(artist.name || 'Unknown Artist');
                 const escapedId = escapeHtml(artist.id || '');
+                if (asButtons) {
+                    return `<button type="button" class="artist-link" data-artist-id="${escapedId}">${escapedName}</button>`;
+                }
                 return `<span class="artist-link" data-artist-id="${escapedId}">${escapedName}</span>`;
             })
             .join(', ');

@@ -3755,6 +3755,10 @@ input[type='search']::-webkit-search-cancel-button {
     margin-bottom: var(--spacing-xs);
 }
 
+.track-list-header--with-save {
+    grid-template-columns: 40px 1fr 3.25rem 80px 48px;
+}
+
 .track-list-header .duration-header {
     justify-self: flex-end;
 }
@@ -3985,9 +3989,14 @@ body.multi-select-mode .track-item:hover {
     color: var(--muted-foreground);
     cursor: pointer;
     border-radius: var(--radius-sm);
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.86);
     transition:
         color var(--transition-fast),
-        transform var(--transition-fast);
+        opacity 150ms ease,
+        transform 220ms var(--ease-out-back),
+        visibility 150ms;
 }
 
 .track-row-like-btn:hover {
@@ -3996,8 +4005,724 @@ body.multi-select-mode .track-item:hover {
 }
 
 .track-row-like-btn.active {
-    color: #ef4444;
+    color: var(--highlight);
 }
+
+.track-save-btn {
+    color: #a8a8a8;
+}
+
+.track-save-btn .track-save-icon {
+    width: 20px;
+    height: 20px;
+    overflow: visible;
+    color: inherit;
+    transition:
+        color 180ms ease,
+        filter 220ms ease,
+        transform 260ms var(--ease-elastic);
+}
+
+.track-save-btn:hover,
+.track-save-btn:focus-visible,
+.track-save-btn.active,
+.card-like-btn.track-save-btn.active,
+.queue-track-item .queue-like-btn.track-save-btn.active {
+    color: var(--highlight) !important;
+}
+
+.track-save-btn.active .track-save-icon {
+    filter: drop-shadow(0 0 8px rgb(var(--highlight-rgb) / 0.24));
+}
+
+.track-save-btn.track-save-transition .track-save-icon {
+    animation: track-save-pop 440ms var(--ease-elastic);
+}
+
+/* stylelint-disable no-descending-specificity -- save controls keep their interaction states colocated */
+.track-item:hover .track-row-like-btn,
+.track-row-like-btn:focus-visible,
+.track-save-persist-when-saved.track-save-is-saved .track-row-like-btn {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+}
+
+.card .card-like-btn.track-save-btn.active {
+    opacity: 0;
+    transform: scale(0.8);
+}
+
+.card:hover .card-like-btn.track-save-btn,
+.card .card-like-btn.track-save-btn:focus-visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.queue-track-item .queue-like-btn.track-save-btn {
+    opacity: 0;
+}
+
+.queue-track-item:hover .queue-like-btn.track-save-btn,
+.queue-track-item .queue-like-btn.track-save-btn:focus-visible {
+    opacity: 1;
+}
+
+.track-save-btn.is-floating-panel-open {
+    opacity: 0 !important;
+    transform: scale(0.9) !important;
+}
+
+@keyframes track-save-pop {
+    0% {
+        opacity: 0.55;
+        transform: scale(0.72) rotate(-8deg);
+    }
+
+    58% {
+        opacity: 1;
+        transform: scale(1.24) rotate(3deg);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0);
+    }
+}
+
+@media (hover: none) {
+    .track-row-like-btn,
+    .card .card-like-btn.track-save-btn,
+    .card .card-like-btn.track-save-btn.active,
+    .queue-track-item .queue-like-btn.track-save-btn {
+        opacity: 1;
+        visibility: visible;
+        transform: scale(1);
+    }
+}
+
+.track-save-floating-panel[hidden] {
+    display: none !important;
+}
+
+.track-save-floating-panel {
+    position: fixed;
+    z-index: 2400;
+    isolation: isolate;
+    overflow: hidden;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    border-radius: 16px;
+    background: #151515;
+    color: #f5f5f5;
+    box-shadow:
+        0 22px 64px rgb(0 0 0 / 0.66),
+        0 4px 14px rgb(0 0 0 / 0.42);
+    opacity: 0;
+    transform-origin: 0 0;
+    will-change: transform, opacity, border-radius, clip-path;
+}
+
+.track-save-floating-panel::before {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    right: 22px;
+    left: 22px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(var(--highlight-rgb) / 0.8), transparent);
+    content: '';
+    opacity: 0;
+    pointer-events: none;
+    transform: scaleX(0.12);
+}
+
+.track-save-floating-panel.is-open {
+    opacity: 1;
+}
+
+.track-save-floating-panel.is-open::before {
+    animation: track-save-playhead 620ms 90ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.track-save-panel-shell {
+    display: flex;
+    max-height: inherit;
+    flex-direction: column;
+}
+
+.track-save-panel-header {
+    flex: 0 0 auto;
+    padding: 15px 10px 0;
+}
+
+.track-save-panel-title-row {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 0 6px 14px;
+}
+
+.track-save-panel-title-copy {
+    min-width: 0;
+}
+
+.track-save-panel-header h3 {
+    margin: 0;
+    color: #f3f3f3;
+    font-size: 0.9rem;
+    font-weight: 730;
+    letter-spacing: -0.02em;
+}
+
+.track-save-panel-title-copy p {
+    overflow: hidden;
+    margin: 3px 0 0;
+    color: #aaa;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.track-save-title-mark {
+    display: flex;
+    height: 20px;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 3px;
+    color: var(--highlight);
+}
+
+.track-save-title-mark > i {
+    width: 2px;
+    height: 6px;
+    border-radius: 2px;
+    background: currentcolor;
+    opacity: 0.4;
+    transform-origin: 50% 50%;
+}
+
+.track-save-floating-panel.is-open .track-save-title-mark.is-entering > i {
+    animation: track-save-signal 430ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.track-save-floating-panel.is-open .track-save-title-mark.is-entering > i:nth-child(2) {
+    animation-delay: 45ms;
+}
+
+.track-save-floating-panel.is-open .track-save-title-mark.is-entering > i:nth-child(3) {
+    animation-delay: 90ms;
+}
+
+.track-save-floating-panel.is-open .track-save-title-mark.is-entering > i:nth-child(4) {
+    animation-delay: 135ms;
+}
+
+.track-save-search {
+    display: grid;
+    height: 40px;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 0 7px 0 11px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: #292929;
+    color: #cfcfcf;
+    transition:
+        border-color 180ms ease,
+        background-color 180ms ease,
+        box-shadow 220ms ease,
+        transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.track-save-search:focus-within {
+    border-color: rgb(var(--highlight-rgb) / 0.52);
+    background: #303030;
+    box-shadow: 0 4px 18px rgb(0 0 0 / 0.24);
+    transform: translateY(-1px);
+}
+
+.track-save-search-icon,
+.track-save-new-playlist-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+}
+
+.track-save-search-icon {
+    transition:
+        color 180ms ease,
+        transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.track-save-search:focus-within .track-save-search-icon {
+    color: var(--highlight);
+    transform: rotate(-8deg) scale(1.08);
+}
+
+.track-save-search input {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #f5f5f5;
+    font: inherit;
+    font-size: 0.86rem;
+}
+
+.track-save-search input::placeholder {
+    color: #c0c0c0;
+    opacity: 1;
+}
+
+.track-save-search input::-webkit-search-cancel-button {
+    display: none;
+}
+
+.track-save-result-count {
+    min-width: 13px;
+    color: #a9a9a9;
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.track-save-search-clear {
+    display: grid;
+    width: 26px;
+    height: 26px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: #3b3b3b;
+    color: #d8d8d8;
+    cursor: pointer;
+    transition:
+        background-color 140ms ease,
+        color 140ms ease,
+        transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.track-save-search-clear:hover,
+.track-save-search-clear:focus-visible {
+    outline: none;
+    background: #4a4a4a;
+    color: #fff;
+    transform: rotate(8deg) scale(1.06);
+}
+
+.track-save-search-clear:active {
+    transform: scale(0.9);
+}
+
+.track-save-new-playlist {
+    position: relative;
+    display: flex;
+    width: 100%;
+    min-height: 62px;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 7px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #f5f5f5;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background-color 150ms ease,
+        padding-left 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.track-save-new-playlist::after {
+    position: absolute;
+    right: 7px;
+    bottom: 0;
+    left: 7px;
+    height: 1px;
+    background: #323232;
+    content: '';
+    pointer-events: none;
+}
+
+.track-save-new-playlist-icon {
+    width: 38px;
+    height: 38px;
+    border: 1px solid #414141;
+    border-radius: 10px;
+    background: #222;
+    color: #f5f5f5;
+    transition:
+        border-color 180ms ease,
+        background-color 180ms ease,
+        color 180ms ease,
+        transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.track-save-new-playlist-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.track-save-new-playlist-copy strong {
+    font-size: 0.9rem;
+    font-weight: 610;
+}
+
+.track-save-new-playlist-copy small {
+    color: #aaa;
+    font-size: 0.69rem;
+}
+
+.track-save-new-playlist:hover,
+.track-save-new-playlist:focus-visible {
+    padding-left: 10px;
+    background: #242424;
+    outline: none;
+}
+
+.track-save-new-playlist:hover .track-save-new-playlist-icon,
+.track-save-new-playlist:focus-visible .track-save-new-playlist-icon {
+    border-color: rgb(var(--highlight-rgb) / 0.55);
+    background: var(--highlight);
+    color: #111;
+    transform: rotate(4deg);
+}
+
+.track-save-new-playlist:active .track-save-new-playlist-icon {
+    transform: rotate(12deg) scale(0.9);
+}
+
+.track-save-panel-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0 8px 4px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+
+.track-save-panel-section {
+    padding-top: 9px;
+}
+
+.track-save-panel-section + .track-save-panel-section {
+    margin-top: 3px;
+    border-top: 1px solid #2b2b2b;
+}
+
+.track-save-panel-section h4 {
+    margin: 0;
+    padding: 1px 7px 6px;
+    color: #b9b9b9;
+    font-size: 0.7rem;
+    font-weight: 620;
+    letter-spacing: -0.005em;
+}
+
+.track-save-playlist-row {
+    display: grid;
+    width: 100%;
+    min-height: 58px;
+    grid-template-columns: 40px minmax(0, 1fr) 22px;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 7px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #f5f5f5;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background-color 150ms ease,
+        color 150ms ease;
+}
+
+.track-save-playlist-row:hover,
+.track-save-playlist-row:focus-visible {
+    background: #242424;
+    outline: none;
+}
+
+.track-save-playlist-cover {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    background: #2d2d2d;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.3);
+    object-fit: cover;
+    transition:
+        box-shadow 220ms ease,
+        transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.track-save-playlist-row:hover .track-save-playlist-cover,
+.track-save-playlist-row:focus-visible .track-save-playlist-cover {
+    box-shadow: 0 5px 14px rgb(0 0 0 / 0.42);
+    transform: translateX(2px) scale(1.045);
+}
+
+.track-save-playlist-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.track-save-playlist-copy strong {
+    overflow: hidden;
+    font-size: 0.96rem;
+    font-weight: 470;
+    line-height: 1.1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.track-save-playlist-copy small {
+    color: #d0d0d0;
+    font-size: 0.69rem;
+    line-height: 1;
+}
+
+.track-save-playlist-check {
+    display: grid;
+    width: 17px;
+    height: 17px;
+    place-items: center;
+    justify-self: center;
+    border: 1px solid #777;
+    border-radius: 50%;
+    color: #171717;
+    transition:
+        border-color 180ms ease,
+        background-color 180ms ease,
+        box-shadow 220ms ease,
+        transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.track-save-playlist-row.is-saved .track-save-playlist-check {
+    border-color: var(--highlight);
+    background: var(--highlight);
+    box-shadow: 0 3px 10px rgb(var(--highlight-rgb) / 0.22);
+}
+
+.track-save-playlist-row.is-confirming .track-save-playlist-check {
+    animation: track-save-check-in 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.track-save-playlist-row.is-releasing .track-save-playlist-check {
+    animation-name: track-save-check-out;
+}
+
+.track-save-playlist-row:hover .track-save-playlist-check,
+.track-save-playlist-row:focus-visible .track-save-playlist-check {
+    border-color: #bdbdbd;
+    transform: scale(1.08);
+}
+
+.track-save-playlist-row.is-saved:hover .track-save-playlist-check,
+.track-save-playlist-row.is-saved:focus-visible .track-save-playlist-check {
+    border-color: var(--highlight);
+}
+
+.track-save-playlist-check svg {
+    width: 12px;
+    height: 12px;
+    stroke-width: 2.8;
+}
+
+.track-save-empty {
+    margin: 0;
+    padding: 18px 12px 22px;
+    color: #b5b5b5;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.track-save-panel-footer {
+    display: flex;
+    min-height: 50px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 8px 15px;
+    border-top: 1px solid #242424;
+    background: #101010;
+}
+
+.track-save-panel-cancel {
+    padding: 8px 0 8px 18px;
+    border: 0;
+    background: transparent;
+    color: #f5f5f5;
+    font-size: 0.86rem;
+    font-weight: 720;
+    cursor: pointer;
+    transition:
+        color 140ms ease,
+        transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.track-save-panel-cancel:hover,
+.track-save-panel-cancel:focus-visible {
+    outline: none;
+    color: var(--highlight);
+    transform: translateX(-2px);
+}
+
+.track-save-panel-cancel:active {
+    transform: translateX(-2px) scale(0.94);
+}
+
+.track-save-panel-header,
+.track-save-panel-list,
+.track-save-panel-footer {
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+        opacity 210ms ease,
+        transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.track-save-floating-panel.is-open .track-save-panel-header,
+.track-save-floating-panel.is-open .track-save-panel-list,
+.track-save-floating-panel.is-open .track-save-panel-footer {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.track-save-floating-panel.is-open .track-save-panel-header {
+    transition-delay: 80ms;
+}
+
+.track-save-floating-panel.is-open .track-save-panel-list {
+    transition-delay: 120ms;
+}
+
+.track-save-floating-panel.is-open .track-save-panel-footer {
+    transition-delay: 155ms;
+}
+
+@keyframes track-save-playhead {
+    0% {
+        opacity: 0;
+        transform: scaleX(0.12);
+    }
+
+    45% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.28;
+        transform: scaleX(1);
+    }
+}
+
+@keyframes track-save-signal {
+    0% {
+        height: 6px;
+        opacity: 0.35;
+        transform: scaleY(0.5);
+    }
+
+    52% {
+        height: 17px;
+        opacity: 1;
+        transform: scaleY(1);
+    }
+
+    100% {
+        height: 9px;
+        opacity: 0.72;
+        transform: scaleY(1);
+    }
+}
+
+@keyframes track-save-check-in {
+    0% {
+        box-shadow: 0 0 0 0 rgb(var(--highlight-rgb) / 0.38);
+        transform: scale(0.62);
+    }
+
+    55% {
+        box-shadow: 0 0 0 7px rgb(var(--highlight-rgb) / 0);
+        transform: scale(1.16);
+    }
+
+    100% {
+        box-shadow: 0 3px 10px rgb(var(--highlight-rgb) / 0.22);
+        transform: scale(1);
+    }
+}
+
+@keyframes track-save-check-out {
+    0% {
+        transform: scale(1);
+    }
+
+    45% {
+        transform: scale(0.68);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .track-save-floating-panel::before,
+    .track-save-title-mark > i,
+    .track-save-playlist-row.is-confirming .track-save-playlist-check {
+        animation: none !important;
+    }
+
+    .track-save-search,
+    .track-save-search-icon,
+    .track-save-search-clear,
+    .track-save-new-playlist,
+    .track-save-new-playlist-icon,
+    .track-save-playlist-cover,
+    .track-save-playlist-check,
+    .track-save-panel-cancel {
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media (max-width: 600px) {
+    .track-save-floating-panel {
+        border-radius: 14px 14px 10px 10px;
+    }
+}
+
+@media (max-width: 768px) {
+    .track-list-header--with-save,
+    #playlist-detail-tracklist .track-list-header--with-save,
+    #mix-detail-tracklist .track-list-header--with-save {
+        grid-template-columns: 36px minmax(0, 1fr) auto minmax(2.5rem, auto) auto;
+        gap: var(--spacing-sm);
+    }
+}
+
+@media (max-width: 480px) {
+    .track-list-header--with-save,
+    #playlist-detail-tracklist .track-list-header--with-save,
+    #mix-detail-tracklist .track-list-header--with-save {
+        grid-template-columns: 32px minmax(0, 1fr) auto minmax(2.25rem, auto) auto;
+        gap: 0.375rem;
+    }
+}
+/* stylelint-enable no-descending-specificity */
 
 .track-item-duration {
     color: var(--muted-foreground);
@@ -4680,6 +5405,23 @@ body.multi-select-mode .track-item:hover {
     background: var(--highlight);
 }
 
+.crossfade-duration-control {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+#crossfade-duration-value {
+    min-width: 2.5rem;
+    color: var(--foreground);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+#crossfade-duration-value.is-disabled {
+    color: var(--muted-foreground);
+}
+
 .playback-speed-control {
     display: flex;
     align-items: center;
@@ -5255,8 +5997,8 @@ input:checked + .slider::before {
 }
 
 .morph-play-icon {
-    width: 21px;
-    height: 21px;
+    width: 24px;
+    height: 24px;
     overflow: visible;
     fill: currentcolor;
 }
@@ -11316,8 +12058,8 @@ img[src=''] {
     }
 
     .player-controls .buttons .play-pause-btn svg {
-        width: 18px;
-        height: 18px;
+        width: 20px;
+        height: 20px;
     }
 
     .volume-controls button {

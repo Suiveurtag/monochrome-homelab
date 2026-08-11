@@ -48,6 +48,12 @@ import { deleteSelfHostedTrack, listSelfHostedTracks } from './selfhost-server-a
 import { openMetadataEditor } from './metadata-editor.js';
 import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
 import { isVideoArtwork, setArtworkBackground } from './animated-artwork.js';
+import {
+    applyTrackSaveStateToButton,
+    buildTrackSaveStateSnapshot,
+    createTrackSaveIconHTML,
+    getTrackSaveStateFromSnapshot,
+} from './track-save-ui.js';
 
 let _isBlockedCopyright = (_c) => false;
 import('./content-filter.ts')
@@ -156,7 +162,7 @@ async function coverToPersistentUrl(cover) {
 }
 
 const TRACKLIST_HEADER_WITH_LIKE_COL_HTML = `
-    <div class="track-list-header">
+    <div class="track-list-header track-list-header--with-save">
         <span style="width: 40px; text-align: center;">#</span>
         <span>Title</span>
         <span class="track-list-header-spacer" aria-hidden="true"></span>
@@ -191,6 +197,15 @@ export class UIRenderer {
         this.fullscreenDismissHandleCleanup = null;
         this.fullscreenLyricsToggleCleanup = null;
         this.fullscreenOpenGeneration = 0;
+        this.trackSaveStateSnapshot = null;
+        this.trackSaveStatePromise = null;
+
+        const invalidateTrackSaveState = () => {
+            this.trackSaveStateSnapshot = null;
+            this.trackSaveStatePromise = null;
+        };
+        window.addEventListener('favorites-changed', invalidateTrackSaveState);
+        window.addEventListener('playlist-tracks-changed', invalidateTrackSaveState);
 
         // Listen for dynamic color reset events
         window.addEventListener('reset-dynamic-color', () => {
@@ -257,6 +272,54 @@ export class UIRenderer {
         return SVG_HEART(20);
     }
 
+    createTrackSaveIcon(saved = false, size = 20) {
+        return createTrackSaveIconHTML(saved, size);
+    }
+
+    async getTrackSaveState(type, id) {
+        const normalizedType = type === 'video' ? 'video' : 'track';
+
+        if (!this.trackSaveStateSnapshot) {
+            if (!this.trackSaveStatePromise) {
+                this.trackSaveStatePromise = Promise.all([
+                    db.getFavorites('track'),
+                    db.getFavorites('video'),
+                    db.getPlaylists(true),
+                ]).then(([likedTracks, likedVideos, playlists]) => {
+                    this.trackSaveStateSnapshot = buildTrackSaveStateSnapshot(likedTracks, likedVideos, playlists);
+                    return this.trackSaveStateSnapshot;
+                });
+            }
+            await this.trackSaveStatePromise;
+        }
+
+        return getTrackSaveStateFromSnapshot(this.trackSaveStateSnapshot, normalizedType, id);
+    }
+
+    applyTrackSaveButtonState(button, state, { animate = false } = {}) {
+        applyTrackSaveStateToButton(button, state, { animate });
+    }
+
+    async refreshTrackSaveButtons(type, id, { animate = false } = {}) {
+        const normalizedType = type === 'video' ? 'video' : 'track';
+        const state = await this.getTrackSaveState(normalizedType, id);
+        const escapedId = CSS.escape(String(id));
+        const buttons = new Set(
+            document.querySelectorAll(
+                `[data-track-id="${escapedId}"] .track-save-btn, [data-video-id="${escapedId}"] .track-save-btn, .track-save-btn[data-track-save-id="${escapedId}"]`
+            )
+        );
+
+        if (this.player?.currentTrack?.id == id) {
+            buttons.add(document.getElementById('now-playing-like-btn'));
+            buttons.add(document.getElementById('fs-like-btn'));
+        }
+        if (this.currentTrackPageId == id) buttons.add(document.getElementById('like-track-btn'));
+
+        buttons.forEach((button) => this.applyTrackSaveButtonState(button, state, { animate }));
+        return state;
+    }
+
     async extractAndApplyColor(url) {
         if (!url) {
             this.resetVibrantColor();
@@ -307,6 +370,15 @@ export class UIRenderer {
     }
 
     async updateLikeState(element, type, id) {
+        if ((type === 'track' || type === 'video') && element.querySelector('.track-save-btn')) {
+            const state = await this.getTrackSaveState(type, id);
+            element.querySelectorAll('.track-save-btn').forEach((button) => {
+                button.dataset.trackSaveId = String(id);
+                this.applyTrackSaveButtonState(button, state);
+            });
+            return;
+        }
+
         const isLiked = await db.isFavorite(type, id);
         const btn = element.querySelector('.like-btn');
         if (btn) {
@@ -437,7 +509,7 @@ export class UIRenderer {
         showCover = false,
         hasMultipleDiscs = false,
         useTrackNumber = false,
-        inlineLike = false
+        inlineLike = true
     ) {
         const isUnavailable = track.isUnavailable;
         const isBlocked = contentBlockingSettings?.shouldHideTrack(track);
@@ -513,10 +585,11 @@ export class UIRenderer {
 
         const likeType = isVideo ? 'video' : 'track';
         const showRowLike = inlineLike && !isUnavailable && !isBlocked;
+        const persistSavedTrackButton = ['album', 'artist', 'track'].includes(this.currentPage);
         const inlineLikeHTML = showRowLike
             ? `<div class="track-item-inline-like">
-                <button type="button" class="like-btn track-row-like-btn" data-action="toggle-like" data-type="${likeType}" title="Add to Liked">
-                    ${this.createHeartIcon(false)}
+                <button type="button" class="like-btn track-save-btn track-row-like-btn" data-action="toggle-like" data-type="${likeType}" data-track-save-id="${escapeHtml(String(track.id))}" title="Add to Liked Songs">
+                    ${this.createTrackSaveIcon(false)}
                 </button>
             </div>`
             : '';
@@ -528,6 +601,7 @@ export class UIRenderer {
             isUnavailable ? 'unavailable' : '',
             isBlocked ? 'blocked' : '',
             showRowLike ? 'track-item--inline-like' : '',
+            persistSavedTrackButton ? 'track-save-persist-when-saved' : '',
             this.currentPage === 'search' ? 'no-duration' : '',
         ]
             .filter(Boolean)
@@ -848,8 +922,8 @@ export class UIRenderer {
                             ${SVG_PLAY(24)}
                         </button>
                     </div>
-                    <button class="like-btn card-like-btn" data-action="toggle-like" data-type="video" title="Add to Liked">
-                        ${this.createHeartIcon(false)}
+                    <button class="like-btn track-save-btn card-like-btn" data-action="toggle-like" data-type="video" data-track-save-id="${escapeHtml(String(video.id))}" title="Add to Liked Songs">
+                        ${this.createTrackSaveIcon(false)}
                     </button>
                     <div class="video-duration-badge" style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.7); color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: 500;">${duration}</div>
                 </div>
@@ -1042,7 +1116,7 @@ export class UIRenderer {
         showCover,
         append = false,
         useTrackNumber = false,
-        inlineLike = false
+        inlineLike = true
     ) {
         const fragment = document.createDocumentFragment();
         const tempDiv = document.createElement('div');
@@ -2892,7 +2966,7 @@ export class UIRenderer {
 
         container.innerHTML = tracks
             .map((track, index) => {
-                const base = this.createTrackItemHTML(track, index, true, false, false, false);
+                const base = this.createTrackItemHTML(track, index, true, false, false, true);
                 return base.replace(
                     '<div class="track-item-actions">',
                     `<div class="track-item-actions">
@@ -2901,10 +2975,13 @@ export class UIRenderer {
             })
             .join('');
 
-        tracks.forEach((track) => {
+        for (const track of tracks) {
             const el = container.querySelector(`[data-track-id="${CSS.escape(String(track.id))}"]`);
-            if (el) trackDataStore.set(el, track);
-        });
+            if (el) {
+                trackDataStore.set(el, track);
+                await this.updateLikeState(el, track.type || 'track', track.id);
+            }
+        }
 
         container.querySelectorAll('.upload-delete-track-btn').forEach((button) => {
             button.addEventListener('click', async (event) => {
@@ -3355,8 +3432,8 @@ export class UIRenderer {
                 track.videoUrl || track.album?.videoCoverUrl
             ),
             actionButtonsHTML: `
-                <button class="like-btn card-like-btn" data-action="toggle-like" data-type="${likeType}" title="Add to Liked">
-                    ${this.createHeartIcon(false)}
+                <button class="like-btn track-save-btn card-like-btn" data-action="toggle-like" data-type="${likeType}" data-track-save-id="${escapeHtml(String(track.id))}" title="Add to Liked Songs">
+                    ${this.createTrackSaveIcon(false)}
                 </button>
             `,
             isCompact,
@@ -4047,14 +4124,7 @@ export class UIRenderer {
             rateCriticsEl.textContent = 'Local album';
             rateUsersEl.textContent = '';
 
-            tracklistContainer.innerHTML = `
-                <div class="track-list-header">
-                    <span style="width: 40px; text-align: center;">#</span>
-                    <span>Title</span>
-                    <span class="duration-header">Duration</span>
-                    <span style="display: flex; justify-content: flex-end; opacity: 0.8;">Menu</span>
-                </div>
-            `;
+            tracklistContainer.innerHTML = TRACKLIST_HEADER_WITH_LIKE_COL_HTML;
 
             tracks.sort((a, b) => {
                 const discA = a.volumeNumber ?? a.discNumber ?? 1;
@@ -6096,9 +6166,11 @@ export class UIRenderer {
             };
 
             if (likeBtn) {
-                const isLiked = await db.isFavorite('track', track.id);
-                likeBtn.innerHTML = this.createHeartIcon(isLiked);
-                likeBtn.classList.toggle('active', isLiked);
+                likeBtn.classList.add('track-save-btn');
+                likeBtn.dataset.trackSaveId = String(track.id);
+                trackDataStore.set(likeBtn, track);
+                const state = await this.getTrackSaveState('track', track.id);
+                this.applyTrackSaveButtonState(likeBtn, state);
             }
 
             if (track.album?.id) {
