@@ -15,13 +15,13 @@ Preserve the established visual world. A layout command changes structure inside
 When a sub-agent tool is available and permitted, run these independently; otherwise run them yourself in this order.
 
 1. **Layout assessment:** inspect representative states and viewports. Answer every question below with rendered or source evidence:
-   - **Reading order:** Apply the squint test. With detail blurred, can you still identify the primary element, the secondary element, and the major groups in order?
-   - **Grouping:** Are related items close and distinct groups separated, or are containers compensating for weak proximity?
-   - **Rhythm:** Do tight and generous intervals create a deliberate cadence, or is one spacing value repeated until everything has equal weight?
-   - **Structure:** Does the topology match the content and task? Are repeated cards, columns, or sections genuinely equivalent, or merely a framework default?
-   - **Density:** Does the amount of information per region fit use frequency, decision complexity, and visitor mode?
-   - **Adaptation:** At narrow, intermediate, wide, zoomed, and localized states, what reorders, collapses, wraps, scrolls, or remains fixed? Does DOM and focus order still agree with the visual order?
-   - **Extremes:** Do long content, empty states, overlays, sticky elements, safe areas, and small touch targets expose structural failures?
+    - **Reading order:** Apply the squint test. With detail blurred, can you still identify the primary element, the secondary element, and the major groups in order?
+    - **Grouping:** Are related items close and distinct groups separated, or are containers compensating for weak proximity?
+    - **Rhythm:** Do tight and generous intervals create a deliberate cadence, or is one spacing value repeated until everything has equal weight?
+    - **Structure:** Does the topology match the content and task? Are repeated cards, columns, or sections genuinely equivalent, or merely a framework default?
+    - **Density:** Does the amount of information per region fit use frequency, decision complexity, and visitor mode?
+    - **Adaptation:** At narrow, intermediate, wide, zoomed, and localized states, what reorders, collapses, wraps, scrolls, or remains fixed? Does DOM and focus order still agree with the visual order?
+    - **Extremes:** Do long content, empty states, overlays, sticky elements, safe areas, and small touch targets expose structural failures?
 2. **Mechanical scan:** run:
 
 ```bash
@@ -78,7 +78,7 @@ When the structure holds, hand off to `/impeccable polish`.
 Every variant declares a coarse `density` parameter and authors spacing against `var(--p-density, 1)`.
 
 ```json
-{"id":"density","kind":"range","min":0.6,"max":1.4,"step":0.05,"default":1,"label":"Density"}
+{ "id": "density", "kind": "range", "min": 0.6, "max": 1.4, "step": 0.05, "default": 1, "label": "Density" }
 ```
 
 Add one structural parameter only when the topology genuinely branches. Follow [live.md](live.md)'s parameter contract.

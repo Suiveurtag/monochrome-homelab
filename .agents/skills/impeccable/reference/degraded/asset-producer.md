@@ -1,4 +1,5 @@
 <!-- Generated from skill/agents/ at build time. Do not edit; edit the agent definition. -->
+
 This harness has no subagent capability, so you are running this role inline. Step fully out of the work you just finished, adopt only this file's instructions for the pass, and disclose the substitution in one line when you report. Where the text below addresses a parent agent, you are both parties: produce the full output contract first, then act on it yourself.
 
 # Impeccable Asset Producer
@@ -43,19 +44,15 @@ Ask blockers once, globally. Missing source path/crops or output directory block
 
 1. Inventory the full approved mock or every assigned crop.
 2. Put each visual role in exactly one bucket:
-   - `produce`: needs generation, image editing, cleanup, cutout work, or a clean plate before it can ship.
-   - `direct`: ships after format conversion, compression, or renaming because the parent supplied a real standalone source asset, a project file, stock, or prior production art. A crop from the approved mock is never `direct`, whatever its apparent size.
-   - `semantic`: build in HTML/CSS/SVG/canvas, no raster output.
+    - `produce`: needs generation, image editing, cleanup, cutout work, or a clean plate before it can ship.
+    - `direct`: ships after format conversion, compression, or renaming because the parent supplied a real standalone source asset, a project file, stock, or prior production art. A crop from the approved mock is never `direct`, whatever its apparent size.
+    - `semantic`: build in HTML/CSS/SVG/canvas, no raster output.
 3. Crops from the mock are binding visual references, never shipping pixels: a full-page mock's effective resolution is reference grade, not asset grade, and a shipped crop, however close it looks, is how a beautiful comp turns into a blurry site. Every mock-derived asset goes through `produce` as a clean regeneration.
 4. Give the parent an execution order for the `produce` bucket.
 5. For produced assets, choose the least inventive strategy: image-to-image clean plate, faithful regeneration from crop reference, transparent cutout, texture/pattern reconstruction, stock/project source, or semantic HTML/CSS/SVG recommendation if raster is wrong.
 6. Use the harness's native image tool by default when generation or editing is needed; otherwise use the skill's generate-image.mjs.
 
-Codex: the imagegen skill's built-in `image_gen` path is the native tool here; prefer it for generation, editing, and the chroma-key workflow.
-7. Remove baked-in UI text, navigation, buttons, body copy, and mock chrome unless the text is part of the asset.
-8. Think through the final DOM/CSS representation before generating. If CSS will own radius, clipping, shadows, borders, perspective, responsive cropping, captions, or card frames, do not bake those into the bitmap.
-9. Save outputs non-destructively in the requested project directory, and leave the intent with the file: after every generation, run `node .agents/skills/impeccable/scripts/embed-prompt.mjs <asset> --prompt "<the prompt used>"` so the prompt is embedded in the image itself, because the build thread composes what you made and needs to know what it is looking at, and the embedding survives copies where sidecars get lost.
-10. Compare each output against its source crop, opening every image by its workspace-relative path; sandboxed viewers reject absolute paths. If a review/QA tool is available, run it before the final manifest, then retry each major/fatal finding once before finalizing.
+Codex: the imagegen skill's built-in `image_gen` path is the native tool here; prefer it for generation, editing, and the chroma-key workflow. 7. Remove baked-in UI text, navigation, buttons, body copy, and mock chrome unless the text is part of the asset. 8. Think through the final DOM/CSS representation before generating. If CSS will own radius, clipping, shadows, borders, perspective, responsive cropping, captions, or card frames, do not bake those into the bitmap. 9. Save outputs non-destructively in the requested project directory, and leave the intent with the file: after every generation, run `node .agents/skills/impeccable/scripts/embed-prompt.mjs <asset> --prompt "<the prompt used>"` so the prompt is embedded in the image itself, because the build thread composes what you made and needs to know what it is looking at, and the embedding survives copies where sidecars get lost. 10. Compare each output against its source crop, opening every image by its workspace-relative path; sandboxed viewers reject absolute paths. If a review/QA tool is available, run it before the final manifest, then retry each major/fatal finding once before finalizing.
 
 Use `texture/pattern extraction` only when the source region is already clean enough to sample as texture. If UI, cards, labels, headings, body copy, or footer chrome must be removed to make a reusable texture or background, classify it as crop-derived cleanup or clean-plate work.
 

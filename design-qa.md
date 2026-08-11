@@ -19,10 +19,10 @@ Blocked for the same browser-runtime reason. The search field, New playlist row,
 ## Findings
 
 - [P1] Browser-rendered fidelity and interaction testing remain blocked.
-  - Location: `#track-save-floating-panel`, track rows, queue rows, cards, now-playing bar, fullscreen player, album pages, and artist pages.
-  - Evidence: the source visual is available and the production build succeeds, but no implementation screenshot or browser console capture is available.
-  - Impact: layout, text wrapping, cover cropping, hover persistence, animation geometry, pointer behavior, and responsive placement cannot be visually approved.
-  - Fix: capture the panel in a working in-app browser at the same viewport and state, test left click, right click, search, playlist toggles, New playlist, outside click, and Escape, then compare the source and implementation together.
+    - Location: `#track-save-floating-panel`, track rows, queue rows, cards, now-playing bar, fullscreen player, album pages, and artist pages.
+    - Evidence: the source visual is available and the production build succeeds, but no implementation screenshot or browser console capture is available.
+    - Impact: layout, text wrapping, cover cropping, hover persistence, animation geometry, pointer behavior, and responsive placement cannot be visually approved.
+    - Fix: capture the panel in a working in-app browser at the same viewport and state, test left click, right click, search, playlist toggles, New playlist, outside click, and Escape, then compare the source and implementation together.
 
 ## Required fidelity surfaces
 

@@ -22,26 +22,26 @@ On **Cursor**, `preToolUse` checks proposed Write/Edit/Shell write content and d
 
 The first argument is the action. Defaults to `status`.
 
-| Action | What it does |
-|---|---|
-| `status` | Print current state, shared/local config paths, ignored rules / files / values, env override. |
-| `on` | Set `enabled: true` in `.impeccable/config.json`, record local hook consent as accepted, and install/repair provider hook manifests when the skill is installed. |
-| `off` | Set `enabled: false` in `.impeccable/config.json`. |
-| `ignore-rule <id>` | Append `<id>` to `detector.ignoreRules`; for `overused-font`, requires `--all-values`. Suppresses the rule across the whole project. |
-| `ignore-file <glob>` | Append `<glob>` to `detector.ignoreFiles`. Suppresses **every** rule for matching files. |
-| `ignore-value <id> <value> [--shared] [--reason "..."]` | Append a rule/value suppression to shared `.impeccable/config.json`. |
-| `ignore-value <id> <value> --local [--reason "..."]` | Append a private rule/value suppression to `.impeccable/config.local.json`. |
+| Action                                                   | What it does                                                                                                                                                                                                                               |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `status`                                                 | Print current state, shared/local config paths, ignored rules / files / values, env override.                                                                                                                                              |
+| `on`                                                     | Set `enabled: true` in `.impeccable/config.json`, record local hook consent as accepted, and install/repair provider hook manifests when the skill is installed.                                                                           |
+| `off`                                                    | Set `enabled: false` in `.impeccable/config.json`.                                                                                                                                                                                         |
+| `ignore-rule <id>`                                       | Append `<id>` to `detector.ignoreRules`; for `overused-font`, requires `--all-values`. Suppresses the rule across the whole project.                                                                                                       |
+| `ignore-file <glob>`                                     | Append `<glob>` to `detector.ignoreFiles`. Suppresses **every** rule for matching files.                                                                                                                                                   |
+| `ignore-value <id> <value> [--shared] [--reason "..."]`  | Append a rule/value suppression to shared `.impeccable/config.json`.                                                                                                                                                                       |
+| `ignore-value <id> <value> --local [--reason "..."]`     | Append a private rule/value suppression to `.impeccable/config.local.json`.                                                                                                                                                                |
 | `ignore-value <id> "*" --file <glob> [--file <glob>...]` | Turn one rule off in matching files only, leaving it active everywhere else. Repeat `--file`, or use `--file=<glob>` / `--files=<glob>`. A bare `"*"` with no `--file` is refused: use `ignore-rule <id>` if you really mean project-wide. |
-| `reset` | Delete the project config, dedup cache, and Cursor pending queue. |
+| `reset`                                                  | Delete the project config, dedup cache, and Cursor pending queue.                                                                                                                                                                          |
 
 ## Flow
 
 1. Resolve the action from the user's argument. If no action was given, default to `status`.
 2. Invoke the admin script and pass the user's output through verbatim:
 
-   ```bash
-   node .github/skills/impeccable/scripts/hook-admin.mjs <action> [args...]
-   ```
+    ```bash
+    node .github/skills/impeccable/scripts/hook-admin.mjs <action> [args...]
+    ```
 
 3. If `<action>` is `off`, follow up with a one-line note: "Done. New edits will not trigger the design hook in this project until you run `/impeccable hooks on`."
 4. If `<action>` is `on`, follow up with: "Done. The design hook will fire after the next Edit/Write/MultiEdit on a UI file."
