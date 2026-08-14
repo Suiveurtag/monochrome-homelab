@@ -70,10 +70,7 @@ export class SpicyDynamicBackground {
         if (!this.kawarp) return;
         const transitionDuration = this.prefersReducedMotion() ? 0 : 1000;
         const next = { animationSpeed, scale, transitionDuration };
-        if (
-            !force &&
-            Object.entries(next).every(([key, value]) => this.lastMotionOptions[key] === value)
-        ) {
+        if (!force && Object.entries(next).every(([key, value]) => this.lastMotionOptions[key] === value)) {
             return;
         }
         this.lastMotionOptions = next;

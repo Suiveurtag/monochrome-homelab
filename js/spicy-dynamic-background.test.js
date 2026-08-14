@@ -18,7 +18,10 @@ vi.mock('@kawarp/core', () => ({
 beforeEach(() => {
     document.body.innerHTML = '';
     kawarpInstances.length = 0;
-    vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
+    vi.stubGlobal(
+        'requestAnimationFrame',
+        vi.fn(() => 1)
+    );
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
     vi.stubGlobal(
         'matchMedia',

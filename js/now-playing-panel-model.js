@@ -129,7 +129,12 @@ export async function buildNowPlayingPanelModel({ track, player, api, sourceCont
         return {
             empty: true,
             source: normalizeSourceContext(sourceContext),
-            artwork: { staticSrc: '/assets/appicon.png', animatedSrc: null, heroSrc: '/assets/appicon.png', isVideo: false },
+            artwork: {
+                staticSrc: '/assets/appicon.png',
+                animatedSrc: null,
+                heroSrc: '/assets/appicon.png',
+                isVideo: false,
+            },
             title: 'Nothing playing',
             artists: [],
             artistLine: 'Choose something to play',
@@ -192,7 +197,10 @@ export async function buildNowPlayingPanelModel({ track, player, api, sourceCont
                   id: artist.id == null ? null : String(artist.id),
                   name: String(artist.name || primaryArtist?.name || 'Unknown artist'),
                   picture: resolveImage(artist.picture || primaryArtist?.picture || track.album?.cover, api),
-                  banner: resolveImage(artist.banner || artist.picture || primaryArtist?.picture || track.album?.cover, api),
+                  banner: resolveImage(
+                      artist.banner || artist.picture || primaryArtist?.picture || track.album?.cover,
+                      api
+                  ),
                   biography,
                   monthlyListeners: Number.isFinite(Number(artist.monthlyListeners))
                       ? Number(artist.monthlyListeners)

@@ -67,7 +67,9 @@ export class NowPlayingPanel {
         this.expandedLyrics = false;
         this.collapsedLyrics = false;
         this.scrollByTrack = new Map();
-        this.background = this.root ? mountSpicyDynamicBackground(this.root, { className: 'now-playing-panel-spicy-bg' }) : null;
+        this.background = this.root
+            ? mountSpicyDynamicBackground(this.root, { className: 'now-playing-panel-spicy-bg' })
+            : null;
         this.desktopMedia = matchMedia(DESKTOP_PANEL_QUERY);
         this.desktopOpenState = true;
         this.isOpen = this.desktopMedia.matches;
@@ -115,7 +117,8 @@ export class NowPlayingPanel {
         this.root.addEventListener('keydown', (event) => this.handleKeydown(event));
         this.reopenButton?.addEventListener('click', () => this.setOpen(true));
         this.content.addEventListener('scroll', () => {
-            if (this.currentTrack?.id != null) this.scrollByTrack.set(String(this.currentTrack.id), this.content.scrollTop);
+            if (this.currentTrack?.id != null)
+                this.scrollByTrack.set(String(this.currentTrack.id), this.content.scrollTop);
         });
         this.setupResize();
         this.setupFullscreenVisibility();
@@ -143,7 +146,9 @@ export class NowPlayingPanel {
         this.root.removeAttribute('aria-modal');
         this.syncFullscreenVisibility();
         if (this.isOpen && restoreFocus) {
-            requestAnimationFrame(() => this.root.querySelector('.now-playing-panel-close')?.focus({ preventScroll: true }));
+            requestAnimationFrame(() =>
+                this.root.querySelector('.now-playing-panel-close')?.focus({ preventScroll: true })
+            );
         } else if (desktopAvailable && restoreFocus) {
             requestAnimationFrame(() => this.reopenButton?.focus({ preventScroll: true }));
         }
@@ -215,7 +220,9 @@ export class NowPlayingPanel {
         this.renderController?.abort();
         const controller = new AbortController();
         this.renderController = controller;
-        const previousScroll = preserveScroll ? this.content.scrollTop : this.scrollByTrack.get(String(this.currentTrack?.id)) || 0;
+        const previousScroll = preserveScroll
+            ? this.content.scrollTop
+            : this.scrollByTrack.get(String(this.currentTrack?.id)) || 0;
         this.cleanupMedia();
         clearLyricsContainerSync(this.content);
         this.content.innerHTML = '<div class="now-playing-panel-loading" role="status">Loading now playing…</div>';
@@ -306,7 +313,9 @@ export class NowPlayingPanel {
             <div class="now-playing-panel-video-grid">${model.relatedVideos
                 .slice(0, 4)
                 .map(
-                    (video) => `<button type="button" class="now-playing-panel-video" ${video.trackId ? `data-track-id="${escapeHtml(video.trackId)}"` : ''} ${video.href ? `data-href="${escapeHtml(video.href)}"` : ''}>
+                    (
+                        video
+                    ) => `<button type="button" class="now-playing-panel-video" ${video.trackId ? `data-track-id="${escapeHtml(video.trackId)}"` : ''} ${video.href ? `data-href="${escapeHtml(video.href)}"` : ''}>
                         <img src="${escapeHtml(video.thumbnail || '/assets/appicon.png')}" alt="" loading="lazy" />
                         <strong>${escapeHtml(video.title)}</strong><span>${escapeHtml(video.subtitle)}</span>
                     </button>`
@@ -341,7 +350,10 @@ export class NowPlayingPanel {
             <header><h3 id="now-playing-panel-credits-title">Credits</h3>${model.credits.length > 3 ? '<button type="button" class="now-playing-panel-show-credits">Show all</button>' : ''}</header>
             <div class="now-playing-panel-credit-list">${model.credits
                 .slice(0, 3)
-                .map((credit) => `<div><strong>${escapeHtml(credit.name)}</strong><span>${escapeHtml(credit.role)}</span></div>`)
+                .map(
+                    (credit) =>
+                        `<div><strong>${escapeHtml(credit.name)}</strong><span>${escapeHtml(credit.role)}</span></div>`
+                )
                 .join('')}</div>
         </section>`;
     }
@@ -369,7 +381,13 @@ export class NowPlayingPanel {
     renderQueue(model) {
         const track = model.nextTrack;
         const title = track?.title || 'Queue is empty';
-        const artist = track?.artists?.map((item) => item.name).filter(Boolean).join(', ') || track?.artist?.name || '';
+        const artist =
+            track?.artists
+                ?.map((item) => item.name)
+                .filter(Boolean)
+                .join(', ') ||
+            track?.artist?.name ||
+            '';
         const cover = track?.album?.cover ? this.api.getCoverUrl(track.album.cover) : '/assets/appicon.png';
         return `<section class="now-playing-panel-card now-playing-panel-next" aria-labelledby="now-playing-panel-next-title">
             <header><h3 id="now-playing-panel-next-title">Next in queue</h3><button type="button" class="now-playing-panel-open-queue">Open queue</button></header>
@@ -413,10 +431,17 @@ export class NowPlayingPanel {
     async mountLyrics(model, signal) {
         const host = this.content.querySelector('.now-playing-panel-lyrics-host');
         if (!host || model.empty) return;
-        const element = await renderLyricsInContainer(this.currentTrack, this.player.activeElement, this.lyricsManager, host, {
-            signal,
-        });
-        if (!element && !signal.aborted) host.innerHTML = '<p class="now-playing-panel-lyrics-empty">Lyrics are not available.</p>';
+        const element = await renderLyricsInContainer(
+            this.currentTrack,
+            this.player.activeElement,
+            this.lyricsManager,
+            host,
+            {
+                signal,
+            }
+        );
+        if (!element && !signal.aborted)
+            host.innerHTML = '<p class="now-playing-panel-lyrics-empty">Lyrics are not available.</p>';
     }
 
     applyLyricsMode() {
@@ -445,7 +470,9 @@ export class NowPlayingPanel {
         const dialog = document.createElement('dialog');
         dialog.className = 'now-playing-panel-dialog';
         dialog.innerHTML = `<div><header><h2>Credits</h2><button type="button" aria-label="Close">${icon('x')}</button></header>${this.model.credits
-            .map((credit) => `<p><strong>${escapeHtml(credit.name)}</strong><span>${escapeHtml(credit.role)}</span></p>`)
+            .map(
+                (credit) => `<p><strong>${escapeHtml(credit.name)}</strong><span>${escapeHtml(credit.role)}</span></p>`
+            )
             .join('')}</div>`;
         document.body.appendChild(dialog);
         dialog.querySelector('button').addEventListener('click', () => dialog.close());
@@ -484,7 +511,11 @@ export class NowPlayingPanel {
         if (button.matches('.now-playing-panel-close')) return this.setOpen(false);
         if (button.matches('.now-playing-panel-context') && button.dataset.href) return navigate(button.dataset.href);
         if (button.matches('.now-playing-panel-menu') && this.currentTrack) {
-            document.dispatchEvent(new CustomEvent('open-current-track-context-menu', { detail: { track: this.currentTrack, anchor: button } }));
+            document.dispatchEvent(
+                new CustomEvent('open-current-track-context-menu', {
+                    detail: { track: this.currentTrack, anchor: button },
+                })
+            );
             return;
         }
         if (button.matches('.now-playing-panel-fullscreen')) return void this.ui?.openCurrentTrackFullscreen?.();
