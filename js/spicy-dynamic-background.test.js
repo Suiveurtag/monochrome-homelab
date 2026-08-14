@@ -18,6 +18,12 @@ vi.mock('@kawarp/core', () => ({
 beforeEach(() => {
     document.body.innerHTML = '';
     kawarpInstances.length = 0;
+    vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    vi.stubGlobal(
+        'matchMedia',
+        vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    );
 });
 
 describe('Spicy dynamic background', () => {
@@ -71,5 +77,51 @@ describe('Spicy dynamic background', () => {
         expect(kawarpInstances[0].loadImage).toHaveBeenLastCalledWith('/covers/current.jpg');
         expect(controller.source).toBe('/covers/current.jpg');
         expect(controller.fallback.style.backgroundImage).toContain('/covers/current.jpg');
+    });
+
+    test('uses upstream playback motion speed and slows only while paused', async () => {
+        const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
+        const host = document.createElement('div');
+        const audio = document.createElement('audio');
+        let paused = false;
+        Object.defineProperty(audio, 'paused', { configurable: true, get: () => paused });
+        document.body.append(host, audio);
+        const controller = mountSpicyDynamicBackground(host);
+        controller.connectPlayback({ getElement: () => audio, getAnalyser: () => null });
+
+        await controller.setSource('/covers/fluid.jpg');
+        expect(kawarpInstances[0].setOptions).toHaveBeenCalledWith(
+            expect.objectContaining({ animationSpeed: 1, scale: 1 })
+        );
+
+        paused = true;
+        audio.dispatchEvent(new Event('pause'));
+        expect(kawarpInstances[0].setOptions).toHaveBeenLastCalledWith(
+            expect.objectContaining({ animationSpeed: 0.1, scale: 1 })
+        );
+        controller.dispose();
+    });
+
+    test('holds the Kawarp frame still when reduced motion is requested', async () => {
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn((query) => ({
+                matches: query === '(prefers-reduced-motion: reduce)',
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            }))
+        );
+        const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const controller = mountSpicyDynamicBackground(host);
+
+        await controller.setSource('/covers/still.jpg');
+
+        expect(kawarpInstances[0].setOptions).toHaveBeenCalledWith(
+            expect.objectContaining({ animationSpeed: 0, scale: 1, transitionDuration: 0 })
+        );
+        expect(requestAnimationFrame).not.toHaveBeenCalled();
+        controller.dispose();
     });
 });

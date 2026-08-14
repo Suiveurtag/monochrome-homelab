@@ -219,6 +219,11 @@ export class ListeningTracker {
         return d.artists[artistId]?.affinity || 0;
     }
 
+    getArtistSignal(artistId) {
+        const d = this._load();
+        return d.artists[artistId] || null;
+    }
+
     getTopArtists(limit = 20) {
         const d = this._load();
         return Object.entries(d.artists)

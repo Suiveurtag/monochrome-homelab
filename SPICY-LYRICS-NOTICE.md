@@ -31,3 +31,9 @@ single `SpicyDynamicBackground` controller owned by that host instead of
 creating or disposing a second Kawarp canvas. This lets the unchanged renderer
 and its real artwork-driven Kawarp background span the complete Now Playing
 panel while keeping ownership and cleanup in Monochrome code.
+
+The shared controller mirrors upstream motion state by running Kawarp at full
+speed during playback, slowing it to `0.1` while paused, and holding a still
+frame for reduced motion. Monochrome's existing audio analyser supplies the
+optional beat-speed and scale modulation; it does not replace or redraw the
+Kawarp background.

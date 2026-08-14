@@ -119,4 +119,23 @@ describe('Now Playing panel model', () => {
         });
         await expect(promise).rejects.toMatchObject({ name: 'AbortError' });
     });
+
+    test('loads and normalizes the existing biography fallback when artist details omit it', async () => {
+        const track = {
+            id: 'bio-track',
+            title: 'Track',
+            artist: { id: 'artist', name: 'Artist' },
+        };
+        const getArtistBiography = vi.fn(async () => ({ text: '<b>Artist</b> biography from the provider.' }));
+        const model = await buildNowPlayingPanelModel({
+            track,
+            player: player([track]),
+            api: {
+                getArtist: vi.fn(async () => ({ id: 'artist', name: 'Artist' })),
+                getArtistBiography,
+            },
+        });
+        expect(getArtistBiography).toHaveBeenCalledWith('artist');
+        expect(model.artist.biography).toBe('Artist biography from the provider.');
+    });
 });

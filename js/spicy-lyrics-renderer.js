@@ -111,7 +111,7 @@ const SHADOW_BRIDGE_CSS = `
     --spice-sidebar: #fff;
 }
 #SpicyLyricsPage.CardMode .LyricsContainer .LyricsContent {
-    --DefaultLyricsSize: clamp(2.2rem, calc(1cqw * 7.5), 3.6rem);
+    --DefaultLyricsSize: clamp(1.85rem, calc(1cqw * 6), 2.8rem);
 }
 #SpicyLyricsPage .LyricsContainer .LyricsContent .SpicyLyricsScrollContainer {
     padding-inline: clamp(1rem, 8cqw, 2.25rem);

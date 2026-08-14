@@ -3397,16 +3397,32 @@ function playbackSourceContext(kind, item = {}, fallbackLabel = 'Now playing') {
 
 function playbackSourceForTrackList(ui, trackItem) {
     if (window.location.pathname.startsWith('/search/')) return playbackSourceContext('single', {}, 'Search');
+    const pageTitle = trackItem
+        .closest('.page')
+        ?.querySelector('.detail-header .title')
+        ?.textContent?.trim();
     if (ui.currentPage === 'artist' && ui.currentArtistId)
-        return playbackSourceContext('artist', { id: ui.currentArtistId, name: ui.currentArtist?.name }, 'Artist');
+        return playbackSourceContext(
+            'artist',
+            { id: ui.currentArtistId, name: ui.currentArtist?.name || pageTitle },
+            'Artist'
+        );
     const path = window.location.pathname.split('/').filter(Boolean);
-    if (path[0] === 'album') return playbackSourceContext('album', { id: path.at(-1) }, 'Album');
-    if (path[0] === 'playlist') return playbackSourceContext('playlist', { id: path[1] }, 'Playlist');
+    if (path[0] === 'album') {
+        return playbackSourceContext(
+            'album',
+            { id: path.at(-1), title: ui.currentAlbum?.title || pageTitle },
+            'Album'
+        );
+    }
+    if (path[0] === 'playlist') {
+        return playbackSourceContext('playlist', { id: path[1], title: pageTitle }, 'Playlist');
+    }
     if (path[0] === 'favorites') return playbackSourceContext('liked', {}, 'Liked Songs');
     return playbackSourceContext(
         'unknown',
         {},
-        trackItem.closest('.page-section')?.querySelector('h1, h2')?.textContent || 'Now playing'
+        pageTitle || trackItem.closest('.page-section')?.querySelector('h1, h2')?.textContent || 'Now playing'
     );
 }
 

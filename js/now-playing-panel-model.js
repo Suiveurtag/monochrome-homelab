@@ -104,6 +104,15 @@ function normalizeTourDates(artist) {
         .filter((event) => event.date && (event.city || event.venue));
 }
 
+function normalizeBiography(value) {
+    const raw = typeof value === 'string' ? value : value?.text || value?.summary || value?.biography || '';
+    return String(raw)
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\[(?:\/?(?:b|i|url)|url=[^\]]+)\]/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 function releaseYear(track) {
     const rendered = getTrackYearDisplay(track);
     if (typeof rendered === 'string') {
@@ -120,12 +129,7 @@ export async function buildNowPlayingPanelModel({ track, player, api, sourceCont
         return {
             empty: true,
             source: normalizeSourceContext(sourceContext),
-            artwork: {
-                staticSrc: '/assets/appicon.png',
-                animatedSrc: null,
-                heroSrc: '/assets/appicon.png',
-                isVideo: false,
-            },
+            artwork: { staticSrc: '/assets/appicon.png', animatedSrc: null, heroSrc: '/assets/appicon.png', isVideo: false },
             title: 'Nothing playing',
             artists: [],
             artistLine: 'Choose something to play',
@@ -146,6 +150,22 @@ export async function buildNowPlayingPanelModel({ track, player, api, sourceCont
             artist = await api.getArtist(primaryArtist.id);
         } catch {
             artist = primaryArtist;
+        }
+    }
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+
+    let biography = normalizeBiography(artist?.biography);
+    if (
+        biography === 'Local artist from your self-hosted library.' ||
+        biography === 'Local artist from your self-hosted library'
+    ) {
+        biography = '';
+    }
+    if (!biography && primaryArtist?.id && typeof api?.getArtistBiography === 'function') {
+        try {
+            biography = normalizeBiography(await api.getArtistBiography(primaryArtist.id));
+        } catch {
+            biography = '';
         }
     }
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
@@ -172,14 +192,8 @@ export async function buildNowPlayingPanelModel({ track, player, api, sourceCont
                   id: artist.id == null ? null : String(artist.id),
                   name: String(artist.name || primaryArtist?.name || 'Unknown artist'),
                   picture: resolveImage(artist.picture || primaryArtist?.picture || track.album?.cover, api),
-                  banner: resolveImage(
-                      artist.banner || artist.picture || primaryArtist?.picture || track.album?.cover,
-                      api
-                  ),
-                  biography:
-                      artist.biography === 'Local artist from your self-hosted library.'
-                          ? ''
-                          : String(artist.biography || ''),
+                  banner: resolveImage(artist.banner || artist.picture || primaryArtist?.picture || track.album?.cover, api),
+                  biography,
                   monthlyListeners: Number.isFinite(Number(artist.monthlyListeners))
                       ? Number(artist.monthlyListeners)
                       : null,

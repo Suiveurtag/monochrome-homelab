@@ -8,21 +8,26 @@ import { navigate } from './router.js';
 import { showNotification } from './downloads.js';
 import { db } from './db.js';
 import { syncManager } from './accounts/pocketbase.js';
+import { audioContextManager } from './audio-context.js';
+import { listeningTracker } from './listening-tracker.js';
 import ICON_CHEVRON_RIGHT from '!lucide/chevron-right.svg?svg&icon';
 import ICON_CHEVRON_UP from '!lucide/chevron-up.svg?svg&icon';
 import ICON_ELLIPSIS from '!lucide/ellipsis.svg?svg&icon';
+import ICON_HEART from '!lucide/heart.svg?svg&icon';
 import ICON_MAXIMIZE from '!lucide/maximize-2.svg?svg&icon';
 import ICON_MONITOR_UP from '!lucide/monitor-up.svg?svg&icon';
 import ICON_SHARE from '!lucide/share-2.svg?svg&icon';
 import ICON_CLOSE from '!lucide/x.svg?svg&icon';
 
-const MOBILE_QUERY = '(max-width: 768px)';
+const DESKTOP_PANEL_QUERY = '(min-width: 769px)';
+const MISSING_BIOGRAPHY = 'No biography is available for this artist yet.';
 
 function icon(name, size = 20) {
     const icons = {
         'chevron-right': ICON_CHEVRON_RIGHT,
         'chevron-up': ICON_CHEVRON_UP,
         ellipsis: ICON_ELLIPSIS,
+        heart: ICON_HEART,
         'maximize-2': ICON_MAXIMIZE,
         'monitor-up': ICON_MONITOR_UP,
         'share-2': ICON_SHARE,
@@ -31,8 +36,9 @@ function icon(name, size = 20) {
     return icons[name]?.(size) || '';
 }
 
-function formatListeners(value) {
-    return value == null ? '' : `${new Intl.NumberFormat().format(value)} monthly listeners`;
+function formatStreams(value) {
+    const streams = Math.max(0, Number(value) || 0);
+    return `${new Intl.NumberFormat().format(streams)} total ${streams === 1 ? 'stream' : 'streams'} in Monochrome`;
 }
 
 function formatTourDate(value) {
@@ -61,10 +67,16 @@ export class NowPlayingPanel {
         this.expandedLyrics = false;
         this.collapsedLyrics = false;
         this.scrollByTrack = new Map();
-        this.background = this.root
-            ? mountSpicyDynamicBackground(this.root, { className: 'now-playing-panel-spicy-bg' })
-            : null;
-        this.isOpen = !matchMedia(MOBILE_QUERY).matches;
+        this.background = this.root ? mountSpicyDynamicBackground(this.root, { className: 'now-playing-panel-spicy-bg' }) : null;
+        this.desktopMedia = matchMedia(DESKTOP_PANEL_QUERY);
+        this.desktopOpenState = true;
+        this.isOpen = this.desktopMedia.matches;
+        this.fullscreenOverlay = document.getElementById('fullscreen-cover-overlay');
+        this.fullscreenObserver = null;
+        this.background?.connectPlayback?.({
+            getElement: () => this.player?.activeElement,
+            getAnalyser: () => audioContextManager.getAnalyser(),
+        });
         this.boundTrackChanged = (event) => {
             this.currentTrack = event.detail?.track || null;
             void this.render();
@@ -82,56 +94,80 @@ export class NowPlayingPanel {
             }
             void this.render({ preserveScroll: true });
         };
+        this.boundDesktopViewportChanged = (event) => {
+            this.setOpen(event.matches ? this.desktopOpenState : false, {
+                restoreFocus: false,
+                preserveDesktopState: true,
+            });
+        };
+        this.boundListeningChanged = () => {
+            queueMicrotask(() => this.syncArtistStreamCount());
+        };
         this.init();
     }
 
     init() {
         if (!this.root || !this.content) return;
         this.root.dataset.initialized = 'true';
-        this.setOpen(this.isOpen, { restoreFocus: false });
+        this.setOpen(this.isOpen, { restoreFocus: false, preserveDesktopState: true });
         this.root.addEventListener('click', (event) => this.handleClick(event));
         this.root.addEventListener('contextmenu', (event) => this.handleContextMenu(event));
         this.root.addEventListener('keydown', (event) => this.handleKeydown(event));
         this.reopenButton?.addEventListener('click', () => this.setOpen(true));
         this.content.addEventListener('scroll', () => {
-            if (this.currentTrack?.id != null)
-                this.scrollByTrack.set(String(this.currentTrack.id), this.content.scrollTop);
+            if (this.currentTrack?.id != null) this.scrollByTrack.set(String(this.currentTrack.id), this.content.scrollTop);
         });
         this.setupResize();
+        this.setupFullscreenVisibility();
+        this.desktopMedia.addEventListener?.('change', this.boundDesktopViewportChanged);
         window.addEventListener('player-track-changed', this.boundTrackChanged);
         window.addEventListener('player-queue-changed', this.boundQueueChanged);
         window.addEventListener('track-metadata-updated', this.boundMetadataChanged);
         window.addEventListener('artist-metadata-updated', this.boundMetadataChanged);
+        window.addEventListener('listening-data-updated', this.boundListeningChanged);
         void this.render();
     }
 
-    setOpen(open, { restoreFocus = true } = {}) {
-        this.isOpen = Boolean(open);
+    setOpen(open, { restoreFocus = true, preserveDesktopState = false } = {}) {
+        const desktopAvailable = this.desktopMedia.matches;
+        if (!preserveDesktopState && desktopAvailable) this.desktopOpenState = Boolean(open);
+        this.isOpen = desktopAvailable && Boolean(open);
         this.root.classList.toggle('is-closed', !this.isOpen);
         this.root.setAttribute('aria-hidden', String(!this.isOpen));
-        this.reopenButton?.classList.toggle('is-visible', !this.isOpen);
+        this.content.inert = !this.isOpen;
+        this.resizer.inert = !this.isOpen;
+        this.reopenButton?.classList.toggle('is-visible', desktopAvailable && !this.isOpen);
         this.reopenButton?.setAttribute('aria-expanded', String(this.isOpen));
-        document.body.classList.toggle('now-playing-panel-closed', !this.isOpen);
-        if (matchMedia(MOBILE_QUERY).matches) {
-            this.root.setAttribute('role', 'dialog');
-            this.root.setAttribute('aria-modal', 'true');
-            for (const element of document.querySelectorAll('.sidebar, .main-content, .now-playing-bar')) {
-                element.inert = this.isOpen;
-            }
-        } else {
-            this.root.setAttribute('role', 'complementary');
-            this.root.removeAttribute('aria-modal');
-            for (const element of document.querySelectorAll('.sidebar, .main-content, .now-playing-bar')) {
-                element.inert = false;
-            }
-        }
-        if (this.isOpen) {
-            requestAnimationFrame(() =>
-                this.root.querySelector('.now-playing-panel-close')?.focus({ preventScroll: true })
-            );
-        } else if (restoreFocus) {
+        document.body.classList.toggle('now-playing-panel-closed', desktopAvailable && !this.isOpen);
+        this.root.setAttribute('role', 'complementary');
+        this.root.removeAttribute('aria-modal');
+        this.syncFullscreenVisibility();
+        if (this.isOpen && restoreFocus) {
+            requestAnimationFrame(() => this.root.querySelector('.now-playing-panel-close')?.focus({ preventScroll: true }));
+        } else if (desktopAvailable && restoreFocus) {
             requestAnimationFrame(() => this.reopenButton?.focus({ preventScroll: true }));
         }
+    }
+
+    setupFullscreenVisibility() {
+        if (!this.fullscreenOverlay) return;
+        this.fullscreenObserver = new MutationObserver(() => this.syncFullscreenVisibility());
+        this.fullscreenObserver.observe(this.fullscreenOverlay, {
+            attributes: true,
+            attributeFilter: ['class', 'style'],
+        });
+        this.syncFullscreenVisibility();
+    }
+
+    syncFullscreenVisibility() {
+        const fullscreenVisible = Boolean(
+            this.fullscreenOverlay && getComputedStyle(this.fullscreenOverlay).display !== 'none'
+        );
+        this.root.classList.toggle('is-fullscreen-hidden', fullscreenVisible);
+        this.root.setAttribute('aria-hidden', String(!this.isOpen || fullscreenVisible));
+        this.content.inert = !this.isOpen || fullscreenVisible;
+        this.resizer.inert = !this.isOpen || fullscreenVisible;
+        if (this.reopenButton) this.reopenButton.hidden = fullscreenVisible || !this.desktopMedia.matches;
     }
 
     setupResize() {
@@ -154,7 +190,7 @@ export class NowPlayingPanel {
             window.removeEventListener('pointerup', stop);
         };
         this.resizer.addEventListener('pointerdown', (event) => {
-            if (matchMedia(MOBILE_QUERY).matches) return;
+            if (!this.desktopMedia.matches) return;
             event.preventDefault();
             resizing = true;
             this.resizer.setPointerCapture?.(event.pointerId);
@@ -179,9 +215,7 @@ export class NowPlayingPanel {
         this.renderController?.abort();
         const controller = new AbortController();
         this.renderController = controller;
-        const previousScroll = preserveScroll
-            ? this.content.scrollTop
-            : this.scrollByTrack.get(String(this.currentTrack?.id)) || 0;
+        const previousScroll = preserveScroll ? this.content.scrollTop : this.scrollByTrack.get(String(this.currentTrack?.id)) || 0;
         this.cleanupMedia();
         clearLyricsContainerSync(this.content);
         this.content.innerHTML = '<div class="now-playing-panel-loading" role="status">Loading now playing…</div>';
@@ -202,7 +236,8 @@ export class NowPlayingPanel {
             await this.mountMedia(model, controller.signal);
             await this.mountLyrics(model, controller.signal);
             this.applyLyricsMode();
-            await this.syncArtistFollowState();
+            await this.syncArtistLikeState();
+            this.syncArtistStreamCount();
             if (this.currentTrack?.id != null) {
                 await this.ui?.refreshTrackSaveButtons?.(this.currentTrack.type || 'track', this.currentTrack.id);
             }
@@ -271,9 +306,7 @@ export class NowPlayingPanel {
             <div class="now-playing-panel-video-grid">${model.relatedVideos
                 .slice(0, 4)
                 .map(
-                    (
-                        video
-                    ) => `<button type="button" class="now-playing-panel-video" ${video.trackId ? `data-track-id="${escapeHtml(video.trackId)}"` : ''} ${video.href ? `data-href="${escapeHtml(video.href)}"` : ''}>
+                    (video) => `<button type="button" class="now-playing-panel-video" ${video.trackId ? `data-track-id="${escapeHtml(video.trackId)}"` : ''} ${video.href ? `data-href="${escapeHtml(video.href)}"` : ''}>
                         <img src="${escapeHtml(video.thumbnail || '/assets/appicon.png')}" alt="" loading="lazy" />
                         <strong>${escapeHtml(video.title)}</strong><span>${escapeHtml(video.subtitle)}</span>
                     </button>`
@@ -284,7 +317,9 @@ export class NowPlayingPanel {
 
     renderArtist(model) {
         if (!model.artist) return '';
-        const listeners = formatListeners(model.artist.monthlyListeners);
+        const streams = listeningTracker.getArtistSignal(model.artist.id)?.playCount || 0;
+        const biography = model.artist.biography.trim() || MISSING_BIOGRAPHY;
+        const heartIcon = this.ui?.createHeartIcon?.(false) || icon('heart');
         return `<section class="now-playing-panel-card now-playing-panel-artist" aria-labelledby="now-playing-panel-artist-title">
             <button type="button" class="now-playing-panel-artist-visual" data-artist-id="${escapeHtml(model.artist.id || '')}">
                 <img src="${escapeHtml(model.artist.banner || model.artwork.staticSrc)}" alt="" loading="lazy" />
@@ -292,10 +327,10 @@ export class NowPlayingPanel {
             </button>
             <div class="now-playing-panel-artist-copy">
                 <div><h3 id="now-playing-panel-artist-title">${escapeHtml(model.artist.name)}</h3>
-                    <button type="button" class="now-playing-panel-follow" data-artist-id="${escapeHtml(model.artist.id || '')}">Follow</button>
+                    <button type="button" class="now-playing-panel-artist-like" data-artist-id="${escapeHtml(model.artist.id || '')}" aria-label="Like ${escapeHtml(model.artist.name)}" aria-pressed="false" title="Like artist">${heartIcon}</button>
                 </div>
-                ${listeners ? `<p class="now-playing-panel-listeners">${escapeHtml(listeners)}</p>` : ''}
-                ${model.artist.biography ? `<p class="now-playing-panel-biography">${escapeHtml(model.artist.biography)}</p>` : ''}
+                <p class="now-playing-panel-streams" data-artist-streams>${escapeHtml(formatStreams(streams))}</p>
+                <p class="now-playing-panel-biography${model.artist.biography ? '' : ' is-placeholder'}">${escapeHtml(biography)}</p>
             </div>
         </section>`;
     }
@@ -306,10 +341,7 @@ export class NowPlayingPanel {
             <header><h3 id="now-playing-panel-credits-title">Credits</h3>${model.credits.length > 3 ? '<button type="button" class="now-playing-panel-show-credits">Show all</button>' : ''}</header>
             <div class="now-playing-panel-credit-list">${model.credits
                 .slice(0, 3)
-                .map(
-                    (credit) =>
-                        `<div><strong>${escapeHtml(credit.name)}</strong><span>${escapeHtml(credit.role)}</span></div>`
-                )
+                .map((credit) => `<div><strong>${escapeHtml(credit.name)}</strong><span>${escapeHtml(credit.role)}</span></div>`)
                 .join('')}</div>
         </section>`;
     }
@@ -337,13 +369,7 @@ export class NowPlayingPanel {
     renderQueue(model) {
         const track = model.nextTrack;
         const title = track?.title || 'Queue is empty';
-        const artist =
-            track?.artists
-                ?.map((item) => item.name)
-                .filter(Boolean)
-                .join(', ') ||
-            track?.artist?.name ||
-            '';
+        const artist = track?.artists?.map((item) => item.name).filter(Boolean).join(', ') || track?.artist?.name || '';
         const cover = track?.album?.cover ? this.api.getCoverUrl(track.album.cover) : '/assets/appicon.png';
         return `<section class="now-playing-panel-card now-playing-panel-next" aria-labelledby="now-playing-panel-next-title">
             <header><h3 id="now-playing-panel-next-title">Next in queue</h3><button type="button" class="now-playing-panel-open-queue">Open queue</button></header>
@@ -387,17 +413,10 @@ export class NowPlayingPanel {
     async mountLyrics(model, signal) {
         const host = this.content.querySelector('.now-playing-panel-lyrics-host');
         if (!host || model.empty) return;
-        const element = await renderLyricsInContainer(
-            this.currentTrack,
-            this.player.activeElement,
-            this.lyricsManager,
-            host,
-            {
-                signal,
-            }
-        );
-        if (!element && !signal.aborted)
-            host.innerHTML = '<p class="now-playing-panel-lyrics-empty">Lyrics are not available.</p>';
+        const element = await renderLyricsInContainer(this.currentTrack, this.player.activeElement, this.lyricsManager, host, {
+            signal,
+        });
+        if (!element && !signal.aborted) host.innerHTML = '<p class="now-playing-panel-lyrics-empty">Lyrics are not available.</p>';
     }
 
     applyLyricsMode() {
@@ -426,9 +445,7 @@ export class NowPlayingPanel {
         const dialog = document.createElement('dialog');
         dialog.className = 'now-playing-panel-dialog';
         dialog.innerHTML = `<div><header><h2>Credits</h2><button type="button" aria-label="Close">${icon('x')}</button></header>${this.model.credits
-            .map(
-                (credit) => `<p><strong>${escapeHtml(credit.name)}</strong><span>${escapeHtml(credit.role)}</span></p>`
-            )
+            .map((credit) => `<p><strong>${escapeHtml(credit.name)}</strong><span>${escapeHtml(credit.role)}</span></p>`)
             .join('')}</div>`;
         document.body.appendChild(dialog);
         dialog.querySelector('button').addEventListener('click', () => dialog.close());
@@ -436,12 +453,22 @@ export class NowPlayingPanel {
         dialog.showModal();
     }
 
-    async syncArtistFollowState() {
-        const button = this.root.querySelector('.now-playing-panel-follow');
+    async syncArtistLikeState() {
+        const button = this.root.querySelector('.now-playing-panel-artist-like');
         if (!button || !this.model?.artist?.id) return;
-        const following = await db.isFavorite('artist', this.model.artist.id);
-        button.textContent = following ? 'Following' : 'Follow';
-        button.setAttribute('aria-pressed', String(following));
+        const liked = await db.isFavorite('artist', this.model.artist.id);
+        button.innerHTML = this.ui?.createHeartIcon?.(liked) || icon('heart');
+        button.classList.toggle('active', liked);
+        button.setAttribute('aria-pressed', String(liked));
+        button.setAttribute('aria-label', `${liked ? 'Unlike' : 'Like'} ${this.model.artist.name}`);
+        button.title = liked ? 'Unlike artist' : 'Like artist';
+    }
+
+    syncArtistStreamCount() {
+        const element = this.root.querySelector('[data-artist-streams]');
+        if (!element || !this.model?.artist?.id) return;
+        const streams = listeningTracker.getArtistSignal(this.model.artist.id)?.playCount || 0;
+        element.textContent = formatStreams(streams);
     }
 
     handleContextMenu(event) {
@@ -457,11 +484,7 @@ export class NowPlayingPanel {
         if (button.matches('.now-playing-panel-close')) return this.setOpen(false);
         if (button.matches('.now-playing-panel-context') && button.dataset.href) return navigate(button.dataset.href);
         if (button.matches('.now-playing-panel-menu') && this.currentTrack) {
-            document.dispatchEvent(
-                new CustomEvent('open-current-track-context-menu', {
-                    detail: { track: this.currentTrack, anchor: button },
-                })
-            );
+            document.dispatchEvent(new CustomEvent('open-current-track-context-menu', { detail: { track: this.currentTrack, anchor: button } }));
             return;
         }
         if (button.matches('.now-playing-panel-fullscreen')) return void this.ui?.openCurrentTrackFullscreen?.();
@@ -498,12 +521,12 @@ export class NowPlayingPanel {
             button.remove();
             return;
         }
-        if (button.matches('.now-playing-panel-follow') && this.model?.artist?.id) {
+        if (button.matches('.now-playing-panel-artist-like') && this.model?.artist?.id) {
             const artist = { ...this.model.artist, type: 'artist' };
-            const following = await db.toggleFavorite('artist', artist);
-            await syncManager.syncLibraryItem('artist', artist, following);
-            await this.syncArtistFollowState();
-            showNotification(`${following ? 'Following' : 'Unfollowed'} ${artist.name}`);
+            const liked = await db.toggleFavorite('artist', artist);
+            await syncManager.syncLibraryItem('artist', artist, liked);
+            await this.syncArtistLikeState();
+            showNotification(`${liked ? 'Liked' : 'Unliked'} ${artist.name}`);
             return;
         }
         const artistButton = button.closest('[data-artist-id]');
@@ -525,20 +548,6 @@ export class NowPlayingPanel {
             }
             return;
         }
-        if (!matchMedia(MOBILE_QUERY).matches || event.key !== 'Tab') return;
-        const focusable = [
-            ...this.root.querySelectorAll('button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'),
-        ];
-        if (!focusable.length) return;
-        const first = focusable[0];
-        const last = focusable.at(-1);
-        if (event.shiftKey && document.activeElement === first) {
-            event.preventDefault();
-            last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-            event.preventDefault();
-            first.focus();
-        }
     }
 
     destroy() {
@@ -546,9 +555,12 @@ export class NowPlayingPanel {
         this.cleanupMedia();
         clearLyricsContainerSync(this.content);
         this.background?.dispose();
+        this.fullscreenObserver?.disconnect();
+        this.desktopMedia.removeEventListener?.('change', this.boundDesktopViewportChanged);
         window.removeEventListener('player-track-changed', this.boundTrackChanged);
         window.removeEventListener('player-queue-changed', this.boundQueueChanged);
         window.removeEventListener('track-metadata-updated', this.boundMetadataChanged);
         window.removeEventListener('artist-metadata-updated', this.boundMetadataChanged);
+        window.removeEventListener('listening-data-updated', this.boundListeningChanged);
     }
 }
