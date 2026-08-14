@@ -8,6 +8,7 @@ import {
     crossfadeSettings,
     exponentialVolumeSettings,
     audioEffectsSettings,
+    queueManager,
 } from '../storage.js';
 
 describe('storage.js', () => {
@@ -135,6 +136,19 @@ describe('storage.js', () => {
             audioEffectsSettings.setSpeed(2.0);
             audioEffectsSettings.resetSpeed();
             expect(audioEffectsSettings.getSpeed()).toBe(1.0);
+        });
+    });
+
+    describe('queueManager', () => {
+        test('persists the playback source context with the queue', () => {
+            const sourceContext = {
+                kind: 'album',
+                id: 'album-1',
+                label: 'Album title',
+                href: '/album/album-1',
+            };
+            queueManager.saveQueue({ queue: [{ id: 'track-1' }], currentQueueIndex: 0, sourceContext });
+            expect(queueManager.getQueue().sourceContext).toEqual(sourceContext);
         });
     });
 });

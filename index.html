@@ -78,6 +78,7 @@
         <link rel="icon" href="/assets/logo.svg" type="image/svg+xml" />
         <link rel="stylesheet" href="/styles.css" />
         <link rel="stylesheet" href="/player-refined.css" />
+        <link rel="stylesheet" href="/now-playing-panel.css" />
         <link rel="stylesheet" href="/soggy-easter-egg.css" />
         <link rel="stylesheet" href="/metallic-logo-easter-egg.css" />
     </head>
@@ -2732,12 +2733,24 @@
 
                 <div id="page-album" class="page">
                     <header class="detail-header">
-                        <img
-                            id="album-detail-image"
-                            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-                            alt=""
-                            class="detail-header-image"
-                        />
+                        <button
+                            class="album-cover-inspect-trigger"
+                            id="album-cover-inspect-trigger"
+                            type="button"
+                            aria-label="Inspect album cover"
+                            aria-haspopup="dialog"
+                        >
+                            <img
+                                id="album-detail-image"
+                                src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                                alt=""
+                                class="detail-header-image"
+                            />
+                            <span class="album-cover-inspect-hint" aria-hidden="true">
+                                <use svg="!lucide/scan-search.svg" size="18" />
+                                <span>View cover</span>
+                            </span>
+                        </button>
                         <div class="detail-header-info">
                             <div class="type" id="album-detail-type"></div>
                             <h1 class="title" id="album-detail-title"></h1>
@@ -2825,6 +2838,49 @@
                             <h2 class="section-title" id="album-title-more-albums">More albums from artist</h2>
                             <div class="card-grid" id="album-detail-more-albums"></div>
                         </section>
+                    </div>
+                </div>
+
+                <div
+                    id="album-cover-inspector"
+                    class="album-cover-inspector"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="album-cover-inspector-title"
+                    hidden
+                >
+                    <div class="album-cover-inspector-actions">
+                        <button
+                            class="album-cover-inspector-action album-cover-inspector-download"
+                            type="button"
+                            aria-label="Download album cover"
+                            title="Download cover"
+                        >
+                            <use svg="!lucide/download.svg" size="20" />
+                        </button>
+                        <button
+                            class="album-cover-inspector-action album-cover-inspector-close"
+                            type="button"
+                            aria-label="Close cover viewer"
+                            title="Close"
+                        >
+                            <use svg="!lucide/x.svg" size="22" />
+                        </button>
+                    </div>
+                    <div class="album-cover-inspector-stage">
+                        <div class="album-cover-inspector-arrival">
+                            <div class="album-cover-inspector-card">
+                                <div class="album-cover-inspector-media-host"></div>
+                                <div class="album-cover-inspector-light" aria-hidden="true"></div>
+                            </div>
+                        </div>
+                        <div class="album-cover-inspector-caption">
+                            <h2 id="album-cover-inspector-title">Album cover</h2>
+                            <p id="album-cover-inspector-artist"></p>
+                            <span class="album-cover-inspector-instruction" aria-hidden="true"
+                                >Move your pointer or drag to tilt</span
+                            >
+                        </div>
                     </div>
                 </div>
 
@@ -6614,6 +6670,35 @@
                     </div>
                 </div>
             </main>
+
+            <aside
+                id="now-playing-panel"
+                class="now-playing-panel"
+                data-spicy-background-host
+                aria-label="Now playing"
+            >
+                <div
+                    class="now-playing-panel-resizer"
+                    role="separator"
+                    tabindex="0"
+                    aria-label="Resize Now Playing panel"
+                    aria-orientation="vertical"
+                    aria-valuemin="360"
+                    aria-valuemax="520"
+                    aria-valuenow="420"
+                ></div>
+                <div class="now-playing-panel-scroll"></div>
+            </aside>
+            <button
+                id="now-playing-panel-reopen"
+                class="now-playing-panel-reopen"
+                type="button"
+                aria-label="Open Now Playing"
+                aria-controls="now-playing-panel"
+                aria-expanded="true"
+            >
+                <use svg="!lucide/chevron-left.svg" size="18" />
+            </button>
 
             <footer class="now-playing-bar" data-player-effect="dark-veil">
                 <div class="player-shader-stage" aria-hidden="true"></div>

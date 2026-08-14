@@ -21,7 +21,7 @@ export function parseTtmlTime(value) {
 
 function getAttributeByLocalName(element, localName) {
     for (const attribute of element.attributes || []) {
-        if (attribute.localName === localName) return attribute.value;
+        if (attribute.localName === localName || attribute.name?.split(':').at(-1) === localName) return attribute.value;
     }
     return null;
 }
@@ -38,7 +38,10 @@ export function parseSpicyTtml(ttml) {
     const documentNode = new DOMParser().parseFromString(ttml, 'application/xml');
     if (documentNode.getElementsByTagName('parsererror').length) throw new Error('Invalid TTML document');
 
-    const paragraphs = Array.from(documentNode.getElementsByTagNameNS('*', 'p'));
+    const namespacedParagraphs = Array.from(documentNode.getElementsByTagNameNS('*', 'p'));
+    const paragraphs = namespacedParagraphs.length
+        ? namespacedParagraphs
+        : Array.from(documentNode.getElementsByTagName('p'));
     const parsed = paragraphs
         .map((paragraph, lineIndex) => {
             const next = paragraphs[lineIndex + 1];

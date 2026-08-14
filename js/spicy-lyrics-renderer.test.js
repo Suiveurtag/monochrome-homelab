@@ -115,6 +115,23 @@ describe('Spicy Lyrics renderer', () => {
         expect(element.shadowRoot.querySelector('.letterGroup')?.textContent).toBe('Lyrics');
     });
 
+    test('reuses one host-owned background controller inside the Now Playing panel', async () => {
+        const host = document.createElement('aside');
+        host.dataset.spicyBackgroundHost = '';
+        const element = new SpicyLyricsElement();
+        element.ttml = WORD_SYNC_TTML;
+        host.appendChild(element);
+        document.body.appendChild(host);
+        await Promise.resolve();
+
+        expect(element._dynamicBackground).toBeNull();
+        expect(element._ownsExternalBackground).toBe(false);
+        expect(host.querySelectorAll('[data-spicy-background]')).toHaveLength(1);
+        expect(host.querySelectorAll('canvas.spicy-dynamic-bg')).toHaveLength(1);
+        expect(element.shadowRoot.querySelector('canvas.spicy-dynamic-bg')).toBeNull();
+        expect(element.getAttribute('data-external-background')).toBe('true');
+    });
+
     test('uses the upstream damped spring solver without overshooting a critical spring', () => {
         const spring = new SpicySpring(0, 2, 1, 1);
         const samples = Array.from({ length: 120 }, () => spring.Step(1 / 60));

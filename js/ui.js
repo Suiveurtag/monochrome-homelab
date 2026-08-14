@@ -15,6 +15,7 @@ import {
     escapeHtml,
     decodeHtml,
     getShareUrl,
+    getCoverBlob,
 } from './utils.js';
 import {
     openLyricsPanel,
@@ -50,6 +51,7 @@ import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
 import { isVideoArtwork, setArtworkBackground } from './animated-artwork.js';
 import { getTrackThemeColor } from './track-theme-color.js';
 import { listeningTracker } from './listening-tracker.js';
+import { AlbumCoverInspector } from './album-cover-inspector.js';
 import {
     applyTrackSaveStateToButton,
     buildTrackSaveStateSnapshot,
@@ -246,6 +248,24 @@ export class UIRenderer {
         this.fullscreenOpenGeneration = 0;
         this.trackSaveStateSnapshot = null;
         this.trackSaveStatePromise = null;
+        this.albumCoverInspector = new AlbumCoverInspector();
+
+        document.getElementById('album-cover-inspect-trigger')?.addEventListener('click', (event) => {
+            const media = event.currentTarget.querySelector('#album-detail-image');
+            if (!media || !this.currentAlbum) return;
+            const artist =
+                this.currentAlbum.artist?.name ||
+                this.currentAlbum.artists?.map((item) => item?.name).filter(Boolean).join(', ') ||
+                '';
+            const coverId = this.currentAlbum.cover;
+            void this.albumCoverInspector.open({
+                media,
+                trigger: event.currentTarget,
+                title: this.currentAlbum.title || 'Album cover',
+                artist,
+                downloadSource: coverId ? () => getCoverBlob(this.api, coverId) : media.currentSrc || media.src,
+            });
+        });
 
         const invalidateTrackSaveState = () => {
             this.trackSaveStateSnapshot = null;
@@ -4096,6 +4116,7 @@ export class UIRenderer {
         await this.showPage('album');
 
         const imageEl = document.getElementById('album-detail-image');
+        const coverTrigger = document.getElementById('album-cover-inspect-trigger');
         const typeEl = document.getElementById('album-detail-type');
         const titleEl = document.getElementById('album-detail-title');
         const metaEl = document.getElementById('album-detail-meta');
@@ -4112,6 +4133,11 @@ export class UIRenderer {
         if (mixBtn) mixBtn.style.display = 'none';
         const albumEditBtn = document.getElementById('edit-album-metadata-btn');
         if (albumEditBtn) albumEditBtn.style.display = 'none';
+        this.currentAlbum = null;
+        if (coverTrigger) {
+            coverTrigger.disabled = true;
+            coverTrigger.setAttribute('aria-label', 'Album cover is loading');
+        }
 
         imageEl.src = '';
         imageEl.style.backgroundColor = 'var(--muted)';
@@ -4149,6 +4175,11 @@ export class UIRenderer {
                 document.getElementById('page-album').innerHTML =
                     '<p style="padding: 2rem; color: var(--muted-foreground);">This content is unavailable due to a DMCA notice.</p>';
                 return;
+            }
+
+            if (coverTrigger) {
+                coverTrigger.disabled = false;
+                coverTrigger.setAttribute('aria-label', `Inspect ${album.title || 'album'} cover`);
             }
 
             const videoCoverUrl = album.videoCoverUrl || null;
@@ -4656,7 +4687,13 @@ export class UIRenderer {
                 );
 
                 playBtn.onclick = () => {
-                    this.player.setQueue(currentTracks, 0);
+                    const playlistId = playlistData.id || playlistData.uuid;
+                    this.player.setQueue(currentTracks, 0, false, {
+                        kind: 'playlist',
+                        id: playlistId == null ? null : String(playlistId),
+                        label: playlistData.name || playlistData.title || 'Playlist',
+                        href: playlistId == null ? null : `/playlist/${playlistId}`,
+                    });
                     this.player.playTrackFromQueue();
                 };
 
@@ -4747,7 +4784,12 @@ export class UIRenderer {
                 await renderTracks();
 
                 playBtn.onclick = () => {
-                    this.player.setQueue(currentTracks, 0);
+                    this.player.setQueue(currentTracks, 0, false, {
+                        kind: 'playlist',
+                        id: String(playlistId),
+                        label: playlist.name || playlist.title || 'Playlist',
+                        href: `/playlist/${playlistId}`,
+                    });
                     this.player.playTrackFromQueue();
                 };
 
@@ -4981,7 +5023,12 @@ export class UIRenderer {
 
             // Set play button action
             playBtn.onclick = () => {
-                this.player.setQueue(tracks, 0);
+                this.player.setQueue(tracks, 0, false, {
+                    kind: 'playlist',
+                    id: String(mix.id),
+                    label: mix.title || 'Mix',
+                    href: `/mix/${mix.id}`,
+                });
                 this.player.playTrackFromQueue();
             };
 
@@ -5808,7 +5855,13 @@ export class UIRenderer {
         shuffleBtn.innerHTML = `${SVG_SHUFFLE(20)}<span>Shuffle</span>`;
         shuffleBtn.onclick = () => {
             const shuffledTracks = [...tracks].sort(() => Math.random() - 0.5);
-            this.player.setQueue(shuffledTracks, 0);
+            const playlistId = playlist.id || playlist.uuid;
+            this.player.setQueue(shuffledTracks, 0, false, {
+                kind: 'playlist',
+                id: playlistId == null ? null : String(playlistId),
+                label: playlist.name || playlist.title || 'Playlist',
+                href: playlistId == null ? null : `/playlist/${playlistId}`,
+            });
             this.player.playTrackFromQueue();
         };
 
@@ -6249,7 +6302,12 @@ export class UIRenderer {
             }
 
             playBtn.onclick = () => {
-                this.player.setQueue([track], 0);
+                this.player.setQueue([track], 0, false, {
+                    kind: 'single',
+                    id: String(track.id),
+                    label: track.title || 'Now playing',
+                    href: `/track/${track.id}`,
+                });
                 this.player.enableAutoplay();
                 this.player.playTrackFromQueue();
             };

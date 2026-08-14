@@ -330,6 +330,9 @@ export class MusicDatabase {
                 duration: item.duration || null,
                 explicit: item.explicit || false,
                 themeColor: item.themeColor || null,
+                credits: item.credits || null,
+                composer: item.composer || null,
+                composers: item.composers || null,
                 // Keep minimal artist info
                 artist: item.artist || (item.artists && item.artists.length > 0 ? item.artists[0] : null) || null,
                 artists: item.artists?.map((a) => ({ id: a.id, name: a.name || null })) || [],
@@ -410,6 +413,10 @@ export class MusicDatabase {
                 pictureFallback: item.pictureFallback || null,
                 banner: item.banner || null,
                 bannerFallback: item.bannerFallback || null,
+                biography: item.biography || null,
+                monthlyListeners: item.monthlyListeners || null,
+                relatedVideos: item.relatedVideos || null,
+                tourDates: item.tourDates || null,
             };
         }
 

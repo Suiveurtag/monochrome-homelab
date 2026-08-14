@@ -11,9 +11,9 @@
  * behaviour for TTML line and word timing.
  */
 
-import Kawarp from '@kawarp/core';
 import SimpleBar from 'simplebar';
 import simplebarCss from 'simplebar/dist/simplebar.css?raw';
+import { SpicyDynamicBackground, mountSpicyDynamicBackground } from './spicy-dynamic-background.js';
 import { Spring } from './vendor/spicy-lyrics/Spring.js';
 import upstreamMainCss from './vendor/spicy-lyrics/upstream/main.css?raw';
 import upstreamMixedCss from './vendor/spicy-lyrics/upstream/Mixed.css?raw';
@@ -78,6 +78,9 @@ const SHADOW_BRIDGE_CSS = `
     color: #fff;
     container-type: size;
     background: rgb(10 12 16);
+}
+:host([data-external-background='true']) {
+    background: transparent;
 }
 *, *::before, *::after { box-sizing: border-box; }
 #SpicyLyricsPage {
@@ -173,6 +176,10 @@ const SHADOW_BRIDGE_CSS = `
 #SpicyLyricsPage.Fullscreen > :is(.spicy-dynamic-bg, .spicy-dynamic-bg-fallback, .spicy-dynamic-bg-shade) {
     opacity: 0;
 }
+:host([data-external-background='true'])
+    #SpicyLyricsPage > :is(.spicy-dynamic-bg, .spicy-dynamic-bg-fallback, .spicy-dynamic-bg-shade) {
+    opacity: 0;
+}
 .spicy-dynamic-bg-shade {
     z-index: -1;
     background: linear-gradient(180deg, rgb(5 7 10 / 0.12), rgb(5 7 10 / 0.58));
@@ -180,17 +187,6 @@ const SHADOW_BRIDGE_CSS = `
 .simplebar-track { z-index: 20; }
 .simplebar-scrollbar::before { background: var(--Simplebar-Scrollbar-Color, rgb(255 255 255 / 0.6)); }
 `;
-
-const KAWARP_OPTIONS = {
-    warpIntensity: 1,
-    blurPasses: 8,
-    animationSpeed: 0.1,
-    saturation: 1.5,
-    dithering: 0.008,
-    transitionDuration: 500,
-    tintIntensity: 0,
-    scale: 1,
-};
 
 function createMusicalInterlude(start, end, opposite = false) {
     const duration = end - start;
@@ -227,8 +223,9 @@ function addMusicalInterludes(lines) {
 }
 
 function resolveCoverUrl(track, api) {
-    const animated = track?.videoUrl || track?.videoCoverUrl || track?.album?.videoCoverUrl;
-    if (animated && !/\.mp4(?:$|[?#])/i.test(animated)) return animated;
+    // Kawarp accepts still images. Animated MP4/HLS artwork remains in the
+    // host's media element while its real poster/cover drives the shared
+    // full-surface background.
     const cover = track?.album?.cover || track?.cover || track?.image || track?.album?.coverId || track?.coverId;
     if (!cover) return '';
     if (/^(?:https?:|blob:|data:)/i.test(cover)) return cover;
@@ -294,7 +291,9 @@ export class SpicyLyricsElement extends HTMLElement {
         this._lastPosition = 0;
         this._pendingScrollTimer = null;
         this._virtualizer = new LyricsVirtualizer();
-        this._kawarp = null;
+        this._dynamicBackground = null;
+        this._externalBackground = null;
+        this._ownsExternalBackground = false;
         this._coverUrl = '';
         this._connected = false;
         this._simpleBar = null;
@@ -321,10 +320,11 @@ export class SpicyLyricsElement extends HTMLElement {
         this._virtualizer.destroy();
         this._simpleBar?.unMount();
         this._simpleBar = null;
-        this._kawarp?.dispose();
-        this._kawarp = null;
-        this._externalBackground?.remove();
+        this._dynamicBackground?.dispose();
+        this._dynamicBackground = null;
+        if (this._ownsExternalBackground) this._externalBackground?.dispose();
         this._externalBackground = null;
+        this._ownsExternalBackground = false;
     }
 
     set ttml(value) {
@@ -357,8 +357,8 @@ export class SpicyLyricsElement extends HTMLElement {
         this._virtualizer.destroy();
         this._simpleBar?.unMount();
         this._simpleBar = null;
-        this._kawarp?.dispose();
-        this._kawarp = null;
+        this._dynamicBackground?.dispose();
+        this._dynamicBackground = null;
         this._root.replaceChildren();
 
         const styles = document.createElement('style');
@@ -542,7 +542,9 @@ export class SpicyLyricsElement extends HTMLElement {
         content.appendChild(scroll);
         lyricsContainer.appendChild(content);
         contentBox.append(nowBar, lyricsContainer);
-        page.append(background, canvas, shade, contentBox);
+        const sharedBackgroundHost = this.closest('[data-spicy-background-host]');
+        if (sharedBackgroundHost) page.append(contentBox);
+        else page.append(background, canvas, shade, contentBox);
         this._root.append(styles, page);
         this._simpleBar = new SimpleBar(content, { autoHide: false });
         this._simpleBar.recalculate();
@@ -550,8 +552,11 @@ export class SpicyLyricsElement extends HTMLElement {
         this._scrollContainer = scroll;
         this._lyricsContent = content;
         this._page = page;
-        this._canvas = canvas;
-        this._fallback = background;
+        this._canvas = sharedBackgroundHost ? null : canvas;
+        this._fallback = sharedBackgroundHost ? null : background;
+        this._dynamicBackground = sharedBackgroundHost
+            ? null
+            : new SpicyDynamicBackground({ root: page, canvas, fallback: background });
         this._activeLineIndex = -1;
         this._lastPosition = 0;
         this._virtualizer.setOnNewElementMounted(notifyNewElementMounted);
@@ -565,41 +570,27 @@ export class SpicyLyricsElement extends HTMLElement {
     }
 
     async applyDynamicBackground() {
-        if (!this._canvas || !this._fallback) return;
+        const sharedHost = this.closest('[data-spicy-background-host]');
+        if (!sharedHost && (!this._canvas || !this._fallback)) return;
         const fullscreenOverlay = this.closest('#fullscreen-cover-overlay');
-        if (fullscreenOverlay && !this._externalBackground) {
-            const host = document.createElement('div');
-            host.className = 'spicy-lyrics-fullscreen-bg';
-            const fallback = document.createElement('div');
-            fallback.className = 'spicy-dynamic-bg-fallback';
-            const canvas = document.createElement('canvas');
-            canvas.className = 'spicy-dynamic-bg';
-            const shade = document.createElement('div');
-            shade.className = 'spicy-dynamic-bg-shade';
-            host.append(fallback, canvas, shade);
-            fullscreenOverlay.prepend(host);
-            this._externalBackground = host;
+        if (sharedHost) {
+            this.setAttribute('data-external-background', 'true');
+            this._externalBackground = mountSpicyDynamicBackground(sharedHost, {
+                className: 'now-playing-panel-spicy-bg',
+            });
+            this._ownsExternalBackground = false;
+        } else if (fullscreenOverlay && !this._externalBackground) {
+            this.removeAttribute('data-external-background');
+            this._externalBackground = mountSpicyDynamicBackground(fullscreenOverlay, {
+                className: 'spicy-lyrics-fullscreen-bg',
+            });
+            this._ownsExternalBackground = true;
+        } else if (!fullscreenOverlay) {
+            this.removeAttribute('data-external-background');
         }
 
-        const canvas = this._externalBackground?.querySelector('canvas') || this._canvas;
-        const fallback = this._externalBackground?.querySelector('.spicy-dynamic-bg-fallback') || this._fallback;
-        const safeUrl = String(this._coverUrl || '').replaceAll('"', '%22');
-        fallback.style.backgroundImage = safeUrl ? `url("${safeUrl}")` : '';
-        if (!this._coverUrl || /\.mp4(?:$|[?#])/i.test(this._coverUrl)) return;
-
-        try {
-            if (!this._kawarp) this._kawarp = new Kawarp(canvas, KAWARP_OPTIONS);
-            await this._kawarp.loadImage(this._coverUrl);
-            this._kawarp.start();
-            this._page?.classList.add('has-kawarp-background');
-            this._externalBackground?.classList.add('has-kawarp-background');
-            window.setTimeout(() => this._kawarp?.setOptions({ transitionDuration: 1000 }), 1000);
-        } catch (error) {
-            this._page?.classList.remove('has-kawarp-background');
-            this._externalBackground?.classList.remove('has-kawarp-background');
-            canvas.style.display = 'none';
-            console.warn('Spicy Lyrics dynamic background fell back to cover blur:', error);
-        }
+        const background = this._externalBackground || this._dynamicBackground;
+        await background?.setSource(this._coverUrl);
     }
 
     animate(force = false) {

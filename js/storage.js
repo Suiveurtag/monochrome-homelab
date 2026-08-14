@@ -2096,6 +2096,7 @@ export const queueManager = {
                 currentQueueIndex: queueState.currentQueueIndex,
                 shuffleActive: queueState.shuffleActive,
                 repeatMode: queueState.repeatMode,
+                sourceContext: queueState.sourceContext || null,
             };
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(minimalState));
         } catch (e) {

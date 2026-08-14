@@ -269,6 +269,7 @@ export class LyricsManager {
 
             // Also patch fetch just in case
             if (!window._originalFetch) {
+                // eslint-disable-next-line @typescript-eslint/unbound-method
                 window._originalFetch = window.fetch;
                 window.fetch = async (url, options) => {
                     const urlStr = url instanceof URL ? url.toString() : url.url;
@@ -1241,9 +1242,11 @@ function showGeniusAnnotations(annotations, lineText) {
     });
 }
 
-export async function renderLyricsInFullscreen(track, audioPlayer, lyricsManager, container, options = {}) {
+export async function renderLyricsInContainer(track, audioPlayer, lyricsManager, container, options = {}) {
     return renderLyricsComponent(container, track, audioPlayer, lyricsManager, options);
 }
+
+export const renderLyricsInFullscreen = renderLyricsInContainer;
 
 export function clearFullscreenLyricsSync(container) {
     if (container && container.lyricsCleanup) {
@@ -1254,6 +1257,8 @@ export function clearFullscreenLyricsSync(container) {
         container.lyricsManager.stopLyricsObserver();
     }
 }
+
+export const clearLyricsContainerSync = clearFullscreenLyricsSync;
 
 export function clearLyricsPanelSync(_audioPlayer, panel) {
     if (panel && panel.lyricsCleanup) {

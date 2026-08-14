@@ -75,6 +75,7 @@ export class Player {
         setInterval(this.checkPreloadConditions.bind(this), 2000);
         this.preloadAbortController = null;
         this.currentTrack = null;
+        this.sourceContext = null;
         this.currentRgValues = null;
         this.userVolume = parseFloat(localStorage.getItem('volume') || '0.7');
         this.isFallbackRetry = false;
@@ -369,6 +370,7 @@ export class Player {
             this.currentQueueIndex = savedState.currentQueueIndex ?? -1;
             this.shuffleActive = savedState.shuffleActive || false;
             this.repeatMode = savedState.repeatMode !== undefined ? savedState.repeatMode : REPEAT_MODE.OFF;
+            this.sourceContext = savedState.sourceContext || null;
 
             // Restore current track if queue exists and index is valid
             const currentQueue = this.shuffleActive ? this.shuffledQueue : this.queue;
@@ -485,7 +487,18 @@ export class Player {
             currentQueueIndex: this.currentQueueIndex,
             shuffleActive: this.shuffleActive,
             repeatMode: this.repeatMode,
+            sourceContext: this.sourceContext,
         });
+
+        window.dispatchEvent(
+            new CustomEvent('player-queue-changed', {
+                detail: {
+                    queue: this.getCurrentQueue(),
+                    currentIndex: this.currentQueueIndex,
+                    sourceContext: this.sourceContext,
+                },
+            })
+        );
 
         if (window.renderQueueFunction) {
             await window.renderQueueFunction();
@@ -1302,6 +1315,7 @@ export class Player {
         }
 
         this.currentTrack = track;
+        window.dispatchEvent(new CustomEvent('player-track-changed', { detail: { track } }));
         this.setCompactPlayerAvailability(true);
         this.notifyPlaybackStatus('loading', `Loading ${getTrackTitle(track)}…`, ['skip']);
         this.addToRecentlyPlayed(track.id);
@@ -1323,6 +1337,7 @@ export class Player {
                 if (this.currentTrack?.id === track.id && result && (result.videoUrl || result.hlsUrl)) {
                     track.videoCoverUrl = result.videoUrl || result.hlsUrl;
                     void this.updateVideoCovers(track.videoCoverUrl);
+                    window.dispatchEvent(new CustomEvent('player-track-changed', { detail: { track } }));
 
                     if (
                         UIRenderer.instance &&
@@ -2369,13 +2384,19 @@ export class Player {
         return this.repeatMode;
     }
 
-    async setQueue(tracks, startIndex = 0, isRadio = false) {
+    async setQueue(tracks, startIndex = 0, isRadio = false, sourceContext = null) {
         if (!isRadio) {
             this.disableRadio();
         }
         this.queue = tracks;
         this.currentQueueIndex = startIndex;
         this.shuffleActive = false;
+        this.sourceContext = sourceContext || {
+            kind: isRadio ? 'radio' : tracks.length === 1 ? 'single' : 'unknown',
+            id: null,
+            label: isRadio ? 'Radio' : tracks.length === 1 ? 'Now playing' : 'Queue',
+            href: null,
+        };
         this.preloadCache.clear();
         await this.saveQueueState();
     }
@@ -2534,6 +2555,8 @@ export class Player {
         el.pause();
         el.src = '';
         this.currentTrack = null;
+        this.sourceContext = null;
+        window.dispatchEvent(new CustomEvent('player-track-changed', { detail: { track: null } }));
         this.setCompactPlayerAvailability(false);
         this.resetCompactPlayerUI();
         this.notifyPlaybackStatus('idle', 'Choose something to play', ['browse']);

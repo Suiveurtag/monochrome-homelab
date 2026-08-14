@@ -24,3 +24,10 @@ audio element, preserve local TTML as the lyrics source, and mount the renderer
 inside Monochrome's side panel and fullscreen player. The unmodified upstream
 lyrics CSS runs in an isolated shadow tree so Monochrome's global element rules
 cannot alter Spicy Lyrics' word grouping or generated separators.
+
+The Monochrome adapter also exposes a shared dynamic-background host. When a
+lyrics renderer is mounted inside `[data-spicy-background-host]`, it reuses the
+single `SpicyDynamicBackground` controller owned by that host instead of
+creating or disposing a second Kawarp canvas. This lets the unchanged renderer
+and its real artwork-driven Kawarp background span the complete Now Playing
+panel while keeping ownership and cleanup in Monochrome code.

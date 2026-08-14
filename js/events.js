@@ -1052,7 +1052,12 @@ async function handleSelectionAction(action) {
     switch (action) {
         case 'play-selected':
             if (selectedTracks.length > 0) {
-                Player.instance.setQueue(selectedTracks, 0);
+                Player.instance.setQueue(selectedTracks, 0, false, {
+                    kind: 'unknown',
+                    id: null,
+                    label: 'Selected tracks',
+                    href: null,
+                });
                 document.getElementById('shuffle-btn').classList.remove('active');
                 Player.instance.playTrackFromQueue();
             }
@@ -2209,7 +2214,12 @@ function setupTrackSaveFloatingPanel(player, api, ui) {
     };
 
     const resolveTrack = (button) => {
-        if (button.id === 'now-playing-like-btn' || button.id === 'fs-like-btn') return player.currentTrack;
+        if (
+            button.id === 'now-playing-like-btn' ||
+            button.id === 'fs-like-btn' ||
+            button.classList.contains('now-playing-panel-save')
+        )
+            return player.currentTrack;
         const queueItem = button.closest('.queue-track-item');
         if (queueItem) return player.getCurrentQueue()[Number(queueItem.dataset.queueIndex)];
         const itemElement = button.closest('.track-item, .card');
@@ -2529,7 +2539,7 @@ export async function handleTrackAction(
         }
 
         if (tracks.length > 0) {
-            player.setQueue(tracks, 0);
+            player.setQueue(tracks, 0, true, playbackSourceContext('radio', item, `${item.title || item.name} Radio`));
             player.playAtIndex(0);
             player.enableRadio(tracks);
             showNotification(`Started radio based on ${type}: ${item.title || item.name}`);
@@ -2645,11 +2655,11 @@ export async function handleTrackAction(
                 player.shuffleActive = true;
                 const tracksToShuffle = [...tracks];
                 tracksToShuffle.sort(() => Math.random() - 0.5);
-                player.setQueue(tracksToShuffle, 0);
+                player.setQueue(tracksToShuffle, 0, false, playbackSourceContext(type, collectionItem));
                 const shuffleBtn = document.getElementById('shuffle-btn');
                 if (shuffleBtn) shuffleBtn.classList.add('active');
             } else {
-                player.setQueue(tracks, 0);
+                player.setQueue(tracks, 0, false, playbackSourceContext(type, collectionItem));
                 const shuffleBtn = document.getElementById('shuffle-btn');
                 if (shuffleBtn) shuffleBtn.classList.remove('active');
             }
@@ -2690,7 +2700,7 @@ export async function handleTrackAction(
         if (window.renderQueueFunction) await window.renderQueueFunction();
         showNotification(`Playing next: ${item.title}`);
     } else if (action === 'play-card') {
-        player.setQueue([item], 0);
+        player.setQueue([item], 0, false, playbackSourceContext('single', item, item.title));
         player.playAtIndex(0);
         showNotification(`Playing track: ${item.title}`);
     } else if (action === 'start-mix') {
@@ -3371,10 +3381,62 @@ function openShareSubmenu(contextMenu, shouldOpen, shouldFocus = false) {
     }
 }
 
+function playbackSourceContext(kind, item = {}, fallbackLabel = 'Now playing') {
+    const normalizedKind = kind === 'user-playlist' || kind === 'mix' ? 'playlist' : kind;
+    const id = item.id ?? item.uuid ?? null;
+    const label = item.title || item.name || fallbackLabel;
+    return {
+        kind: ['playlist', 'album', 'artist', 'liked', 'radio', 'single'].includes(normalizedKind)
+            ? normalizedKind
+            : 'unknown',
+        id: id == null ? null : String(id),
+        label,
+        href:
+            normalizedKind === 'liked'
+                ? '/favorites/tracks'
+                : id == null
+                  ? null
+                  : `/${normalizedKind}/${id}`,
+    };
+}
+
+function playbackSourceForTrackList(ui, trackItem) {
+    if (window.location.pathname.startsWith('/search/')) return playbackSourceContext('single', {}, 'Search');
+    if (ui.currentPage === 'artist' && ui.currentArtistId)
+        return playbackSourceContext('artist', { id: ui.currentArtistId, name: ui.currentArtist?.name }, 'Artist');
+    const path = window.location.pathname.split('/').filter(Boolean);
+    if (path[0] === 'album') return playbackSourceContext('album', { id: path.at(-1) }, 'Album');
+    if (path[0] === 'playlist') return playbackSourceContext('playlist', { id: path[1] }, 'Playlist');
+    if (path[0] === 'favorites') return playbackSourceContext('liked', {}, 'Liked Songs');
+    return playbackSourceContext(
+        'unknown',
+        {},
+        trackItem.closest('.page-section')?.querySelector('h1, h2')?.textContent || 'Now playing'
+    );
+}
+
 export function initializeTrackInteractions(player, api, mainContent, contextMenu, lyricsManager, ui, scrobbler) {
     let contextTrack = null;
 
     setupTrackSaveFloatingPanel(player, api, ui);
+
+    document.addEventListener('open-current-track-context-menu', async (event) => {
+        const track = event.detail?.track || player.currentTrack;
+        const anchor = event.detail?.anchor;
+        if (!track || !anchor) return;
+        if (contextMenu._originalHTML) {
+            contextMenu.innerHTML = contextMenu._originalHTML;
+            contextMenu._originalHTML = null;
+        }
+        contextTrack = track;
+        contextMenu._contextTrack = track;
+        contextMenu._contextType = track.type || 'track';
+        contextMenu._selectedTracks = [];
+        contextMenu._contextHref = null;
+        await updateContextMenuLikeState(contextMenu, track);
+        const rect = anchor.getBoundingClientRect();
+        positionMenu(contextMenu, rect.left, rect.bottom + 5, rect);
+    });
 
     mainContent.addEventListener('touchstart', handleTrackTouchStart, { passive: true });
     mainContent.addEventListener('touchmove', handleTrackTouchMove, { passive: true });
@@ -3565,7 +3627,7 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
                     if (trackItem.dataset.type === 'video') {
                         player.playVideo(clickedTrack);
                     } else {
-                        player.setQueue([clickedTrack], 0);
+                        player.setQueue([clickedTrack], 0, false, playbackSourceContext('single', clickedTrack, 'Search'));
                         player.enableAutoplay();
                         document.getElementById('shuffle-btn').classList.remove('active');
                         player.playTrackFromQueue();
@@ -3599,7 +3661,7 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
                 if (trackList.length > 0) {
                     const startIndex = trackList.findIndex((t) => t.id == clickedTrackId);
 
-                    player.setQueue(trackList, startIndex);
+                    player.setQueue(trackList, startIndex, false, playbackSourceForTrackList(ui, trackItem));
                     player.enableAutoplay();
 
                     if (ui.currentPage === 'artist' && ui.currentArtistId) {
@@ -3647,7 +3709,7 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
                 const trackList = allTrackElements.map((el) => trackDataStore.get(el)).filter(Boolean);
                 if (trackList.length === 0) return;
                 const startIndex = trackList.findIndex((t) => t.id == clickedTrackId);
-                player.setQueue(trackList, startIndex);
+                player.setQueue(trackList, startIndex, false, playbackSourceForTrackList(ui, card));
                 player.enableAutoplay();
                 if (ui.currentPage === 'artist' && ui.currentArtistId) {
                     player.setArtistPopularTracksContext(ui.currentArtistId, trackList, trackList.length, true);

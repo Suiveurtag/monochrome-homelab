@@ -26,6 +26,7 @@ import { initializePlayerEvents, initializeTrackInteractions, handleTrackAction 
 import { initializeUIInteractions } from './ui-interactions.js';
 import { debounce, getShareUrl, sanitizeForFilename } from './utils.js';
 import { sidePanelManager } from './side-panel.js';
+import { NowPlayingPanel } from './now-playing-panel.js';
 import { db } from './db.js';
 import { downloadTracks, showNotification } from './downloads.js';
 import { syncManager } from './accounts/pocketbase.js';
@@ -463,7 +464,12 @@ async function initializeSelfHostedUploads() {
         }
         const index = allTracks.findIndex((track) => String(track.id) === card.dataset.trackId);
         if (index < 0) return;
-        await Player.instance.setQueue(allTracks, index);
+        await Player.instance.setQueue(allTracks, index, false, {
+            kind: 'unknown',
+            id: null,
+            label: 'Uploaded tracks',
+            href: '/upload',
+        });
         document.getElementById('shuffle-btn')?.classList.remove('active');
         await Player.instance.playTrackFromQueue();
     });
@@ -522,7 +528,12 @@ async function initializeSelfHostedUploads() {
         const tracks = selectedTracks();
         if (!tracks.length) return;
         if (action === 'play') {
-            await Player.instance.setQueue(tracks, 0);
+            await Player.instance.setQueue(tracks, 0, false, {
+                kind: 'unknown',
+                id: null,
+                label: 'Uploaded tracks',
+                href: '/upload',
+            });
             document.getElementById('shuffle-btn')?.classList.remove('active');
             await Player.instance.playTrackFromQueue();
             return;
@@ -1113,6 +1124,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         scrobbler
     );
     initializeUIInteractions(Player.instance, MusicAPI.instance, UIRenderer.instance);
+    window.nowPlayingPanel = new NowPlayingPanel({
+        player: Player.instance,
+        api: MusicAPI.instance,
+        ui: UIRenderer.instance,
+        lyricsManager,
+    });
     initializeKeyboardShortcuts(Player.instance, audioPlayer);
     await initializeSelfHostedUploads();
 
@@ -1501,7 +1518,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!albumId) return;
 
             try {
-                const { tracks } = await MusicAPI.instance.getAlbum(albumId);
+                const { album, tracks } = await MusicAPI.instance.getAlbum(albumId);
                 if (tracks && tracks.length > 0) {
                     // Sort tracks by disc and track number for consistent playback
                     const sortedTracks = [...tracks].sort((a, b) => {
@@ -1511,7 +1528,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         return a.trackNumber - b.trackNumber;
                     });
 
-                    Player.instance.setQueue(sortedTracks, 0);
+                    Player.instance.setQueue(sortedTracks, 0, false, {
+                        kind: 'album',
+                        id: String(albumId),
+                        label: album?.title || 'Album',
+                        href: `/album/${albumId}`,
+                    });
                     Player.instance.enableAutoplay();
                     const shuffleBtn = document.getElementById('shuffle-btn');
                     if (shuffleBtn) shuffleBtn.classList.remove('active');
@@ -1540,10 +1562,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!albumId) return;
 
             try {
-                const { tracks } = await MusicAPI.instance.getAlbum(albumId);
+                const { album, tracks } = await MusicAPI.instance.getAlbum(albumId);
                 if (tracks && tracks.length > 0) {
                     const shuffledTracks = [...tracks].sort(() => Math.random() - 0.5);
-                    Player.instance.setQueue(shuffledTracks, 0);
+                    Player.instance.setQueue(shuffledTracks, 0, false, {
+                        kind: 'album',
+                        id: String(albumId),
+                        label: album?.title || 'Album',
+                        href: `/album/${albumId}`,
+                    });
                     Player.instance.enableAutoplay();
                     const shuffleBtn = document.getElementById('shuffle-btn');
                     if (shuffleBtn) shuffleBtn.classList.remove('active');
@@ -1612,7 +1639,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 const shuffledTracks = [...allTracks].sort(() => Math.random() - 0.5);
-                Player.instance.setQueue(shuffledTracks, 0);
+                Player.instance.setQueue(shuffledTracks, 0, false, {
+                    kind: 'artist',
+                    id: String(artistId),
+                    label: artist.name || 'Artist',
+                    href: `/artist/${artistId}`,
+                });
                 Player.instance.enableAutoplay();
                 const shuffleBtn = document.getElementById('shuffle-btn');
                 if (shuffleBtn) shuffleBtn.classList.remove('active');
@@ -2493,7 +2525,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     tracks = localTracks;
                 }
                 if (tracks.length > 0) {
-                    Player.instance.setQueue(tracks, 0);
+                    Player.instance.setQueue(tracks, 0, false, {
+                        kind: 'playlist',
+                        id: String(playlistId),
+                        label: userPlaylist?.name || 'Playlist',
+                        href: `/playlist/${playlistId}`,
+                    });
                     document.getElementById('shuffle-btn').classList.remove('active');
                     await Player.instance.playTrackFromQueue();
                 }
@@ -2686,7 +2723,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         [allTracks[i], allTracks[j]] = [allTracks[j], allTracks[i]];
                     }
 
-                    Player.instance.setQueue(allTracks, 0);
+                    Player.instance.setQueue(allTracks, 0, true, {
+                        kind: 'radio',
+                        id: String(artistId),
+                        label: `${artist.name || 'Artist'} Radio`,
+                        href: `/artist/${artistId}`,
+                    });
                     await Player.instance.playTrackFromQueue();
                 } else {
                     throw new Error('No tracks found across all albums');
@@ -2714,7 +2756,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const j = Math.floor(Math.random() * (i + 1));
                         [likedTracks[i], likedTracks[j]] = [likedTracks[j], likedTracks[i]];
                     }
-                    Player.instance.setQueue(likedTracks, 0);
+                    Player.instance.setQueue(likedTracks, 0, false, {
+                        kind: 'liked',
+                        id: null,
+                        label: 'Liked Songs',
+                        href: '/favorites/tracks',
+                    });
                     document.getElementById('shuffle-btn').classList.remove('active');
                     await Player.instance.playTrackFromQueue();
                 }

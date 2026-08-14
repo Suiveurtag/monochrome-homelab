@@ -51,6 +51,31 @@ function textarea(label, name, current, placeholder = '', rows = 4) {
         </label>`;
 }
 
+function repeatableRows(label, key, rows, columns) {
+    const values = rows?.length ? rows : [{}];
+    const renderRow = (row = {}) => `<div class="metadata-repeatable-row" data-repeatable-row>
+        ${columns
+            .map(
+                ({ name, label: columnLabel, type = 'text', placeholder = '' }) =>
+                    `<label><span>${escapeHtml(columnLabel)}</span><input type="${type}" name="${key}_${name}[]" value="${escapeHtml(row[name] || '')}" placeholder="${escapeHtml(placeholder)}" /></label>`
+            )
+            .join('')}
+        <button type="button" class="metadata-repeatable-remove" aria-label="Remove ${escapeHtml(label)} row">×</button>
+    </div>`;
+    return `<div class="metadata-repeatable is-wide" data-repeatable="${key}">
+        <div class="metadata-repeatable-heading"><strong>${escapeHtml(label)}</strong><button type="button" data-repeatable-add>Add row</button></div>
+        <div data-repeatable-rows>${values.map(renderRow).join('')}</div>
+        <template>${renderRow()}</template>
+    </div>`;
+}
+
+function collectRows(form, key, columns) {
+    const values = Object.fromEntries(columns.map((column) => [column, form.getAll(`${key}_${column}[]`)]));
+    return (values[columns[0]] || [])
+        .map((_, index) => Object.fromEntries(columns.map((column) => [column, String(values[column][index] || '').trim()])))
+        .filter((row) => columns.some((column) => row[column]));
+}
+
 function lyricsFilePicker() {
     return `
         <label class="metadata-lyrics-picker" data-lyrics-picker>
@@ -107,6 +132,10 @@ function buildTrackForm(track) {
         <div class="metadata-editor-section"><h5>Lyrics</h5><div class="metadata-fields">
             ${lyricsFilePicker()}
             ${textarea('Synced lyrics (LRC or TTML)', 'lyrics', track.lyrics, 'Paste LRC or TTML lyrics here…', 7)}
+            ${repeatableRows('Credits', 'credits', track.credits, [
+                { name: 'name', label: 'Name', placeholder: 'Contributor name' },
+                { name: 'role', label: 'Role', placeholder: 'Producer, Writer…' },
+            ])}
         </div></div>`;
 }
 
@@ -136,11 +165,28 @@ function buildArtistForm(artist) {
             ${field('Name', 'name', artist.name, { required: true })}
             ${field('Genres', 'genres', (artist.genres || artist.tags || []).join?.(', ') || artist.genre || '', { placeholder: 'Ambient, Pop, R&B…' })}
             ${field('Website', 'website', artist.website, { type: 'url', placeholder: 'https://…', wide: true })}
+            ${field('Monthly listeners', 'monthlyListeners', artist.monthlyListeners, { type: 'number', min: 0 })}
             ${textarea('Biography', 'biography', artist.biography, 'Tell listeners about this artist…', 6)}
         </div></div>
         <div class="metadata-editor-section"><h5>Header artwork</h5>
             ${artworkPicker('banner', 'Artist banner', artist.banner)}
-        </div>`;
+        </div>
+        <div class="metadata-editor-section"><h5>Now Playing</h5><div class="metadata-fields">
+            ${repeatableRows('Related videos', 'relatedVideos', artist.relatedVideos, [
+                { name: 'title', label: 'Title', placeholder: 'Video title' },
+                { name: 'subtitle', label: 'Subtitle', placeholder: 'Artist or description' },
+                { name: 'thumbnail', label: 'Thumbnail', placeholder: 'Image URL' },
+                { name: 'href', label: 'External URL', type: 'url', placeholder: 'https://…' },
+                { name: 'trackId', label: 'Local track ID', placeholder: 'Optional' },
+            ])}
+            ${repeatableRows('Tour dates', 'tourDates', artist.tourDates, [
+                { name: 'date', label: 'Date', type: 'date' },
+                { name: 'time', label: 'Time', type: 'time' },
+                { name: 'city', label: 'City' },
+                { name: 'venue', label: 'Venue' },
+                { name: 'href', label: 'Event URL', type: 'url', placeholder: 'https://…' },
+            ])}
+        </div></div>`;
 }
 
 async function persistTrack(track, updated, coverFile = null) {
@@ -191,6 +237,7 @@ async function saveTrack(track, form) {
         explicit: form.get('explicit') === 'on',
         themeColor: normalizeTrackThemeColor(value(form, 'themeColor')),
         lyrics: String(form.get('lyrics') || ''),
+        credits: collectRows(form, 'credits', ['name', 'role']),
     };
     await persistTrack(track, updated, coverFile?.size ? coverFile : null);
     Object.assign(track, updated);
@@ -240,6 +287,9 @@ async function saveArtist(artist, tracks, form) {
             .filter(Boolean),
         website: value(form, 'website'),
         biography: value(form, 'biography'),
+        monthlyListeners: Number(form.get('monthlyListeners')) || null,
+        relatedVideos: collectRows(form, 'relatedVideos', ['title', 'subtitle', 'thumbnail', 'href', 'trackId']),
+        tourDates: collectRows(form, 'tourDates', ['date', 'time', 'city', 'venue', 'href']),
         picture: (await fileToDataUrl(pictureFile)) || artist.picture,
         banner: (await fileToDataUrl(bannerFile)) || artist.banner,
     };
@@ -259,6 +309,9 @@ async function saveArtist(artist, tracks, form) {
             };
             return persistTrack(track, updated);
         })
+    );
+    window.dispatchEvent(
+        new CustomEvent('artist-metadata-updated', { detail: { artistId: artist.id, artist: updatedArtist } })
     );
 }
 
@@ -384,6 +437,20 @@ function setupThemeColorPicker(form) {
     render(stored.value);
 }
 
+function setupRepeatableRows(form) {
+    form.querySelectorAll('[data-repeatable]').forEach((group) => {
+        group.addEventListener('click', (event) => {
+            if (event.target.closest('[data-repeatable-add]')) {
+                const fragment = group.querySelector('template').content.cloneNode(true);
+                group.querySelector('[data-repeatable-rows]').append(fragment);
+                group.querySelector('[data-repeatable-row]:last-child input')?.focus();
+            }
+            const remove = event.target.closest('.metadata-repeatable-remove');
+            if (remove) remove.closest('[data-repeatable-row]')?.remove();
+        });
+    });
+}
+
 export function openMetadataEditor({ type, entity, tracks = [], onSaved }) {
     const form = document.createElement('form');
     form.className = 'metadata-editor-form';
@@ -404,6 +471,7 @@ export function openMetadataEditor({ type, entity, tracks = [], onSaved }) {
     setupArtworkPreviews(form);
     setupLyricsFilePicker(form);
     setupThemeColorPicker(form);
+    setupRepeatableRows(form);
     form.querySelector('[data-metadata-cancel]').addEventListener('click', close);
 
     const escapeHandler = (event) => {
