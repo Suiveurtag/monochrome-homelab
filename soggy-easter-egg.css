@@ -28,6 +28,7 @@
 #soggy-easter-egg-trigger.is-revealed {
     animation: soggy-trigger-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
 #soggy-easter-egg-trigger:hover {
     transform: scale(1.08) rotate(-3deg);
 }
@@ -107,6 +108,7 @@
         opacity: 0;
         transform: scale(0.55) rotate(12deg);
     }
+
     to {
         opacity: 1;
         transform: scale(1) rotate(0);
@@ -118,6 +120,7 @@
         opacity: 0;
         transform: translateY(1rem) scale(0.96);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);

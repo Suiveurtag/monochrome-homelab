@@ -21,7 +21,8 @@ export function parseTtmlTime(value) {
 
 function getAttributeByLocalName(element, localName) {
     for (const attribute of element.attributes || []) {
-        if (attribute.localName === localName || attribute.name?.split(':').at(-1) === localName) return attribute.value;
+        if (attribute.localName === localName || attribute.name?.split(':').at(-1) === localName)
+            return attribute.value;
     }
     return null;
 }

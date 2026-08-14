@@ -255,7 +255,10 @@ export class UIRenderer {
             if (!media || !this.currentAlbum) return;
             const artist =
                 this.currentAlbum.artist?.name ||
-                this.currentAlbum.artists?.map((item) => item?.name).filter(Boolean).join(', ') ||
+                this.currentAlbum.artists
+                    ?.map((item) => item?.name)
+                    .filter(Boolean)
+                    .join(', ') ||
                 '';
             const coverId = this.currentAlbum.cover;
             void this.albumCoverInspector.open({

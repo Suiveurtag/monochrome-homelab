@@ -3391,12 +3391,7 @@ function playbackSourceContext(kind, item = {}, fallbackLabel = 'Now playing') {
             : 'unknown',
         id: id == null ? null : String(id),
         label,
-        href:
-            normalizedKind === 'liked'
-                ? '/favorites/tracks'
-                : id == null
-                  ? null
-                  : `/${normalizedKind}/${id}`,
+        href: normalizedKind === 'liked' ? '/favorites/tracks' : id == null ? null : `/${normalizedKind}/${id}`,
     };
 }
 
@@ -3627,7 +3622,12 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
                     if (trackItem.dataset.type === 'video') {
                         player.playVideo(clickedTrack);
                     } else {
-                        player.setQueue([clickedTrack], 0, false, playbackSourceContext('single', clickedTrack, 'Search'));
+                        player.setQueue(
+                            [clickedTrack],
+                            0,
+                            false,
+                            playbackSourceContext('single', clickedTrack, 'Search')
+                        );
                         player.enableAutoplay();
                         document.getElementById('shuffle-btn').classList.remove('active');
                         player.playTrackFromQueue();

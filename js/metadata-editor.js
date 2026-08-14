@@ -72,7 +72,9 @@ function repeatableRows(label, key, rows, columns) {
 function collectRows(form, key, columns) {
     const values = Object.fromEntries(columns.map((column) => [column, form.getAll(`${key}_${column}[]`)]));
     return (values[columns[0]] || [])
-        .map((_, index) => Object.fromEntries(columns.map((column) => [column, String(values[column][index] || '').trim()])))
+        .map((_, index) =>
+            Object.fromEntries(columns.map((column) => [column, String(values[column][index] || '').trim()]))
+        )
         .filter((row) => columns.some((column) => row[column]));
 }
 

@@ -269,7 +269,6 @@ export class LyricsManager {
 
             // Also patch fetch just in case
             if (!window._originalFetch) {
-                // eslint-disable-next-line @typescript-eslint/unbound-method
                 window._originalFetch = window.fetch;
                 window.fetch = async (url, options) => {
                     const urlStr = url instanceof URL ? url.toString() : url.url;
