@@ -48,6 +48,21 @@ describe('animated artwork', () => {
         expect(video.dataset.artworkMime).toBe('video/mp4');
     });
 
+    test('supports a poster-backed deferred video for Canvas mounting', () => {
+        const image = document.createElement('img');
+        document.body.appendChild(image);
+
+        const video = renderArtworkElement(image, '/canvas.mp4', {
+            video: true,
+            autoplay: false,
+            poster: '/cover.jpg',
+        });
+
+        expect(video.autoplay).toBe(false);
+        expect(video.hasAttribute('autoplay')).toBe(false);
+        expect(video.poster).toContain('/cover.jpg');
+    });
+
     test('uses a video element for animated background artwork', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);

@@ -20,7 +20,16 @@ vi.mock('./accounts/pocketbase.js', () => ({
 vi.mock('./downloads.js', () => ({ showNotification: vi.fn() }));
 vi.mock('./router.js', () => ({ navigate: vi.fn() }));
 vi.mock('./track-save-ui.js', () => ({ createTrackSaveIconHTML: () => '<span></span>' }));
-vi.mock('./animated-artwork.js', () => ({ isVideoArtwork: () => false }));
+vi.mock('./animated-artwork.js', () => ({
+    isVideoArtwork: (source) => /\.mp4(?:$|[?#])/i.test(String(source || '')),
+    renderArtworkElement: (element, source) => {
+        const video = document.createElement('video');
+        video.className = element.className;
+        video.src = source;
+        element.replaceWith(video);
+        return video;
+    },
+}));
 vi.mock('./audio-context.js', () => ({ audioContextManager: { getAnalyser: vi.fn(() => null) } }));
 vi.mock('./listening-tracker.js', () => ({
     listeningTracker: { getArtistSignal: vi.fn(() => ({ playCount: 1234 })) },
@@ -168,6 +177,56 @@ describe('Now Playing panel interactions', () => {
         panel.root.querySelector('.now-playing-panel-open-queue').click();
         expect(click).toHaveBeenCalledOnce();
         expect(panel.isOpen).toBe(true);
+        panel.destroy();
+    });
+
+    test('keeps the static poster mounted beneath a deferred Canvas video', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const deps = dependencies();
+        const audio = document.createElement('audio');
+        let audioPaused = false;
+        Object.defineProperty(audio, 'paused', { configurable: true, get: () => audioPaused });
+        deps.player.activeElement = audio;
+        const panel = new NowPlayingPanel(deps);
+        await waitForPanel(panel);
+        const model = {
+            ...panel.model,
+            empty: false,
+            title: 'Canvas track',
+            source: { label: 'Album', href: null },
+            artists: [],
+            artistLine: 'Artist',
+            releaseYear: '',
+            explicit: false,
+            artwork: {
+                staticSrc: '/poster.jpg',
+                animatedSrc: '/canvas.mp4',
+                isVideo: true,
+            },
+            relatedVideos: [],
+            artist: null,
+            credits: [],
+            tourDates: [],
+            nextTrack: null,
+        };
+        panel.content.innerHTML = panel.renderMarkup(model);
+        await panel.mountMedia(model, new AbortController().signal);
+
+        const stage = panel.content.querySelector('.now-playing-panel-media');
+        expect(stage.querySelector('.now-playing-panel-poster')).toBeTruthy();
+        const canvas = stage.querySelector('video.now-playing-panel-canvas');
+        expect(canvas).toBeTruthy();
+        expect(stage.querySelectorAll('img, video')).toHaveLength(2);
+
+        canvas.dataset.canvasReady = 'true';
+        panel.syncCanvasPlayback();
+        expect(stage.classList.contains('is-canvas-ready')).toBe(true);
+        audioPaused = true;
+        panel.syncCanvasPlayback();
+        expect(stage.classList.contains('is-canvas-ready')).toBe(true);
+
+        panel.reducedMotionMedia.matches = true;
+        expect(panel.renderMarkup(model)).not.toContain('has-video-artwork');
         panel.destroy();
     });
 });

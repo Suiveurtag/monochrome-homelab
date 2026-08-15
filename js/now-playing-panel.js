@@ -3,7 +3,7 @@ import { buildNowPlayingPanelModel, normalizeSourceContext } from './now-playing
 import { clearLyricsContainerSync, renderLyricsInContainer } from './lyrics.js';
 import { createTrackSaveIconHTML } from './track-save-ui.js';
 import { escapeHtml, getShareUrl } from './utils.js';
-import { isVideoArtwork } from './animated-artwork.js';
+import { isVideoArtwork, renderArtworkElement } from './animated-artwork.js';
 import { navigate } from './router.js';
 import { showNotification } from './downloads.js';
 import { db } from './db.js';
@@ -20,6 +20,9 @@ import ICON_SHARE from '!lucide/share-2.svg?svg&icon';
 import ICON_CLOSE from '!lucide/x.svg?svg&icon';
 
 const DESKTOP_PANEL_QUERY = '(min-width: 769px)';
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+const CANVAS_LOAD_TIMEOUT = 8000;
+const TRACK_FADE_OUT_DURATION = 180;
 const MISSING_BIOGRAPHY = 'No biography is available for this artist yet.';
 
 function icon(name, size = 20) {
@@ -75,6 +78,14 @@ export class NowPlayingPanel {
         this.isOpen = this.desktopMedia.matches;
         this.fullscreenOverlay = document.getElementById('fullscreen-cover-overlay');
         this.fullscreenObserver = null;
+        this.fullscreenVisible = false;
+        this.canvasMedia = null;
+        this.canvasStage = null;
+        this.canvasVisibilityObserver = null;
+        this.canvasIsVisible = true;
+        this.canvasLoadTimer = null;
+        this.canvasPlaybackElement = null;
+        this.reducedMotionMedia = matchMedia(REDUCED_MOTION_QUERY);
         this.background?.connectPlayback?.({
             getElement: () => this.player?.activeElement,
             getAnalyser: () => audioContextManager.getAnalyser(),
@@ -105,6 +116,14 @@ export class NowPlayingPanel {
         this.boundListeningChanged = () => {
             queueMicrotask(() => this.syncArtistStreamCount());
         };
+        this.boundPanelScroll = () => {
+            if (this.currentTrack?.id != null)
+                this.scrollByTrack.set(String(this.currentTrack.id), this.content.scrollTop);
+            this.root.classList.toggle('is-scrolled', this.content.scrollTop > 8);
+        };
+        this.boundVisibilityChanged = () => this.syncPanelActivity();
+        this.boundReducedMotionChanged = () => void this.render({ preserveScroll: true });
+        this.boundPlaybackChanged = () => this.syncCanvasPlayback();
         this.init();
     }
 
@@ -116,18 +135,18 @@ export class NowPlayingPanel {
         this.root.addEventListener('contextmenu', (event) => this.handleContextMenu(event));
         this.root.addEventListener('keydown', (event) => this.handleKeydown(event));
         this.reopenButton?.addEventListener('click', () => this.setOpen(true));
-        this.content.addEventListener('scroll', () => {
-            if (this.currentTrack?.id != null)
-                this.scrollByTrack.set(String(this.currentTrack.id), this.content.scrollTop);
-        });
+        this.content.addEventListener('scroll', this.boundPanelScroll, { passive: true });
         this.setupResize();
         this.setupFullscreenVisibility();
         this.desktopMedia.addEventListener?.('change', this.boundDesktopViewportChanged);
+        this.reducedMotionMedia.addEventListener?.('change', this.boundReducedMotionChanged);
+        document.addEventListener('visibilitychange', this.boundVisibilityChanged);
         window.addEventListener('player-track-changed', this.boundTrackChanged);
         window.addEventListener('player-queue-changed', this.boundQueueChanged);
         window.addEventListener('track-metadata-updated', this.boundMetadataChanged);
         window.addEventListener('artist-metadata-updated', this.boundMetadataChanged);
         window.addEventListener('listening-data-updated', this.boundListeningChanged);
+        this.syncPlaybackElement();
         void this.render();
     }
 
@@ -145,6 +164,7 @@ export class NowPlayingPanel {
         this.root.setAttribute('role', 'complementary');
         this.root.removeAttribute('aria-modal');
         this.syncFullscreenVisibility();
+        this.syncPanelActivity();
         if (this.isOpen && restoreFocus) {
             requestAnimationFrame(() =>
                 this.root.querySelector('.now-playing-panel-close')?.focus({ preventScroll: true })
@@ -168,11 +188,29 @@ export class NowPlayingPanel {
         const fullscreenVisible = Boolean(
             this.fullscreenOverlay && getComputedStyle(this.fullscreenOverlay).display !== 'none'
         );
+        this.fullscreenVisible = fullscreenVisible;
         this.root.classList.toggle('is-fullscreen-hidden', fullscreenVisible);
         this.root.setAttribute('aria-hidden', String(!this.isOpen || fullscreenVisible));
         this.content.inert = !this.isOpen || fullscreenVisible;
         this.resizer.inert = !this.isOpen || fullscreenVisible;
         if (this.reopenButton) this.reopenButton.hidden = fullscreenVisible || !this.desktopMedia.matches;
+        this.syncPanelActivity();
+    }
+
+    syncPlaybackElement() {
+        const nextElement = this.player?.activeElement || null;
+        if (nextElement === this.canvasPlaybackElement) return;
+        this.canvasPlaybackElement?.removeEventListener('play', this.boundPlaybackChanged);
+        this.canvasPlaybackElement?.removeEventListener('pause', this.boundPlaybackChanged);
+        this.canvasPlaybackElement = nextElement;
+        this.canvasPlaybackElement?.addEventListener('play', this.boundPlaybackChanged);
+        this.canvasPlaybackElement?.addEventListener('pause', this.boundPlaybackChanged);
+    }
+
+    syncPanelActivity() {
+        const active = this.isOpen && !this.fullscreenVisible && !document.hidden;
+        this.background?.setActive?.(active);
+        this.syncCanvasPlayback();
     }
 
     setupResize() {
@@ -220,12 +258,17 @@ export class NowPlayingPanel {
         this.renderController?.abort();
         const controller = new AbortController();
         this.renderController = controller;
+        const hadRenderedContent = Boolean(this.content.querySelector('.now-playing-panel-body'));
+        const fadeOut = hadRenderedContent
+            ? new Promise((resolve) => window.setTimeout(resolve, TRACK_FADE_OUT_DURATION))
+            : Promise.resolve();
         const previousScroll = preserveScroll
             ? this.content.scrollTop
             : this.scrollByTrack.get(String(this.currentTrack?.id)) || 0;
-        this.cleanupMedia();
-        clearLyricsContainerSync(this.content);
-        this.content.innerHTML = '<div class="now-playing-panel-loading" role="status">Loading now playing…</div>';
+        this.root.classList.toggle('is-track-transitioning', hadRenderedContent);
+        if (!hadRenderedContent) {
+            this.content.innerHTML = '<div class="now-playing-panel-loading" role="status">Loading now playing…</div>';
+        }
         try {
             const model = await buildNowPlayingPanelModel({
                 track: this.currentTrack,
@@ -238,6 +281,10 @@ export class NowPlayingPanel {
             this.model = model;
             await this.background?.setSource(model.artwork.staticSrc);
             if (controller.signal.aborted) return;
+            await fadeOut;
+            if (controller.signal.aborted) return;
+            this.cleanupMedia();
+            clearLyricsContainerSync(this.content);
             this.content.innerHTML = this.renderMarkup(model);
             this.content.scrollTop = previousScroll;
             await this.mountMedia(model, controller.signal);
@@ -248,15 +295,22 @@ export class NowPlayingPanel {
             if (this.currentTrack?.id != null) {
                 await this.ui?.refreshTrackSaveButtons?.(this.currentTrack.type || 'track', this.currentTrack.id);
             }
+            requestAnimationFrame(() => {
+                if (!controller.signal.aborted) this.root.classList.remove('is-track-transitioning');
+            });
         } catch (error) {
             if (error?.name === 'AbortError') return;
             console.error('Failed to render Now Playing panel:', error);
+            this.cleanupMedia();
+            clearLyricsContainerSync(this.content);
+            this.root.classList.remove('is-track-transitioning');
             this.content.innerHTML = '<div class="now-playing-panel-error">Now Playing could not be loaded.</div>';
         }
     }
 
     renderMarkup(model) {
         const context = escapeHtml(model.source.label);
+        const canvasLayout = model.artwork.isVideo && !this.reducedMotionMedia.matches;
         const artistLinks = model.artists
             .map((artist) =>
                 artist.id
@@ -273,9 +327,10 @@ export class NowPlayingPanel {
                     <button type="button" class="now-playing-panel-icon now-playing-panel-fullscreen" aria-label="Open fullscreen player">${icon('maximize-2')}</button>
                 </div>
             </header>
-            <div class="now-playing-panel-body${model.artwork.isVideo ? ' has-video-artwork' : ''}${model.empty ? ' is-empty' : ''}">
+            <div class="now-playing-panel-body${canvasLayout ? ' has-video-artwork' : ''}${model.empty ? ' is-empty' : ''}">
                 <div class="now-playing-panel-media" aria-label="${escapeHtml(`${model.title} artwork`)}">
-                    <img src="${escapeHtml(model.artwork.staticSrc)}" alt="" fetchpriority="high" />
+                    <img class="now-playing-panel-poster" src="${escapeHtml(model.artwork.staticSrc)}" alt="" fetchpriority="high" />
+                    <span class="now-playing-panel-media-shade" aria-hidden="true"></span>
                 </div>
                 <section class="now-playing-panel-metadata" aria-label="Current track">
                     <div class="now-playing-panel-track-copy">
@@ -397,35 +452,128 @@ export class NowPlayingPanel {
 
     async mountMedia(model, signal) {
         if (!model.artwork.isVideo || !model.artwork.animatedSrc) return;
-        const image = this.content.querySelector('.now-playing-panel-media img');
-        if (!image || signal.aborted) return;
-        const video = document.createElement('video');
-        video.className = image.className;
-        video.autoplay = true;
-        video.loop = true;
-        video.muted = true;
-        video.defaultMuted = true;
-        video.playsInline = true;
-        video.preload = 'metadata';
-        video.poster = model.artwork.staticSrc;
+        const stage = this.content.querySelector('.now-playing-panel-media');
+        const poster = stage?.querySelector('.now-playing-panel-poster');
+        if (!stage || !poster || signal.aborted || this.reducedMotionMedia.matches) return;
+
+        const isHls = /\.m3u8(?:$|[?#])/i.test(model.artwork.animatedSrc);
+        let video;
+        if (isHls) {
+            video = document.createElement('video');
+            video.className = 'now-playing-panel-canvas';
+            video.autoplay = false;
+            video.loop = true;
+            video.muted = true;
+            video.defaultMuted = true;
+            video.playsInline = true;
+            video.preload = 'metadata';
+            video.poster = model.artwork.staticSrc;
+            stage.insertBefore(video, stage.querySelector('.now-playing-panel-media-shade'));
+        } else {
+            const candidate = document.createElement('img');
+            candidate.className = 'now-playing-panel-canvas';
+            stage.insertBefore(candidate, stage.querySelector('.now-playing-panel-media-shade'));
+            video = renderArtworkElement(candidate, model.artwork.animatedSrc, {
+                video: true,
+                autoplay: false,
+                preload: 'metadata',
+                poster: model.artwork.staticSrc,
+            });
+        }
+
         video.setAttribute('role', 'img');
         video.setAttribute('aria-label', `${model.title} animated artwork`);
-        image.replaceWith(video);
-        if (/\.m3u8(?:$|[?#])/i.test(model.artwork.animatedSrc) && this.ui?.setupHlsVideo) {
-            await this.ui.setupHlsVideo(video, { hlsUrl: model.artwork.animatedSrc }, image);
+        this.canvasMedia = video;
+        this.canvasStage = stage;
+        this.canvasIsVisible = true;
+
+        const markReady = () => {
+            if (signal.aborted || video !== this.canvasMedia || !video.isConnected) return;
+            const reveal = () => {
+                if (signal.aborted || video !== this.canvasMedia || !video.isConnected) return;
+                window.clearTimeout(this.canvasLoadTimer);
+                this.canvasLoadTimer = null;
+                video.dataset.canvasReady = 'true';
+                this.syncCanvasPlayback();
+            };
+            if (typeof video.requestVideoFrameCallback === 'function') video.requestVideoFrameCallback(reveal);
+            else requestAnimationFrame(reveal);
+        };
+        const fail = () => this.failCanvasMedia(video);
+        video.addEventListener('loadeddata', markReady, { once: true });
+        video.addEventListener('error', fail, { once: true });
+        video.addEventListener('play', this.boundPlaybackChanged);
+        if (video.readyState >= 2) markReady();
+
+        if (typeof IntersectionObserver !== 'undefined') {
+            this.canvasVisibilityObserver = new IntersectionObserver(
+                ([entry]) => {
+                    this.canvasIsVisible = Boolean(entry?.isIntersecting && entry.intersectionRatio > 0.08);
+                    this.syncCanvasPlayback();
+                },
+                { root: this.content, threshold: [0, 0.08, 0.2] }
+            );
+            this.canvasVisibilityObserver.observe(stage);
+        }
+
+        this.canvasLoadTimer = window.setTimeout(fail, CANVAS_LOAD_TIMEOUT);
+        if (isHls && this.ui?.setupHlsVideo) {
+            await this.ui.setupHlsVideo(video, { hlsUrl: model.artwork.animatedSrc }, poster);
         } else if (isVideoArtwork(model.artwork.animatedSrc)) {
-            video.src = model.artwork.animatedSrc;
-            await video.play().catch(() => {});
+            video.load?.();
+        }
+        this.syncCanvasPlayback();
+    }
+
+    failCanvasMedia(video = this.canvasMedia) {
+        if (!video || video !== this.canvasMedia) return;
+        window.clearTimeout(this.canvasLoadTimer);
+        this.canvasLoadTimer = null;
+        this.canvasStage?.classList.remove('is-canvas-ready');
+        this.canvasStage?.classList.add('is-canvas-failed');
+        this.canvasVisibilityObserver?.disconnect();
+        this.canvasVisibilityObserver = null;
+        video._hls?.destroy?.();
+        video.pause();
+        video.removeAttribute('src');
+        video.load?.();
+        video.remove();
+        this.canvasMedia = null;
+    }
+
+    syncCanvasPlayback() {
+        const video = this.canvasMedia;
+        const stage = this.canvasStage;
+        if (!video || !stage) return;
+        this.syncPlaybackElement();
+        const reducedMotion = this.reducedMotionMedia.matches;
+        const audioPlaying = Boolean(this.canvasPlaybackElement && !this.canvasPlaybackElement.paused);
+        const visible =
+            this.isOpen && !this.fullscreenVisible && !this.expandedLyrics && !document.hidden && this.canvasIsVisible;
+        const shouldPlay = visible && audioPlaying && !reducedMotion;
+        stage.classList.toggle('is-canvas-ready', video.dataset.canvasReady === 'true' && !reducedMotion);
+        if (shouldPlay) {
+            void video.play().catch(() => {});
+        } else {
+            video.pause();
         }
     }
 
     cleanupMedia() {
+        window.clearTimeout(this.canvasLoadTimer);
+        this.canvasLoadTimer = null;
+        this.canvasVisibilityObserver?.disconnect();
+        this.canvasVisibilityObserver = null;
         this.content?.querySelectorAll('video').forEach((video) => {
+            video.removeEventListener('play', this.boundPlaybackChanged);
             video._hls?.destroy?.();
             video.pause();
             video.removeAttribute('src');
             video.load?.();
         });
+        this.canvasMedia = null;
+        this.canvasStage = null;
+        this.canvasIsVisible = true;
     }
 
     async mountLyrics(model, signal) {
@@ -449,6 +597,7 @@ export class NowPlayingPanel {
         this.root.querySelector('.now-playing-panel-lyrics')?.classList.toggle('is-collapsed', this.collapsedLyrics);
         const expand = this.root.querySelector('.now-playing-panel-lyrics-expand');
         expand?.setAttribute('aria-expanded', String(this.expandedLyrics));
+        this.syncCanvasPlayback();
     }
 
     async shareTrack() {
@@ -587,7 +736,13 @@ export class NowPlayingPanel {
         clearLyricsContainerSync(this.content);
         this.background?.dispose();
         this.fullscreenObserver?.disconnect();
+        this.canvasPlaybackElement?.removeEventListener('play', this.boundPlaybackChanged);
+        this.canvasPlaybackElement?.removeEventListener('pause', this.boundPlaybackChanged);
+        this.canvasPlaybackElement = null;
+        this.content?.removeEventListener('scroll', this.boundPanelScroll);
         this.desktopMedia.removeEventListener?.('change', this.boundDesktopViewportChanged);
+        this.reducedMotionMedia.removeEventListener?.('change', this.boundReducedMotionChanged);
+        document.removeEventListener('visibilitychange', this.boundVisibilityChanged);
         window.removeEventListener('player-track-changed', this.boundTrackChanged);
         window.removeEventListener('player-queue-changed', this.boundQueueChanged);
         window.removeEventListener('track-metadata-updated', this.boundMetadataChanged);

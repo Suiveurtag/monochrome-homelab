@@ -49,6 +49,7 @@ import { deleteSelfHostedTrack, listSelfHostedTracks } from './selfhost-server-a
 import { openMetadataEditor } from './metadata-editor.js';
 import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
 import { isVideoArtwork, setArtworkBackground } from './animated-artwork.js';
+import { getArtworkSources } from './artwork-media.js';
 import { getTrackThemeColor } from './track-theme-color.js';
 import { listeningTracker } from './listening-tracker.js';
 import { AlbumCoverInspector } from './album-cover-inspector.js';
@@ -1497,8 +1498,19 @@ export class UIRenderer {
             if (qualityBtn) qualityBtn.style.display = 'none';
             if (qualityMenu) qualityMenu.style.display = 'none';
 
-            const videoCoverUrl = track.videoUrl || track.videoCoverUrl || track.album?.videoCoverUrl || null;
-            const coverUrl = videoCoverUrl || this.api.getCoverUrl(track.album?.cover, '1280');
+            const artworkSources = getArtworkSources({
+                cover: track.image || track.cover || track.album?.cover,
+                animatedCover:
+                    track.videoUrl || track.videoCoverUrl || track.album?.videoCoverUrl || track.album?.animatedCover,
+                coverFallback:
+                    track.coverFallback || track.staticCover || track.album?.coverFallback || track.album?.staticCover,
+            });
+            const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+            const videoCoverUrl = reducedMotion ? null : artworkSources.animated || null;
+            const staticCover = artworkSources.static || '/assets/appicon.png';
+            const coverUrl = /^(?:data:|blob:|https?:|\/)/i.test(String(staticCover))
+                ? staticCover
+                : this.api.getCoverUrl(staticCover, '1280');
 
             const fsLikeBtn = document.getElementById('fs-like-btn');
             if (fsLikeBtn) {

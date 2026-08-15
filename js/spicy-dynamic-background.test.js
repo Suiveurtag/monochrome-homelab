@@ -8,6 +8,8 @@ vi.mock('@kawarp/core', () => ({
             this.canvas = canvas;
             this.loadImage = vi.fn(async () => {});
             this.start = vi.fn();
+            this.stop = vi.fn();
+            this.resize = vi.fn();
             this.setOptions = vi.fn();
             this.dispose = vi.fn();
             kawarpInstances.push(this);
@@ -52,7 +54,7 @@ describe('Spicy dynamic background', () => {
         expect(host.querySelector('[data-spicy-background]')).toBeNull();
     });
 
-    test('keeps the cover fallback when no Kawarp-compatible source exists', async () => {
+    test('rejects animated sources instead of assigning an invalid CSS background image', async () => {
         const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
         const host = document.createElement('div');
         document.body.appendChild(host);
@@ -61,7 +63,35 @@ describe('Spicy dynamic background', () => {
         expect(await controller.setSource('/covers/animated.mp4')).toBe(false);
         expect(kawarpInstances).toHaveLength(0);
         expect(controller.canvas.style.display).toBe('none');
-        expect(controller.fallback.style.backgroundImage).toContain('/covers/animated.mp4');
+        expect(controller.fallback.style.backgroundImage).toBe('');
+    });
+
+    test('crossfades between two static fallback layers', async () => {
+        const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const controller = mountSpicyDynamicBackground(host);
+
+        await controller.setSource('/covers/first.jpg');
+        await controller.setSource('/covers/second.jpg');
+
+        const fallbacks = host.querySelectorAll('.spicy-dynamic-bg-fallback');
+        expect(fallbacks).toHaveLength(2);
+        expect(host.querySelectorAll('.spicy-dynamic-bg-fallback.is-visible')).toHaveLength(1);
+        expect(controller.fallback.style.backgroundImage).toContain('/covers/second.jpg');
+    });
+
+    test('stops hidden backgrounds and resumes their existing Kawarp instance', async () => {
+        const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const controller = mountSpicyDynamicBackground(host);
+        await controller.setSource('/covers/first.jpg');
+
+        controller.setActive(false);
+        expect(kawarpInstances[0].stop).toHaveBeenCalledOnce();
+        controller.setActive(true);
+        expect(kawarpInstances[0].start).toHaveBeenCalledTimes(2);
     });
 
     test('rejects a stale load before replacing the current artwork', async () => {

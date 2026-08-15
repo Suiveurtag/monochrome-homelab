@@ -32,22 +32,23 @@ function copyArtworkAttributes(source, target) {
     }
 }
 
-function createVideoArtwork(source, url, forcedVideo = false) {
+function createVideoArtwork(source, url, options = {}) {
     const video = document.createElement('video');
     copyArtworkAttributes(source, video);
     video.src = url;
-    video.autoplay = true;
+    video.autoplay = options.autoplay ?? true;
     video.loop = true;
     video.muted = true;
     video.defaultMuted = true;
     video.playsInline = true;
-    video.preload = 'metadata';
-    video.setAttribute('autoplay', '');
+    video.preload = options.preload || 'metadata';
+    if (options.poster) video.poster = options.poster;
+    if (video.autoplay) video.setAttribute('autoplay', '');
     video.setAttribute('loop', '');
     video.setAttribute('muted', '');
     video.setAttribute('playsinline', '');
     video.setAttribute('data-animated-artwork', 'video');
-    if (forcedVideo) video.setAttribute('data-artwork-mime', 'video/mp4');
+    if (options.video === true) video.setAttribute('data-artwork-mime', 'video/mp4');
     const alt = source.getAttribute('alt');
     if (alt) video.setAttribute('aria-label', alt);
     video.setAttribute('role', 'img');
@@ -69,9 +70,9 @@ export function renderArtworkElement(element, url, options = {}) {
     const isVideoElement = element.tagName === 'VIDEO';
 
     if (video && !isVideoElement) {
-        const replacement = createVideoArtwork(element, url, options.video === true);
+        const replacement = createVideoArtwork(element, url, options);
         element.replaceWith(replacement);
-        void replacement.play().catch(() => {});
+        if (replacement.autoplay) void replacement.play().catch(() => {});
         return replacement;
     }
     if (!video && isVideoElement && element.dataset.animatedArtwork === 'video') {
@@ -81,7 +82,7 @@ export function renderArtworkElement(element, url, options = {}) {
     }
 
     element.src = url;
-    if (isVideoElement) void element.play().catch(() => {});
+    if (isVideoElement && element.autoplay) void element.play().catch(() => {});
     return element;
 }
 

@@ -5,7 +5,11 @@ import { createModal, escapeHtml } from './utils.js';
 import { EDIT_METADATA_ICON } from './metadata-editor-icon.js';
 import { isTtml, parseLrc } from './lyrics-format.js';
 import { ARTWORK_ACCEPT, MAX_ARTWORK_BYTES, isSupportedArtworkFile, renderArtworkElement } from './animated-artwork.js';
+import { getArtworkSources, isSupportedImageArtworkFile } from './artwork-media.js';
 import { getTrackThemeColor, normalizeTrackThemeColor } from './track-theme-color.js';
+
+const STATIC_ARTWORK_ACCEPT = 'image/png,image/jpeg,image/webp,image/avif';
+const CANVAS_ACCEPT = 'video/mp4,.mp4';
 
 function fileToDataUrl(file) {
     if (!file?.size) return Promise.resolve('');
@@ -21,16 +25,51 @@ function value(form, name, fallback = '') {
     return String(form.get(name) ?? fallback).trim();
 }
 
-function artworkPicker(name, label, src, round = false) {
+function artworkPicker(
+    name,
+    label,
+    src,
+    round = false,
+    { accept = ARTWORK_ACCEPT, formats = 'PNG, JPG, WebP, AVIF, GIF or MP4', staticOnly = false } = {}
+) {
     return `
-        <label class="metadata-artwork-picker${round ? ' is-round' : ''}" data-artwork-picker="${name}">
-            <input type="file" name="${name}" accept="${ARTWORK_ACCEPT}" />
+        <label class="metadata-artwork-picker${round ? ' is-round' : ''}" data-artwork-picker="${name}" ${staticOnly ? 'data-static-artwork' : ''}>
+            <input type="file" name="${name}" accept="${accept}" />
             <span class="metadata-artwork-preview">
                 <img src="${escapeHtml(src || '/assets/appicon.png')}" alt="" data-artwork-preview="${name}" />
                 <span class="metadata-artwork-overlay">${EDIT_METADATA_ICON}Replace</span>
             </span>
-            <span class="metadata-artwork-copy"><strong>${label}</strong><small>PNG, JPG, WebP, AVIF, GIF or MP4</small></span>
+            <span class="metadata-artwork-copy"><strong>${label}</strong><small>${formats}</small></span>
         </label>`;
+}
+
+function canvasPicker(track) {
+    const artwork = getArtworkSources({
+        cover: track.album?.cover || track.cover,
+        animatedCover: track.videoCoverUrl || track.videoUrl || track.album?.videoCoverUrl,
+        coverFallback: track.coverFallback || track.album?.coverFallback,
+    });
+    const source = artwork.animated;
+    const poster = artwork.static;
+    return `
+        <div class="metadata-canvas-picker${source ? ' has-canvas' : ''}" data-canvas-picker data-canvas-poster="${escapeHtml(poster)}">
+            <span class="metadata-canvas-preview" data-canvas-preview>
+                ${source ? `<video src="${escapeHtml(source)}" poster="${escapeHtml(poster)}" muted loop playsinline preload="metadata" aria-label="Current Canvas preview"></video>` : `<img src="${escapeHtml(poster)}" alt="" />`}
+            </span>
+            <div class="metadata-canvas-copy">
+                <strong>Canvas video</strong>
+                <small>Optional portrait MP4 · 9:16 recommended · 100 MB maximum</small>
+                <span data-canvas-file-name>${source ? 'Canvas attached' : 'No Canvas attached'}</span>
+            </div>
+            <div class="metadata-canvas-actions">
+                <label class="btn-secondary metadata-canvas-choose">
+                    <span>${source ? 'Replace' : 'Choose MP4'}</span>
+                    <input type="file" name="canvas" accept="${CANVAS_ACCEPT}" />
+                </label>
+                <button type="button" class="btn-secondary metadata-canvas-remove" data-canvas-remove ${source ? '' : 'hidden'}>Remove</button>
+            </div>
+            <input type="hidden" name="removeCanvas" value="false" />
+        </div>`;
 }
 
 function field(label, name, current, options = {}) {
@@ -112,9 +151,14 @@ function themeColorPicker(track) {
 }
 
 function buildTrackForm(track) {
+    const staticArtwork = getArtworkSources({
+        cover: track.album?.cover || track.cover,
+        animatedCover: track.videoCoverUrl || track.videoUrl || track.album?.videoCoverUrl,
+        coverFallback: track.coverFallback || track.album?.coverFallback,
+    }).static;
     return `
         <div class="metadata-editor-intro">
-            ${artworkPicker('cover', 'Track artwork', track.album?.cover)}
+            ${artworkPicker('cover', 'Track artwork', staticArtwork, false, { accept: STATIC_ARTWORK_ACCEPT, formats: 'PNG, JPG, WebP or AVIF', staticOnly: true })}
             <div><span class="metadata-editor-kicker">Track</span><h4>${escapeHtml(track.title || 'Untitled')}</h4><p>Changes are applied to your local library.</p></div>
         </div>
         <div class="metadata-editor-section"><h5>Main information</h5><div class="metadata-fields">
@@ -130,6 +174,9 @@ function buildTrackForm(track) {
         </div></div>
         <div class="metadata-editor-section"><h5>Song color</h5>
             ${themeColorPicker(track)}
+        </div>
+        <div class="metadata-editor-section"><h5>Canvas</h5>
+            ${canvasPicker(track)}
         </div>
         <div class="metadata-editor-section"><h5>Lyrics</h5><div class="metadata-fields">
             ${lyricsFilePicker()}
@@ -191,10 +238,10 @@ function buildArtistForm(artist) {
         </div></div>`;
 }
 
-async function persistTrack(track, updated, coverFile = null) {
+async function persistTrack(track, updated, coverFile = null, canvasOptions = {}) {
     let remote = null;
     if (track.isSelfHosted) {
-        remote = await updateSelfHostedTrack(track.id, updated, coverFile);
+        remote = await updateSelfHostedTrack(track.id, updated, coverFile, canvasOptions);
     }
     const persisted = {
         ...(remote || track),
@@ -212,7 +259,15 @@ async function persistTrack(track, updated, coverFile = null) {
 
 async function saveTrack(track, form) {
     const coverFile = form.get('cover');
+    const canvasFile = form.get('canvas');
+    const removeCanvas = form.get('removeCanvas') === 'true';
     const coverData = await fileToDataUrl(coverFile);
+    const canvasData = track.isSelfHosted ? '' : await fileToDataUrl(canvasFile);
+    const existingArtwork = getArtworkSources({
+        cover: track.album?.cover || track.cover,
+        animatedCover: track.videoCoverUrl || track.videoUrl || track.album?.videoCoverUrl,
+        coverFallback: track.coverFallback || track.album?.coverFallback,
+    });
     const artist = { ...(track.artist || {}), name: value(form, 'artist') || 'Unknown Artist' };
     const album = {
         ...(track.album || {}),
@@ -220,7 +275,8 @@ async function saveTrack(track, form) {
         releaseDate: value(form, 'releaseDate'),
         genre: value(form, 'genre'),
         artist,
-        cover: coverData || track.album?.cover,
+        cover: coverData || existingArtwork.static,
+        videoCoverUrl: canvasFile?.size || removeCanvas ? null : track.album?.videoCoverUrl || null,
     };
     const updated = {
         ...track,
@@ -237,14 +293,21 @@ async function saveTrack(track, form) {
         genre: value(form, 'genre'),
         copyright: value(form, 'copyright'),
         explicit: form.get('explicit') === 'on',
+        videoUrl: canvasFile?.size || removeCanvas ? null : track.videoUrl || null,
+        videoCoverUrl: removeCanvas ? null : canvasData || track.videoCoverUrl || track.videoUrl || null,
         themeColor: normalizeTrackThemeColor(value(form, 'themeColor')),
         lyrics: String(form.get('lyrics') || ''),
         credits: collectRows(form, 'credits', ['name', 'role']),
     };
-    await persistTrack(track, updated, coverFile?.size ? coverFile : null);
-    Object.assign(track, updated);
-    window.dispatchEvent(new CustomEvent('track-metadata-updated', { detail: { trackId: track.id, track: updated } }));
-    await Promise.all([db.putLocalArtist(artist), db.putLocalAlbum(album)]);
+    const persisted = await persistTrack(track, updated, coverFile?.size ? coverFile : null, {
+        canvasFile: canvasFile?.size ? canvasFile : null,
+        removeCanvas,
+    });
+    Object.assign(track, persisted);
+    window.dispatchEvent(
+        new CustomEvent('track-metadata-updated', { detail: { trackId: track.id, track: persisted } })
+    );
+    await Promise.all([db.putLocalArtist(artist), db.putLocalAlbum(persisted.album || album)]);
 }
 
 async function saveAlbum(album, tracks, form) {
@@ -324,9 +387,17 @@ function setupArtworkPreviews(form) {
         const update = () => {
             const file = input.files?.[0];
             if (!file) return;
-            if (!isSupportedArtworkFile(file)) {
+            const supportsFile = picker.hasAttribute('data-static-artwork')
+                ? isSupportedImageArtworkFile(file)
+                : isSupportedArtworkFile(file);
+            if (!supportsFile) {
                 input.value = '';
-                showNotification('Choose an image, GIF, or MP4 file.', 'error');
+                showNotification(
+                    picker.hasAttribute('data-static-artwork')
+                        ? 'Choose a PNG, JPG, WebP, or AVIF image.'
+                        : 'Choose an image, GIF, or MP4 file.',
+                    'error'
+                );
                 return;
             }
             if (file.size > MAX_ARTWORK_BYTES) {
@@ -351,7 +422,11 @@ function setupArtworkPreviews(form) {
             })
         );
         picker.addEventListener('drop', (event) => {
-            const file = [...(event.dataTransfer?.files || [])].find(isSupportedArtworkFile);
+            const file = [...(event.dataTransfer?.files || [])].find((item) =>
+                picker.hasAttribute('data-static-artwork')
+                    ? isSupportedImageArtworkFile(item)
+                    : isSupportedArtworkFile(item)
+            );
             if (!file) return;
             const transfer = new DataTransfer();
             transfer.items.add(file);
@@ -359,6 +434,78 @@ function setupArtworkPreviews(form) {
             update();
         });
     });
+}
+
+function setupCanvasPicker(form) {
+    const picker = form.querySelector('[data-canvas-picker]');
+    if (!picker) return;
+    const input = picker.querySelector('input[name="canvas"]');
+    const removeInput = picker.querySelector('input[name="removeCanvas"]');
+    const preview = picker.querySelector('[data-canvas-preview]');
+    const fileName = picker.querySelector('[data-canvas-file-name]');
+    const chooseCopy = picker.querySelector('.metadata-canvas-choose span');
+    const removeButton = picker.querySelector('[data-canvas-remove]');
+    let objectUrl = '';
+
+    const renderPoster = () => {
+        const image = document.createElement('img');
+        image.src = picker.dataset.canvasPoster || '/assets/appicon.png';
+        image.alt = '';
+        preview.replaceChildren(image);
+    };
+    const setCanvasState = (hasCanvas, label) => {
+        picker.classList.toggle('has-canvas', hasCanvas);
+        picker.classList.toggle('is-removed', !hasCanvas && removeInput.value === 'true');
+        removeButton.hidden = !hasCanvas;
+        chooseCopy.textContent = hasCanvas ? 'Replace' : 'Choose MP4';
+        fileName.textContent = label;
+    };
+    const load = (file) => {
+        if (!file) return;
+        if (!(file.type === 'video/mp4' || /\.mp4$/i.test(file.name))) {
+            input.value = '';
+            showNotification('Choose an MP4 video for Canvas.', 'error');
+            return;
+        }
+        if (file.size > MAX_ARTWORK_BYTES) {
+            input.value = '';
+            showNotification('Canvas videos must be smaller than 100 MB.', 'error');
+            return;
+        }
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        objectUrl = URL.createObjectURL(file);
+        const video = document.createElement('video');
+        video.src = objectUrl;
+        video.poster = picker.dataset.canvasPoster || '';
+        video.muted = true;
+        video.defaultMuted = true;
+        video.loop = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        video.setAttribute('aria-label', 'Selected Canvas preview');
+        preview.replaceChildren(video);
+        removeInput.value = 'false';
+        setCanvasState(true, file.name);
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches) void video.play().catch(() => {});
+    };
+
+    input.addEventListener('change', () => load(input.files?.[0]));
+    removeButton.addEventListener('click', () => {
+        input.value = '';
+        removeInput.value = 'true';
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        objectUrl = '';
+        renderPoster();
+        setCanvasState(false, 'Canvas will be removed when you save');
+    });
+    picker.addEventListener('pointerenter', () => {
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches)
+            void preview
+                .querySelector('video')
+                ?.play()
+                .catch(() => {});
+    });
+    picker.addEventListener('pointerleave', () => preview.querySelector('video')?.pause());
 }
 
 function setupLyricsFilePicker(form) {
@@ -471,6 +618,7 @@ export function openMetadataEditor({ type, entity, tracks = [], onSaved }) {
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
     setupArtworkPreviews(form);
+    setupCanvasPicker(form);
     setupLyricsFilePicker(form);
     setupThemeColorPicker(form);
     setupRepeatableRows(form);

@@ -87,16 +87,24 @@ describe('selfhost-server-api helpers', () => {
         expect(formData.get('audio')).toBe(file);
     });
 
-    test('maps an uploaded MP4 cover as animated track and album artwork', () => {
+    test('maps a dedicated Canvas while keeping the static cover', () => {
         const pb = { files: { getURL: vi.fn((_record, filename) => `/api/files/${filename}`) } };
         const track = mapPocketBaseTrack(
-            { id: 'animated', title: 'Song', artist: 'Artist', album: 'Album', audio: 'song.flac', cover: 'cover.mp4' },
+            {
+                id: 'animated',
+                title: 'Song',
+                artist: 'Artist',
+                album: 'Album',
+                audio: 'song.flac',
+                cover: 'cover.jpg',
+                canvas: 'canvas.mp4',
+            },
             pb
         );
 
-        expect(track.videoCoverUrl).toBe('/api/files/cover.mp4');
-        expect(track.album.videoCoverUrl).toBe('/api/files/cover.mp4');
-        expect(track.album.cover).toBe('/api/files/cover.mp4');
+        expect(track.videoCoverUrl).toBe('/api/files/canvas.mp4');
+        expect(track.album.videoCoverUrl).toBe('/api/files/canvas.mp4');
+        expect(track.album.cover).toBe('/api/files/cover.jpg');
     });
 
     test('updates editable metadata and an optional cover without replacing audio', async () => {
@@ -146,6 +154,42 @@ describe('selfhost-server-api helpers', () => {
         expect(formData.get('cover')).toBe(cover);
         expect(formData.has('audio')).toBe(false);
         expect(result).toMatchObject({ id: 'track1', title: 'New title', serverAudioUrl: '/files/song.flac' });
+    });
+
+    test('uploads or removes a track Canvas independently from its cover', async () => {
+        const update = vi.fn().mockResolvedValue({
+            id: 'track1',
+            title: 'Song',
+            artist: 'Artist',
+            album: 'Album',
+            audio: 'song.flac',
+            cover: 'cover.jpg',
+            canvas: 'canvas.mp4',
+        });
+        const client = {
+            authStore: { isValid: true },
+            collection: vi.fn(() => ({ update })),
+            files: { getURL: vi.fn((_record, filename) => `/files/${filename}`) },
+        };
+        const canvas = new File(['canvas'], 'canvas.mp4', { type: 'video/mp4' });
+
+        const result = await updateSelfHostedTrack(
+            'track1',
+            { title: 'Song', artist: { name: 'Artist' }, album: { title: 'Album' } },
+            null,
+            { client, canvasFile: canvas, removeCanvas: false }
+        );
+        expect(update.mock.calls[0][1].get('canvas')).toBe(canvas);
+        expect(result.videoCoverUrl).toBe('/files/canvas.mp4');
+        expect(result.album.cover).toBe('/files/cover.jpg');
+
+        await updateSelfHostedTrack(
+            'track1',
+            { title: 'Song', artist: { name: 'Artist' }, album: { title: 'Album' } },
+            null,
+            { client, canvasFile: null, removeCanvas: true }
+        );
+        expect(update.mock.calls[1][1].get('canvas')).toBe('');
     });
 
     test('supports both PocketBase getURL and getUrl client versions', () => {

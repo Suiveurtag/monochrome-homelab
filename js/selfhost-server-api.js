@@ -43,8 +43,14 @@ export function mapPocketBaseTrack(record, client = pb) {
     const declaredAudioQuality = record.audio_quality || record.quality || null;
     const isFlac = /\.flac(?:$|[?#])/i.test(audioFileName);
     const audioQuality = declaredAudioQuality || (isFlac ? 'LOSSLESS' : null);
-    const coverUrl = pocketBaseFileUrl(client, record, record.cover) || FALLBACK_COVER;
-    const videoCoverUrl = isVideoArtwork(coverUrl) ? coverUrl : null;
+    const storedCoverUrl = pocketBaseFileUrl(client, record, record.cover);
+    const fallbackCoverUrl = pocketBaseFileUrl(client, record, record.cover_fallback);
+    const canvasUrl = pocketBaseFileUrl(client, record, record.canvas);
+    const legacyVideoCoverUrl = isVideoArtwork(storedCoverUrl) ? storedCoverUrl : null;
+    const coverUrl = legacyVideoCoverUrl
+        ? fallbackCoverUrl || FALLBACK_COVER
+        : storedCoverUrl || fallbackCoverUrl || FALLBACK_COVER;
+    const videoCoverUrl = canvasUrl || legacyVideoCoverUrl;
     const artist = {
         id: stableId('selfhost-artist', artistName),
         name: artistName,
@@ -84,6 +90,7 @@ export function mapPocketBaseTrack(record, client = pb) {
         },
         serverAudioUrl: audioUrl,
         serverCoverUrl: coverUrl,
+        serverCanvasUrl: canvasUrl,
         videoCoverUrl,
         mediaMetadata: { tags: ['Self-hosted', ...(isFlac ? ['FLAC', 'LOSSLESS'] : [])] },
         lyrics: record.lyrics || '',
@@ -213,7 +220,14 @@ export async function uploadSelfHostedTrack(track, file, coverFile = null, clien
     return mapPocketBaseTrack(record, client);
 }
 
-export async function updateSelfHostedTrack(id, track, coverFile = null, client = pb) {
+export async function updateSelfHostedTrack(id, track, coverFile = null, clientOrCanvasOptions = pb) {
+    const isCanvasOptions = Boolean(
+        clientOrCanvasOptions &&
+        (Object.hasOwn(clientOrCanvasOptions, 'canvasFile') || Object.hasOwn(clientOrCanvasOptions, 'removeCanvas'))
+    );
+    const client = isCanvasOptions ? clientOrCanvasOptions.client || pb : clientOrCanvasOptions;
+    const canvasFile = isCanvasOptions ? clientOrCanvasOptions.canvasFile : null;
+    const removeCanvas = isCanvasOptions ? Boolean(clientOrCanvasOptions.removeCanvas) : false;
     if (!client?.authStore?.isValid) throw new Error('You must be signed in to edit music.');
     if (!id) throw new Error('Missing track id.');
 
@@ -229,6 +243,8 @@ export async function updateSelfHostedTrack(id, track, coverFile = null, client 
     formData.set('theme_color', getTrackThemeColor(track));
     formData.set('lyrics', track?.lyrics || '');
     if (coverFile) formData.set('cover', coverFile);
+    if (canvasFile) formData.set('canvas', canvasFile);
+    else if (removeCanvas) formData.set('canvas', '');
 
     const record = await client.collection(SELFHOST_TRACKS_COLLECTION).update(id, formData);
     return mapPocketBaseTrack(record, client);

@@ -104,6 +104,33 @@ describe('Now Playing panel model', () => {
         expect(model.artwork.isVideo).toBe(true);
     });
 
+    test('never sends an animated cover to Kawarp and prefers its static fallback', async () => {
+        const track = {
+            id: 'video-with-fallback',
+            title: 'Animated',
+            artist: { name: 'Artist' },
+            album: { cover: '/artwork/animated.mp4', coverFallback: '/artwork/poster.jpg' },
+        };
+        const model = await buildNowPlayingPanelModel({ track, player: player([track]), api: {} });
+
+        expect(model.artwork.animatedSrc).toBe('/artwork/animated.mp4');
+        expect(model.artwork.staticSrc).toBe('/artwork/poster.jpg');
+        expect(model.artwork.isVideo).toBe(true);
+    });
+
+    test('uses the app artwork as a neutral fallback when an MP4 has no poster', async () => {
+        const track = {
+            id: 'video-only',
+            title: 'Animated',
+            artist: { name: 'Artist' },
+            album: { cover: '/artwork/animated.mp4' },
+        };
+        const model = await buildNowPlayingPanelModel({ track, player: player([track]), api: {} });
+
+        expect(model.artwork.animatedSrc).toBe('/artwork/animated.mp4');
+        expect(model.artwork.staticSrc).toBe('/assets/appicon.png');
+    });
+
     test('rejects stale async artist work when the caller aborts', async () => {
         const controller = new AbortController();
         const promise = buildNowPlayingPanelModel({

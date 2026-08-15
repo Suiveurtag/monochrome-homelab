@@ -1,5 +1,6 @@
 import { getTrackArtists, getTrackTitle, getTrackYearDisplay } from './utils.js';
 import { isVideoArtwork } from './animated-artwork.js';
+import { getArtworkSources } from './artwork-media.js';
 
 const SOURCE_KINDS = new Set(['playlist', 'album', 'artist', 'liked', 'radio', 'single', 'unknown']);
 
@@ -14,13 +15,22 @@ export function normalizeSourceContext(value) {
 }
 
 function resolveArtwork(track, api) {
-    const animatedSrc = track?.videoUrl || track?.videoCoverUrl || track?.album?.videoCoverUrl || null;
-    const coverId = track?.image || track?.cover || track?.album?.cover || null;
-    const staticSrc = !coverId
+    const explicitAnimated = track?.videoUrl || track?.videoCoverUrl || track?.album?.videoCoverUrl || null;
+    const albumArtwork = track?.album || {};
+    const coverId = track?.image || track?.cover || albumArtwork.cover || null;
+    const sources = getArtworkSources({
+        cover: coverId,
+        animatedCover: explicitAnimated || track?.animatedCover || albumArtwork.animatedCover,
+        coverFallback:
+            track?.coverFallback || track?.staticCover || albumArtwork.coverFallback || albumArtwork.staticCover,
+    });
+    const animatedSrc = sources.animated || explicitAnimated || null;
+    const staticCover = sources.static;
+    const staticSrc = !staticCover
         ? '/assets/appicon.png'
-        : /^(?:data:|blob:|https?:|\/)/i.test(String(coverId))
-          ? String(coverId)
-          : api?.getCoverUrl?.(coverId, '1280') || String(coverId);
+        : /^(?:data:|blob:|https?:|\/)/i.test(String(staticCover))
+          ? String(staticCover)
+          : api?.getCoverUrl?.(staticCover, '1280') || String(staticCover);
     return {
         staticSrc,
         animatedSrc,

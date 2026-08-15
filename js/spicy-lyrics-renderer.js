@@ -22,6 +22,7 @@ import { Animate as animateUpstream } from './vendor/spicy-lyrics/upstream/Lyric
 import { notifyNewElementMounted, replaceSyllableLines } from './vendor/spicy-lyrics/upstream/AnimatorCompat.js';
 import { LyricsVirtualizer } from './vendor/spicy-lyrics/upstream/LyricsVirtualizer.ts';
 import { parseSpicyTtml, parseTtmlTime } from './spicy-lyrics-ttml.js';
+import { getArtworkSources } from './artwork-media.js';
 
 export { Spring as SpicySpring };
 export { parseSpicyTtml, parseTtmlTime };
@@ -226,7 +227,13 @@ function resolveCoverUrl(track, api) {
     // Kawarp accepts still images. Animated MP4/HLS artwork remains in the
     // host's media element while its real poster/cover drives the shared
     // full-surface background.
-    const cover = track?.album?.cover || track?.cover || track?.image || track?.album?.coverId || track?.coverId;
+    const album = track?.album || {};
+    const sources = getArtworkSources({
+        cover: album.cover || track?.cover || track?.image || album.coverId || track?.coverId,
+        animatedCover: track?.videoUrl || track?.videoCoverUrl || album.videoCoverUrl || album.animatedCover,
+        coverFallback: track?.coverFallback || track?.staticCover || album.coverFallback || album.staticCover,
+    });
+    const cover = sources.static;
     if (!cover) return '';
     if (/^(?:https?:|blob:|data:)/i.test(cover)) return cover;
     return api?.getCoverUrl?.(cover, '1280') || cover;
