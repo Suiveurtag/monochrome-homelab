@@ -173,6 +173,24 @@ describe('Now Playing panel interactions', () => {
         panel.destroy();
     });
 
+    test('reduces collapsed lyrics to an inert header-only state', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const panel = new NowPlayingPanel(dependencies());
+        await waitForPanel(panel);
+        const collapse = panel.root.querySelector('.now-playing-panel-lyrics-collapse');
+
+        collapse.click();
+
+        const lyrics = panel.root.querySelector('.now-playing-panel-lyrics');
+        const host = panel.root.querySelector('.now-playing-panel-lyrics-host');
+        expect(lyrics.classList.contains('is-collapsed')).toBe(true);
+        expect(host.inert).toBe(true);
+        expect(host.getAttribute('aria-hidden')).toBe('true');
+        expect(collapse.getAttribute('aria-expanded')).toBe('false');
+        expect(collapse.getAttribute('aria-label')).toBe('Show lyrics preview');
+        panel.destroy();
+    });
+
     test('hands Open queue to the existing independent queue control', async () => {
         const { NowPlayingPanel } = await import('./now-playing-panel.js');
         const panel = new NowPlayingPanel(dependencies());

@@ -40,6 +40,7 @@ The source Canvas/background boundary, card surfaces, and scrolled background st
 - Pass 1: replaced the custom Canvas and panel shade gradients with the current upstream Spicy Lyrics layered mask, Kawarp filtering, and 7%/6px surface treatment. No post-fix implementation capture was available.
 - Pass 2: confined Canvas playback to Now Playing, changed the default Canvas viewport to a shorter crop that keeps lyrics visible, added a keyboard-accessible click-to-expand state, and removed the background transition reset on pause. Imported Apple word-timed lyrics now use semantic-token gaps so spacing cannot collapse between words. No post-fix implementation capture was available.
 - Pass 3: added line-timed Apple lyric tokenization for “Desire Be Desire Go,” a persistent Canvas toggle in the track menu, slower Canvas reveal and Kawarp motion, transient playback recovery, a non-overlapping media/lyrics flow, album navigation from the track title, and an opaque shadow-only collapsed rail. Browser capture is still unavailable, so these states remain behaviorally tested but not visually approved.
+- Pass 4: reduced the collapsed lyrics card to its 56px header, removed the lyric renderer and secondary actions from layout and accessibility navigation, and retained a single labeled disclosure control for reopening it.
 
 ## Implementation checklist
 

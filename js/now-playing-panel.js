@@ -668,8 +668,14 @@ export class NowPlayingPanel {
     applyLyricsMode() {
         this.root.classList.toggle('lyrics-expanded', this.expandedLyrics);
         this.root.querySelector('.now-playing-panel-lyrics')?.classList.toggle('is-collapsed', this.collapsedLyrics);
+        const lyricsHost = this.root.querySelector('.now-playing-panel-lyrics-host');
+        lyricsHost?.setAttribute('aria-hidden', String(this.collapsedLyrics));
+        if (lyricsHost) lyricsHost.inert = this.collapsedLyrics;
         const expand = this.root.querySelector('.now-playing-panel-lyrics-expand');
         expand?.setAttribute('aria-expanded', String(this.expandedLyrics));
+        const collapse = this.root.querySelector('.now-playing-panel-lyrics-collapse');
+        collapse?.setAttribute('aria-expanded', String(!this.collapsedLyrics));
+        collapse?.setAttribute('aria-label', this.collapsedLyrics ? 'Show lyrics preview' : 'Hide lyrics preview');
         this.applyCanvasMode();
         this.syncCanvasPlayback();
     }

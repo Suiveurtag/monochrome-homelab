@@ -545,8 +545,23 @@
 }
 
 .now-playing-panel-lyrics.is-collapsed {
-    min-height: 144px;
-    height: 144px;
+    min-height: 56px;
+    height: 56px;
+}
+
+.now-playing-panel-lyrics.is-collapsed .now-playing-panel-lyrics-host,
+.now-playing-panel-lyrics.is-collapsed
+    .now-playing-panel-lyrics-actions
+    :is(.now-playing-panel-lyrics-fullscreen, .now-playing-panel-lyrics-expand) {
+    display: none;
+}
+
+.now-playing-panel-lyrics-collapse svg {
+    transition: transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.now-playing-panel-lyrics.is-collapsed .now-playing-panel-lyrics-collapse svg {
+    transform: rotate(180deg);
 }
 
 .now-playing-panel-lyrics-actions .now-playing-panel-icon {
