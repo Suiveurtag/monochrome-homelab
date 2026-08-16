@@ -389,7 +389,7 @@ export class Player {
                 const artistEl = document.querySelector('.now-playing-bar .artist');
 
                 if (coverEl) {
-                    const videoCoverUrl = track.videoUrl || track.videoCoverUrl || track.album?.videoCoverUrl || null;
+                    const videoCoverUrl = track.type === 'video' ? track.videoUrl || null : null;
                     const coverId = track.image || track.cover || track.album?.cover;
                     const coverUrl = videoCoverUrl || this.api.getCoverUrl(coverId);
                     const coverSrcset = videoCoverUrl ? null : this.api.getCoverSrcset(coverId);
@@ -1219,46 +1219,6 @@ export class Player {
         await this.playTrackFromQueue();
     }
 
-    async updateVideoCovers(videoUrl) {
-        if (!videoUrl) return;
-
-        const syncCover = async (el) => {
-            if (!el) return;
-            const isPaused = this.activeElement.paused;
-            let videoEl;
-            if (el.tagName === 'IMG') {
-                videoEl = document.createElement('video');
-                videoEl.autoplay = !isPaused;
-                videoEl.loop = true;
-                videoEl.muted = true;
-                videoEl.playsInline = true;
-                videoEl.className = el.className;
-                videoEl.id = el.id;
-                videoEl.style.objectFit = 'cover';
-                el.replaceWith(videoEl);
-            } else if (el.tagName === 'VIDEO') {
-                videoEl = el;
-            } else {
-                return;
-            }
-
-            if (UIRenderer.instance) {
-                await UIRenderer.instance.setupHlsVideo(videoEl, videoUrl, null);
-                if (isPaused) {
-                    videoEl.pause();
-                } else {
-                    videoEl.play().catch(() => {});
-                }
-            }
-        };
-
-        const playerBarCover = document.querySelector('.now-playing-bar .cover');
-        if (playerBarCover) await syncCover(playerBarCover);
-
-        const fullscreenCover = document.getElementById('fullscreen-cover-image');
-        if (fullscreenCover) await syncCover(fullscreenCover);
-    }
-
     async playTrackFromQueue(startTime = 0, recursiveCount = 0, isRetry = false, options = {}) {
         const { preserveGestureToken = false, crossfadeFrom = null, crossfadeDuration = 0 } = options;
         if (!isRetry) {
@@ -1332,12 +1292,13 @@ export class Player {
         const trackArtistsHTML = getTrackArtistsHTML(track, { asButtons: true });
         const yearDisplay = getTrackYearDisplay(track);
 
-        if (!track.videoUrl && !track.videoCoverUrl && !track.album?.videoCoverUrl) {
+        if (track.type !== 'video' && !track.videoCoverUrl && !track.album?.videoCoverUrl) {
             this.api.getVideoArtwork(trackTitle, artistName).then((result) => {
                 if (this.currentTrack?.id === track.id && result && (result.videoUrl || result.hlsUrl)) {
                     track.videoCoverUrl = result.videoUrl || result.hlsUrl;
-                    void this.updateVideoCovers(track.videoCoverUrl);
-                    window.dispatchEvent(new CustomEvent('player-track-changed', { detail: { track } }));
+                    window.dispatchEvent(
+                        new CustomEvent('player-canvas-changed', { detail: { trackId: track.id, track } })
+                    );
 
                     if (
                         UIRenderer.instance &&
@@ -1429,34 +1390,26 @@ export class Player {
         } else {
             if (coverEl) {
                 coverEl.style.display = 'block';
-                const videoCoverUrl = track.videoUrl || track.videoCoverUrl || track.album?.videoCoverUrl || null;
                 const coverId = track.image || track.cover || track.album?.cover;
-                const coverUrl = videoCoverUrl || this.api.getCoverUrl(coverId);
-                const coverSrcset = videoCoverUrl ? null : this.api.getCoverSrcset(coverId);
-
-                if (videoCoverUrl) {
-                    void this.updateVideoCovers(videoCoverUrl);
-                } else {
-                    let imgEl = coverEl;
-                    if (coverEl.tagName === 'VIDEO') {
-                        imgEl = document.createElement('img');
-                        imgEl.className = coverEl.className;
-                        imgEl.id = coverEl.id;
-                        coverEl.replaceWith(imgEl);
-                    }
-
-                    if (imgEl.getAttribute('src') !== coverUrl) {
-                        imgEl.src = coverUrl;
-                        if (coverSrcset) {
-                            imgEl.setAttribute('srcset', coverSrcset);
-                            imgEl.setAttribute('sizes', '(max-width: 640px) 160px, (max-width: 1024px) 320px, 640px');
-                        } else {
-                            imgEl.removeAttribute('srcset');
-                            imgEl.removeAttribute('sizes');
-                        }
-                    }
-                    imgEl.alt = `${trackTitle} by ${artistName} artwork`;
+                const coverUrl = this.api.getCoverUrl(coverId);
+                const coverSrcset = this.api.getCoverSrcset(coverId);
+                let imgEl = coverEl;
+                if (coverEl.tagName === 'VIDEO') {
+                    imgEl = document.createElement('img');
+                    imgEl.className = coverEl.className;
+                    imgEl.id = coverEl.id;
+                    coverEl.replaceWith(imgEl);
                 }
+
+                if (imgEl.getAttribute('src') !== coverUrl) imgEl.src = coverUrl;
+                if (coverSrcset) {
+                    imgEl.setAttribute('srcset', coverSrcset);
+                    imgEl.setAttribute('sizes', '(max-width: 640px) 160px, (max-width: 1024px) 320px, 640px');
+                } else {
+                    imgEl.removeAttribute('srcset');
+                    imgEl.removeAttribute('sizes');
+                }
+                imgEl.alt = `${trackTitle} by ${artistName} artwork`;
             }
             if (this.audio) {
                 const isInFullscreen = document.getElementById('fullscreen-cover-overlay')?.style.display === 'flex';

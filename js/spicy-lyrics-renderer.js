@@ -125,7 +125,7 @@ const SHADOW_BRIDGE_CSS = `
     padding-inline: clamp(1.5rem, 7cqw, 6rem);
 }
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line {
-    column-gap: 0;
+    column-gap: 0.32ch;
 }
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line .word-group {
     column-gap: 0;
@@ -137,13 +137,7 @@ const SHADOW_BRIDGE_CSS = `
     white-space: nowrap;
 }
 .spicy-word-space {
-    display: inline-block !important;
-    flex: 0 0 0.28ch;
-    width: 0.28ch;
-    min-width: 0.28ch;
-    overflow: hidden;
-    white-space: pre;
-    pointer-events: none;
+    display: none;
 }
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line
     :is(.word, .letterGroup):not(.PartOfWord, .dot, .LastWordInLine)::after {

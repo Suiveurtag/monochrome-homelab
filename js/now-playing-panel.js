@@ -10,6 +10,7 @@ import { db } from './db.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { audioContextManager } from './audio-context.js';
 import { listeningTracker } from './listening-tracker.js';
+import { canvasSettings } from './canvas-settings.js';
 import ICON_CHEVRON_RIGHT from '!lucide/chevron-right.svg?svg&icon';
 import ICON_CHEVRON_UP from '!lucide/chevron-up.svg?svg&icon';
 import ICON_ELLIPSIS from '!lucide/ellipsis.svg?svg&icon';
@@ -21,7 +22,9 @@ import ICON_CLOSE from '!lucide/x.svg?svg&icon';
 
 const DESKTOP_PANEL_QUERY = '(min-width: 769px)';
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
-const CANVAS_LOAD_TIMEOUT = 8000;
+const CANVAS_LOAD_TIMEOUT = 20000;
+const CANVAS_RETRY_DELAY = 240;
+const CANVAS_MAX_RETRIES = 6;
 const TRACK_FADE_OUT_DURATION = 180;
 const MISSING_BIOGRAPHY = 'No biography is available for this artist yet.';
 
@@ -69,6 +72,8 @@ export class NowPlayingPanel {
         this.renderController = null;
         this.expandedLyrics = false;
         this.collapsedLyrics = false;
+        this.canvasExpanded = false;
+        this.canvasEnabled = canvasSettings.isEnabled();
         this.scrollByTrack = new Map();
         this.background = this.root
             ? mountSpicyDynamicBackground(this.root, { className: 'now-playing-panel-spicy-bg' })
@@ -84,6 +89,8 @@ export class NowPlayingPanel {
         this.canvasVisibilityObserver = null;
         this.canvasIsVisible = true;
         this.canvasLoadTimer = null;
+        this.canvasRetryTimer = null;
+        this.canvasRetryCount = 0;
         this.canvasPlaybackElement = null;
         this.reducedMotionMedia = matchMedia(REDUCED_MOTION_QUERY);
         this.background?.connectPlayback?.({
@@ -92,17 +99,27 @@ export class NowPlayingPanel {
         });
         this.boundTrackChanged = (event) => {
             this.currentTrack = event.detail?.track || null;
+            this.canvasExpanded = false;
             void this.render();
+        };
+        this.boundCanvasChanged = (event) => {
+            if (String(event.detail?.trackId) !== String(this.currentTrack?.id)) return;
+            Object.assign(this.currentTrack, event.detail?.track || {});
+            void this.render({ preserveScroll: true });
         };
         this.boundQueueChanged = (event) => {
             this.sourceContext = normalizeSourceContext(event.detail?.sourceContext || this.player?.sourceContext);
             void this.render({ preserveScroll: true });
         };
         this.boundMetadataChanged = (event) => {
-            if (
+            const currentTrackChanged =
                 event.type === 'track-metadata-updated' &&
-                String(event.detail?.trackId) === String(this.currentTrack?.id)
-            ) {
+                String(event.detail?.trackId) === String(this.currentTrack?.id);
+            const currentArtistChanged =
+                event.type === 'artist-metadata-updated' &&
+                this.model?.artists?.some((artist) => String(artist.id) === String(event.detail?.artistId));
+            if (!currentTrackChanged && !currentArtistChanged) return;
+            if (currentTrackChanged) {
                 Object.assign(this.currentTrack, event.detail.track || {});
             }
             void this.render({ preserveScroll: true });
@@ -123,7 +140,28 @@ export class NowPlayingPanel {
         };
         this.boundVisibilityChanged = () => this.syncPanelActivity();
         this.boundReducedMotionChanged = () => void this.render({ preserveScroll: true });
-        this.boundPlaybackChanged = () => this.syncCanvasPlayback();
+        this.boundPlaybackChanged = (event) => {
+            if (event?.type === 'play') this.canvasRetryCount = 0;
+            this.syncCanvasPlayback();
+        };
+        this.boundCanvasPlaybackInterrupted = () => {
+            if (!this.shouldCanvasPlay() || this.canvasRetryCount >= CANVAS_MAX_RETRIES) return;
+            window.clearTimeout(this.canvasRetryTimer);
+            const delay = CANVAS_RETRY_DELAY * 2 ** Math.min(this.canvasRetryCount, 3);
+            this.canvasRetryCount += 1;
+            this.canvasRetryTimer = window.setTimeout(() => this.syncCanvasPlayback(), delay);
+        };
+        this.boundCanvasPlaybackStarted = () => {
+            window.clearTimeout(this.canvasRetryTimer);
+            this.canvasRetryTimer = null;
+            this.canvasRetryCount = 0;
+            this.syncCanvasPlayback();
+        };
+        this.boundCanvasPreferenceChanged = (event) => {
+            this.canvasEnabled = event.detail?.enabled ?? canvasSettings.isEnabled();
+            this.canvasExpanded = false;
+            void this.render({ preserveScroll: true });
+        };
         this.init();
     }
 
@@ -142,6 +180,8 @@ export class NowPlayingPanel {
         this.reducedMotionMedia.addEventListener?.('change', this.boundReducedMotionChanged);
         document.addEventListener('visibilitychange', this.boundVisibilityChanged);
         window.addEventListener('player-track-changed', this.boundTrackChanged);
+        window.addEventListener('player-canvas-changed', this.boundCanvasChanged);
+        window.addEventListener('canvas-playback-preference-changed', this.boundCanvasPreferenceChanged);
         window.addEventListener('player-queue-changed', this.boundQueueChanged);
         window.addEventListener('track-metadata-updated', this.boundMetadataChanged);
         window.addEventListener('artist-metadata-updated', this.boundMetadataChanged);
@@ -310,7 +350,7 @@ export class NowPlayingPanel {
 
     renderMarkup(model) {
         const context = escapeHtml(model.source.label);
-        const canvasLayout = model.artwork.isVideo && !this.reducedMotionMedia.matches;
+        const canvasLayout = this.canvasEnabled && model.artwork.isVideo && !this.reducedMotionMedia.matches;
         const artistLinks = model.artists
             .map((artist) =>
                 artist.id
@@ -327,14 +367,15 @@ export class NowPlayingPanel {
                     <button type="button" class="now-playing-panel-icon now-playing-panel-fullscreen" aria-label="Open fullscreen player">${icon('maximize-2')}</button>
                 </div>
             </header>
-            <div class="now-playing-panel-body${canvasLayout ? ' has-video-artwork' : ''}${model.empty ? ' is-empty' : ''}">
-                <div class="now-playing-panel-media" aria-label="${escapeHtml(`${model.title} artwork`)}">
-                    <img class="now-playing-panel-poster" src="${escapeHtml(model.artwork.staticSrc)}" alt="" fetchpriority="high" />
-                    <span class="now-playing-panel-media-shade" aria-hidden="true"></span>
+            <div class="now-playing-panel-body${canvasLayout ? ' has-video-artwork' : ''}${this.canvasExpanded ? ' is-canvas-expanded' : ''}${model.empty ? ' is-empty' : ''}">
+                <div class="now-playing-panel-media-row">
+                    <${canvasLayout ? `button type="button" data-canvas-toggle aria-expanded="${String(this.canvasExpanded)}"` : 'div'} class="now-playing-panel-media" aria-label="${escapeHtml(canvasLayout ? `${this.canvasExpanded ? 'Collapse' : 'Expand'} ${model.title} Canvas artwork` : `${model.title} artwork`)}">
+                        <img class="now-playing-panel-poster" src="${escapeHtml(model.artwork.staticSrc)}" alt="" fetchpriority="high" />
+                    </${canvasLayout ? 'button' : 'div'}>
                 </div>
                 <section class="now-playing-panel-metadata" aria-label="Current track">
                     <div class="now-playing-panel-track-copy">
-                        <h2>${escapeHtml(model.title)}</h2>
+                        <h2>${this.currentTrack?.album?.id ? `<button type="button" class="now-playing-panel-track-title" data-album-id="${escapeHtml(this.currentTrack.album.id)}" aria-label="Open ${escapeHtml(this.currentTrack.album.title || model.title)} album">${escapeHtml(model.title)}</button>` : escapeHtml(model.title)}</h2>
                         <p>${artistLinks || escapeHtml(model.artistLine)}${model.releaseYear ? `<span aria-hidden="true"> · </span><span>${escapeHtml(model.releaseYear)}</span>` : ''}${model.explicit ? '<span class="now-playing-panel-explicit" aria-label="Explicit">E</span>' : ''}</p>
                     </div>
                     <div class="now-playing-panel-track-actions">
@@ -451,7 +492,7 @@ export class NowPlayingPanel {
     }
 
     async mountMedia(model, signal) {
-        if (!model.artwork.isVideo || !model.artwork.animatedSrc) return;
+        if (!this.canvasEnabled || !model.artwork.isVideo || !model.artwork.animatedSrc) return;
         const stage = this.content.querySelector('.now-playing-panel-media');
         const poster = stage?.querySelector('.now-playing-panel-poster');
         if (!stage || !poster || signal.aborted || this.reducedMotionMedia.matches) return;
@@ -468,11 +509,11 @@ export class NowPlayingPanel {
             video.playsInline = true;
             video.preload = 'metadata';
             video.poster = model.artwork.staticSrc;
-            stage.insertBefore(video, stage.querySelector('.now-playing-panel-media-shade'));
+            stage.append(video);
         } else {
             const candidate = document.createElement('img');
             candidate.className = 'now-playing-panel-canvas';
-            stage.insertBefore(candidate, stage.querySelector('.now-playing-panel-media-shade'));
+            stage.append(candidate);
             video = renderArtworkElement(candidate, model.artwork.animatedSrc, {
                 video: true,
                 autoplay: false,
@@ -502,16 +543,20 @@ export class NowPlayingPanel {
         const fail = () => this.failCanvasMedia(video);
         video.addEventListener('loadeddata', markReady, { once: true });
         video.addEventListener('error', fail, { once: true });
-        video.addEventListener('play', this.boundPlaybackChanged);
+        video.addEventListener('play', this.boundCanvasPlaybackStarted);
+        video.addEventListener('pause', this.boundCanvasPlaybackInterrupted);
+        video.addEventListener('stalled', this.boundCanvasPlaybackInterrupted);
+        video.addEventListener('waiting', this.boundCanvasPlaybackInterrupted);
+        video.addEventListener('canplay', this.boundCanvasPlaybackInterrupted);
         if (video.readyState >= 2) markReady();
 
         if (typeof IntersectionObserver !== 'undefined') {
             this.canvasVisibilityObserver = new IntersectionObserver(
                 ([entry]) => {
-                    this.canvasIsVisible = Boolean(entry?.isIntersecting && entry.intersectionRatio > 0.08);
+                    this.canvasIsVisible = Boolean(entry?.isIntersecting);
                     this.syncCanvasPlayback();
                 },
-                { root: this.content, threshold: [0, 0.08, 0.2] }
+                { root: this.content, threshold: [0, 0.01] }
             );
             this.canvasVisibilityObserver.observe(stage);
         }
@@ -527,10 +572,14 @@ export class NowPlayingPanel {
 
     failCanvasMedia(video = this.canvasMedia) {
         if (!video || video !== this.canvasMedia) return;
+        const failedStage = this.canvasStage;
         window.clearTimeout(this.canvasLoadTimer);
         this.canvasLoadTimer = null;
-        this.canvasStage?.classList.remove('is-canvas-ready');
-        this.canvasStage?.classList.add('is-canvas-failed');
+        window.clearTimeout(this.canvasRetryTimer);
+        this.canvasRetryTimer = null;
+        this.canvasRetryCount = 0;
+        failedStage?.closest('.now-playing-panel-body')?.classList.remove('has-video-artwork', 'is-canvas-expanded');
+        this.canvasExpanded = false;
         this.canvasVisibilityObserver?.disconnect();
         this.canvasVisibilityObserver = null;
         video._hls?.destroy?.();
@@ -539,6 +588,15 @@ export class NowPlayingPanel {
         video.load?.();
         video.remove();
         this.canvasMedia = null;
+        if (failedStage) {
+            const fallbackStage = document.createElement('div');
+            fallbackStage.className = 'now-playing-panel-media is-canvas-failed';
+            fallbackStage.setAttribute('aria-label', `${this.model?.title || 'Track'} artwork`);
+            const poster = failedStage.querySelector('.now-playing-panel-poster');
+            if (poster) fallbackStage.append(poster);
+            failedStage.replaceWith(fallbackStage);
+            this.canvasStage = fallbackStage;
+        }
     }
 
     syncCanvasPlayback() {
@@ -547,25 +605,39 @@ export class NowPlayingPanel {
         if (!video || !stage) return;
         this.syncPlaybackElement();
         const reducedMotion = this.reducedMotionMedia.matches;
-        const audioPlaying = Boolean(this.canvasPlaybackElement && !this.canvasPlaybackElement.paused);
-        const visible =
-            this.isOpen && !this.fullscreenVisible && !this.expandedLyrics && !document.hidden && this.canvasIsVisible;
-        const shouldPlay = visible && audioPlaying && !reducedMotion;
-        stage.classList.toggle('is-canvas-ready', video.dataset.canvasReady === 'true' && !reducedMotion);
+        const shouldPlay = this.shouldCanvasPlay();
+        stage.classList.toggle(
+            'is-canvas-ready',
+            this.canvasEnabled && video.dataset.canvasReady === 'true' && !reducedMotion
+        );
         if (shouldPlay) {
-            void video.play().catch(() => {});
+            void video.play().catch(() => this.boundCanvasPlaybackInterrupted());
         } else {
             video.pause();
         }
     }
 
+    shouldCanvasPlay() {
+        this.syncPlaybackElement();
+        const audioPlaying = Boolean(this.canvasPlaybackElement && !this.canvasPlaybackElement.paused);
+        const visible =
+            this.isOpen && !this.fullscreenVisible && !this.expandedLyrics && !document.hidden && this.canvasIsVisible;
+        return this.canvasEnabled && visible && audioPlaying && !this.reducedMotionMedia.matches;
+    }
+
     cleanupMedia() {
         window.clearTimeout(this.canvasLoadTimer);
         this.canvasLoadTimer = null;
+        window.clearTimeout(this.canvasRetryTimer);
+        this.canvasRetryTimer = null;
         this.canvasVisibilityObserver?.disconnect();
         this.canvasVisibilityObserver = null;
         this.content?.querySelectorAll('video').forEach((video) => {
-            video.removeEventListener('play', this.boundPlaybackChanged);
+            video.removeEventListener('play', this.boundCanvasPlaybackStarted);
+            video.removeEventListener('pause', this.boundCanvasPlaybackInterrupted);
+            video.removeEventListener('stalled', this.boundCanvasPlaybackInterrupted);
+            video.removeEventListener('waiting', this.boundCanvasPlaybackInterrupted);
+            video.removeEventListener('canplay', this.boundCanvasPlaybackInterrupted);
             video._hls?.destroy?.();
             video.pause();
             video.removeAttribute('src');
@@ -574,6 +646,7 @@ export class NowPlayingPanel {
         this.canvasMedia = null;
         this.canvasStage = null;
         this.canvasIsVisible = true;
+        this.canvasRetryCount = 0;
     }
 
     async mountLyrics(model, signal) {
@@ -597,7 +670,19 @@ export class NowPlayingPanel {
         this.root.querySelector('.now-playing-panel-lyrics')?.classList.toggle('is-collapsed', this.collapsedLyrics);
         const expand = this.root.querySelector('.now-playing-panel-lyrics-expand');
         expand?.setAttribute('aria-expanded', String(this.expandedLyrics));
+        this.applyCanvasMode();
         this.syncCanvasPlayback();
+    }
+
+    applyCanvasMode() {
+        const body = this.root.querySelector('.now-playing-panel-body');
+        const toggle = this.root.querySelector('[data-canvas-toggle]');
+        body?.classList.toggle('is-canvas-expanded', this.canvasExpanded);
+        toggle?.setAttribute('aria-expanded', String(this.canvasExpanded));
+        toggle?.setAttribute(
+            'aria-label',
+            `${this.canvasExpanded ? 'Collapse' : 'Expand'} ${this.model?.title || 'track'} Canvas artwork`
+        );
     }
 
     async shareTrack() {
@@ -655,10 +740,18 @@ export class NowPlayingPanel {
     }
 
     async handleClick(event) {
+        const canvasToggle = event.target.closest('[data-canvas-toggle]');
+        if (canvasToggle) {
+            this.canvasExpanded = !this.canvasExpanded;
+            this.applyCanvasMode();
+            return;
+        }
         const button = event.target.closest('button, a');
         if (!button) return;
         if (button.matches('.now-playing-panel-close')) return this.setOpen(false);
         if (button.matches('.now-playing-panel-context') && button.dataset.href) return navigate(button.dataset.href);
+        if (button.matches('.now-playing-panel-track-title') && button.dataset.albumId)
+            return navigate(`/album/${button.dataset.albumId}`);
         if (button.matches('.now-playing-panel-menu') && this.currentTrack) {
             document.dispatchEvent(
                 new CustomEvent('open-current-track-context-menu', {
@@ -744,6 +837,8 @@ export class NowPlayingPanel {
         this.reducedMotionMedia.removeEventListener?.('change', this.boundReducedMotionChanged);
         document.removeEventListener('visibilitychange', this.boundVisibilityChanged);
         window.removeEventListener('player-track-changed', this.boundTrackChanged);
+        window.removeEventListener('player-canvas-changed', this.boundCanvasChanged);
+        window.removeEventListener('canvas-playback-preference-changed', this.boundCanvasPreferenceChanged);
         window.removeEventListener('player-queue-changed', this.boundQueueChanged);
         window.removeEventListener('track-metadata-updated', this.boundMetadataChanged);
         window.removeEventListener('artist-metadata-updated', this.boundMetadataChanged);

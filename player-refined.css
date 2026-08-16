@@ -181,6 +181,7 @@
     width: 100%;
     flex: 1 1 auto;
     overflow: visible;
+    border-radius: var(--radius-full);
     transition:
         height 180ms var(--ease-out),
         background-color 180ms ease,
@@ -219,6 +220,7 @@
 
 .progress-bar .progress-fill {
     z-index: 1;
+    border-radius: var(--radius-full);
 }
 
 .progress-hover-time {
@@ -287,6 +289,27 @@
     transition:
         width 320ms cubic-bezier(0.4, 0, 0.2, 1),
         background-color 200ms ease;
+}
+
+/* Preview the prospective volume beneath the committed level without affecting slider input. */
+.volume-controls .volume-bar .volume-hover-fill {
+    position: absolute;
+    z-index: 0;
+    inset: 0 auto 0 0;
+    width: var(--volume-hover-level, 0%);
+    border-radius: inherit;
+    background: rgb(190 190 190 / 0.68);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 100ms ease;
+}
+
+.volume-controls .volume-bar.is-previewing .volume-hover-fill {
+    opacity: 1;
+}
+
+.volume-controls .volume-bar .volume-fill {
+    z-index: 1;
 }
 
 .now-playing-bar .quality-badge {

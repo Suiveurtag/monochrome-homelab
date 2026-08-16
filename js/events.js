@@ -54,6 +54,7 @@ import { Player } from './player.js';
 import { playerBarEffects } from './player-bar-effects.js';
 import { initializePlayerActionLayout, PLAYER_ACTIONS } from './player-bar-layout.js';
 import { socialManager } from './social.js';
+import { canvasSettings } from './canvas-settings.js';
 
 let currentTrackIdForWaveform = null;
 
@@ -1571,6 +1572,7 @@ function initializeSmoothSliders(player) {
     const currentTimeEl = document.getElementById('current-time');
     const volumeBar = document.getElementById('volume-bar');
     const volumeFill = document.getElementById('volume-fill');
+    const volumeHoverFill = document.getElementById('volume-hover-fill');
     const volumeBtn = document.getElementById('volume-btn');
     const volumeSlider = document.getElementById('volume-slider');
 
@@ -1659,6 +1661,22 @@ function initializeSmoothSliders(player) {
         volumeBar.addEventListener('pointerleave', () => volumeBar.classList.remove('is-release-reset'));
         volumeSlider.addEventListener('click', (event) => event.stopPropagation());
     }
+
+    const updateVolumeHover = (event) => {
+        const rect = volumeBar.getBoundingClientRect();
+        const position = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+        volumeBar.style.setProperty('--volume-hover-level', `${position * 100}%`);
+        if (volumeHoverFill) volumeHoverFill.style.width = `${position * 100}%`;
+    };
+    volumeBar.addEventListener('pointerenter', (event) => {
+        if (event.pointerType === 'touch') return;
+        volumeBar.classList.add('is-previewing');
+        updateVolumeHover(event);
+    });
+    volumeBar.addEventListener('pointermove', (event) => {
+        if (event.pointerType !== 'touch') updateVolumeHover(event);
+    });
+    volumeBar.addEventListener('pointerleave', () => volumeBar.classList.remove('is-previewing'));
 
     const seek = (bar, event, setter) => {
         const rect = bar.getBoundingClientRect();
@@ -2491,6 +2509,13 @@ export async function handleTrackAction(
 ) {
     if (!item) return;
 
+    if (action === 'toggle-canvas') {
+        const enabled = !canvasSettings.isEnabled();
+        canvasSettings.setEnabled(enabled);
+        showNotification(`Canvas ${enabled ? 'enabled' : 'disabled'}`);
+        return;
+    }
+
     if (action === 'edit-metadata') {
         if (ui && item.isLocal && typeof ui.openMetadataEditor === 'function') {
             ui.openMetadataEditor(type, item);
@@ -3178,6 +3203,18 @@ export async function updateContextMenuLikeState(contextMenu, contextTrack) {
 
     const type = contextMenu._contextType || 'track';
 
+    const canvasItem = contextMenu.querySelector('li[data-action="toggle-canvas"]');
+    if (canvasItem) {
+        const hasCanvas = Boolean(
+            type === 'track' &&
+            contextTrack.type !== 'video' &&
+            (contextTrack.videoCoverUrl || contextTrack.album?.videoCoverUrl)
+        );
+        const canvasEnabled = canvasSettings.isEnabled();
+        setContextMenuLabel(canvasItem, canvasEnabled ? 'Disable Canvas' : 'Enable Canvas');
+        canvasItem.dataset.hasCanvas = String(hasCanvas);
+    }
+
     const likeItem = contextMenu.querySelector('li[data-action="toggle-like"]');
     let isLiked = false;
     if (likeItem) {
@@ -3252,6 +3289,9 @@ export async function updateContextMenuLikeState(contextMenu, contextTrack) {
         }
         if (item.dataset.action === 'edit-metadata') {
             setContextMenuItemVisible(item, type === 'track' && Boolean(contextTrack.isLocal));
+        }
+        if (item.dataset.action === 'toggle-canvas') {
+            setContextMenuItemVisible(item, item.dataset.hasCanvas === 'true');
         }
         if (
             contextTrack.isLocal &&

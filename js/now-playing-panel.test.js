@@ -73,6 +73,12 @@ async function waitForPanel(panel) {
 }
 
 beforeEach(() => {
+    const values = new Map();
+    vi.stubGlobal('localStorage', {
+        getItem: vi.fn((key) => values.get(key) ?? null),
+        setItem: vi.fn((key, value) => values.set(key, String(value))),
+        removeItem: vi.fn((key) => values.delete(key)),
+    });
     shell();
     vi.stubGlobal(
         'matchMedia',
@@ -213,6 +219,8 @@ describe('Now Playing panel interactions', () => {
         await panel.mountMedia(model, new AbortController().signal);
 
         const stage = panel.content.querySelector('.now-playing-panel-media');
+        expect(stage.tagName).toBe('BUTTON');
+        expect(stage.getAttribute('aria-expanded')).toBe('false');
         expect(stage.querySelector('.now-playing-panel-poster')).toBeTruthy();
         const canvas = stage.querySelector('video.now-playing-panel-canvas');
         expect(canvas).toBeTruthy();
@@ -221,12 +229,46 @@ describe('Now Playing panel interactions', () => {
         canvas.dataset.canvasReady = 'true';
         panel.syncCanvasPlayback();
         expect(stage.classList.contains('is-canvas-ready')).toBe(true);
+
+        const play = vi.spyOn(canvas, 'play').mockResolvedValue();
+        const schedule = vi.spyOn(window, 'setTimeout');
+        canvas.dispatchEvent(new Event('pause'));
+        const retry = schedule.mock.calls.find(([, delay]) => delay === 240);
+        expect(retry).toBeTruthy();
+        retry[0]();
+        expect(play).toHaveBeenCalled();
+        schedule.mockRestore();
+
+        stage.click();
+        expect(panel.canvasExpanded).toBe(true);
+        expect(stage.getAttribute('aria-expanded')).toBe('true');
+        expect(stage.closest('.now-playing-panel-body').classList.contains('is-canvas-expanded')).toBe(true);
+
+        const render = vi.spyOn(panel, 'render');
         audioPaused = true;
-        panel.syncCanvasPlayback();
+        audio.dispatchEvent(new Event('pause'));
         expect(stage.classList.contains('is-canvas-ready')).toBe(true);
+        expect(render).not.toHaveBeenCalled();
 
         panel.reducedMotionMedia.matches = true;
         expect(panel.renderMarkup(model)).not.toContain('has-video-artwork');
+        panel.destroy();
+    });
+
+    test('opens the current album when the track title is activated', async () => {
+        const { navigate } = await import('./router.js');
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const deps = dependencies();
+        deps.player.currentTrack = {
+            id: 'track',
+            title: 'Track title',
+            album: { id: 'album-id', title: 'Album title', cover: '/cover.jpg' },
+        };
+        const panel = new NowPlayingPanel(deps);
+        await waitForPanel(panel);
+
+        panel.root.querySelector('.now-playing-panel-track-title').click();
+        expect(navigate).toHaveBeenCalledWith('/album/album-id');
         panel.destroy();
     });
 });

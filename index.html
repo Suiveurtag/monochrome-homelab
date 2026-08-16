@@ -264,6 +264,9 @@
                 >
                     <use svg="!lucide/list-plus.svg" size="18" /><span class="context-menu-label">Add to queue</span>
                 </li>
+                <li role="menuitem" tabindex="-1" data-action="toggle-canvas" data-type-filter="track">
+                    <use svg="!lucide/video.svg" size="18" /><span class="context-menu-label">Disable Canvas</span>
+                </li>
                 <li class="context-menu-section" data-menu-section role="presentation">
                     <span>Save &amp; share</span>
                 </li>
@@ -6914,6 +6917,7 @@
                     <div class="volume-slider-row desktop-only">
                         <button id="volume-btn" title="Mute"></button>
                         <div id="volume-bar" class="volume-bar elastic-volume">
+                            <div id="volume-hover-fill" class="volume-hover-fill" aria-hidden="true"></div>
                             <div id="volume-fill" class="volume-fill"></div>
                             <input
                                 id="volume-slider"

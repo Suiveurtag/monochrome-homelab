@@ -993,7 +993,7 @@ export class UIRenderer {
                 escapeHtml(album.title),
                 'card-image',
                 album._lazy === false ? 'eager' : 'lazy',
-                album.videoCoverUrl,
+                null,
                 album._isEditorsPick || false,
                 'album'
             ),
@@ -1500,8 +1500,7 @@ export class UIRenderer {
 
             const artworkSources = getArtworkSources({
                 cover: track.image || track.cover || track.album?.cover,
-                animatedCover:
-                    track.videoUrl || track.videoCoverUrl || track.album?.videoCoverUrl || track.album?.animatedCover,
+                animatedCover: null,
                 coverFallback:
                     track.coverFallback || track.staticCover || track.album?.coverFallback || track.album?.staticCover,
             });
@@ -3584,13 +3583,7 @@ export class UIRenderer {
             href: `/track/${track.id}`,
             title: `${escapeHtml(getTrackTitle(track))} ${explicitBadge} ${qualityBadge}`,
             subtitle: `${escapeHtml(getTrackArtists(track))}${yearDisplay}`,
-            imageHTML: this.getCoverHTML(
-                track.album?.cover,
-                escapeHtml(track.title),
-                'card-image',
-                'lazy',
-                track.videoUrl || track.album?.videoCoverUrl
-            ),
+            imageHTML: this.getCoverHTML(track.album?.cover, escapeHtml(track.title), 'card-image', 'lazy', null),
             actionButtonsHTML: `
                 <button class="like-btn track-save-btn card-like-btn" data-action="toggle-like" data-type="${likeType}" data-track-save-id="${escapeHtml(String(track.id))}" title="Add to Liked Songs">
                     ${this.createTrackSaveIcon(false)}
@@ -4197,62 +4190,16 @@ export class UIRenderer {
                 coverTrigger.setAttribute('aria-label', `Inspect ${album.title || 'album'} cover`);
             }
 
-            const videoCoverUrl = album.videoCoverUrl || null;
+            const coverUrl = this.api.getCoverUrl(album.cover);
 
-            if (!videoCoverUrl && tracks.length > 0) {
-                const firstTrack = tracks[0];
-                this.api.getVideoArtwork(firstTrack.title, getTrackArtists(firstTrack)).then(async (result) => {
-                    if (result && this.currentPage === 'album' && this.currentAlbumId === albumId) {
-                        const url = result.videoUrl || result.hlsUrl;
-                        if (!url) return;
-                        album.videoCoverUrl = url;
-                        const currentImageEl = document.getElementById('album-detail-image');
-                        if (currentImageEl && currentImageEl.tagName !== 'VIDEO') {
-                            const video = document.createElement('video');
-                            video.autoplay = true;
-                            video.loop = true;
-                            video.muted = true;
-                            video.playsInline = true;
-                            video.preload = 'auto';
-                            video.className = currentImageEl.className;
-                            video.id = currentImageEl.id;
-                            video.style.opacity = '1';
-                            video.poster = currentImageEl.src;
-
-                            await this.setupHlsVideo(video, result, currentImageEl);
-                            currentImageEl.replaceWith(video);
-                        }
-                    }
-                });
-            }
-
-            const coverUrl = videoCoverUrl || this.api.getCoverUrl(album.cover);
-
-            if (videoCoverUrl) {
-                if (imageEl.tagName !== 'VIDEO') {
-                    const video = document.createElement('video');
-                    video.autoplay = true;
-                    video.loop = true;
-                    video.muted = true;
-                    video.playsInline = true;
-                    video.preload = 'auto';
-                    video.className = imageEl.className;
-                    video.id = imageEl.id;
-                    await this.setupHlsVideo(video, videoCoverUrl, imageEl);
-                    imageEl.replaceWith(video);
-                } else {
-                    await this.setupHlsVideo(imageEl, videoCoverUrl, null);
-                }
+            if (imageEl.tagName === 'VIDEO') {
+                const img = document.createElement('img');
+                img.src = coverUrl;
+                img.className = imageEl.className;
+                img.id = imageEl.id;
+                imageEl.replaceWith(img);
             } else {
-                if (imageEl.tagName === 'VIDEO') {
-                    const img = document.createElement('img');
-                    img.src = coverUrl;
-                    img.className = imageEl.className;
-                    img.id = imageEl.id;
-                    imageEl.replaceWith(img);
-                } else {
-                    imageEl.src = coverUrl;
-                }
+                imageEl.src = coverUrl;
             }
             imageEl.style.backgroundColor = '';
 
@@ -4935,10 +4882,9 @@ export class UIRenderer {
                 // Try to get cover from first track album
                 if (tracks.length > 0 && tracks[0].album?.cover) {
                     const firstTrack = tracks[0];
-                    let videoCoverUrl =
-                        firstTrack.videoUrl || firstTrack.videoCoverUrl || firstTrack.album?.videoCoverUrl || null;
+                    let videoCoverUrl = firstTrack.type === 'video' ? firstTrack.videoUrl || null : null;
 
-                    if (!videoCoverUrl && (firstTrack.album || firstTrack.type === 'video')) {
+                    if (!videoCoverUrl && firstTrack.type === 'video') {
                         const fetchArtwork = () => {
                             this.api
                                 .getVideoArtwork(firstTrack.title, getTrackArtists(firstTrack))
@@ -6213,9 +6159,9 @@ export class UIRenderer {
                 return;
             }
 
-            let videoCoverUrl = track.videoUrl || track.videoCoverUrl || track.album?.videoCoverUrl || null;
+            let videoCoverUrl = track.type === 'video' ? track.videoUrl || null : null;
 
-            if (!videoCoverUrl && (track.album || track.type === 'video')) {
+            if (!videoCoverUrl && track.type === 'video') {
                 const fetchArtwork = () => {
                     this.api.getVideoArtwork(track.title, getTrackArtists(track)).then(async (result) => {
                         if (result && this.currentPage === 'track' && this.currentTrackPageId === track.id) {

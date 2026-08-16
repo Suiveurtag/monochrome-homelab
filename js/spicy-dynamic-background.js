@@ -3,19 +3,19 @@ import Kawarp from '@kawarp/core';
 const KAWARP_OPTIONS = {
     warpIntensity: 1,
     blurPasses: 8,
-    animationSpeed: 1,
+    animationSpeed: 0.04,
     saturation: 1.5,
     dithering: 0.008,
-    transitionDuration: 500,
+    transitionDuration: 1200,
     tintIntensity: 0,
     scale: 1,
 };
 
-const PLAYING_SPEED = 1;
-const PAUSED_SPEED = 0.1;
+const PLAYING_SPEED = 0.35;
+const PAUSED_SPEED = 0.04;
 const BEAT_THRESHOLD = 0.75;
-const BEAT_SPEED = 2.4;
-const BEAT_SCALE = 1.02;
+const BEAT_SPEED = 0.55;
+const BEAT_SCALE = 1.008;
 const ANALYSIS_INTERVAL = 100;
 const FALLBACK_TRANSITION_DURATION = 850;
 
@@ -85,8 +85,8 @@ export class SpicyDynamicBackground {
 
     applyMotionOptions(animationSpeed, scale = 1, force = false) {
         if (!this.kawarp) return;
-        const transitionDuration = this.prefersReducedMotion() ? 0 : 1000;
-        const next = { animationSpeed, scale, transitionDuration };
+        const reducedMotion = this.prefersReducedMotion();
+        const next = reducedMotion ? { animationSpeed, scale, transitionDuration: 0 } : { animationSpeed, scale };
         if (!force && Object.entries(next).every(([key, value]) => this.lastMotionOptions[key] === value)) {
             return;
         }

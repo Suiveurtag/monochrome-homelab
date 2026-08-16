@@ -293,7 +293,7 @@ async function saveTrack(track, form) {
         genre: value(form, 'genre'),
         copyright: value(form, 'copyright'),
         explicit: form.get('explicit') === 'on',
-        videoUrl: canvasFile?.size || removeCanvas ? null : track.videoUrl || null,
+        videoUrl: track.type === 'video' ? track.videoUrl || null : null,
         videoCoverUrl: removeCanvas ? null : canvasData || track.videoCoverUrl || track.videoUrl || null,
         themeColor: normalizeTrackThemeColor(value(form, 'themeColor')),
         lyrics: String(form.get('lyrics') || ''),

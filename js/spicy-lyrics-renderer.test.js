@@ -13,6 +13,11 @@ const WORD_SYNC_TTML = `<?xml version="1.0" encoding="UTF-8"?>
   </div></body>
 </tt>`;
 
+const LINE_SYNC_TTML = `<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" itunes:timing="Line">
+  <body><div><p begin="00:00:09.649" end="00:00:12.174">Feel  it  come</p></div></body>
+</tt>`;
+
 describe('Spicy Lyrics renderer', () => {
     test('parses TTML clock, seconds and milliseconds timing', () => {
         expect(parseTtmlTime('00:01:02.250')).toBe(62250);
@@ -43,6 +48,22 @@ describe('Spicy Lyrics renderer', () => {
                 isPartOfWord: false,
             },
         ]);
+    });
+
+    test('derives spaced semantic words from line-timed Apple lyrics', () => {
+        const [line] = parseSpicyTtml(LINE_SYNC_TTML);
+        expect(line.text).toBe('Feel it come');
+        expect(line.words.map((word) => word.text)).toEqual(['Feel', ' it', ' come']);
+        expect(line.words.map((word) => word.spaceBefore)).toEqual([false, true, true]);
+        expect(line.words[0].start).toBe(9649);
+        expect(line.words.at(-1).end).toBe(12174);
+
+        const element = new SpicyLyricsElement();
+        element.ttml = LINE_SYNC_TTML;
+        document.body.appendChild(element);
+        const renderedLine = element._lineStates.find((state) => !state.musical).element;
+        expect(renderedLine.querySelectorAll('.spicy-word-token')).toHaveLength(3);
+        expect(renderedLine.textContent.replaceAll('\u00a0', ' ')).toContain('Feel it come');
     });
 
     test('matches upstream nesting of Apple x-bg paragraphs below their lead vocal', () => {
@@ -76,18 +97,19 @@ describe('Spicy Lyrics renderer', () => {
         let timestamp = null;
         element.addEventListener('line-click', (event) => (timestamp = event.detail.timestamp));
         const root = element.shadowRoot;
-        root.querySelector('.line').click();
+        const renderedLine = element._lineStates[0].element;
+        renderedLine.click();
 
         expect(root.querySelector('.ContentBox')).toBeTruthy();
         expect(root.querySelector('.simplebar-content .VirtualLyricsContainer')).toBeTruthy();
-        expect(root.querySelectorAll('.line.musical-line')).toHaveLength(0);
-        expect(root.querySelectorAll('.word, .letterGroup')).toHaveLength(2);
-        expect(root.querySelector('.word:not(.LastWordInLine)')?.textContent).toBe('Spicy');
-        expect(root.querySelector('.letterGroup.LastWordInLine')?.textContent).toBe('Lyrics');
-        expect(root.querySelectorAll('.word-group')).toHaveLength(0);
-        expect(root.querySelectorAll('.spicy-word-token')).toHaveLength(2);
-        expect(root.querySelectorAll('.spicy-word-space')).toHaveLength(1);
-        expect(root.querySelector('.spicy-word-token:last-child .spicy-word-space')).toBeNull();
+        expect(renderedLine.classList.contains('musical-line')).toBe(false);
+        expect(renderedLine.querySelectorAll('.word, .letterGroup')).toHaveLength(2);
+        expect(renderedLine.querySelector('.word:not(.LastWordInLine)')?.textContent).toBe('Spicy');
+        expect(renderedLine.querySelector('.letterGroup.LastWordInLine')?.textContent).toBe('Lyrics');
+        expect(renderedLine.querySelectorAll('.word-group')).toHaveLength(0);
+        expect(renderedLine.querySelectorAll('.spicy-word-token')).toHaveLength(2);
+        expect(renderedLine.querySelectorAll('.spicy-word-space')).toHaveLength(1);
+        expect(root.querySelector('style').textContent).toContain('column-gap: 0.32ch');
         expect(timestamp).toBe(1000);
     });
 
@@ -99,11 +121,30 @@ describe('Spicy Lyrics renderer', () => {
         const element = new SpicyLyricsElement();
         element.ttml = syllableTtml;
         document.body.appendChild(element);
-        const root = element.shadowRoot;
+        const renderedLine = element._lineStates[0].element;
 
-        expect(root.querySelectorAll('.word-group')).toHaveLength(1);
-        expect(root.querySelector('.word-group')?.textContent).toBe('Spicy');
-        expect(root.querySelector('.word.PartOfWord')?.textContent).toBe('Spic');
+        expect(renderedLine.querySelectorAll('.word-group')).toHaveLength(1);
+        expect(renderedLine.querySelector('.word-group')?.textContent).toBe('Spicy');
+        expect(renderedLine.querySelector('.word.PartOfWord')?.textContent).toBe('Spic');
+    });
+
+    test('keeps visible spacing after a multi-syllable word in imported Apple TTML', () => {
+        const importedTtml = `<?xml version="1.0" encoding="UTF-8"?>
+        <tt xmlns="http://www.w3.org/ns/ttml"><body><div>
+          <p begin="00:00:01.000" end="00:00:03.000">
+            <span begin="00:00:01.000" end="00:00:01.500">Every</span>
+            <span begin="00:00:01.500" end="00:00:02.000">body</span>
+            <span begin="00:00:02.000" end="00:00:03.000"> knows</span>
+          </p>
+        </div></body></tt>`;
+        const element = new SpicyLyricsElement();
+        element.ttml = importedTtml;
+        document.body.appendChild(element);
+        const renderedLine = element._lineStates[0].element;
+
+        expect(renderedLine.querySelector('.word-group')?.textContent).toBe('Everybody');
+        expect(renderedLine.querySelectorAll('.spicy-word-token')).toHaveLength(2);
+        expect(element.shadowRoot.querySelector('style').textContent).toContain('column-gap: 0.32ch');
     });
 
     test('uses upstream letter emphasis for words lasting at least one second', () => {
@@ -111,8 +152,9 @@ describe('Spicy Lyrics renderer', () => {
         element.ttml = WORD_SYNC_TTML;
         document.body.appendChild(element);
 
-        expect(element.shadowRoot.querySelectorAll('.letterGroup')).toHaveLength(1);
-        expect(element.shadowRoot.querySelector('.letterGroup')?.textContent).toBe('Lyrics');
+        const renderedLine = element._lineStates[0].element;
+        expect(renderedLine.querySelectorAll('.letterGroup')).toHaveLength(1);
+        expect(renderedLine.querySelector('.letterGroup')?.textContent).toBe('Lyrics');
     });
 
     test('reuses one host-owned background controller inside the Now Playing panel', async () => {

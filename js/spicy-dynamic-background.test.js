@@ -112,7 +112,7 @@ describe('Spicy dynamic background', () => {
         expect(controller.fallback.style.backgroundImage).toContain('/covers/current.jpg');
     });
 
-    test('uses upstream playback motion speed and slows only while paused', async () => {
+    test('uses restrained playback motion and slows further while paused', async () => {
         const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
         const host = document.createElement('div');
         const audio = document.createElement('audio');
@@ -124,14 +124,12 @@ describe('Spicy dynamic background', () => {
 
         await controller.setSource('/covers/fluid.jpg');
         expect(kawarpInstances[0].setOptions).toHaveBeenCalledWith(
-            expect.objectContaining({ animationSpeed: 1, scale: 1 })
+            expect.objectContaining({ animationSpeed: 0.35, scale: 1 })
         );
 
         paused = true;
         audio.dispatchEvent(new Event('pause'));
-        expect(kawarpInstances[0].setOptions).toHaveBeenLastCalledWith(
-            expect.objectContaining({ animationSpeed: 0.1, scale: 1 })
-        );
+        expect(kawarpInstances[0].setOptions).toHaveBeenLastCalledWith({ animationSpeed: 0.04, scale: 1 });
         controller.dispose();
     });
 

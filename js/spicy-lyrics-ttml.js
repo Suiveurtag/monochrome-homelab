@@ -34,6 +34,27 @@ function elementTiming(element, fallbackStart = 0, fallbackEnd = fallbackStart +
     return { start, end: Math.max(start + 1, end) };
 }
 
+function lineTimedWords(text, start, end, background) {
+    const tokens = Array.from(String(text || '').matchAll(/\S+/gu));
+    if (!tokens.length) return [];
+    const weights = tokens.map((match) => Math.max(1, Array.from(match[0]).length));
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    const duration = Math.max(1, end - start);
+    let elapsedWeight = 0;
+    return tokens.map((match, index) => {
+        const wordStart = start + (duration * elapsedWeight) / totalWeight;
+        elapsedWeight += weights[index];
+        const wordEnd = index === tokens.length - 1 ? end : start + (duration * elapsedWeight) / totalWeight;
+        return {
+            text: `${index > 0 ? ' ' : ''}${match[0]}`,
+            spaceBefore: index > 0,
+            start: wordStart,
+            end: Math.max(wordStart + 1, wordEnd),
+            background,
+        };
+    });
+}
+
 export function parseSpicyTtml(ttml) {
     if (!ttml || typeof DOMParser === 'undefined') return [];
     const documentNode = new DOMParser().parseFromString(ttml, 'application/xml');
@@ -70,15 +91,7 @@ export function parseSpicyTtml(ttml) {
                           background,
                       };
                   })
-                : [
-                      {
-                          text: paragraph.textContent || '',
-                          spaceBefore: false,
-                          start: timing.start,
-                          end: timing.end,
-                          background,
-                      },
-                  ];
+                : lineTimedWords(paragraph.textContent || '', timing.start, timing.end, background);
 
             words.forEach((word, wordIndex) => {
                 const nextWord = words[wordIndex + 1];
