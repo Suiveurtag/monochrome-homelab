@@ -124,19 +124,43 @@
     align-items: center;
     min-height: 66px;
     gap: 0;
+    isolation: isolate;
     transition:
         grid-template-columns 300ms cubic-bezier(0.22, 1, 0.36, 1),
         gap 300ms cubic-bezier(0.22, 1, 0.36, 1),
         opacity 220ms cubic-bezier(0.22, 1, 0.36, 1),
         filter 220ms cubic-bezier(0.22, 1, 0.36, 1),
-        transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
-        background-color 220ms ease,
-        backdrop-filter 220ms ease;
+        transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.now-playing-panel.is-scrolled .now-playing-panel-header {
-    background: transparent;
-    backdrop-filter: blur(6px);
+.now-playing-panel-header::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    top: 0;
+    right: -14px;
+    left: -14px;
+    height: 112px;
+    pointer-events: none;
+    background: linear-gradient(
+        180deg,
+        rgb(0 0 0 / 0.68) 0%,
+        rgb(0 0 0 / 0.54) 38%,
+        rgb(0 0 0 / 0.25) 66%,
+        rgb(0 0 0 / 0.08) 84%,
+        transparent 100%
+    );
+    backdrop-filter: none;
+    mask-image: linear-gradient(180deg, black 0%, black 54%, rgb(0 0 0 / 0.68) 76%, transparent 100%);
+    opacity: 0.92;
+    transition:
+        opacity 320ms cubic-bezier(0.22, 1, 0.36, 1),
+        backdrop-filter 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.now-playing-panel.is-scrolled .now-playing-panel-header::before {
+    backdrop-filter: blur(8px) saturate(1.05);
+    opacity: 1;
 }
 
 .now-playing-panel:hover .now-playing-panel-header,
