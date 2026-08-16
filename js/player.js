@@ -27,6 +27,7 @@ import { isIos, isSafari } from './platform-detection.js';
 import { db } from './db.js';
 import { getProxyUrl } from './proxy-utils.js';
 import { isVideoArtwork } from './animated-artwork.js';
+import { hydrateQueuedTracks } from './queue-track-hydration.js';
 import {
     getApiQuality,
     getAvailableQualityOptions,
@@ -75,6 +76,24 @@ export class Player {
         setInterval(this.checkPreloadConditions.bind(this), 2000);
         this.preloadAbortController = null;
         this.currentTrack = null;
+        this.boundTrackMetadataUpdated = (event) => {
+            const track = event.detail?.track;
+            if (!track || event.detail?.trackId == null) return;
+            const hydrated = hydrateQueuedTracks(
+                [this.queue, this.shuffledQueue, this.originalQueueBeforeShuffle, [this.currentTrack]],
+                [track]
+            );
+            if (!hydrated) return;
+            queueManager.saveQueue({
+                queue: this.queue,
+                shuffledQueue: this.shuffledQueue,
+                originalQueueBeforeShuffle: this.originalQueueBeforeShuffle,
+                currentQueueIndex: this.currentQueueIndex,
+                shuffleActive: this.shuffleActive,
+                repeatMode: this.repeatMode,
+                sourceContext: this.sourceContext,
+            });
+        };
         this.sourceContext = null;
         this.currentRgValues = null;
         this.userVolume = parseFloat(localStorage.getItem('volume') || '0.7');
@@ -190,6 +209,8 @@ export class Player {
         }
 
         this.loadQueueState();
+        await this.hydrateRestoredQueueMetadata();
+        window.addEventListener('track-metadata-updated', this.boundTrackMetadataUpdated);
         await this.setupMediaSession();
 
         this.radioEnabled = radioSettings.isEnabled();
@@ -476,6 +497,36 @@ export class Player {
                 this.updateMediaSession(track);
                 this.setCompactPlayerAvailability(true);
             }
+        }
+    }
+
+    async hydrateRestoredQueueMetadata() {
+        const getTracks = this.api?.getAPI?.()?.getTracks;
+        if (typeof getTracks !== 'function' || (!this.queue.length && !this.shuffledQueue.length)) return;
+
+        try {
+            const latestTracks = await getTracks.call(this.api.getAPI());
+            const hydrated = hydrateQueuedTracks(
+                [this.queue, this.shuffledQueue, this.originalQueueBeforeShuffle],
+                latestTracks
+            );
+            if (!hydrated) return;
+
+            const currentQueue = this.getCurrentQueue();
+            if (this.currentQueueIndex >= 0 && this.currentQueueIndex < currentQueue.length) {
+                this.currentTrack = currentQueue[this.currentQueueIndex];
+            }
+            queueManager.saveQueue({
+                queue: this.queue,
+                shuffledQueue: this.shuffledQueue,
+                originalQueueBeforeShuffle: this.originalQueueBeforeShuffle,
+                currentQueueIndex: this.currentQueueIndex,
+                shuffleActive: this.shuffleActive,
+                repeatMode: this.repeatMode,
+                sourceContext: this.sourceContext,
+            });
+        } catch (error) {
+            console.warn('[Player] Could not refresh restored queue metadata:', error);
         }
     }
 

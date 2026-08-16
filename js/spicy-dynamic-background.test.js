@@ -10,6 +10,7 @@ vi.mock('@kawarp/core', () => ({
             this.start = vi.fn();
             this.stop = vi.fn();
             this.resize = vi.fn();
+            this.renderFrame = vi.fn();
             this.setOptions = vi.fn();
             this.dispose = vi.fn();
             kawarpInstances.push(this);
@@ -94,6 +95,21 @@ describe('Spicy dynamic background', () => {
         expect(kawarpInstances[0].start).toHaveBeenCalledTimes(2);
     });
 
+    test('redraws a paused Kawarp frame after its panel is resized', async () => {
+        const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const controller = mountSpicyDynamicBackground(host);
+        await controller.setSource('/covers/first.jpg');
+        controller.kawarp.isPlaying = false;
+
+        controller.resizeKawarp();
+
+        expect(controller.kawarp.resize).toHaveBeenCalledOnce();
+        expect(controller.kawarp.renderFrame).toHaveBeenCalledOnce();
+        controller.dispose();
+    });
+
     test('rejects a stale load before replacing the current artwork', async () => {
         const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
         const host = document.createElement('div');
@@ -112,7 +128,7 @@ describe('Spicy dynamic background', () => {
         expect(controller.fallback.style.backgroundImage).toContain('/covers/current.jpg');
     });
 
-    test('uses restrained playback motion and slows further while paused', async () => {
+    test('uses restrained playback motion and freezes the current frame while paused', async () => {
         const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
         const host = document.createElement('div');
         const audio = document.createElement('audio');
@@ -127,9 +143,15 @@ describe('Spicy dynamic background', () => {
             expect.objectContaining({ animationSpeed: 0.35, scale: 1 })
         );
 
+        const optionsCallsBeforePause = kawarpInstances[0].setOptions.mock.calls.length;
         paused = true;
         audio.dispatchEvent(new Event('pause'));
-        expect(kawarpInstances[0].setOptions).toHaveBeenLastCalledWith({ animationSpeed: 0.04, scale: 1 });
+        expect(kawarpInstances[0].stop).toHaveBeenCalledOnce();
+        expect(kawarpInstances[0].setOptions).toHaveBeenCalledTimes(optionsCallsBeforePause);
+
+        paused = false;
+        audio.dispatchEvent(new Event('play'));
+        expect(kawarpInstances[0].start).toHaveBeenCalledTimes(2);
         controller.dispose();
     });
 

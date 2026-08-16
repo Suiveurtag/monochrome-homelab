@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
+const intersectionObservers = [];
+
 vi.mock('./spicy-dynamic-background.js', () => ({
     mountSpicyDynamicBackground: () => ({
         setSource: vi.fn(async () => true),
@@ -74,6 +76,18 @@ async function waitForPanel(panel) {
 }
 
 beforeEach(() => {
+    intersectionObservers.length = 0;
+    vi.stubGlobal(
+        'IntersectionObserver',
+        class IntersectionObserverMock {
+            constructor(callback) {
+                this.callback = callback;
+                this.observe = vi.fn();
+                this.disconnect = vi.fn();
+                intersectionObservers.push(this);
+            }
+        }
+    );
     const values = new Map();
     vi.stubGlobal('localStorage', {
         getItem: vi.fn((key) => values.get(key) ?? null),
@@ -267,11 +281,18 @@ describe('Now Playing panel interactions', () => {
         expect(canvas).toBeTruthy();
         expect(stage.querySelectorAll('img, video')).toHaveLength(2);
 
-        canvas.dataset.canvasReady = 'true';
-        panel.syncCanvasPlayback();
-        expect(stage.classList.contains('is-canvas-ready')).toBe(true);
+        canvas.dispatchEvent(new Event('loadeddata'));
+        await vi.waitFor(() => expect(stage.classList.contains('is-canvas-ready')).toBe(true));
 
         const play = vi.spyOn(canvas, 'play').mockResolvedValue();
+        const replacementAudio = document.createElement('audio');
+        Object.defineProperty(replacementAudio, 'paused', { configurable: true, get: () => false });
+        deps.player.activeElement = replacementAudio;
+        intersectionObservers.at(-1).callback([{ isIntersecting: false }]);
+        expect(panel.canvasPlaybackElement).toBe(replacementAudio);
+        expect(play).toHaveBeenCalled();
+        play.mockClear();
+
         const schedule = vi.spyOn(window, 'setTimeout');
         canvas.dispatchEvent(new Event('pause'));
         const retry = schedule.mock.calls.find(([, delay]) => delay === 240);

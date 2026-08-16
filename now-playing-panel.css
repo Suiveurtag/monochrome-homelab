@@ -69,7 +69,7 @@
 .now-playing-panel-spicy-bg .spicy-dynamic-bg-fallback {
     background-position: center;
     background-size: cover;
-    filter: brightness(0.55) contrast(1.05) saturate(1.7) blur(var(--static-background-blur, 0));
+    filter: brightness(0.52) contrast(1.05) saturate(1.9) blur(var(--static-background-blur, 38px));
     opacity: 0;
     transform: scale(1.25);
     transition: opacity 850ms cubic-bezier(0.66, 0, 0.34, 1);
@@ -925,7 +925,14 @@
     border: 0;
     border-radius: 10px 0 0 10px;
     place-items: center;
-    background: #181818;
+    background: linear-gradient(
+        270deg,
+        rgb(0 0 0 / 0.68) 0%,
+        rgb(0 0 0 / 0.54) 38%,
+        rgb(0 0 0 / 0.25) 66%,
+        rgb(0 0 0 / 0.08) 84%,
+        transparent 100%
+    );
     color: rgb(255 255 255 / 0.86);
     box-shadow:
         -10px 8px 28px rgb(0 0 0 / 0.46),
@@ -946,7 +953,14 @@
 
 .now-playing-panel-reopen.is-visible:hover,
 .now-playing-panel-reopen.is-visible:focus-visible {
-    background: #222;
+    background: linear-gradient(
+        270deg,
+        rgb(0 0 0 / 0.82) 0%,
+        rgb(0 0 0 / 0.66) 42%,
+        rgb(0 0 0 / 0.32) 70%,
+        rgb(0 0 0 / 0.1) 86%,
+        transparent 100%
+    );
     color: #fff;
     box-shadow:
         -14px 10px 34px rgb(0 0 0 / 0.52),

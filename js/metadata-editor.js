@@ -252,6 +252,7 @@ async function persistTrack(track, updated, coverFile = null, canvasOptions = {}
         videoCoverUrl: remote?.videoCoverUrl || updated.videoCoverUrl || null,
         serverAudioUrl: remote?.serverAudioUrl || track.serverAudioUrl,
         serverCoverUrl: remote?.serverCoverUrl || track.serverCoverUrl,
+        serverCanvasUrl: remote ? remote.serverCanvasUrl || null : updated.serverCanvasUrl || null,
     };
     await db.putUploadedTrack(persisted);
     return persisted;

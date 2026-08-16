@@ -3205,14 +3205,8 @@ export async function updateContextMenuLikeState(contextMenu, contextTrack) {
 
     const canvasItem = contextMenu.querySelector('li[data-action="toggle-canvas"]');
     if (canvasItem) {
-        const hasCanvas = Boolean(
-            type === 'track' &&
-            contextTrack.type !== 'video' &&
-            (contextTrack.videoCoverUrl || contextTrack.album?.videoCoverUrl)
-        );
         const canvasEnabled = canvasSettings.isEnabled();
         setContextMenuLabel(canvasItem, canvasEnabled ? 'Disable Canvas' : 'Enable Canvas');
-        canvasItem.dataset.hasCanvas = String(hasCanvas);
     }
 
     const likeItem = contextMenu.querySelector('li[data-action="toggle-like"]');
@@ -3290,9 +3284,9 @@ export async function updateContextMenuLikeState(contextMenu, contextTrack) {
         if (item.dataset.action === 'edit-metadata') {
             setContextMenuItemVisible(item, type === 'track' && Boolean(contextTrack.isLocal));
         }
-        if (item.dataset.action === 'toggle-canvas') {
-            setContextMenuItemVisible(item, item.dataset.hasCanvas === 'true');
-        }
+        // Canvas playback is a global preference. Keep its recovery control
+        // available on track menus even when this particular track has no
+        // Canvas or exposes it through a different metadata field.
         if (
             contextTrack.isLocal &&
             ['share-menu', 'open-in-new-tab', 'block-track', 'block-album', 'block-artist'].includes(
@@ -3474,7 +3468,7 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
         }
         contextTrack = track;
         contextMenu._contextTrack = track;
-        contextMenu._contextType = track.type || 'track';
+        contextMenu._contextType = track.type === 'video' ? 'video' : 'track';
         contextMenu._selectedTracks = [];
         contextMenu._contextHref = null;
         await updateContextMenuLikeState(contextMenu, track);

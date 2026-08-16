@@ -24,7 +24,6 @@ const DESKTOP_PANEL_QUERY = '(min-width: 769px)';
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 const CANVAS_LOAD_TIMEOUT = 20000;
 const CANVAS_RETRY_DELAY = 240;
-const CANVAS_MAX_RETRIES = 6;
 const TRACK_FADE_OUT_DURATION = 180;
 const MISSING_BIOGRAPHY = 'No biography is available for this artist yet.';
 
@@ -87,7 +86,6 @@ export class NowPlayingPanel {
         this.canvasMedia = null;
         this.canvasStage = null;
         this.canvasVisibilityObserver = null;
-        this.canvasIsVisible = true;
         this.canvasLoadTimer = null;
         this.canvasRetryTimer = null;
         this.canvasRetryCount = 0;
@@ -145,9 +143,9 @@ export class NowPlayingPanel {
             this.syncCanvasPlayback();
         };
         this.boundCanvasPlaybackInterrupted = () => {
-            if (!this.shouldCanvasPlay() || this.canvasRetryCount >= CANVAS_MAX_RETRIES) return;
+            if (!this.shouldCanvasPlay()) return;
             window.clearTimeout(this.canvasRetryTimer);
-            const delay = CANVAS_RETRY_DELAY * 2 ** Math.min(this.canvasRetryCount, 3);
+            const delay = CANVAS_RETRY_DELAY * 2 ** Math.min(this.canvasRetryCount, 4);
             this.canvasRetryCount += 1;
             this.canvasRetryTimer = window.setTimeout(() => this.syncCanvasPlayback(), delay);
         };
@@ -508,7 +506,7 @@ export class NowPlayingPanel {
             video.muted = true;
             video.defaultMuted = true;
             video.playsInline = true;
-            video.preload = 'metadata';
+            video.preload = 'auto';
             video.poster = model.artwork.staticSrc;
             stage.append(video);
         } else {
@@ -518,7 +516,7 @@ export class NowPlayingPanel {
             video = renderArtworkElement(candidate, model.artwork.animatedSrc, {
                 video: true,
                 autoplay: false,
-                preload: 'metadata',
+                preload: 'auto',
                 poster: model.artwork.staticSrc,
             });
         }
@@ -527,34 +525,46 @@ export class NowPlayingPanel {
         video.setAttribute('aria-label', `${model.title} animated artwork`);
         this.canvasMedia = video;
         this.canvasStage = stage;
-        this.canvasIsVisible = true;
 
         const markReady = () => {
-            if (signal.aborted || video !== this.canvasMedia || !video.isConnected) return;
-            const reveal = () => {
-                if (signal.aborted || video !== this.canvasMedia || !video.isConnected) return;
+            if (
+                signal.aborted ||
+                video !== this.canvasMedia ||
+                !video.isConnected ||
+                video.dataset.canvasReady === 'true'
+            )
+                return;
+            requestAnimationFrame(() => {
+                if (
+                    signal.aborted ||
+                    video !== this.canvasMedia ||
+                    !video.isConnected ||
+                    video.dataset.canvasReady === 'true'
+                )
+                    return;
                 window.clearTimeout(this.canvasLoadTimer);
                 this.canvasLoadTimer = null;
                 video.dataset.canvasReady = 'true';
                 this.syncCanvasPlayback();
-            };
-            if (typeof video.requestVideoFrameCallback === 'function') video.requestVideoFrameCallback(reveal);
-            else requestAnimationFrame(reveal);
+            });
         };
         const fail = () => this.failCanvasMedia(video);
         video.addEventListener('loadeddata', markReady, { once: true });
+        video.addEventListener('canplay', markReady, { once: true });
+        video.addEventListener('playing', markReady, { once: true });
         video.addEventListener('error', fail, { once: true });
         video.addEventListener('play', this.boundCanvasPlaybackStarted);
         video.addEventListener('pause', this.boundCanvasPlaybackInterrupted);
         video.addEventListener('stalled', this.boundCanvasPlaybackInterrupted);
         video.addEventListener('waiting', this.boundCanvasPlaybackInterrupted);
-        video.addEventListener('canplay', this.boundCanvasPlaybackInterrupted);
         if (video.readyState >= 2) markReady();
 
         if (typeof IntersectionObserver !== 'undefined') {
             this.canvasVisibilityObserver = new IntersectionObserver(
-                ([entry]) => {
-                    this.canvasIsVisible = Boolean(entry?.isIntersecting);
+                () => {
+                    // The player can swap to a preloaded audio deck after the
+                    // panel has mounted. Re-sync after layout so Canvas follows
+                    // that new active element. Visibility no longer disables it.
                     this.syncCanvasPlayback();
                 },
                 { root: this.content, threshold: [0, 0.01] }
@@ -621,8 +631,7 @@ export class NowPlayingPanel {
     shouldCanvasPlay() {
         this.syncPlaybackElement();
         const audioPlaying = Boolean(this.canvasPlaybackElement && !this.canvasPlaybackElement.paused);
-        const visible =
-            this.isOpen && !this.fullscreenVisible && !this.expandedLyrics && !document.hidden && this.canvasIsVisible;
+        const visible = this.isOpen && !this.fullscreenVisible && !this.expandedLyrics && !document.hidden;
         return this.canvasEnabled && visible && audioPlaying && !this.reducedMotionMedia.matches;
     }
 
@@ -638,7 +647,6 @@ export class NowPlayingPanel {
             video.removeEventListener('pause', this.boundCanvasPlaybackInterrupted);
             video.removeEventListener('stalled', this.boundCanvasPlaybackInterrupted);
             video.removeEventListener('waiting', this.boundCanvasPlaybackInterrupted);
-            video.removeEventListener('canplay', this.boundCanvasPlaybackInterrupted);
             video._hls?.destroy?.();
             video.pause();
             video.removeAttribute('src');
@@ -646,7 +654,6 @@ export class NowPlayingPanel {
         });
         this.canvasMedia = null;
         this.canvasStage = null;
-        this.canvasIsVisible = true;
         this.canvasRetryCount = 0;
     }
 

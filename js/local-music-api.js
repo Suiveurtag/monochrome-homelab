@@ -65,6 +65,31 @@ function uniqueBy(items, keyFn) {
     return result;
 }
 
+export function mergeServerTrackWithLocalMetadata(track, local) {
+    if (!local) return track;
+    const hasServerCanvasMetadata = Object.hasOwn(track, 'serverCanvasUrl');
+    const serverCanvasUrl = track.serverCanvasUrl || track.videoCoverUrl || track.album?.videoCoverUrl || null;
+    const videoCoverUrl = hasServerCanvasMetadata
+        ? serverCanvasUrl
+        : serverCanvasUrl || local.videoCoverUrl || local.album?.videoCoverUrl || null;
+    return {
+        ...track,
+        ...local,
+        serverAudioUrl: track.serverAudioUrl,
+        serverCoverUrl: track.serverCoverUrl,
+        serverCanvasUrl,
+        videoCoverUrl,
+        artist: { ...track.artist, ...local.artist },
+        artists: local.artists?.length ? local.artists : track.artists,
+        album: {
+            ...track.album,
+            ...local.album,
+            videoCoverUrl,
+            artist: { ...track.album?.artist, ...local.album?.artist },
+        },
+    };
+}
+
 function shuffle(items) {
     return [...items].sort(() => Math.random() - 0.5);
 }
@@ -178,20 +203,7 @@ export class LocalMusicAPI {
         const uploadedById = new Map(uploadedTracks.map((track) => [String(track.id), track]));
         const serverWithLocalMetadata = serverTracks.map((track) => {
             const local = uploadedById.get(String(track.id));
-            if (!local) return track;
-            return {
-                ...track,
-                ...local,
-                serverAudioUrl: track.serverAudioUrl,
-                serverCoverUrl: track.serverCoverUrl,
-                artist: { ...track.artist, ...local.artist },
-                artists: local.artists?.length ? local.artists : track.artists,
-                album: {
-                    ...track.album,
-                    ...local.album,
-                    artist: { ...track.album?.artist, ...local.album?.artist },
-                },
-            };
+            return mergeServerTrackWithLocalMetadata(track, local);
         });
         return uniqueBy(
             mergeById(serverWithLocalMetadata, mergeById(uploadedTracks, localFiles))

@@ -12,7 +12,6 @@ const KAWARP_OPTIONS = {
 };
 
 const PLAYING_SPEED = 0.35;
-const PAUSED_SPEED = 0.04;
 const BEAT_THRESHOLD = 0.75;
 const BEAT_SPEED = 0.55;
 const BEAT_SCALE = 1.008;
@@ -51,15 +50,22 @@ export class SpicyDynamicBackground {
         this.lastMotionOptions = {};
         this.timeDomainData = null;
         this.active = true;
-        this.onPlay = () => this.syncMotion(true);
-        this.onPause = () => this.syncMotion(true);
+        this.onPlay = () => {
+            if (this.active && this.root.classList.contains('has-kawarp-background')) this.kawarp?.start?.();
+            this.syncMotion();
+        };
+        this.onPause = () => this.syncMotion();
         this.resizeObserver =
-            typeof ResizeObserver === 'undefined'
-                ? null
-                : new ResizeObserver(() => {
-                      this.kawarp?.resize?.();
-                  });
+            typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => this.resizeKawarp());
         this.resizeObserver?.observe(root);
+    }
+
+    resizeKawarp() {
+        this.kawarp?.resize?.();
+        // resize() reallocates Kawarp's output framebuffer. When playback is
+        // paused the animation loop is stopped, so draw the preserved frame
+        // immediately instead of briefly exposing the static cover fallback.
+        if (this.kawarp && !this.kawarp.isPlaying) this.kawarp.renderFrame?.();
     }
 
     connectPlayback({ getElement, getAnalyser } = {}) {
@@ -102,12 +108,20 @@ export class SpicyDynamicBackground {
 
         if (this.prefersReducedMotion()) {
             this.applyMotionOptions(0, 1, force);
+            this.kawarp.stop?.();
             return;
         }
 
         const paused = Boolean(this.playbackElement?.paused);
-        this.applyMotionOptions(paused ? PAUSED_SPEED : PLAYING_SPEED, 1, force);
-        if (!paused && this.playbackElement) this.scheduleAudioReaction();
+        if (paused) {
+            // Keep the exact current frame. Reconfiguring Kawarp here restarts its
+            // transition and makes the entire panel appear to refresh on pause.
+            this.kawarp.stop?.();
+            return;
+        }
+
+        this.applyMotionOptions(PLAYING_SPEED, 1, force);
+        if (this.playbackElement) this.scheduleAudioReaction();
     }
 
     scheduleAudioReaction() {
