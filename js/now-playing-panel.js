@@ -485,9 +485,10 @@ export class NowPlayingPanel {
             track?.artist?.name ||
             '';
         const cover = track?.album?.cover ? this.api.getCoverUrl(track.album.cover) : '/assets/appicon.png';
+        const rowTag = track ? 'button' : 'div';
         return `<section class="now-playing-panel-card now-playing-panel-next" aria-labelledby="now-playing-panel-next-title">
             <header><h3 id="now-playing-panel-next-title">Next in queue</h3><button type="button" class="now-playing-panel-open-queue">Open queue</button></header>
-            <div class="now-playing-panel-next-track"><img src="${escapeHtml(cover)}" alt="" loading="lazy" /><span><strong>${escapeHtml(title)}</strong>${artist ? `<small>${escapeHtml(artist)}</small>` : ''}</span></div>
+            <${rowTag}${track ? ` type="button" data-play-next aria-label="Play ${escapeHtml(title)} next"` : ''} class="now-playing-panel-next-track${track ? ' is-clickable' : ''}"><img src="${escapeHtml(cover)}" alt="" loading="lazy" /><span><strong>${escapeHtml(title)}</strong>${artist ? `<small>${escapeHtml(artist)}</small>` : ''}</span></${rowTag}>
         </section>`;
     }
 
@@ -790,6 +791,10 @@ export class NowPlayingPanel {
             if (this.expandedLyrics) this.expandedLyrics = false;
             else this.collapsedLyrics = !this.collapsedLyrics;
             this.applyLyricsMode();
+            return;
+        }
+        if (button.matches('[data-play-next]')) {
+            await this.player?.playAtIndex?.(this.player.currentQueueIndex + 1);
             return;
         }
         if (button.matches('.now-playing-panel-open-queue')) return document.getElementById('queue-btn')?.click();

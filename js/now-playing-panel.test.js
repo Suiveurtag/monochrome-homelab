@@ -58,6 +58,7 @@ function dependencies() {
             currentQueueIndex: -1,
             sourceContext: null,
             getCurrentQueue: () => [],
+            playAtIndex: vi.fn(async () => {}),
         },
         api: { getCoverUrl: (value) => value },
         ui: {
@@ -201,6 +202,28 @@ describe('Now Playing panel interactions', () => {
         panel.root.querySelector('.now-playing-panel-open-queue').click();
         expect(click).toHaveBeenCalledOnce();
         expect(panel.isOpen).toBe(true);
+        panel.destroy();
+    });
+
+    test('plays the next queued track when its row is activated', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const deps = dependencies();
+        deps.player.currentQueueIndex = 2;
+        const panel = new NowPlayingPanel(deps);
+        await waitForPanel(panel);
+        panel.content.innerHTML = panel.renderQueue({
+            nextTrack: {
+                id: 'next',
+                title: 'Next track',
+                artist: { name: 'Artist' },
+                album: { cover: '/next.jpg' },
+            },
+        });
+
+        const nextTrack = panel.root.querySelector('[data-play-next]');
+        expect(nextTrack.tagName).toBe('BUTTON');
+        nextTrack.click();
+        await vi.waitFor(() => expect(deps.player.playAtIndex).toHaveBeenCalledWith(3));
         panel.destroy();
     });
 
