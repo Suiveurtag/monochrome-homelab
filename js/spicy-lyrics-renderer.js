@@ -19,7 +19,7 @@ import upstreamMainCss from './vendor/spicy-lyrics/upstream/main.css?raw';
 import upstreamMixedCss from './vendor/spicy-lyrics/upstream/Mixed.css?raw';
 import upstreamSimplebarCss from './vendor/spicy-lyrics/upstream/Simplebar.css?raw';
 import { Animate as animateUpstream } from './vendor/spicy-lyrics/upstream/LyricsAnimator.ts';
-import { notifyNewElementMounted, replaceSyllableLines } from './vendor/spicy-lyrics/upstream/AnimatorCompat.js';
+import { notifyNewElementMounted, replaceLyricsLines } from './vendor/spicy-lyrics/upstream/AnimatorCompat.js';
 import { LyricsVirtualizer } from './vendor/spicy-lyrics/upstream/LyricsVirtualizer.ts';
 import { parseSpicyTtml, parseTtmlTime } from './spicy-lyrics-ttml.js';
 import { getArtworkSources } from './artwork-media.js';
@@ -198,7 +198,17 @@ function createMusicalInterlude(start, end, opposite = false) {
         background: false,
         dot: true,
     }));
-    return { start, end, text: '•••', words: dots, musical: true, opposite, background: false, rtl: false };
+    return {
+        start,
+        end,
+        text: '•••',
+        words: dots,
+        musical: true,
+        opposite,
+        background: false,
+        rtl: false,
+        syncType: 'Line',
+    };
 }
 
 function addMusicalInterludes(lines) {
@@ -388,7 +398,8 @@ export class SpicyLyricsElement extends HTMLElement {
         content.className = 'LyricsContent';
         const scroll = document.createElement('div');
         scroll.className = 'SpicyLyricsScrollContainer';
-        scroll.dataset.lyricsType = this._lines.some((line) => line.words.length > 1) ? 'Syllable' : 'Line';
+        const lyricsType = this._lines.find((line) => !line.musical)?.syncType || 'Line';
+        scroll.dataset.lyricsType = lyricsType;
         scroll.classList.toggle(
             'HasDuetLines',
             this._lines.some((line) => line.opposite)
@@ -425,65 +436,70 @@ export class SpicyLyricsElement extends HTMLElement {
             const dotGroup = line.musical ? document.createElement('div') : null;
             dotGroup?.classList.add('dotGroup');
             let currentWordGroup = null;
-            const wordStates = line.words.map((word, wordIndex, words) => {
-                const text = word.text.trimStart();
-                const emphasize = !word.dot && !line.rtl && word.end - word.start >= 1000;
-                const wordElement = document.createElement(emphasize ? 'div' : 'span');
-                wordElement.className = `${emphasize ? 'letterGroup' : 'word'}${word.background && !emphasize ? ' bg-word' : ''}${word.dot ? ' dot' : ''}`;
-                wordElement.classList.toggle('LastWordInLine', wordIndex === words.length - 1);
-                const isPartOfWord = Boolean(word.isPartOfWord);
-                wordElement.classList.toggle('PartOfWord', isPartOfWord);
-                const letterStates = [];
-                if (emphasize) {
-                    const letterEnd = Math.max(word.start + 1, word.end - 250);
-                    const letterDuration = (letterEnd - word.start) / text.length;
-                    Array.from(text).forEach((letter, letterIndex) => {
-                        const letterElement = document.createElement('span');
-                        letterElement.className = 'letter Emphasis';
-                        letterElement.classList.toggle('LastLetterInWord', letterIndex === text.length - 1);
-                        letterElement.textContent = letter;
-                        wordElement.appendChild(letterElement);
-                        letterStates.push({
-                            element: letterElement,
-                            start: word.start + letterIndex * letterDuration,
-                            end: word.start + (letterIndex + 1) * letterDuration,
-                            scale: new Spring(0.95, 0.88, 0.64),
-                            yOffset: new Spring(0.01, 1.45, 0.4),
-                            glow: new Spring(0, 1.18, 0.56),
-                        });
-                    });
-                } else {
-                    wordElement.textContent = text;
-                }
-                if (dotGroup) {
-                    dotGroup.appendChild(wordElement);
-                } else {
-                    const previousWord = words[wordIndex - 1];
-                    const previousIsPartOfWord = Boolean(previousWord?.isPartOfWord);
-                    if (isPartOfWord || (previousIsPartOfWord && currentWordGroup)) {
-                        if (!currentWordGroup) {
-                            currentWordGroup = document.createElement('span');
-                            currentWordGroup.className = 'word-group';
-                            element.appendChild(currentWordGroup);
-                        }
-                        currentWordGroup.appendChild(wordElement);
-                        if (!isPartOfWord && previousIsPartOfWord) currentWordGroup = null;
-                    } else {
-                        currentWordGroup = null;
-                        element.appendChild(wordElement);
-                    }
-                }
-                return {
-                    ...word,
-                    element: wordElement,
-                    scale: new Spring(0.95, 0.88, 0.64),
-                    yOffset: new Spring(0.01, 1.45, 0.4),
-                    glow: new Spring(0, 1.18, 0.56),
-                    opacity: word.dot ? new Spring(0.35, 1, 0.5) : null,
-                    letterStates,
-                };
-            });
-            if (!dotGroup) {
+            const wordStates =
+                lyricsType === 'Line' && !line.musical
+                    ? []
+                    : line.words.map((word, wordIndex, words) => {
+                          const text = word.text.trimStart();
+                          const emphasize = !word.dot && !line.rtl && word.end - word.start >= 1000;
+                          const wordElement = document.createElement(emphasize ? 'div' : 'span');
+                          wordElement.className = `${emphasize ? 'letterGroup' : 'word'}${word.background && !emphasize ? ' bg-word' : ''}${word.dot ? ' dot' : ''}`;
+                          wordElement.classList.toggle('LastWordInLine', wordIndex === words.length - 1);
+                          const isPartOfWord = Boolean(word.isPartOfWord);
+                          wordElement.classList.toggle('PartOfWord', isPartOfWord);
+                          const letterStates = [];
+                          if (emphasize) {
+                              const letterEnd = Math.max(word.start + 1, word.end - 250);
+                              const letterDuration = (letterEnd - word.start) / text.length;
+                              Array.from(text).forEach((letter, letterIndex) => {
+                                  const letterElement = document.createElement('span');
+                                  letterElement.className = 'letter Emphasis';
+                                  letterElement.classList.toggle('LastLetterInWord', letterIndex === text.length - 1);
+                                  letterElement.textContent = letter;
+                                  wordElement.appendChild(letterElement);
+                                  letterStates.push({
+                                      element: letterElement,
+                                      start: word.start + letterIndex * letterDuration,
+                                      end: word.start + (letterIndex + 1) * letterDuration,
+                                      scale: new Spring(0.95, 0.88, 0.64),
+                                      yOffset: new Spring(0.01, 1.45, 0.4),
+                                      glow: new Spring(0, 1.18, 0.56),
+                                  });
+                              });
+                          } else {
+                              wordElement.textContent = text;
+                          }
+                          if (dotGroup) {
+                              dotGroup.appendChild(wordElement);
+                          } else {
+                              const previousWord = words[wordIndex - 1];
+                              const previousIsPartOfWord = Boolean(previousWord?.isPartOfWord);
+                              if (isPartOfWord || (previousIsPartOfWord && currentWordGroup)) {
+                                  if (!currentWordGroup) {
+                                      currentWordGroup = document.createElement('span');
+                                      currentWordGroup.className = 'word-group';
+                                      element.appendChild(currentWordGroup);
+                                  }
+                                  currentWordGroup.appendChild(wordElement);
+                                  if (!isPartOfWord && previousIsPartOfWord) currentWordGroup = null;
+                              } else {
+                                  currentWordGroup = null;
+                                  element.appendChild(wordElement);
+                              }
+                          }
+                          return {
+                              ...word,
+                              element: wordElement,
+                              scale: new Spring(0.95, 0.88, 0.64),
+                              yOffset: new Spring(0.01, 1.45, 0.4),
+                              glow: new Spring(0, 1.18, 0.56),
+                              opacity: word.dot ? new Spring(0.35, 1, 0.5) : null,
+                              letterStates,
+                          };
+                      });
+            if (lyricsType === 'Line' && !line.musical) {
+                element.textContent = line.text;
+            } else if (!dotGroup) {
                 const semanticWords = Array.from(element.children);
                 semanticWords.forEach((semanticWord, semanticIndex) => {
                     const token = document.createElement('span');
@@ -504,7 +520,8 @@ export class SpicyLyricsElement extends HTMLElement {
             return { ...line, element, wordStates };
         });
 
-        replaceSyllableLines(
+        replaceLyricsLines(
+            lyricsType,
             this._lineStates.map((line) => ({
                 HTMLElement: line.element,
                 StartTime: line.start,

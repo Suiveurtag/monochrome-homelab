@@ -35,24 +35,11 @@ function elementTiming(element, fallbackStart = 0, fallbackEnd = fallbackStart +
 }
 
 function lineTimedWords(text, start, end, background) {
-    const tokens = Array.from(String(text || '').matchAll(/\S+/gu));
-    if (!tokens.length) return [];
-    const weights = tokens.map((match) => Math.max(1, Array.from(match[0]).length));
-    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
-    const duration = Math.max(1, end - start);
-    let elapsedWeight = 0;
-    return tokens.map((match, index) => {
-        const wordStart = start + (duration * elapsedWeight) / totalWeight;
-        elapsedWeight += weights[index];
-        const wordEnd = index === tokens.length - 1 ? end : start + (duration * elapsedWeight) / totalWeight;
-        return {
-            text: `${index > 0 ? ' ' : ''}${match[0]}`,
-            spaceBefore: index > 0,
-            start: wordStart,
-            end: Math.max(wordStart + 1, wordEnd),
-            background,
-        };
-    });
+    const normalizedText = String(text || '')
+        .trim()
+        .replace(/\s+/gu, ' ');
+    if (!normalizedText) return [];
+    return [{ text: normalizedText, spaceBefore: false, start, end, background }];
 }
 
 export function parseSpicyTtml(ttml) {
@@ -79,6 +66,7 @@ export function parseSpicyTtml(ttml) {
             const timedSpans = spans.filter(
                 (span) => span.hasAttribute('begin') || span.hasAttribute('end') || span.hasAttribute('dur')
             );
+            const syncType = timedSpans.length ? 'Syllable' : 'Line';
             const sourceSpans = timedSpans.length ? timedSpans : spans;
             const words = sourceSpans.length
                 ? sourceSpans.map((span) => {
@@ -104,6 +92,7 @@ export function parseSpicyTtml(ttml) {
                 end: timing.end,
                 text,
                 words,
+                syncType,
                 // Apple/Spotify duet exports can expose the second vocal lane
                 // as x-translation even when the text is not a translation.
                 // Spicy Lyrics maps that lane to OppositeAligned.

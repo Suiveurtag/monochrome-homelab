@@ -50,11 +50,11 @@ describe('Spicy Lyrics renderer', () => {
         ]);
     });
 
-    test('derives spaced semantic words from line-timed Apple lyrics', () => {
+    test('uses the upstream line renderer for line-timed Apple lyrics', () => {
         const [line] = parseSpicyTtml(LINE_SYNC_TTML);
         expect(line.text).toBe('Feel it come');
-        expect(line.words.map((word) => word.text)).toEqual(['Feel', ' it', ' come']);
-        expect(line.words.map((word) => word.spaceBefore)).toEqual([false, true, true]);
+        expect(line.syncType).toBe('Line');
+        expect(line.words.map((word) => word.text)).toEqual(['Feel it come']);
         expect(line.words[0].start).toBe(9649);
         expect(line.words.at(-1).end).toBe(12174);
 
@@ -62,8 +62,9 @@ describe('Spicy Lyrics renderer', () => {
         element.ttml = LINE_SYNC_TTML;
         document.body.appendChild(element);
         const renderedLine = element._lineStates.find((state) => !state.musical).element;
-        expect(renderedLine.querySelectorAll('.spicy-word-token')).toHaveLength(3);
-        expect(renderedLine.textContent.replaceAll('\u00a0', ' ')).toContain('Feel it come');
+        expect(element.shadowRoot.querySelector('.SpicyLyricsScrollContainer').dataset.lyricsType).toBe('Line');
+        expect(renderedLine.querySelectorAll('.spicy-word-token')).toHaveLength(0);
+        expect(renderedLine.textContent).toBe('Feel it come');
     });
 
     test('matches upstream nesting of Apple x-bg paragraphs below their lead vocal', () => {

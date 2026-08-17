@@ -50,7 +50,9 @@ export function notifyNewElementMounted() {
     onNewElementMounted?.();
 }
 
-export function replaceSyllableLines(lines) {
-    LyricsObject.Types.Syllable.Lines = lines;
-    $currentLyricsType.set('Syllable');
+export function replaceLyricsLines(type, lines) {
+    LyricsObject.Types.Syllable.Lines = type === 'Syllable' ? lines : [];
+    LyricsObject.Types.Line.Lines = type === 'Line' ? lines : [];
+    LyricsObject.Types.Static.Lines = type === 'Static' ? lines : [];
+    $currentLyricsType.set(type);
 }
