@@ -297,6 +297,23 @@ describe('Player', () => {
         expect(player.playNext).not.toHaveBeenCalled();
     });
 
+    test('switches a version in place without discarding the current queue context', async () => {
+        player = new Player(audioElement, api);
+        const original = { id: 'original', title: 'Song' };
+        const alternative = { id: 'instrumental', title: 'Song (Instrumental)' };
+        player.queue = [original, { id: 'next' }];
+        player.currentTrack = original;
+        player.currentQueueIndex = 0;
+        player.sourceContext = { kind: 'album', id: 'album-1', label: 'Album' };
+        vi.spyOn(player, 'playTrackFromQueue').mockResolvedValue();
+
+        expect(await player.switchTrackVersion(alternative)).toBe(true);
+        expect(player.queue).toEqual([alternative, { id: 'next' }]);
+        expect(player.currentQueueIndex).toBe(0);
+        expect(player.sourceContext).toEqual({ kind: 'album', id: 'album-1', label: 'Album' });
+        expect(player.playTrackFromQueue).toHaveBeenCalledWith(0, 0);
+    });
+
     test('clearQueue resets queue state', async () => {
         player = new Player(audioElement, api);
         player.queue = [{ id: 1 }];

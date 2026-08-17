@@ -357,18 +357,22 @@ export class LocalMusicAPI {
             (track.artists?.length ? track.artists : [track.artist]).some((artist) => String(artist?.id) === String(id))
         );
         if (tracks.length === 0) throw new Error('Local artist not found');
+        const visibleTracks = tracks.filter((track) => !track.hideFromArtistPage);
 
         const customArtists = await db.getLocalArtists().catch(() => []);
         const custom = customArtists.find((item) => String(item.id) === String(id));
         const sourceArtist = tracks
             .flatMap((track) => track.artists || [track.artist])
             .find((item) => String(item?.id) === String(id));
-        const artist = this.normalizeArtist({ ...sourceArtist, ...custom }, tracks);
+        const artist = this.normalizeArtist(
+            { ...sourceArtist, ...custom },
+            visibleTracks.length ? visibleTracks : tracks
+        );
         const albums = uniqueBy(
-            tracks.map((track) =>
+            visibleTracks.map((track) =>
                 this.normalizeAlbum(
                     track.album,
-                    tracks.filter((t) => t.album?.id === track.album?.id)
+                    visibleTracks.filter((t) => t.album?.id === track.album?.id)
                 )
             ),
             (album) => album.id
@@ -378,7 +382,7 @@ export class LocalMusicAPI {
             ...artist,
             biography: artist.biography || 'Local artist from your self-hosted library.',
             banner: artist.banner || null,
-            tracks,
+            tracks: visibleTracks,
             albums,
             eps: [],
             videos: [],

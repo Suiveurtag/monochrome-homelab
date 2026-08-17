@@ -11698,6 +11698,191 @@ img[src=''] {
     font-size: 0.7rem;
 }
 
+/* stylelint-disable no-descending-specificity -- metadata editor component stays colocated after global input and image rules */
+.metadata-version-group {
+    display: grid;
+    gap: 1rem;
+}
+
+.metadata-version-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.metadata-version-heading h6 {
+    margin: 0 0 0.24rem;
+    color: var(--foreground);
+    font-size: 0.9rem;
+    font-weight: 660;
+    letter-spacing: -0.015em;
+}
+
+.metadata-version-heading p {
+    max-width: 58ch;
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.72rem;
+    line-height: 1.5;
+}
+
+.metadata-version-heading output {
+    flex: 0 0 auto;
+    padding: 0.35rem 0.55rem;
+    border-radius: 999px;
+    background: rgb(var(--highlight-rgb) / 0.1);
+    color: color-mix(in srgb, var(--highlight) 78%, var(--foreground));
+    font-size: 0.68rem;
+    font-weight: 680;
+}
+
+.metadata-version-fields {
+    padding-top: 0.2rem;
+}
+
+.metadata-version-list {
+    display: grid;
+    max-height: 286px;
+    gap: 3px;
+    padding: 5px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgb(0 0 0 / 0.12);
+    scrollbar-width: thin;
+}
+
+.metadata-version-option {
+    position: relative;
+    display: grid;
+    min-height: 58px;
+    grid-template-columns: 42px minmax(0, 1fr) auto 18px;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.42rem 0.55rem;
+    border-radius: 10px;
+    cursor: pointer;
+    transition:
+        background-color 150ms ease,
+        transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.metadata-version-option:hover,
+.metadata-version-option:focus-within {
+    background: rgb(255 255 255 / 0.045);
+    outline: none;
+    transform: translateX(2px);
+}
+
+.metadata-version-option.is-selected {
+    background: rgb(var(--highlight-rgb) / 0.09);
+}
+
+.metadata-version-option input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.metadata-version-option:has(input:focus-visible) {
+    outline: 2px solid var(--highlight);
+    outline-offset: -2px;
+}
+
+.metadata-version-cover {
+    width: 42px;
+    height: 42px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: var(--muted);
+}
+
+.metadata-version-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.metadata-version-copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.14rem;
+}
+
+.metadata-version-copy strong,
+.metadata-version-copy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.metadata-version-copy strong {
+    color: var(--foreground);
+    font-size: 0.82rem;
+    font-weight: 610;
+}
+
+.metadata-version-copy small {
+    color: var(--muted-foreground);
+    font-size: 0.68rem;
+}
+
+.metadata-version-tag {
+    max-width: 108px;
+    overflow: hidden;
+    color: var(--muted-foreground);
+    font-size: 0.67rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.metadata-version-check {
+    position: relative;
+    width: 17px;
+    height: 17px;
+    border: 1px solid color-mix(in srgb, var(--muted-foreground) 70%, transparent);
+    border-radius: 50%;
+    transition:
+        border-color 160ms ease,
+        background-color 160ms ease,
+        transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.metadata-version-option.is-selected .metadata-version-check {
+    border-color: var(--highlight);
+    background: var(--highlight);
+    transform: scale(1.06);
+}
+
+.metadata-version-option.is-selected .metadata-version-check::after {
+    position: absolute;
+    top: 3px;
+    left: 5px;
+    width: 4px;
+    height: 7px;
+    border-right: 2px solid var(--background);
+    border-bottom: 2px solid var(--background);
+    content: '';
+    transform: rotate(45deg);
+}
+
+.metadata-version-empty {
+    margin: 0;
+    padding: 1.4rem 1rem;
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.metadata-version-visibility {
+    background: rgb(var(--highlight-rgb) / 0.025);
+}
+/* stylelint-enable no-descending-specificity */
+
 .metadata-theme-color {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
@@ -11886,6 +12071,18 @@ img[src=''] {
         flex: 1;
         justify-content: center;
         text-align: center;
+    }
+
+    .metadata-version-heading {
+        flex-direction: column;
+    }
+
+    .metadata-version-option {
+        grid-template-columns: 42px minmax(0, 1fr) 18px;
+    }
+
+    .metadata-version-tag {
+        display: none;
     }
 }
 

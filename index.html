@@ -6704,6 +6704,16 @@
                 <div class="edge-light" aria-hidden="true"></div>
                 <div class="track-info">
                     <button
+                        id="version-switch-button"
+                        class="version-switch-button"
+                        type="button"
+                        aria-haspopup="dialog"
+                        aria-controls="track-version-popover"
+                        aria-expanded="false"
+                        aria-label="Choose another track version"
+                        hidden
+                    ></button>
+                    <button
                         id="now-playing-cover-button"
                         class="now-playing-cover-button"
                         type="button"
@@ -6938,6 +6948,14 @@
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="quality-popover-title"
+                hidden
+            ></div>
+            <div
+                id="track-version-popover"
+                class="player-floating-panel track-version-popover"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="track-version-popover-title"
                 hidden
             ></div>
             <div

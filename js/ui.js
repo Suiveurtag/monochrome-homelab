@@ -3114,7 +3114,7 @@ export class UIRenderer {
             return [];
         });
         if (stats) {
-            const totalSeconds = tracks.reduce((sum, track) => sum + Number(track.duration || 0), 0);
+            const totalSeconds = tracks.reduce((sum, track) => Number(sum) + Number(track.duration || 0), 0);
             stats.textContent = `${tracks.length} server track${tracks.length === 1 ? '' : 's'} · ${formatDuration(totalSeconds)}`;
         }
 
@@ -3153,13 +3153,21 @@ export class UIRenderer {
         });
     }
 
-    openMetadataEditor(type, entity) {
+    async openMetadataEditor(type, entity) {
+        const availableTracks =
+            type === 'track'
+                ? await this.api
+                      .getAPI()
+                      .getTracks()
+                      .catch(() => db.getUploadedTracks())
+                : [];
         const tracks =
             type === 'album' ? this.currentAlbumTracks || [] : type === 'artist' ? this.currentArtistTracks || [] : [];
         return openMetadataEditor({
             type,
             entity,
             tracks,
+            availableTracks,
             onSaved: async () => {
                 if (type === 'album') await this.renderAlbumPage(entity.id);
                 else if (type === 'artist') await this.renderArtistPage(entity.id);
@@ -3175,7 +3183,7 @@ export class UIRenderer {
 
     async openSelfHostedMetadataEditor(trackId) {
         const track = await this.api.getTrackMetadata(trackId).catch(() => db.getUploadedTrack(trackId));
-        if (track) this.openMetadataEditor('track', track);
+        if (track) await this.openMetadataEditor('track', track);
     }
 
     async renderHomePage() {
@@ -5394,7 +5402,7 @@ export class UIRenderer {
                         // Get liked tracks
                         const likedTracks = await db.getFavorites('track');
                         for (const track of likedTracks) {
-                            if (isTrackByArtist(track)) {
+                            if (isTrackByArtist(track) && !track.hideFromArtistPage) {
                                 if (!seenIds.has(track.id)) {
                                     seenIds.add(track.id);
                                     libraryTracks.push(track);
@@ -5408,7 +5416,7 @@ export class UIRenderer {
                         for (const playlist of userPlaylists) {
                             if (playlist.tracks && Array.isArray(playlist.tracks)) {
                                 for (const track of playlist.tracks) {
-                                    if (isTrackByArtist(track)) {
+                                    if (isTrackByArtist(track) && !track.hideFromArtistPage) {
                                         if (!seenIds.has(track.id)) {
                                             seenIds.add(track.id);
                                             libraryTracks.push(track);

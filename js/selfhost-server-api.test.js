@@ -30,6 +30,10 @@ describe('selfhost-server-api helpers', () => {
             release_date: '2026-06-24',
             explicit: true,
             theme_color: '#4A90E2',
+            version_group: 'versions:abc123',
+            alternative_version_ids: ['alt1', 'alt2'],
+            version_label: 'Original',
+            hide_from_artist_page: true,
             lyrics: '[00:01.00] Local lyrics',
             audio: 'song.flac',
             cover: 'cover.jpg',
@@ -48,6 +52,10 @@ describe('selfhost-server-api helpers', () => {
             trackNumber: 7,
             explicit: true,
             themeColor: '#4a90e2',
+            versionGroupId: 'versions:abc123',
+            alternativeVersionIds: ['alt1', 'alt2'],
+            versionLabel: 'Original',
+            hideFromArtistPage: true,
             lyrics: '[00:01.00] Local lyrics',
             artist: { name: 'Artist' },
             album: {
@@ -136,6 +144,10 @@ describe('selfhost-server-api helpers', () => {
                 duration: 180,
                 explicit: true,
                 themeColor: '#22c55e',
+                versionGroupId: 'versions:track1',
+                alternativeVersionIds: ['track2'],
+                versionLabel: 'Original',
+                hideFromArtistPage: true,
                 lyrics: '[00:01.00] Local lyrics',
             },
             cover,
@@ -150,6 +162,10 @@ describe('selfhost-server-api helpers', () => {
         expect(formData.get('release_date')).toBe('2026-06-27');
         expect(formData.get('explicit')).toBe('true');
         expect(formData.get('theme_color')).toBe('#22c55e');
+        expect(formData.get('version_group')).toBe('versions:track1');
+        expect(formData.get('alternative_version_ids')).toBe('["track2"]');
+        expect(formData.get('version_label')).toBe('Original');
+        expect(formData.get('hide_from_artist_page')).toBe('true');
         expect(formData.get('lyrics')).toBe('[00:01.00] Local lyrics');
         expect(formData.get('cover')).toBe(cover);
         expect(formData.has('audio')).toBe(false);

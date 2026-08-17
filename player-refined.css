@@ -15,10 +15,11 @@
 
 .now-playing-cover-button {
     position: relative;
+    z-index: 2;
     display: grid;
     flex: 0 0 auto;
-    width: 56px;
-    height: 56px;
+    width: var(--track-version-disc-size, 56px);
+    height: var(--track-version-disc-size, 56px);
     padding: 0;
     overflow: hidden;
     border: 0;
@@ -30,6 +31,364 @@
     transition:
         transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
         box-shadow 260ms ease;
+}
+
+.version-switch-button[hidden] {
+    display: none !important;
+}
+
+.version-switch-button {
+    position: absolute !important;
+    z-index: 1 !important;
+    top: calc(var(--track-version-disc-size, 56px) / -2);
+    left: 0;
+    width: var(--track-version-disc-size, 56px);
+    height: var(--track-version-disc-size, 56px);
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    transform-origin: 50% 100%;
+    transition:
+        filter 180ms ease,
+        transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.version-switch-button:hover,
+.version-switch-button:focus-visible {
+    outline: none;
+    filter: brightness(1.08);
+    transform: translateY(-3px);
+}
+
+.version-switch-button:focus-visible::after {
+    position: absolute;
+    inset: -4px;
+    border: 2px solid rgb(var(--highlight-rgb) / 0.9);
+    border-radius: 50%;
+    content: '';
+}
+
+.version-switch-button.is-entering {
+    animation: version-disc-emerge 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.version-disc {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 50%;
+    background: conic-gradient(
+        from 18deg,
+        rgb(255 255 255 / 0.72),
+        rgb(var(--version-accent-rgb) / 0.34),
+        rgb(255 255 255 / 0.2),
+        rgb(130 154 255 / 0.24),
+        rgb(255 255 255 / 0.72)
+    );
+    box-shadow:
+        0 8px 18px rgb(0 0 0 / 0.42),
+        inset 0 0 0 1px rgb(255 255 255 / 0.38);
+    isolation: isolate;
+}
+
+.version-disc::before {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    border-radius: inherit;
+    background: conic-gradient(
+        from 230deg,
+        transparent 0 12%,
+        rgb(255 255 255 / 0.38) 16%,
+        transparent 22% 46%,
+        rgb(var(--version-accent-rgb) / 0.24) 52%,
+        transparent 61% 100%
+    );
+    content: '';
+    mix-blend-mode: screen;
+    pointer-events: none;
+}
+
+.version-disc img {
+    position: absolute;
+    z-index: 1;
+    inset: 2px;
+    width: calc(100% - 4px);
+    height: calc(100% - 4px);
+    border-radius: 50%;
+    filter: saturate(0.94) contrast(1.02);
+    object-fit: cover;
+}
+
+.version-disc-hub {
+    position: absolute;
+    z-index: 4;
+    top: 50%;
+    left: 50%;
+    width: 18%;
+    height: 18%;
+    border: 2px solid rgb(255 255 255 / 0.72);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--card) 72%, transparent);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.45);
+    transform: translate(-50%, -50%);
+}
+
+.version-disc-sheen {
+    position: absolute;
+    z-index: 3;
+    inset: -35%;
+    background: linear-gradient(110deg, transparent 37%, rgb(255 255 255 / 0.72) 49%, transparent 61%);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-62%) rotate(8deg);
+}
+
+.version-switch-button.is-entering .version-disc-sheen {
+    animation: version-disc-sweep 620ms 430ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.version-switch-button.is-panel-open {
+    pointer-events: none;
+}
+
+.version-disc-flight {
+    backface-visibility: hidden;
+    will-change: transform;
+}
+
+.version-disc.is-in-transit {
+    opacity: 0;
+}
+
+.player-floating-panel.track-version-popover {
+    max-height: calc(100vh - 20px);
+    padding: 0;
+    overflow: hidden;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--card) 96%, black 4%);
+    box-shadow:
+        0 22px 58px rgb(0 0 0 / 0.52),
+        inset 0 1px 0 rgb(255 255 255 / 0.045);
+    clip-path: inset(0 round 16px);
+    backdrop-filter: blur(20px) saturate(1.06);
+    transform-origin: top left;
+    transition: none;
+    will-change: transform, opacity, clip-path, border-radius;
+}
+
+.track-version-panel-shell {
+    display: flex;
+    max-height: inherit;
+    flex-direction: column;
+}
+
+.track-version-panel-header {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1rem 0.8rem;
+    border-bottom: 1px solid rgb(255 255 255 / 0.065);
+}
+
+.track-version-panel-header h3 {
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 640;
+    letter-spacing: -0.018em;
+}
+
+.track-version-panel-header p {
+    max-width: 29ch;
+    margin: 0.2rem 0 0;
+    overflow: hidden;
+    color: var(--muted-foreground);
+    font-size: 0.72rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.track-version-count {
+    flex: 0 0 auto;
+    color: var(--muted-foreground);
+    font-size: 0.66rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 520;
+}
+
+.track-version-list {
+    display: grid;
+    min-height: 0;
+    gap: 0;
+    padding: 0 8px 8px var(--track-version-list-inset, 8px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+
+.track-version-option {
+    position: relative;
+    display: grid;
+    width: 100%;
+    min-height: 72px;
+    grid-template-columns: var(--track-version-disc-size, 56px) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 8px;
+    overflow: hidden;
+    border: 0;
+    border-bottom: 1px solid rgb(255 255 255 / 0.055);
+    border-radius: 9px;
+    background: transparent;
+    color: var(--foreground);
+    text-align: left;
+    cursor: pointer;
+    isolation: isolate;
+    transition: background-color 160ms ease;
+}
+
+.track-version-option::before {
+    position: absolute;
+    z-index: 2;
+    top: 16px;
+    bottom: 16px;
+    left: 0;
+    width: 2px;
+    border-radius: 2px;
+    background: rgb(var(--version-accent-rgb) / 0.82);
+    content: '';
+    opacity: 0;
+    transition: opacity 180ms ease;
+}
+
+.track-version-option:hover,
+.track-version-option:focus-visible {
+    outline: none;
+    background: rgb(255 255 255 / 0.04);
+}
+
+.track-version-option.is-active::before {
+    opacity: 1;
+}
+
+.track-version-option:focus-visible {
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
+}
+
+.track-version-option.is-active {
+    background: rgb(var(--version-accent-rgb) / 0.08);
+}
+
+.track-version-option:disabled {
+    cursor: not-allowed;
+    filter: grayscale(0.75);
+    opacity: 0.48;
+}
+
+.version-disc-row {
+    width: var(--track-version-disc-size, 56px);
+    height: var(--track-version-disc-size, 56px);
+}
+
+.track-version-copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.1rem;
+}
+
+.track-version-copy strong,
+.track-version-copy span,
+.track-version-copy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.track-version-copy strong {
+    color: var(--foreground);
+    font-size: 0.78rem;
+    font-weight: 640;
+}
+
+.track-version-copy span {
+    color: color-mix(in srgb, var(--foreground) 78%, var(--muted-foreground));
+    font-size: 0.84rem;
+    font-weight: 500;
+    letter-spacing: -0.012em;
+}
+
+.track-version-copy small {
+    color: var(--muted-foreground);
+    font-size: 0.67rem;
+}
+
+.track-version-state {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--muted-foreground);
+    font-size: 0.68rem;
+    font-weight: 560;
+}
+
+.track-version-state i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgb(var(--version-accent-rgb));
+}
+
+.track-version-option.is-active .track-version-state {
+    color: color-mix(in srgb, rgb(var(--version-accent-rgb)) 42%, var(--foreground));
+}
+
+.track-version-popover .track-version-panel-header,
+.track-version-popover .track-version-list {
+    opacity: 0;
+    transform: translateY(6px);
+    transition:
+        opacity 180ms ease,
+        transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.track-version-popover.is-open .track-version-panel-header,
+.track-version-popover.is-open .track-version-list {
+    opacity: 1;
+    transform: none;
+}
+
+@keyframes version-disc-emerge {
+    from {
+        opacity: 0;
+        transform: translateY(calc(var(--track-version-disc-size, 56px) / 2)) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1) rotate(0);
+    }
+}
+
+@keyframes version-disc-sweep {
+    0% {
+        opacity: 0;
+        transform: translateX(-62%) rotate(8deg);
+    }
+
+    35% {
+        opacity: 0.7;
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateX(62%) rotate(8deg);
+    }
 }
 
 .now-playing-cover-button .cover {
@@ -116,7 +475,10 @@
 }
 
 .now-playing-bar .track-info {
-    overflow: hidden;
+    --track-version-disc-size: 56px;
+
+    position: relative;
+    overflow: visible;
 }
 
 .now-playing-bar .track-info .details .title,
@@ -891,12 +1253,9 @@
     }
 
     .now-playing-bar .track-info {
-        grid-area: track;
-    }
+        --track-version-disc-size: 48px;
 
-    .now-playing-cover-button {
-        width: 48px;
-        height: 48px;
+        grid-area: track;
     }
 
     .now-playing-like-btn {
@@ -1021,6 +1380,8 @@
     }
 
     .now-playing-bar .track-info {
+        --track-version-disc-size: 42px;
+
         grid-area: track;
         align-self: center;
         gap: 0.45rem;
@@ -1054,11 +1415,6 @@
         min-height: 32px;
         margin-left: 0.15rem;
         padding: 0.3rem;
-    }
-
-    .now-playing-cover-button {
-        width: 42px;
-        height: 42px;
     }
 
     .now-playing-bar .player-controls {
@@ -1195,9 +1551,8 @@
         font-size: 0.78rem;
     }
 
-    .now-playing-cover-button {
-        width: 38px;
-        height: 38px;
+    .now-playing-bar .track-info {
+        --track-version-disc-size: 38px;
     }
 
     .now-playing-bar .player-controls .buttons {
@@ -1243,9 +1598,8 @@
         padding-inline: 0.55rem;
     }
 
-    .now-playing-cover-button {
-        width: 34px;
-        height: 34px;
+    .now-playing-bar .track-info {
+        --track-version-disc-size: 34px;
     }
 
     .now-playing-bar .track-info .details {
@@ -1270,6 +1624,15 @@
     .quality-lossless-magic *,
     .sleep-timer-popover .timer-option,
     .progress-hover-time {
+        animation: none !important;
+        transition-duration: 0ms !important;
+    }
+
+    .version-switch-button,
+    .version-switch-button .version-disc-sheen,
+    .track-version-popover *,
+    .track-version-option,
+    .version-disc-row {
         animation: none !important;
         transition-duration: 0ms !important;
     }

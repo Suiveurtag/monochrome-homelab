@@ -556,7 +556,7 @@ async function initializeSelfHostedUploads() {
         if (!authManager.user) return showNotification('Sign in to manage the community catalogue.', 'error');
         if (action === 'edit') {
             if (tracks.length === 1) {
-                UIRenderer.instance.openMetadataEditor('track', tracks[0]);
+                await UIRenderer.instance.openMetadataEditor('track', tracks[0]);
                 return;
             }
             bulkEditor.querySelector('#upload-bulk-form').reset();

@@ -2405,6 +2405,21 @@ export class Player {
         await this.saveQueueState();
     }
 
+    async switchTrackVersion(track) {
+        if (!track || this.currentQueueIndex < 0 || !this.currentTrack) return false;
+        const currentId = String(this.currentTrack.id);
+        const activeQueue = this.getCurrentQueue();
+        activeQueue[this.currentQueueIndex] = track;
+        for (const queue of [this.queue, this.shuffledQueue, this.originalQueueBeforeShuffle]) {
+            if (queue === activeQueue) continue;
+            const index = queue.findIndex((item) => String(item?.id) === currentId);
+            if (index >= 0) queue[index] = track;
+        }
+        this.preloadCache.clear();
+        await this.playTrackFromQueue(0, 0);
+        return true;
+    }
+
     setArtistPopularTracksContext(artistId, initialTracks, offset = 15, hasMore = true) {
         this.artistPopularTracksState = {
             artistId,

@@ -67,6 +67,12 @@ export function mapPocketBaseTrack(record, client = pb) {
         duration: Number(record.duration || 0),
         explicit: Boolean(record.explicit),
         themeColor: normalizeTrackThemeColor(record.theme_color),
+        versionGroupId: record.version_group || null,
+        alternativeVersionIds: Array.isArray(record.alternative_version_ids)
+            ? record.alternative_version_ids.map(String)
+            : [],
+        versionLabel: record.version_label || null,
+        hideFromArtistPage: Boolean(record.hide_from_artist_page),
         uploadedAt: record.created ? Date.parse(record.created) : Date.now(),
         updatedAt: record.updated ? Date.parse(record.updated) : Date.now(),
         trackNumber: Number(record.track_number || 0) || null,
@@ -167,6 +173,10 @@ export function createTrackFormData(track, file, ownerId, coverFile = null) {
     formData.set('duration', String(Number(track?.duration || 0)));
     formData.set('explicit', String(Boolean(track?.explicit)));
     formData.set('theme_color', getTrackThemeColor(track));
+    formData.set('version_group', track?.versionGroupId || '');
+    formData.set('alternative_version_ids', JSON.stringify(track?.alternativeVersionIds || []));
+    formData.set('version_label', track?.versionLabel || '');
+    formData.set('hide_from_artist_page', String(Boolean(track?.hideFromArtistPage)));
     formData.set('lyrics', track?.lyrics || '');
     formData.set('audio', file);
     if (coverFile) formData.set('cover', coverFile);
@@ -241,6 +251,10 @@ export async function updateSelfHostedTrack(id, track, coverFile = null, clientO
     formData.set('duration', String(Number(track?.duration || 0)));
     formData.set('explicit', String(Boolean(track?.explicit)));
     formData.set('theme_color', getTrackThemeColor(track));
+    formData.set('version_group', track?.versionGroupId || '');
+    formData.set('alternative_version_ids', JSON.stringify(track?.alternativeVersionIds || []));
+    formData.set('version_label', track?.versionLabel || '');
+    formData.set('hide_from_artist_page', String(Boolean(track?.hideFromArtistPage)));
     formData.set('lyrics', track?.lyrics || '');
     if (coverFile) formData.set('cover', coverFile);
     if (canvasFile) formData.set('canvas', canvasFile);

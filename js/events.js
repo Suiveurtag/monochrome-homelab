@@ -55,6 +55,7 @@ import { playerBarEffects } from './player-bar-effects.js';
 import { initializePlayerActionLayout, PLAYER_ACTIONS } from './player-bar-layout.js';
 import { socialManager } from './social.js';
 import { canvasSettings } from './canvas-settings.js';
+import { setupTrackVersionPicker } from './track-version-picker.js';
 
 let currentTrackIdForWaveform = null;
 
@@ -2518,7 +2519,7 @@ export async function handleTrackAction(
 
     if (action === 'edit-metadata') {
         if (ui && item.isLocal && typeof ui.openMetadataEditor === 'function') {
-            ui.openMetadataEditor(type, item);
+            await ui.openMetadataEditor(type, item);
         }
         return;
     }
@@ -3457,6 +3458,7 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
     let contextTrack = null;
 
     setupTrackSaveFloatingPanel(player, api, ui);
+    setupTrackVersionPicker(player, api);
 
     document.addEventListener('open-current-track-context-menu', async (event) => {
         const track = event.detail?.track || player.currentTrack;
