@@ -202,6 +202,8 @@ const syncManager = {
                 explicit: item.explicit || false,
                 themeColor: item.themeColor || null,
                 versionGroupId: item.versionGroupId || null,
+                versionMainTrackId: item.versionMainTrackId || null,
+                versionMainAlbum: item.versionMainAlbum || null,
                 alternativeVersionIds: item.alternativeVersionIds || [],
                 versionLabel: item.versionLabel || null,
                 hideFromArtistPage: Boolean(item.hideFromArtistPage),

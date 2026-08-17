@@ -53,6 +53,7 @@ import { getArtworkSources } from './artwork-media.js';
 import { getTrackThemeColor } from './track-theme-color.js';
 import { listeningTracker } from './listening-tracker.js';
 import { AlbumCoverInspector } from './album-cover-inspector.js';
+import { getTrackDisplayAlbum } from './track-versions.js';
 import {
     applyTrackSaveStateToButton,
     buildTrackSaveStateSnapshot,
@@ -590,8 +591,9 @@ export class UIRenderer {
             return;
         }
 
-        if (track?.album?.cover) {
-            await this.extractAndApplyColor(this.api.getCoverUrl(track.album.cover, coverSize));
+        const displayAlbum = getTrackDisplayAlbum(track);
+        if (displayAlbum?.cover) {
+            await this.extractAndApplyColor(this.api.getCoverUrl(displayAlbum.cover, coverSize));
         } else {
             this.resetVibrantColor();
         }
@@ -670,12 +672,13 @@ export class UIRenderer {
         const trackTitle = getTrackTitle(track);
         const isCurrentTrack = this.player?.currentTrack?.id === track.id;
 
-        if (track.isLocal && (!track.album?.cover || track.album.cover === 'assets/appicon.png')) {
+        const displayAlbum = getTrackDisplayAlbum(track);
+        if (track.isLocal && !track.cover && (!displayAlbum?.cover || displayAlbum.cover === 'assets/appicon.png')) {
             showCover = false;
         }
 
         const yearDisplay = getTrackYearDisplay(track);
-        const albumTitle = track.album?.title || track.album?.name || track.albumTitle || '—';
+        const albumTitle = displayAlbum?.title || displayAlbum?.name || track.albumTitle || '—';
         const addedDate = formatRelativeDate(track.addedAt || track.dateAdded);
         const playCount = listeningTracker.getTrackSignal(track.id)?.playCount || 0;
 
@@ -6259,12 +6262,13 @@ export class UIRenderer {
 
             artistEl.innerHTML = getTrackArtistsHTML(track);
 
-            if (track.album) {
-                albumEl.innerHTML = `<a href="/album/${track.album.id}">${escapeHtml(track.album.title)}</a>`;
+            const displayAlbum = getTrackDisplayAlbum(track);
+            if (displayAlbum) {
+                albumEl.innerHTML = `<a href="/album/${displayAlbum.id}">${escapeHtml(displayAlbum.title)}</a>`;
             }
 
-            if (track.album?.releaseDate) {
-                const date = new Date(track.album.releaseDate);
+            if (displayAlbum?.releaseDate) {
+                const date = new Date(displayAlbum.releaseDate);
                 if (!isNaN(date.getTime())) {
                     yearEl.textContent = date.getFullYear();
                 }
@@ -6289,8 +6293,8 @@ export class UIRenderer {
                 this.applyTrackSaveButtonState(likeBtn, state);
             }
 
-            if (track.album?.id) {
-                const { tracks } = await this.api.getAlbum(track.album.id);
+            if (displayAlbum?.id) {
+                const { tracks } = await this.api.getAlbum(displayAlbum.id);
                 if (tracks && tracks.length > 0) {
                     albumSection.style.display = 'block';
                     await this.renderListWithTracks(albumTracksContainer, tracks, false);

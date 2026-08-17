@@ -1,6 +1,7 @@
 import { getTrackArtists, getTrackTitle, getTrackYearDisplay } from './utils.js';
 import { isVideoArtwork } from './animated-artwork.js';
 import { getArtworkSources } from './artwork-media.js';
+import { getTrackDisplayAlbum, getTrackPlayerArtwork } from './track-versions.js';
 
 const SOURCE_KINDS = new Set(['playlist', 'album', 'artist', 'liked', 'radio', 'single', 'unknown']);
 
@@ -15,9 +16,9 @@ export function normalizeSourceContext(value) {
 }
 
 function resolveArtwork(track, api) {
-    const explicitAnimated = track?.videoUrl || track?.videoCoverUrl || track?.album?.videoCoverUrl || null;
-    const albumArtwork = track?.album || {};
-    const coverId = track?.image || track?.cover || albumArtwork.cover || null;
+    const albumArtwork = getTrackDisplayAlbum(track) || {};
+    const explicitAnimated = track?.videoUrl || track?.videoCoverUrl || albumArtwork.videoCoverUrl || null;
+    const coverId = getTrackPlayerArtwork(track);
     const sources = getArtworkSources({
         cover: coverId,
         animatedCover: explicitAnimated || track?.animatedCover || albumArtwork.animatedCover,
@@ -129,7 +130,7 @@ function releaseYear(track) {
         const match = rendered.match(/\b(?:19|20)\d{2}\b/);
         if (match) return match[0];
     }
-    const value = track?.releaseDate || track?.album?.releaseDate;
+    const value = track?.releaseDate || getTrackDisplayAlbum(track)?.releaseDate;
     const match = String(value || '').match(/\b(?:19|20)\d{2}\b/);
     return match?.[0] || '';
 }
@@ -206,9 +207,12 @@ export async function buildNowPlayingPanelModel({ track, player, api, sourceCont
             ? {
                   id: artist.id == null ? null : String(artist.id),
                   name: String(artist.name || primaryArtist?.name || 'Unknown artist'),
-                  picture: resolveImage(artist.picture || primaryArtist?.picture || track.album?.cover, api),
+                  picture: resolveImage(
+                      artist.picture || primaryArtist?.picture || getTrackDisplayAlbum(track)?.cover,
+                      api
+                  ),
                   banner: resolveImage(
-                      artist.banner || artist.picture || primaryArtist?.picture || track.album?.cover,
+                      artist.banner || artist.picture || primaryArtist?.picture || getTrackDisplayAlbum(track)?.cover,
                       api
                   ),
                   biography,

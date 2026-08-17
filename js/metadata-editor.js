@@ -9,9 +9,11 @@ import { getArtworkSources, isSupportedImageArtworkFile } from './artwork-media.
 import { getTrackThemeColor, normalizeTrackThemeColor } from './track-theme-color.js';
 import {
     buildTrackVersionUpdates,
+    getTrackDisplayAlbum,
     getTrackVersionArtwork,
     getTrackVersionGroup,
     getTrackVersionLabel,
+    getTrackVersionMainId,
 } from './track-versions.js';
 
 const STATIC_ARTWORK_ACCEPT = 'image/png,image/jpeg,image/webp,image/avif';
@@ -51,7 +53,7 @@ function artworkPicker(
 
 function canvasPicker(track) {
     const artwork = getArtworkSources({
-        cover: track.album?.cover || track.cover,
+        cover: track.cover || track.album?.cover,
         animatedCover: track.videoCoverUrl || track.videoUrl || track.album?.videoCoverUrl,
         coverFallback: track.coverFallback || track.album?.coverFallback,
     });
@@ -79,12 +81,12 @@ function canvasPicker(track) {
 }
 
 function field(label, name, current, options = {}) {
-    const { type = 'text', placeholder = '', required = false, min = '', wide = false } = options;
+    const { type = 'text', placeholder = '', required = false, disabled = false, min = '', wide = false } = options;
     return `
         <label class="metadata-field${wide ? ' is-wide' : ''}">
             <span>${label}</span>
             <input name="${name}" type="${type}" value="${escapeHtml(current ?? '')}"
-                placeholder="${escapeHtml(placeholder)}" ${required ? 'required' : ''} ${min !== '' ? `min="${min}"` : ''} />
+                placeholder="${escapeHtml(placeholder)}" ${required ? 'required' : ''} ${disabled ? 'disabled' : ''} ${min !== '' ? `min="${min}"` : ''} />
         </label>`;
 }
 
@@ -158,16 +160,26 @@ function themeColorPicker(track) {
 
 function versionGroupEditor(track, availableTracks = []) {
     const currentId = String(track.id);
-    const groupIds = new Set(getTrackVersionGroup(track, availableTracks).map((item) => String(item.id)));
+    const versionGroup = getTrackVersionGroup(track, availableTracks);
+    const groupIds = new Set(versionGroup.map((item) => String(item.id)));
+    const mainTrackId = getTrackVersionMainId(track, availableTracks) || currentId;
     groupIds.delete(currentId);
     const candidates = availableTracks
         .filter((item) => item?.id != null && String(item.id) !== currentId)
         .sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
     const label = getTrackVersionLabel(track, { fallback: '' });
+    const mainTrackOptions = [track, ...candidates]
+        .map((candidate) => {
+            const id = String(candidate.id);
+            const available = id === currentId || groupIds.has(id);
+            const suffix = getTrackVersionLabel(candidate, { fallback: id === currentId ? 'This track' : 'Version' });
+            return `<option value="${escapeHtml(id)}" ${id === mainTrackId ? 'selected' : ''} ${available ? '' : 'disabled'}>${escapeHtml(candidate.title || 'Untitled')} — ${escapeHtml(suffix)}</option>`;
+        })
+        .join('');
     return `
         <div class="metadata-version-group" data-version-group>
             <div class="metadata-version-heading">
-                <div><h6>Version family</h6><p>Link editions of the same song without moving them out of their albums.</p></div>
+                <div><h6>Version family</h6><p>Link editions of the same song around one main track.</p></div>
                 <output data-version-count>${groupIds.size ? `${groupIds.size + 1} versions` : 'Not linked'}</output>
             </div>
             <div class="metadata-fields metadata-version-fields">
@@ -175,6 +187,11 @@ function versionGroupEditor(track, availableTracks = []) {
                 <label class="metadata-field">
                     <span>Find a track to link</span>
                     <input type="search" data-version-search placeholder="Search title, artist or album" autocomplete="off" />
+                </label>
+                <label class="metadata-field is-wide metadata-version-main-field">
+                    <span>Main track</span>
+                    <select name="versionMainTrackId" data-version-main>${mainTrackOptions}</select>
+                    <small>The main track supplies the album and player cover for this version family.</small>
                 </label>
             </div>
             <div class="metadata-version-list" data-version-list>
@@ -186,7 +203,7 @@ function versionGroupEditor(track, availableTracks = []) {
                                   const selected = groupIds.has(id);
                                   const artist =
                                       candidate.artist?.name || candidate.artists?.[0]?.name || 'Unknown artist';
-                                  const album = candidate.album?.title || 'Unknown album';
+                                  const album = getTrackDisplayAlbum(candidate, availableTracks)?.title || 'No album';
                                   const search =
                                       `${candidate.title || ''} ${artist} ${album} ${getTrackVersionLabel(candidate, { fallback: '' })}`.toLowerCase();
                                   return `<label class="metadata-version-option${selected ? ' is-selected' : ''}" data-version-option data-version-search-value="${escapeHtml(search)}">
@@ -208,14 +225,15 @@ function versionGroupEditor(track, availableTracks = []) {
             <label class="metadata-switch metadata-version-visibility">
                 <input type="checkbox" name="hideFromArtistPage" ${track.hideFromArtistPage ? 'checked' : ''} />
                 <span></span>
-                <div><strong>Hide this version from the artist page</strong><small>It remains available in its album, playlists, search, and this version picker.</small></div>
+                <div><strong>Hide this version from the artist page</strong><small>Removes its own album association. It remains available through search, playlists, liked tracks, and the main track's version picker.</small></div>
             </label>
         </div>`;
 }
 
 function buildTrackForm(track, availableTracks = []) {
+    const hiddenAlternative = Boolean(track.hideFromArtistPage);
     const staticArtwork = getArtworkSources({
-        cover: track.album?.cover || track.cover,
+        cover: track.cover || track.album?.cover,
         animatedCover: track.videoCoverUrl || track.videoUrl || track.album?.videoCoverUrl,
         coverFallback: track.coverFallback || track.album?.coverFallback,
     }).static;
@@ -227,7 +245,7 @@ function buildTrackForm(track, availableTracks = []) {
         <div class="metadata-editor-section"><h5>Main information</h5><div class="metadata-fields">
             ${field('Title', 'title', track.title, { required: true })}
             ${field('Artist', 'artist', track.artist?.name, { required: true })}
-            ${field('Album', 'album', track.album?.title, { required: true })}
+            ${field('Album', 'album', hiddenAlternative ? '' : track.album?.title, { required: !hiddenAlternative, disabled: hiddenAlternative })}
             ${field('Release date', 'releaseDate', (track.releaseDate || track.album?.releaseDate || '').slice(0, 10), { type: 'date' })}
             ${field('Track number', 'trackNumber', track.trackNumber, { type: 'number', min: 1 })}
             ${field('Disc number', 'discNumber', track.discNumber || track.volumeNumber, { type: 'number', min: 1 })}
@@ -313,7 +331,9 @@ async function persistTrack(track, updated, coverFile = null, canvasOptions = {}
         ...(remote || track),
         ...updated,
         album: remote
-            ? { ...updated.album, cover: remote.album?.cover, videoCoverUrl: remote.album?.videoCoverUrl || null }
+            ? updated.album
+                ? { ...updated.album, cover: remote.album?.cover, videoCoverUrl: remote.album?.videoCoverUrl || null }
+                : null
             : updated.album,
         videoCoverUrl: remote?.videoCoverUrl || updated.videoCoverUrl || null,
         serverAudioUrl: remote?.serverAudioUrl || track.serverAudioUrl,
@@ -331,20 +351,23 @@ async function saveTrack(track, form, availableTracks = []) {
     const coverData = await fileToDataUrl(coverFile);
     const canvasData = track.isSelfHosted ? '' : await fileToDataUrl(canvasFile);
     const existingArtwork = getArtworkSources({
-        cover: track.album?.cover || track.cover,
+        cover: track.cover || track.album?.cover,
         animatedCover: track.videoCoverUrl || track.videoUrl || track.album?.videoCoverUrl,
         coverFallback: track.coverFallback || track.album?.coverFallback,
     });
     const artist = { ...(track.artist || {}), name: value(form, 'artist') || 'Unknown Artist' };
-    const album = {
-        ...(track.album || {}),
-        title: value(form, 'album') || 'Unknown Album',
-        releaseDate: value(form, 'releaseDate'),
-        genre: value(form, 'genre'),
-        artist,
-        cover: coverData || existingArtwork.static,
-        videoCoverUrl: canvasFile?.size || removeCanvas ? null : track.album?.videoCoverUrl || null,
-    };
+    const hideFromArtistPage = form.get('hideFromArtistPage') === 'on';
+    const album = hideFromArtistPage
+        ? null
+        : {
+              ...(track.album || {}),
+              title: value(form, 'album') || 'Unknown Album',
+              releaseDate: value(form, 'releaseDate'),
+              genre: value(form, 'genre'),
+              artist,
+              cover: coverData || existingArtwork.static,
+              videoCoverUrl: canvasFile?.size || removeCanvas ? null : track.album?.videoCoverUrl || null,
+          };
     const updated = {
         ...track,
         title: value(form, 'title') || 'Unknown Title',
@@ -353,7 +376,8 @@ async function saveTrack(track, form, availableTracks = []) {
             index === 0 ? { ...item, ...artist } : item
         ),
         album,
-        releaseDate: album.releaseDate,
+        cover: coverData || track.cover || track.serverCoverUrl || existingArtwork.static,
+        releaseDate: album?.releaseDate || value(form, 'releaseDate'),
         trackNumber: Number(form.get('trackNumber')) || null,
         discNumber: Number(form.get('discNumber')) || null,
         volumeNumber: Number(form.get('discNumber')) || null,
@@ -366,20 +390,25 @@ async function saveTrack(track, form, availableTracks = []) {
         lyrics: String(form.get('lyrics') || ''),
         credits: collectRows(form, 'credits', ['name', 'role']),
         versionLabel: value(form, 'versionLabel'),
-        hideFromArtistPage: form.get('hideFromArtistPage') === 'on',
+        hideFromArtistPage,
     };
     const selectedIds = form.getAll('alternativeVersionIds').map(String);
-    const versionUpdates = buildTrackVersionUpdates(track, availableTracks, selectedIds, {
-        versionLabel: updated.versionLabel,
-        hideFromArtistPage: updated.hideFromArtistPage,
-    });
+    const versionUpdates = buildTrackVersionUpdates(
+        track,
+        availableTracks,
+        selectedIds,
+        updated,
+        value(form, 'versionMainTrackId', track.id)
+    );
     const currentVersionUpdate = versionUpdates.find(({ track: item }) => String(item.id) === String(track.id));
     const currentVersionState = currentVersionUpdate?.updated;
     const persisted = await persistTrack(
         track,
         {
-            ...updated,
+            ...(currentVersionState || updated),
             versionGroupId: currentVersionState?.versionGroupId || null,
+            versionMainTrackId: currentVersionState?.versionMainTrackId || null,
+            versionMainAlbum: currentVersionState?.versionMainAlbum || null,
             alternativeVersionIds: currentVersionState?.alternativeVersionIds || [],
         },
         coverFile?.size ? coverFile : null,
@@ -405,7 +434,10 @@ async function saveTrack(track, form, availableTracks = []) {
     window.dispatchEvent(
         new CustomEvent('track-metadata-updated', { detail: { trackId: track.id, track: persisted } })
     );
-    await Promise.all([db.putLocalArtist(artist), db.putLocalAlbum(persisted.album || album)]);
+    await Promise.all([
+        db.putLocalArtist(artist),
+        persisted.album ? db.putLocalAlbum(persisted.album) : Promise.resolve(),
+    ]);
 }
 
 async function saveAlbum(album, tracks, form) {
@@ -698,19 +730,46 @@ function setupRepeatableRows(form) {
     });
 }
 
-function setupVersionGroupEditor(form, availableTracks) {
+function setupVersionGroupEditor(form, availableTracks, currentTrack) {
     const control = form.querySelector('[data-version-group]');
     if (!control) return;
     const options = [...control.querySelectorAll('[data-version-option]')];
     const search = control.querySelector('[data-version-search]');
     const count = control.querySelector('[data-version-count]');
     const noResults = control.querySelector('[data-version-no-results]');
+    const mainSelect = control.querySelector('[data-version-main]');
+    const visibility = control.querySelector('input[name="hideFromArtistPage"]');
+    const albumInput = form.querySelector('input[name="album"]');
+    const currentId = String(currentTrack.id);
     const trackMap = new Map(availableTracks.map((track) => [String(track.id), track]));
+    const inheritedAlbumTitle = getTrackDisplayAlbum(currentTrack, availableTracks)?.title || '';
 
     const sync = () => {
         const selected = options.filter((option) => option.querySelector('input').checked);
         for (const option of options) option.classList.toggle('is-selected', option.querySelector('input').checked);
         count.value = selected.length ? `${selected.length + 1} versions` : 'Not linked';
+        for (const option of mainSelect?.options || []) {
+            option.disabled =
+                option.value !== currentId &&
+                !selected.some((row) => row.querySelector('input').value === option.value);
+        }
+        if (mainSelect?.selectedOptions[0]?.disabled) mainSelect.value = currentId;
+
+        const canHide = selected.length > 0 && mainSelect?.value !== currentId;
+        if (visibility) {
+            visibility.disabled = !canHide;
+            if (!canHide) visibility.checked = false;
+        }
+        const hiddenAlternative = Boolean(canHide && visibility?.checked);
+        if (albumInput) {
+            if (!albumInput.dataset.previousValue)
+                albumInput.dataset.previousValue = albumInput.value || inheritedAlbumTitle;
+            albumInput.disabled = hiddenAlternative;
+            albumInput.required = !hiddenAlternative;
+            if (hiddenAlternative) albumInput.value = '';
+            else if (!albumInput.value) albumInput.value = albumInput.dataset.previousValue;
+        }
+        control.classList.toggle('is-hidden-alternative', hiddenAlternative);
     };
     control.addEventListener('change', (event) => {
         const checkbox = event.target.closest('input[name="alternativeVersionIds"]');
@@ -722,6 +781,8 @@ function setupVersionGroupEditor(form, availableTracks) {
         }
         sync();
     });
+    mainSelect?.addEventListener('change', sync);
+    visibility?.addEventListener('change', sync);
     search?.addEventListener('input', () => {
         const query = search.value.trim().toLowerCase();
         let visible = 0;
@@ -757,7 +818,7 @@ export function openMetadataEditor({ type, entity, tracks = [], availableTracks 
     setupLyricsFilePicker(form);
     setupThemeColorPicker(form);
     setupRepeatableRows(form);
-    setupVersionGroupEditor(form, availableTracks);
+    setupVersionGroupEditor(form, availableTracks, entity);
     form.querySelector('[data-metadata-cancel]').addEventListener('click', close);
 
     const escapeHandler = (event) => {

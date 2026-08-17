@@ -8,7 +8,9 @@ function mergeTrackMetadata(target, source) {
 
     Object.assign(target, source);
     if (targetArtist || sourceArtist) target.artist = { ...(targetArtist || {}), ...(sourceArtist || {}) };
-    if (targetAlbum || sourceAlbum) {
+    if (Object.hasOwn(source, 'album') && sourceAlbum === null) {
+        target.album = null;
+    } else if (targetAlbum || sourceAlbum) {
         target.album = {
             ...(targetAlbum || {}),
             ...(sourceAlbum || {}),

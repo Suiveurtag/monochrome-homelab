@@ -73,13 +73,15 @@ describe('track metadata alternative versions', () => {
         };
         const { modal, close } = openMetadataEditor({
             type: 'track',
-            entity: original,
+            entity: instrumental,
             availableTracks: [original, instrumental],
         });
 
         modal.querySelector('input[name="alternativeVersionIds"]').click();
-        modal.querySelector('input[name="title"]').value = 'Afterglow final';
-        modal.querySelector('input[name="versionLabel"]').value = 'Original';
+        modal.querySelector('select[name="versionMainTrackId"]').value = 'track-original';
+        modal.querySelector('select[name="versionMainTrackId"]').dispatchEvent(new Event('change', { bubbles: true }));
+        modal.querySelector('input[name="title"]').value = 'Afterglow instrumental final';
+        modal.querySelector('input[name="versionLabel"]').value = 'Instrumental';
         modal.querySelector('input[name="hideFromArtistPage"]').click();
         modal.querySelector('form').requestSubmit();
 
@@ -88,17 +90,22 @@ describe('track metadata alternative versions', () => {
         expect(saved).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
-                    id: 'track-original',
-                    title: 'Afterglow final',
+                    id: 'track-instrumental',
+                    title: 'Afterglow instrumental final',
                     versionGroupId: 'versions:track-original',
-                    alternativeVersionIds: ['track-instrumental'],
-                    versionLabel: 'Original',
+                    versionMainTrackId: 'track-original',
+                    alternativeVersionIds: ['track-original'],
+                    versionLabel: 'Instrumental',
                     hideFromArtistPage: true,
+                    album: null,
+                    versionMainAlbum: original.album,
                 }),
                 expect.objectContaining({
-                    id: 'track-instrumental',
+                    id: 'track-original',
                     versionGroupId: 'versions:track-original',
-                    alternativeVersionIds: ['track-original'],
+                    versionMainTrackId: 'track-original',
+                    alternativeVersionIds: ['track-instrumental'],
+                    hideFromArtistPage: false,
                 }),
             ])
         );

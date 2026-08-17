@@ -31,9 +31,10 @@ describe('selfhost-server-api helpers', () => {
             explicit: true,
             theme_color: '#4A90E2',
             version_group: 'versions:abc123',
+            version_main_track: 'abc123',
             alternative_version_ids: ['alt1', 'alt2'],
             version_label: 'Original',
-            hide_from_artist_page: true,
+            hide_from_artist_page: false,
             lyrics: '[00:01.00] Local lyrics',
             audio: 'song.flac',
             cover: 'cover.jpg',
@@ -53,9 +54,10 @@ describe('selfhost-server-api helpers', () => {
             explicit: true,
             themeColor: '#4a90e2',
             versionGroupId: 'versions:abc123',
+            versionMainTrackId: 'abc123',
             alternativeVersionIds: ['alt1', 'alt2'],
             versionLabel: 'Original',
-            hideFromArtistPage: true,
+            hideFromArtistPage: false,
             lyrics: '[00:01.00] Local lyrics',
             artist: { name: 'Artist' },
             album: {
@@ -93,6 +95,28 @@ describe('selfhost-server-api helpers', () => {
         expect(formData.get('explicit')).toBe('false');
         expect(formData.get('theme_color')).toBe('#c084fc');
         expect(formData.get('audio')).toBe(file);
+    });
+
+    test('stores no album association for a hidden alternative', () => {
+        const file = new File(['audio'], 'instrumental.flac', { type: 'audio/flac' });
+        const formData = createTrackFormData(
+            {
+                id: 'instrumental',
+                title: 'Song (Instrumental)',
+                artist: { name: 'Artist' },
+                album: null,
+                hideFromArtistPage: true,
+                versionGroupId: 'versions:main',
+                versionMainTrackId: 'main',
+                alternativeVersionIds: ['main'],
+            },
+            file,
+            'user123'
+        );
+
+        expect(formData.get('album')).toBe('');
+        expect(formData.get('version_main_track')).toBe('main');
+        expect(formData.get('hide_from_artist_page')).toBe('true');
     });
 
     test('maps a dedicated Canvas while keeping the static cover', () => {
@@ -145,9 +169,10 @@ describe('selfhost-server-api helpers', () => {
                 explicit: true,
                 themeColor: '#22c55e',
                 versionGroupId: 'versions:track1',
+                versionMainTrackId: 'track1',
                 alternativeVersionIds: ['track2'],
                 versionLabel: 'Original',
-                hideFromArtistPage: true,
+                hideFromArtistPage: false,
                 lyrics: '[00:01.00] Local lyrics',
             },
             cover,
@@ -163,9 +188,10 @@ describe('selfhost-server-api helpers', () => {
         expect(formData.get('explicit')).toBe('true');
         expect(formData.get('theme_color')).toBe('#22c55e');
         expect(formData.get('version_group')).toBe('versions:track1');
+        expect(formData.get('version_main_track')).toBe('track1');
         expect(formData.get('alternative_version_ids')).toBe('["track2"]');
         expect(formData.get('version_label')).toBe('Original');
-        expect(formData.get('hide_from_artist_page')).toBe('true');
+        expect(formData.get('hide_from_artist_page')).toBe('false');
         expect(formData.get('lyrics')).toBe('[00:01.00] Local lyrics');
         expect(formData.get('cover')).toBe(cover);
         expect(formData.has('audio')).toBe(false);

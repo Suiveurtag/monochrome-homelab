@@ -11518,7 +11518,8 @@ img[src=''] {
 }
 
 .metadata-field input,
-.metadata-field textarea {
+.metadata-field textarea,
+.metadata-field select {
     width: 100%;
     box-sizing: border-box;
     padding: 0.78rem 0.85rem;
@@ -11542,12 +11543,14 @@ img[src=''] {
 }
 
 .metadata-field input:hover,
-.metadata-field textarea:hover {
+.metadata-field textarea:hover,
+.metadata-field select:hover {
     border-color: var(--muted-foreground);
 }
 
 .metadata-field input:focus,
-.metadata-field textarea:focus {
+.metadata-field textarea:focus,
+.metadata-field select:focus {
     border-color: var(--highlight);
     background: rgb(var(--highlight-rgb), 0.05);
     box-shadow: 0 0 0 3px rgb(var(--highlight-rgb), 0.12);
@@ -11739,6 +11742,25 @@ img[src=''] {
 
 .metadata-version-fields {
     padding-top: 0.2rem;
+}
+
+.metadata-version-main-field small {
+    color: var(--muted-foreground);
+    font-size: 0.68rem;
+    line-height: 1.45;
+}
+
+.metadata-version-main-field select {
+    min-width: 0;
+}
+
+.metadata-version-group.is-hidden-alternative .metadata-version-visibility {
+    background: rgb(var(--highlight-rgb) / 0.07);
+}
+
+.metadata-editor-form input[name='album']:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
 }
 
 .metadata-version-list {

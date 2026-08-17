@@ -56,6 +56,7 @@ import { initializePlayerActionLayout, PLAYER_ACTIONS } from './player-bar-layou
 import { socialManager } from './social.js';
 import { canvasSettings } from './canvas-settings.js';
 import { setupTrackVersionPicker } from './track-version-picker.js';
+import { getTrackDisplayAlbum } from './track-versions.js';
 
 let currentTrackIdForWaveform = null;
 
@@ -3015,8 +3016,9 @@ export async function handleTrackAction(
             navigate(`/artist/${artistId}`);
         }
     } else if (action === 'go-to-album') {
-        if (item.album?.id) {
-            navigate(`/album/${item.album.id}`);
+        const displayAlbum = getTrackDisplayAlbum(item);
+        if (displayAlbum?.id) {
+            navigate(`/album/${displayAlbum.id}`);
         }
     } else if (action === 'copy-link' || action === 'share') {
         // Use stored href from card if available, otherwise construct URL
@@ -3045,7 +3047,8 @@ export async function handleTrackAction(
         const harmonyUrl = `https://harmony.pulsewidth.org.uk/release?url=${encodeURIComponent(`https://tidal.com/album/${albumId}`)}&gtin=&region=&musicbrainz=&deezer=&itunes=&spotify=&tidal=&beatport=`;
         window.open(harmonyUrl, '_blank');
     } else if (action === 'track-info') {
-        const releaseDate = item.album?.releaseDate || item.streamStartDate;
+        const displayAlbum = getTrackDisplayAlbum(item);
+        const releaseDate = displayAlbum?.releaseDate || item.streamStartDate;
         const dateDisplay = releaseDate ? new Date(releaseDate).toLocaleDateString() : 'Unknown';
         const quality = item.audioQuality || 'Unknown';
         const bitrate = item.bitrate ? `${item.bitrate} kbps` : '';
@@ -3056,8 +3059,8 @@ export async function handleTrackAction(
                     <div style="color: var(--muted-foreground); font-size: 0.9rem; line-height: 1.8;">
                         <div style="display: grid; gap: 0.5rem;">
                             <p><strong style="color: var(--foreground);">Artist:</strong> ${escapeHtml(getTrackArtists(item))}</p>
-                            <p><strong style="color: var(--foreground);">Album:</strong> ${escapeHtml(item.album?.title || 'Unknown')}</p>
-                            ${item.album?.artist?.name ? `<p><strong style="color: var(--foreground);">Album Artist:</strong> ${escapeHtml(item.album.artist.name)}</p>` : ''}
+                            <p><strong style="color: var(--foreground);">Album:</strong> ${escapeHtml(displayAlbum?.title || 'Unknown')}</p>
+                            ${displayAlbum?.artist?.name ? `<p><strong style="color: var(--foreground);">Album Artist:</strong> ${escapeHtml(displayAlbum.artist.name)}</p>` : ''}
                             <p><strong style="color: var(--foreground);">Release Date:</strong> ${escapeHtml(dateDisplay)}</p>
                             <p><strong style="color: var(--foreground);">Duration:</strong> ${escapeHtml(formatTime(item.duration))}</p>
                             ${item.trackNumber ? `<p><strong style="color: var(--foreground);">Track Number:</strong> ${escapeHtml(String(item.trackNumber))}</p>` : ''}
@@ -3099,7 +3102,7 @@ export async function handleTrackAction(
                         }
 
                         ${item.id ? `<p style="margin-top: 1rem; font-size: 0.8rem; color: var(--muted);"><strong>Track ID:</strong> ${escapeHtml(item.id)}</p>` : ''}
-                        ${item.album?.id ? `<p style="font-size: 0.8rem; color: var(--muted);"><strong>Album ID:</strong> ${escapeHtml(item.album.id)}</p>` : ''}
+                        ${displayAlbum?.id ? `<p style="font-size: 0.8rem; color: var(--muted);"><strong>Album ID:</strong> ${escapeHtml(displayAlbum.id)}</p>` : ''}
                     </div>
                     <button class="btn-primary track-info-close-btn" style="margin-top: 1.5rem; width: 100%;">Close</button>
                 </div>
@@ -3130,10 +3133,11 @@ export async function handleTrackAction(
         }
     } else if (action === 'block-album') {
         const { contentBlockingSettings } = await import('./storage.js');
-        const albumId = type === 'album' ? item.id : item.album?.id;
-        const albumTitle = type === 'album' ? item.title || item.name : item.album?.title || item.album?.name;
+        const displayAlbum = type === 'album' ? item : getTrackDisplayAlbum(item);
+        const albumId = type === 'album' ? item.id : displayAlbum?.id;
+        const albumTitle = type === 'album' ? item.title || item.name : displayAlbum?.title || displayAlbum?.name;
         const albumArtist =
-            type === 'album' ? item.artist?.name || item.artist : item.album?.artist?.name || item.album?.artist;
+            type === 'album' ? item.artist?.name || item.artist : displayAlbum?.artist?.name || displayAlbum?.artist;
 
         if (!albumId) {
             showNotification('No album information available');
@@ -4079,15 +4083,17 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
     document.querySelector('.now-playing-bar .title').addEventListener('click', (event) => {
         if (!event.target.closest('.now-playing-title-link')) return;
         const track = player.currentTrack;
-        if (track?.album?.id) {
-            navigate(`/album/${track.album.id}`);
+        const displayAlbum = getTrackDisplayAlbum(track);
+        if (displayAlbum?.id) {
+            navigate(`/album/${displayAlbum.id}`);
         }
     });
 
     document.querySelector('.now-playing-bar .album').addEventListener('click', () => {
         const track = player.currentTrack;
-        if (track?.album?.id) {
-            navigate(`/album/${track.album.id}`);
+        const displayAlbum = getTrackDisplayAlbum(track);
+        if (displayAlbum?.id) {
+            navigate(`/album/${displayAlbum.id}`);
         }
     });
 

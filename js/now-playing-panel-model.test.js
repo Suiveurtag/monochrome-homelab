@@ -43,6 +43,24 @@ describe('Now Playing panel model', () => {
         expect(model.artwork.staticSrc).toBe('/cover/cover-id');
     });
 
+    test('keeps the main track cover when an albumless alternative is playing', async () => {
+        const track = {
+            id: 'instrumental',
+            title: 'Afterglow (Instrumental)',
+            cover: '/instrumental.jpg',
+            artist: { name: 'Artist' },
+            album: null,
+            hideFromArtistPage: true,
+            versionGroupId: 'versions:main',
+            versionMainTrackId: 'main',
+            versionMainAlbum: { id: 'album', title: 'Afterglow', cover: '/main.jpg' },
+        };
+
+        const model = await buildNowPlayingPanelModel({ track, player: player([track]), api: {} });
+
+        expect(model.artwork.staticSrc).toBe('/main.jpg');
+    });
+
     test('normalizes optional credits, related videos, and tour dates without placeholders', async () => {
         const track = {
             id: 'one',

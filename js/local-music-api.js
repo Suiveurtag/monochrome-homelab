@@ -2,6 +2,7 @@
 import { db } from './db.js';
 import { getSelfHostedStream, listSelfHostedTracks } from './selfhost-server-api.js';
 import { isVideoArtwork } from './animated-artwork.js';
+import { getTrackDisplayAlbum, hydrateTrackVersionDisplayMetadata } from './track-versions.js';
 
 const FALLBACK_COVER = '/assets/appicon.png';
 
@@ -28,7 +29,7 @@ function getArtistName(track) {
 }
 
 function getAlbumTitle(track) {
-    return track?.album?.title || 'Unknown Album';
+    return getTrackDisplayAlbum(track)?.title || '';
 }
 
 function mergeById(primary, secondary) {
@@ -72,6 +73,7 @@ export function mergeServerTrackWithLocalMetadata(track, local) {
     const videoCoverUrl = hasServerCanvasMetadata
         ? serverCanvasUrl
         : serverCanvasUrl || local.videoCoverUrl || local.album?.videoCoverUrl || null;
+    const album = Object.hasOwn(local, 'album') ? local.album : track.album;
     return {
         ...track,
         ...local,
@@ -81,12 +83,14 @@ export function mergeServerTrackWithLocalMetadata(track, local) {
         videoCoverUrl,
         artist: { ...track.artist, ...local.artist },
         artists: local.artists?.length ? local.artists : track.artists,
-        album: {
-            ...track.album,
-            ...local.album,
-            videoCoverUrl,
-            artist: { ...track.album?.artist, ...local.album?.artist },
-        },
+        album: album
+            ? {
+                  ...track.album,
+                  ...album,
+                  videoCoverUrl,
+                  artist: { ...track.album?.artist, ...album.artist },
+              }
+            : null,
     };
 }
 
@@ -110,17 +114,21 @@ export class LocalMusicAPI {
         if (!track) return null;
 
         const artistName = getArtistName(track);
-        const albumTitle = getAlbumTitle(track);
+        const ownAlbum = track.album?.id || track.album?.title ? track.album : null;
+        const albumTitle = ownAlbum?.title || '';
         const artistId = track.artist?.id || `local-artist-${hashString(artistName)}`;
-        const albumId = track.album?.id || `local-album-${hashString(`${artistName}|${albumTitle}`)}`;
+        const albumId = ownAlbum
+            ? ownAlbum.id || `local-album-${hashString(`${artistName}|${albumTitle || 'Unknown Album'}`)}`
+            : null;
         const id = track.id || `local-track-${hashString(getLocalTrackKey(track))}`;
-        const artist = { ...(track.artist || {}), id: artistId, name: artistName, picture: track.album?.cover };
-        const videoCoverUrl = track.videoCoverUrl || (isVideoArtwork(track.album?.cover) ? track.album.cover : null);
+        const trackCover = track.cover || track.serverCoverUrl || ownAlbum?.cover || FALLBACK_COVER;
+        const artist = { ...(track.artist || {}), id: artistId, name: artistName, picture: trackCover };
+        const videoCoverUrl = track.videoCoverUrl || (isVideoArtwork(ownAlbum?.cover) ? ownAlbum.cover : null);
         const artists = (track.artists?.length ? track.artists : [artist]).map((a) => ({
             ...a,
             id: a.id || `local-artist-${hashString(a.name || artistName)}`,
             name: a.name || artistName,
-            picture: a.picture || track.album?.cover,
+            picture: a.picture || trackCover,
         }));
 
         return {
@@ -130,17 +138,20 @@ export class LocalMusicAPI {
             isLocal: true,
             title: track.title || 'Unknown Title',
             duration: track.duration || 0,
+            cover: trackCover,
             artist,
             artists,
-            album: {
-                ...(track.album || {}),
-                id: albumId,
-                title: albumTitle,
-                cover: track.album?.cover || FALLBACK_COVER,
-                videoCoverUrl: track.album?.videoCoverUrl || videoCoverUrl,
-                artist: track.album?.artist || artist,
-                numberOfTracks: track.album?.numberOfTracks || null,
-            },
+            album: ownAlbum
+                ? {
+                      ...ownAlbum,
+                      id: albumId,
+                      title: albumTitle || 'Unknown Album',
+                      cover: ownAlbum.cover || trackCover,
+                      videoCoverUrl: ownAlbum.videoCoverUrl || videoCoverUrl,
+                      artist: ownAlbum.artist || artist,
+                      numberOfTracks: ownAlbum.numberOfTracks || null,
+                  }
+                : null,
             mediaMetadata: track.mediaMetadata || { tags: ['Local'] },
             videoCoverUrl,
         };
@@ -183,7 +194,10 @@ export class LocalMusicAPI {
             ...(artist || {}),
             id: artist?.id || `local-artist-${hashString(name)}`,
             name,
-            picture: artist?.picture || tracks.find((track) => track.album?.cover)?.album?.cover || FALLBACK_COVER,
+            picture:
+                artist?.picture ||
+                tracks.map((track) => getTrackDisplayAlbum(track)?.cover || track.cover).find(Boolean) ||
+                FALLBACK_COVER,
             popularity: Math.min(100, Math.max(1, tracks.length * 5)),
             artistRoles: [{ category: 'Local library' }],
             isLocal: true,
@@ -205,16 +219,18 @@ export class LocalMusicAPI {
             const local = uploadedById.get(String(track.id));
             return mergeServerTrackWithLocalMetadata(track, local);
         });
-        return uniqueBy(
-            mergeById(serverWithLocalMetadata, mergeById(uploadedTracks, localFiles))
-                .map((track) => this.normalizeTrack(track))
-                .filter(Boolean),
-            (track) => track.id || getLocalTrackKey(track)
+        return hydrateTrackVersionDisplayMetadata(
+            uniqueBy(
+                mergeById(serverWithLocalMetadata, mergeById(uploadedTracks, localFiles))
+                    .map((track) => this.normalizeTrack(track))
+                    .filter(Boolean),
+                (track) => track.id || getLocalTrackKey(track)
+            )
         );
     }
 
     async getAlbums() {
-        const tracks = await this.getTracks();
+        const tracks = (await this.getTracks()).filter((track) => !track.hideFromArtistPage && track.album);
         const customAlbums = await db.getLocalAlbums().catch(() => []);
         const grouped = new Map();
         for (const track of tracks) {
@@ -342,7 +358,9 @@ export class LocalMusicAPI {
     }
 
     async getAlbum(id) {
-        const tracks = (await this.getTracks()).filter((track) => String(track.album?.id) === String(id));
+        const tracks = (await this.getTracks()).filter(
+            (track) => !track.hideFromArtistPage && String(track.album?.id) === String(id)
+        );
         if (tracks.length === 0) throw new Error('Local album not found');
         const customAlbums = await db.getLocalAlbums().catch(() => []);
         const custom = customAlbums.find((album) => String(album.id) === String(id));
@@ -369,12 +387,14 @@ export class LocalMusicAPI {
             visibleTracks.length ? visibleTracks : tracks
         );
         const albums = uniqueBy(
-            visibleTracks.map((track) =>
-                this.normalizeAlbum(
-                    track.album,
-                    visibleTracks.filter((t) => t.album?.id === track.album?.id)
-                )
-            ),
+            visibleTracks
+                .filter((track) => track.album)
+                .map((track) =>
+                    this.normalizeAlbum(
+                        track.album,
+                        visibleTracks.filter((t) => t.album?.id === track.album?.id)
+                    )
+                ),
             (album) => album.id
         );
 

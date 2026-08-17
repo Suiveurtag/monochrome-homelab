@@ -47,4 +47,24 @@ describe('local music server metadata merge', () => {
         expect(merged.videoCoverUrl).toBeNull();
         expect(merged.album.videoCoverUrl).toBeNull();
     });
+
+    test('keeps a hidden alternative albumless when local metadata removes its association', () => {
+        const merged = mergeServerTrackWithLocalMetadata(
+            {
+                id: 'alternative',
+                album: { id: 'legacy-album', title: 'Legacy album' },
+                serverCoverUrl: '/variation.jpg',
+            },
+            {
+                id: 'alternative',
+                album: null,
+                hideFromArtistPage: true,
+                versionMainTrackId: 'main',
+                versionMainAlbum: { id: 'main-album', title: 'Main album' },
+            }
+        );
+
+        expect(merged.album).toBeNull();
+        expect(merged.versionMainAlbum.title).toBe('Main album');
+    });
 });

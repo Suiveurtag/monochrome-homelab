@@ -1,7 +1,12 @@
 import { getVibrantColorFromImage } from './vibrant-color.js';
 import { showNotification } from './downloads.js';
 import { getTrackThemeColor, normalizeTrackThemeColor } from './track-theme-color.js';
-import { getTrackVersionArtwork, getTrackVersionGroup, getTrackVersionLabel } from './track-versions.js';
+import {
+    getTrackDisplayAlbum,
+    getTrackVersionArtwork,
+    getTrackVersionGroup,
+    getTrackVersionLabel,
+} from './track-versions.js';
 import { escapeHtml, getTrackArtists } from './utils.js';
 
 function hexToRgb(color) {
@@ -75,13 +80,29 @@ function animateDiscBetween(source, target, { duration = 500 } = {}) {
     const scaleY = to.height / from.height;
     const deltaX = Math.abs(to.left - from.left) < 1 ? 0 : to.left - from.left;
     const deltaY = to.top - from.top;
+    const movingIntoPlayer = deltaY > 0;
+    const layerSwitch = movingIntoPlayer ? 0.84 : 0.16;
+    const switchTransform = `translate3d(${deltaX * layerSwitch}px, ${deltaY * layerSwitch}px, 0) scale(${1 + (scaleX - 1) * layerSwitch}, ${1 + (scaleY - 1) * layerSwitch})`;
     const animation = clone.animate(
-        [
-            { transform: 'translate3d(0, 0, 0) scale(1)' },
-            {
-                transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(${scaleX}, ${scaleY})`,
-            },
-        ],
+        movingIntoPlayer
+            ? [
+                  { transform: 'translate3d(0, 0, 0) scale(1)', zIndex: '2600' },
+                  { offset: layerSwitch, transform: switchTransform, zIndex: '2600' },
+                  { offset: layerSwitch + 0.001, transform: switchTransform, zIndex: '2099' },
+                  {
+                      transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(${scaleX}, ${scaleY})`,
+                      zIndex: '2099',
+                  },
+              ]
+            : [
+                  { transform: 'translate3d(0, 0, 0) scale(1)', zIndex: '2099' },
+                  { offset: layerSwitch, transform: switchTransform, zIndex: '2099' },
+                  { offset: layerSwitch + 0.001, transform: switchTransform, zIndex: '2600' },
+                  {
+                      transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(${scaleX}, ${scaleY})`,
+                      zIndex: '2600',
+                  },
+              ],
         { duration, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
     );
     return animation.finished.catch(() => {}).finally(() => clone.remove());
@@ -138,6 +159,7 @@ export function setupTrackVersionPicker(player, api) {
                     .map((track) => {
                         const active = String(track.id) === String(currentTrack?.id);
                         const unavailable = Boolean(track.isUnavailable);
+                        const album = getTrackDisplayAlbum(track, versions);
                         return `<button type="button" class="track-version-option${active ? ' is-active' : ''}" role="option"
                             aria-selected="${active}" ${active ? 'aria-current="true"' : ''} ${unavailable ? 'disabled' : ''}
                             data-version-id="${escapeHtml(String(track.id))}" style="--version-accent-rgb: ${hexToRgb(getTrackThemeColor(track)) || '167 139 250'}">
@@ -145,7 +167,7 @@ export function setupTrackVersionPicker(player, api) {
                             <span class="track-version-copy">
                                 <strong>${escapeHtml(getTrackVersionLabel(track, { fallback: active ? 'Current version' : 'Alternative version' }))}</strong>
                                 <span>${escapeHtml(track.title || 'Untitled')}</span>
-                                <small>${unavailable ? 'Unavailable' : `${escapeHtml(getTrackArtists(track))} · ${escapeHtml(track.album?.title || 'Unknown album')}`}</small>
+                                <small>${unavailable ? 'Unavailable' : `${escapeHtml(getTrackArtists(track))} · ${escapeHtml(album?.title || 'No album')}`}</small>
                             </span>
                             <span class="track-version-state">${active ? '<i aria-hidden="true"></i> Current' : ''}</span>
                         </button>`;

@@ -40,4 +40,17 @@ describe('queue track hydration', () => {
             artist: { id: 'artist-1', name: 'Artist' },
         });
     });
+
+    test('removes a stale album association when a refreshed alternative becomes hidden', () => {
+        const queued = { id: 'track-1', album: { id: 'old-album', title: 'Old album' } };
+        const mainAlbum = { id: 'main-album', title: 'Main album', cover: '/main.jpg' };
+
+        hydrateQueuedTracks(
+            [[queued]],
+            [{ id: 'track-1', album: null, hideFromArtistPage: true, versionMainAlbum: mainAlbum }]
+        );
+
+        expect(queued.album).toBeNull();
+        expect(queued.versionMainAlbum).toEqual(mainAlbum);
+    });
 });

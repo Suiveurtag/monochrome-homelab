@@ -16,7 +16,7 @@ export function getTrackVersionLabel(track, { fallback = 'Version' } = {}) {
 }
 
 export function getTrackVersionArtwork(track) {
-    return track?.image || track?.cover || track?.album?.cover || '/assets/appicon.png';
+    return track?.image || track?.cover || track?.serverCoverUrl || track?.album?.cover || '/assets/appicon.png';
 }
 
 export function getTrackVersionGroup(track, allTracks = []) {
@@ -39,7 +39,59 @@ export function getTrackVersionGroup(track, allTracks = []) {
     });
 }
 
-export function buildTrackVersionUpdates(currentTrack, allTracks, selectedIds, currentFields = {}) {
+export function getTrackVersionMainId(track, allTracks = []) {
+    if (!track) return null;
+    const members = getTrackVersionGroup(track, allTracks);
+    const memberIds = new Set(members.map((member) => String(member.id)));
+    const declared = members.map((member) => String(member.versionMainTrackId || '')).find((id) => memberIds.has(id));
+    if (declared) return declared;
+
+    const legacyGroupMain = String(track.versionGroupId || '').replace(/^versions:/, '');
+    if (legacyGroupMain && memberIds.has(legacyGroupMain)) return legacyGroupMain;
+    return String(members.find((member) => !member.hideFromArtistPage)?.id || track.id);
+}
+
+export function getTrackVersionMainTrack(track, allTracks = []) {
+    if (!track) return null;
+    const members = getTrackVersionGroup(track, allTracks);
+    const mainId = getTrackVersionMainId(track, members);
+    return members.find((member) => String(member.id) === mainId) || track;
+}
+
+export function getTrackDisplayAlbum(track, allTracks = []) {
+    if (!track) return null;
+    if (track.hideFromArtistPage && track.versionMainAlbum) return track.versionMainAlbum;
+    if (track.album) return track.album;
+    if (track.versionMainAlbum) return track.versionMainAlbum;
+    const mainTrack = getTrackVersionMainTrack(track, allTracks);
+    return mainTrack?.album || mainTrack?.versionMainAlbum || null;
+}
+
+export function getTrackPlayerArtwork(track, allTracks = []) {
+    if (
+        track?.versionMainTrackId &&
+        String(track.versionMainTrackId) !== String(track.id) &&
+        track.versionMainAlbum?.cover
+    ) {
+        return track.versionMainAlbum.cover;
+    }
+    const mainTrack = getTrackVersionMainTrack(track, allTracks);
+    return getTrackVersionArtwork(mainTrack || track);
+}
+
+export function hydrateTrackVersionDisplayMetadata(tracks = []) {
+    const source = Array.isArray(tracks) ? tracks : [];
+    return source.map((track) => {
+        const mainTrack = getTrackVersionMainTrack(track, source);
+        return {
+            ...track,
+            versionMainTrackId: track.versionGroupId ? String(mainTrack?.id || track.id) : null,
+            versionMainAlbum: mainTrack?.album || mainTrack?.versionMainAlbum || null,
+        };
+    });
+}
+
+export function buildTrackVersionUpdates(currentTrack, allTracks, selectedIds, currentFields = {}, mainTrackId = null) {
     const currentId = String(currentTrack.id);
     const trackMap = new Map(allTracks.map((track) => [String(track.id), track]));
     trackMap.set(currentId, currentTrack);
@@ -68,9 +120,19 @@ export function buildTrackVersionUpdates(currentTrack, allTracks, selectedIds, c
         }
     }
 
+    const requestedMainId = String(mainTrackId || currentTrack.versionMainTrackId || currentId);
+    const resolvedMainId = memberIds.has(requestedMainId) ? requestedMainId : currentId;
     const existingGroupId = [...memberIds].map((id) => trackMap.get(id)?.versionGroupId).find(Boolean);
-    const versionGroupId = memberIds.size > 1 ? String(existingGroupId || `versions:${currentId}`) : null;
+    const versionGroupId = memberIds.size > 1 ? String(existingGroupId || `versions:${resolvedMainId}`) : null;
     const memberIdList = [...memberIds];
+    const requestedMainTrack =
+        resolvedMainId === currentId ? { ...currentTrack, ...currentFields } : trackMap.get(resolvedMainId);
+    const mainAlbum =
+        requestedMainTrack?.album ||
+        requestedMainTrack?.versionMainAlbum ||
+        currentTrack.album ||
+        currentTrack.versionMainAlbum ||
+        null;
 
     return [...affectedIds]
         .map((id) => trackMap.get(id))
@@ -78,13 +140,23 @@ export function buildTrackVersionUpdates(currentTrack, allTracks, selectedIds, c
         .map((track) => {
             const id = String(track.id);
             const isMember = memberIds.has(id) && memberIds.size > 1;
+            const merged = {
+                ...track,
+                ...(id === currentId ? currentFields : {}),
+                versionGroupId: isMember ? versionGroupId : null,
+                versionMainTrackId: isMember ? resolvedMainId : null,
+                versionMainAlbum: isMember ? mainAlbum : null,
+                alternativeVersionIds: isMember ? memberIdList.filter((memberId) => memberId !== id) : [],
+            };
+            const isMain = isMember && id === resolvedMainId;
+            const hiddenAlternative = isMember && !isMain && Boolean(merged.hideFromArtistPage);
             return {
                 track,
                 updated: {
-                    ...track,
-                    ...(id === currentId ? currentFields : {}),
-                    versionGroupId: isMember ? versionGroupId : null,
-                    alternativeVersionIds: isMember ? memberIdList.filter((memberId) => memberId !== id) : [],
+                    ...merged,
+                    cover: merged.cover || merged.serverCoverUrl || merged.album?.cover || null,
+                    album: hiddenAlternative ? null : merged.album || merged.versionMainAlbum || null,
+                    hideFromArtistPage: isMain || !isMember ? false : Boolean(merged.hideFromArtistPage),
                 },
             };
         });

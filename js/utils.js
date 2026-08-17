@@ -55,9 +55,10 @@ export const formatTime = (seconds) => {
 
 export const getTrackYearDisplay = (track) => {
     const useAlbumYear = trackDateSettings.useAlbumYear();
+    const displayAlbum = track?.album || track?.versionMainAlbum;
     const releaseDate = useAlbumYear
-        ? track?.album?.releaseDate || track?.streamStartDate
-        : track?.streamStartDate || track?.album?.releaseDate;
+        ? displayAlbum?.releaseDate || track?.streamStartDate
+        : track?.streamStartDate || displayAlbum?.releaseDate;
     if (!releaseDate) return '';
     const date = new Date(releaseDate);
     return isNaN(date.getTime()) ? '' : ` • ${date.getFullYear()}`;

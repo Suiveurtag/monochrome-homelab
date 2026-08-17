@@ -11,6 +11,7 @@ import { syncManager } from './accounts/pocketbase.js';
 import { audioContextManager } from './audio-context.js';
 import { listeningTracker } from './listening-tracker.js';
 import { canvasSettings } from './canvas-settings.js';
+import { getTrackDisplayAlbum, getTrackPlayerArtwork } from './track-versions.js';
 import ICON_CHEVRON_RIGHT from '!lucide/chevron-right.svg?svg&icon';
 import ICON_CHEVRON_UP from '!lucide/chevron-up.svg?svg&icon';
 import ICON_ELLIPSIS from '!lucide/ellipsis.svg?svg&icon';
@@ -373,7 +374,7 @@ export class NowPlayingPanel {
                 </div>
                 <section class="now-playing-panel-metadata" aria-label="Current track">
                     <div class="now-playing-panel-track-copy">
-                        <h2>${this.currentTrack?.album?.id ? `<button type="button" class="now-playing-panel-track-title" data-album-id="${escapeHtml(this.currentTrack.album.id)}" aria-label="Open ${escapeHtml(this.currentTrack.album.title || model.title)} album">${escapeHtml(model.title)}</button>` : escapeHtml(model.title)}</h2>
+                        <h2>${getTrackDisplayAlbum(this.currentTrack)?.id ? `<button type="button" class="now-playing-panel-track-title" data-album-id="${escapeHtml(getTrackDisplayAlbum(this.currentTrack).id)}" aria-label="Open ${escapeHtml(getTrackDisplayAlbum(this.currentTrack).title || model.title)} album">${escapeHtml(model.title)}</button>` : escapeHtml(model.title)}</h2>
                         <p>${artistLinks || escapeHtml(model.artistLine)}${model.releaseYear ? `<span aria-hidden="true"> · </span><span>${escapeHtml(model.releaseYear)}</span>` : ''}${model.explicit ? '<span class="now-playing-panel-explicit" aria-label="Explicit">E</span>' : ''}</p>
                     </div>
                     <div class="now-playing-panel-track-actions">
@@ -482,7 +483,8 @@ export class NowPlayingPanel {
                 .join(', ') ||
             track?.artist?.name ||
             '';
-        const cover = track?.album?.cover ? this.api.getCoverUrl(track.album.cover) : '/assets/appicon.png';
+        const coverId = track ? getTrackPlayerArtwork(track) : null;
+        const cover = coverId ? this.api.getCoverUrl(coverId) : '/assets/appicon.png';
         const rowTag = track ? 'button' : 'div';
         return `<section class="now-playing-panel-card now-playing-panel-next" aria-labelledby="now-playing-panel-next-title">
             <header><h3 id="now-playing-panel-next-title">Next in queue</h3><button type="button" class="now-playing-panel-open-queue">Open queue</button></header>

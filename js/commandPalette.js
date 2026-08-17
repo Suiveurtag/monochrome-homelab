@@ -2,6 +2,7 @@ import { debounce } from './utils.js';
 import { db } from './db.js';
 import Fuse from 'fuse.js';
 import { navigate } from './router.js';
+import { getTrackDisplayAlbum, getTrackPlayerArtwork } from './track-versions.js';
 import {
     SVG_SEARCH,
     SVG_HOUSE,
@@ -829,18 +830,22 @@ class CommandPalette {
             const musicGroups = {};
 
             if (tracks?.items?.length) {
-                musicGroups['Tracks'] = tracks.items.map((track) => ({
-                    id: `track-${track.id}`,
-                    group: 'Tracks',
-                    icon: 'music',
-                    image: api.getCoverUrl(track.album?.cover, 80),
-                    label: track.title,
-                    description: `${track.artist?.name || 'Unknown'} \u2022 ${track.album?.title || ''}`,
-                    action: async () => {
-                        Player.instance.setQueue([track], 0);
-                        await Player.instance.playTrackFromQueue();
-                    },
-                }));
+                musicGroups['Tracks'] = tracks.items.map((track) => {
+                    const album = getTrackDisplayAlbum(track);
+                    const artwork = getTrackPlayerArtwork(track);
+                    return {
+                        id: `track-${track.id}`,
+                        group: 'Tracks',
+                        icon: 'music',
+                        image: api.getCoverUrl(artwork, 80),
+                        label: track.title,
+                        description: `${track.artist?.name || 'Unknown'} \u2022 ${album?.title || ''}`,
+                        action: async () => {
+                            Player.instance.setQueue([track], 0);
+                            await Player.instance.playTrackFromQueue();
+                        },
+                    };
+                });
             }
 
             if (albums?.items?.length) {

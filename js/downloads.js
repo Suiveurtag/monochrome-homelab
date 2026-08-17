@@ -22,6 +22,7 @@ import { SVG_CLOSE } from './icons.ts';
 import { MusicAPI } from './music-api.js';
 import { LyricsManager } from './lyrics.js';
 import { enableCornerDrag } from './corner-drag.js';
+import { getTrackDisplayAlbum, getTrackPlayerArtwork } from './track-versions.js';
 
 const downloadTasks = new Map();
 const bulkDownloadTasks = new Map();
@@ -177,9 +178,10 @@ export function addDownloadTask(trackId, track, _filename, api, abortController)
     taskEl.dataset.trackId = trackId;
     const trackTitle = getTrackTitle(track);
     const trackArtists = getTrackArtists(track);
+    const artwork = getTrackPlayerArtwork(track);
     taskEl.innerHTML = `
         <div style="display: flex; align-items: start; gap: 0.75rem;">
-            <img src="${api.getCoverUrl(track.album?.cover)}"
+            <img src="${api.getCoverUrl(artwork)}"
                  style="width: 40px; height: 40px; border-radius: 4px; flex-shrink: 0;">
             <div style="flex: 1; min-width: 0;">
                 <div style="font-weight: 500; font-size: 0.9rem; margin-bottom: 0.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${trackTitle}</div>
@@ -1096,7 +1098,7 @@ export async function downloadTrackWithMetadata(
         const releaseDate = releaseDateStr ? new Date(releaseDateStr) : null;
         const releaseYear = releaseDate && !isNaN(releaseDate.getTime()) ? releaseDate.getFullYear() : '';
         const subFolder = formatPathTemplate(modernSettings.folderTemplate, {
-            albumTitle: enrichedTrack.album?.title,
+            albumTitle: getTrackDisplayAlbum(enrichedTrack)?.title,
             albumArtist: enrichedTrack.album?.artist?.name || enrichedTrack.artist?.name,
             year: releaseYear,
         });

@@ -36,7 +36,8 @@ export function pocketBaseFileUrl(client, record, filename) {
 export function mapPocketBaseTrack(record, client = pb) {
     const title = record.title || 'Unknown Title';
     const artistName = record.artist || 'Unknown Artist';
-    const albumTitle = record.album || 'Unknown Album';
+    const hideFromArtistPage = Boolean(record.hide_from_artist_page);
+    const albumTitle = hideFromArtistPage ? '' : record.album || '';
     const albumArtist = record.album_artist || artistName;
     const audioUrl = pocketBaseFileUrl(client, record, record.audio);
     const audioFileName = String(record.audio || '');
@@ -68,11 +69,13 @@ export function mapPocketBaseTrack(record, client = pb) {
         explicit: Boolean(record.explicit),
         themeColor: normalizeTrackThemeColor(record.theme_color),
         versionGroupId: record.version_group || null,
+        versionMainTrackId: record.version_main_track || null,
         alternativeVersionIds: Array.isArray(record.alternative_version_ids)
             ? record.alternative_version_ids.map(String)
             : [],
         versionLabel: record.version_label || null,
-        hideFromArtistPage: Boolean(record.hide_from_artist_page),
+        hideFromArtistPage,
+        cover: coverUrl,
         uploadedAt: record.created ? Date.parse(record.created) : Date.now(),
         updatedAt: record.updated ? Date.parse(record.updated) : Date.now(),
         trackNumber: Number(record.track_number || 0) || null,
@@ -86,14 +89,16 @@ export function mapPocketBaseTrack(record, client = pb) {
         fileName: audioFileName,
         artist,
         artists: [artist],
-        album: {
-            id: stableId('selfhost-album', `${albumArtist}|${albumTitle}`),
-            title: albumTitle,
-            cover: coverUrl,
-            videoCoverUrl,
-            releaseDate: record.release_date || null,
-            artist: { id: stableId('selfhost-artist', albumArtist), name: albumArtist, picture: coverUrl },
-        },
+        album: albumTitle
+            ? {
+                  id: stableId('selfhost-album', `${albumArtist}|${albumTitle}`),
+                  title: albumTitle,
+                  cover: coverUrl,
+                  videoCoverUrl,
+                  releaseDate: record.release_date || null,
+                  artist: { id: stableId('selfhost-artist', albumArtist), name: albumArtist, picture: coverUrl },
+              }
+            : null,
         serverAudioUrl: audioUrl,
         serverCoverUrl: coverUrl,
         serverCanvasUrl: canvasUrl,
@@ -166,7 +171,7 @@ export function createTrackFormData(track, file, ownerId, coverFile = null) {
     formData.set('owner', ownerId);
     formData.set('title', track?.title || file.name?.replace(/\.[^/.]+$/, '') || 'Unknown Title');
     formData.set('artist', firstArtistName(track));
-    formData.set('album', track?.album?.title || 'Unknown Album');
+    formData.set('album', track?.hideFromArtistPage ? '' : track?.album?.title || 'Unknown Album');
     formData.set('album_artist', albumArtistName(track));
     formData.set('release_date', track?.album?.releaseDate || '');
     formData.set('track_number', String(track?.trackNumber || track?.track || ''));
@@ -174,6 +179,7 @@ export function createTrackFormData(track, file, ownerId, coverFile = null) {
     formData.set('explicit', String(Boolean(track?.explicit)));
     formData.set('theme_color', getTrackThemeColor(track));
     formData.set('version_group', track?.versionGroupId || '');
+    formData.set('version_main_track', track?.versionMainTrackId || '');
     formData.set('alternative_version_ids', JSON.stringify(track?.alternativeVersionIds || []));
     formData.set('version_label', track?.versionLabel || '');
     formData.set('hide_from_artist_page', String(Boolean(track?.hideFromArtistPage)));
@@ -244,7 +250,7 @@ export async function updateSelfHostedTrack(id, track, coverFile = null, clientO
     const formData = new FormData();
     formData.set('title', track?.title || 'Unknown Title');
     formData.set('artist', firstArtistName(track));
-    formData.set('album', track?.album?.title || 'Unknown Album');
+    formData.set('album', track?.hideFromArtistPage ? '' : track?.album?.title || 'Unknown Album');
     formData.set('album_artist', albumArtistName(track));
     formData.set('release_date', track?.album?.releaseDate || track?.releaseDate || '');
     formData.set('track_number', String(track?.trackNumber || track?.track || ''));
@@ -252,6 +258,7 @@ export async function updateSelfHostedTrack(id, track, coverFile = null, clientO
     formData.set('explicit', String(Boolean(track?.explicit)));
     formData.set('theme_color', getTrackThemeColor(track));
     formData.set('version_group', track?.versionGroupId || '');
+    formData.set('version_main_track', track?.versionMainTrackId || '');
     formData.set('alternative_version_ids', JSON.stringify(track?.alternativeVersionIds || []));
     formData.set('version_label', track?.versionLabel || '');
     formData.set('hide_from_artist_page', String(Boolean(track?.hideFromArtistPage)));

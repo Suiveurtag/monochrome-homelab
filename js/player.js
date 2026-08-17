@@ -28,6 +28,7 @@ import { db } from './db.js';
 import { getProxyUrl } from './proxy-utils.js';
 import { isVideoArtwork } from './animated-artwork.js';
 import { hydrateQueuedTracks } from './queue-track-hydration.js';
+import { getTrackDisplayAlbum, getTrackPlayerArtwork } from './track-versions.js';
 import {
     getApiQuality,
     getAvailableQualityOptions,
@@ -411,7 +412,7 @@ export class Player {
 
                 if (coverEl) {
                     const videoCoverUrl = track.type === 'video' ? track.videoUrl || null : null;
-                    const coverId = track.image || track.cover || track.album?.cover;
+                    const coverId = getTrackPlayerArtwork(track);
                     const coverUrl = videoCoverUrl || this.api.getCoverUrl(coverId);
                     const coverSrcset = videoCoverUrl ? null : this.api.getCoverSrcset(coverId);
 
@@ -463,7 +464,8 @@ export class Player {
                     )}</button>${qualityBadge}`;
                 }
                 if (albumEl) {
-                    const albumTitle = track.album?.title || '';
+                    const displayAlbum = getTrackDisplayAlbum(track);
+                    const albumTitle = displayAlbum?.title || '';
                     if (albumTitle && albumTitle !== trackTitle) {
                         albumEl.textContent = albumTitle;
                         albumEl.hidden = false;
@@ -478,7 +480,7 @@ export class Player {
                 if (artistEl) artistEl.innerHTML = trackArtistsHTML + yearDisplay;
 
                 // Fetch album release date in background if missing
-                if (!yearDisplay && track.album?.id) {
+                if (!yearDisplay && getTrackDisplayAlbum(track)?.id) {
                     this.loadAlbumYear(track, trackArtistsHTML, artistEl);
                 }
 
@@ -1441,7 +1443,7 @@ export class Player {
         } else {
             if (coverEl) {
                 coverEl.style.display = 'block';
-                const coverId = track.image || track.cover || track.album?.cover;
+                const coverId = getTrackPlayerArtwork(track);
                 const coverUrl = this.api.getCoverUrl(coverId);
                 const coverSrcset = this.api.getCoverSrcset(coverId);
                 let imgEl = coverEl;
@@ -1475,7 +1477,8 @@ export class Player {
             )}</button>${createQualityBadgeHTML(track)}`;
         const albumEl = document.querySelector('.now-playing-bar .album');
         if (albumEl) {
-            const albumTitle = track.album?.title || '';
+            const displayAlbum = getTrackDisplayAlbum(track);
+            const albumTitle = displayAlbum?.title || '';
             if (albumTitle && albumTitle !== trackTitle) {
                 albumEl.textContent = albumTitle;
                 albumEl.hidden = false;
@@ -1491,7 +1494,7 @@ export class Player {
         artistEl.innerHTML = trackArtistsHTML + yearDisplay;
 
         // Fetch album release date in background if missing
-        if (!yearDisplay && track.album?.id) {
+        if (!yearDisplay && getTrackDisplayAlbum(track)?.id) {
             this.loadAlbumYear(track, trackArtistsHTML, artistEl);
         }
 
@@ -2630,12 +2633,14 @@ export class Player {
 
     loadAlbumYear(track, trackArtistsHTML, artistEl) {
         if (!trackDateSettings.useAlbumYear()) return;
+        const displayAlbum = getTrackDisplayAlbum(track);
+        if (!displayAlbum?.id) return;
 
         this.api
-            .getAlbum(track.album.id)
+            .getAlbum(displayAlbum.id)
             .then(({ album }) => {
                 if (album?.releaseDate && this.currentTrack?.id === track.id) {
-                    track.album.releaseDate = album.releaseDate;
+                    displayAlbum.releaseDate = album.releaseDate;
                     const year = new Date(album.releaseDate).getFullYear();
                     if (!isNaN(year) && artistEl) {
                         artistEl.innerHTML = `${trackArtistsHTML} • ${year}`;
@@ -2954,7 +2959,8 @@ export class Player {
     }
 
     updateMediaSession(track) {
-        const coverId = track.album?.cover;
+        const displayAlbum = getTrackDisplayAlbum(track);
+        const coverId = getTrackPlayerArtwork(track);
         const trackTitle = getTrackTitle(track);
 
         // Force a refresh for picky Bluetooth systems by clearing metadata first
@@ -2963,7 +2969,7 @@ export class Player {
                 MediaSession.setMetadata({
                     title: trackTitle || 'Unknown Title',
                     artist: getTrackArtists(track) || 'Unknown Artist',
-                    album: track.album?.title || 'Unknown Album',
+                    album: displayAlbum?.title || 'Unknown Album',
                     artwork:
                         coverId && !isVideoArtwork(coverId)
                             ? [
