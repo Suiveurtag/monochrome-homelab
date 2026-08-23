@@ -65,6 +65,10 @@ export default defineConfig((_options) => {
         server: {
             host: true,
             proxy: {
+                '/share': {
+                    target: process.env.VITE_SELFHOST_IMPORTER_PROXY_TARGET || 'http://127.0.0.1:8787',
+                    changeOrigin: true,
+                },
                 '/api/selfhost': {
                     target: process.env.VITE_SELFHOST_IMPORTER_PROXY_TARGET || 'http://127.0.0.1:8787',
                     changeOrigin: true,

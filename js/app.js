@@ -24,7 +24,8 @@ import { LyricsManager, openLyricsPanel, clearLyricsPanelSync } from './lyrics.j
 import { createRouter, updateTabTitle, navigate } from './router.js';
 import { initializePlayerEvents, initializeTrackInteractions, handleTrackAction } from './events.js';
 import { initializeUIInteractions } from './ui-interactions.js';
-import { debounce, getShareUrl, sanitizeForFilename } from './utils.js';
+import { debounce, sanitizeForFilename } from './utils.js';
+import { copyShareLink } from './share.js';
 import { sidePanelManager } from './side-panel.js';
 import { NowPlayingPanel } from './now-playing-panel.js';
 import { db } from './db.js';
@@ -127,6 +128,41 @@ async function loadDownloadsModule() {
 }
 
 async function fetchcontributors() {}
+
+function setupSharePlayback() {
+    window.addEventListener('monochrome-play-share', async (event) => {
+        const { kind, id } = event.detail || {};
+        if (!kind || !id) return;
+        try {
+            if (kind === 'track') {
+                const track = await MusicAPI.instance.getTrackMetadata(id);
+                Player.instance.setQueue([track], 0, false, {
+                    kind: 'single',
+                    id: String(id),
+                    label: track.title || 'Shared track',
+                    href: `/track/${id}`,
+                });
+                Player.instance.enableAutoplay();
+                await Player.instance.playTrackFromQueue();
+                return;
+            }
+            if (kind === 'album') {
+                const { album, tracks } = await MusicAPI.instance.getAlbum(id);
+                if (!tracks?.length) return;
+                Player.instance.setQueue(tracks, 0, false, {
+                    kind: 'album',
+                    id: String(id),
+                    label: album?.title || 'Shared album',
+                    href: `/album/${id}`,
+                });
+                Player.instance.enableAutoplay();
+                await Player.instance.playTrackFromQueue();
+            }
+        } catch (error) {
+            console.error('Failed to play shared item:', error);
+        }
+    });
+}
 
 async function initializeSelfHostedUploads() {
     const input = document.getElementById('selfhost-upload-input');
@@ -1177,6 +1213,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const shareBtn = document.getElementById('playlist-share-btn');
         if (shareBtn) shareBtn.style.display = e.target.checked ? 'flex' : 'none';
     });
+
+    setupSharePlayback();
 
     document.getElementById('close-fullscreen-cover-btn')?.addEventListener('click', async () => {
         await closeFullscreenOverlay();
@@ -2338,13 +2376,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     if (shareBtn) {
                         shareBtn.style.display = playlist.isPublic ? 'flex' : 'none';
-                        shareBtn.onclick = () => {
-                            const url = getShareUrl(`/userplaylist/${playlist.id}`);
-                            navigator.clipboard
-                                .writeText(url)
-                                .then(() => alert('Link copied to clipboard!'))
-                                .catch(console.error);
-                        };
+                        shareBtn.onclick = () => copyShareLink('userplaylist', playlist);
                     }
 
                     // Set cover upload state - show URL input if there's an existing cover
@@ -2417,13 +2449,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         if (publicToggle) publicToggle.checked = !!playlist.isPublic;
                         if (shareBtn) {
                             shareBtn.style.display = playlist.isPublic ? 'flex' : 'none';
-                            shareBtn.onclick = async () => {
-                                const url = getShareUrl(`/userplaylist/${playlist.id}`);
-                                await navigator.clipboard
-                                    .writeText(url)
-                                    .then(() => alert('Link copied to clipboard!'))
-                                    .catch(console.error);
-                            };
+                            shareBtn.onclick = () => copyShareLink('userplaylist', playlist);
                         }
 
                         // Set cover upload state - show URL input if there's an existing cover

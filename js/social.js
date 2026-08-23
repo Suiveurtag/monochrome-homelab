@@ -2,6 +2,7 @@ import { pb } from './accounts/config.js';
 import { authManager } from './accounts/auth.js';
 import { escapeHtml, getTrackArtists } from './utils.js';
 import { showNotification } from './downloads.js';
+import { buildSharePath, playSharedItem, shareCardHTML } from './share.js';
 
 const ACTIVE_WINDOW_MS = 90_000;
 const PRESENCE_HEARTBEAT_MS = 30_000;
@@ -67,13 +68,14 @@ function itemImage(kind, item) {
 function sharePayload(kind, item) {
     const id = String(item.id || item.uuid || '');
     const title = itemTitle(kind, item) || `Shared ${kind}`;
+    const sharePath = buildSharePath(kind, item);
     return {
         id,
         type: kind,
         title,
         subtitle: itemSubtitle(kind, item),
         image: itemImage(kind, item),
-        href: `/${kind}/${encodeURIComponent(id)}`,
+        href: sharePath || `/${kind}/${encodeURIComponent(id)}`,
     };
 }
 
@@ -322,13 +324,7 @@ export class SocialManager {
     }
 
     renderSharedCard(payload) {
-        const image = payload.image
-            ? `<img src="${escapeHtml(payload.image)}" alt="" />`
-            : `<span class="social-share-placeholder">${escapeHtml((payload.type || 'M').slice(0, 1).toUpperCase())}</span>`;
-        return `<a class="social-message-share" href="${escapeHtml(payload.href || '#')}">
-            ${image}<span><em>${escapeHtml(payload.type || 'Music')}</em><strong>${escapeHtml(payload.title || 'Shared music')}</strong><small>${escapeHtml(payload.subtitle || '')}</small></span>
-            <span class="social-message-share-arrow">↗</span>
-        </a>`;
+        return shareCardHTML(payload);
     }
 
     async sendMessage(body = '', share = null) {
@@ -425,6 +421,23 @@ export class SocialManager {
         });
         document.getElementById('social-thread-back')?.addEventListener('click', () => {
             document.querySelector('.social-shell')?.classList.remove('has-thread');
+        });
+        document.getElementById('social-messages')?.addEventListener('click', (event) => {
+            const play = event.target.closest('[data-play-kind][data-play-id]');
+            if (play) {
+                event.preventDefault();
+                playSharedItem(play.dataset.playKind, play.dataset.playId);
+                return;
+            }
+            const card = event.target.closest('.social-message-share');
+            if (!card) return;
+            const kind = card.dataset.shareKind;
+            const id = card.dataset.shareId;
+            if (kind && id) {
+                event.preventDefault();
+                const canonicalKind = kind === 'userplaylist' ? 'userplaylist' : kind;
+                void import('./router.js').then(({ navigate }) => navigate(`/${canonicalKind}/${encodeURIComponent(id)}`));
+            }
         });
         document.getElementById('social-composer')?.addEventListener('submit', (event) => {
             event.preventDefault();

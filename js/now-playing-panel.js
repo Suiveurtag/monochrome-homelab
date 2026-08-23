@@ -2,7 +2,8 @@ import { mountSpicyDynamicBackground } from './spicy-dynamic-background.js';
 import { buildNowPlayingPanelModel, normalizeSourceContext } from './now-playing-panel-model.js';
 import { clearLyricsContainerSync, renderLyricsInContainer } from './lyrics.js';
 import { createTrackSaveIconHTML } from './track-save-ui.js';
-import { escapeHtml, getShareUrl } from './utils.js';
+import { escapeHtml } from './utils.js';
+import { copyShareLink } from './share.js';
 import { isVideoArtwork, renderArtworkElement } from './animated-artwork.js';
 import { navigate } from './router.js';
 import { showNotification } from './downloads.js';
@@ -703,17 +704,7 @@ export class NowPlayingPanel {
 
     async shareTrack() {
         if (!this.currentTrack) return;
-        const url = getShareUrl(`/track/${this.currentTrack.id}`);
-        const data = { title: this.currentTrack.title || 'Now playing', text: this.model?.artistLine || '', url };
-        try {
-            if (navigator.share) await navigator.share(data);
-            else {
-                await navigator.clipboard.writeText(url);
-                showNotification('Link copied to clipboard!');
-            }
-        } catch (error) {
-            if (error?.name !== 'AbortError') console.error('Failed to share current track:', error);
-        }
+        await copyShareLink('track', this.currentTrack);
     }
 
     showCredits() {

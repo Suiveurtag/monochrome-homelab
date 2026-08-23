@@ -21,6 +21,7 @@ vi.mock('./accounts/pocketbase.js', () => ({
 }));
 vi.mock('./downloads.js', () => ({ showNotification: vi.fn() }));
 vi.mock('./router.js', () => ({ navigate: vi.fn() }));
+vi.mock('./share.js', () => ({ copyShareLink: vi.fn(async () => true) }));
 vi.mock('./track-save-ui.js', () => ({ createTrackSaveIconHTML: () => '<span></span>' }));
 vi.mock('./animated-artwork.js', () => ({
     isVideoArtwork: (source) => /\.mp4(?:$|[?#])/i.test(String(source || '')),
@@ -38,7 +39,6 @@ vi.mock('./listening-tracker.js', () => ({
 }));
 vi.mock('./utils.js', () => ({
     escapeHtml: (value) => String(value ?? ''),
-    getShareUrl: (path) => `http://localhost${path}`,
     getTrackArtists: (track) => track?.artist?.name || 'Unknown artist',
     getTrackTitle: (track) => track?.title || 'Unknown title',
     getTrackYearDisplay: () => '',

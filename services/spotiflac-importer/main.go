@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"log"
 	"mime/multipart"
@@ -18,6 +19,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	spot "github.com/afkarxyz/SpotiFLAC/backend"
 )
@@ -594,11 +596,320 @@ func uploadTrack(token, owner string, item track, isrc, provider, lyrics, audioP
 	return result, nil
 }
 
+// stableShareID mirrors the frontend `stableId()` hash so server-rendered
+// share documents can resolve album/artist URLs built by the SPA. JS uses
+// 32-bit signed integer arithmetic (|0), so the Go port must wrap identically.
+func stableShareID(prefix, value string) string {
+	var hash int32
+	for i := 0; i < len(value); i++ {
+		var unit int32
+		if value[i] < 0x80 {
+			unit = int32(value[i])
+		} else {
+			r, size := utf8.DecodeRuneInString(value[i:])
+			if r != utf8.RuneError {
+				unit = int32(r)
+				i += size - 1
+			} else {
+				unit = int32(value[i])
+			}
+		}
+		hash = (hash << 5) - hash + unit
+	}
+	if hash < 0 {
+		hash = -hash
+	}
+	return fmt.Sprintf("%s-%s", prefix, strconv.FormatInt(int64(hash), 36))
+}
+
+// pbList runs a PocketBase list query and returns the raw items.
+func pbList(path string) ([]map[string]any, error) {
+	data, err := pbRequest("GET", path, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	items, _ := data["items"].([]any)
+	result := make([]map[string]any, 0, len(items))
+	for _, item := range items {
+		if row, ok := item.(map[string]any); ok {
+			result = append(result, row)
+		}
+	}
+	return result, nil
+}
+
+func stringField(row map[string]any, key string) string {
+	value, _ := row[key].(string)
+	return value
+}
+
+func recordCollectionID(row map[string]any, fallback string) string {
+	if id := stringField(row, "collectionId"); id != "" {
+		return id
+	}
+	if name := stringField(row, "collectionName"); name != "" {
+		return name
+	}
+	return fallback
+}
+
+// resolveShareAlbum finds a music_albums record whose frontend stable ID
+// matches the requested selfhost-album-* ID.
+func resolveShareAlbum(id string) (map[string]any, error) {
+	rows, err := pbList("/api/collections/music_albums/records?perPage=200")
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		title := stringField(row, "title")
+		artist := stringField(row, "artist_name")
+		if title == "" {
+			continue
+		}
+		if stableShareID("selfhost-album", artist+"|"+title) == id {
+			return row, nil
+		}
+	}
+	return nil, errors.New("album not found")
+}
+
+// resolveShareArtist finds a music_artists record whose frontend stable ID
+// matches the requested selfhost-artist-* ID.
+func resolveShareArtist(id string) (map[string]any, error) {
+	rows, err := pbList("/api/collections/music_artists/records?perPage=200")
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		name := stringField(row, "name")
+		if name == "" {
+			continue
+		}
+		if stableShareID("selfhost-artist", name) == id {
+			return row, nil
+		}
+	}
+	return nil, errors.New("artist not found")
+}
+
+// fileURL builds an absolute PocketBase file URL for a record + filename.
+func fileURL(r *http.Request, collection, recordID, filename string) string {
+	if filename == "" || recordID == "" {
+		return ""
+	}
+	if strings.HasPrefix(filename, "http") {
+		return filename
+	}
+	scheme := "http"
+	if forwarded := r.Header.Get("X-Forwarded-Proto"); forwarded != "" {
+		scheme = strings.TrimSpace(strings.Split(forwarded, ",")[0])
+	}
+	host := r.Host
+	if host == "" {
+		host = "localhost"
+	}
+	return fmt.Sprintf("%s://%s/api/files/%s/%s/%s", scheme, host, collection, recordID, url.PathEscape(filename))
+}
+
+func shareCanonicalPath(kind, id string) string {
+	switch kind {
+	case "userplaylist":
+		return "/userplaylist/" + url.PathEscape(id)
+	default:
+		return "/" + kind + "/" + url.PathEscape(id)
+	}
+}
+
+func shareLabel(kind string) string {
+	switch kind {
+	case "track":
+		return "Track"
+	case "album":
+		return "Album"
+	case "artist":
+		return "Artist"
+	case "userplaylist":
+		return "Playlist"
+	default:
+		return "Music"
+	}
+}
+
+func shareOgType(kind string) string {
+	switch kind {
+	case "track":
+		return "music.song"
+	case "album":
+		return "music.album"
+	case "userplaylist":
+		return "music.playlist"
+	case "artist":
+		return "profile"
+	default:
+		return "website"
+	}
+}
+
+func renderShareDocument(w http.ResponseWriter, r *http.Request, kind, id, title, description, image, shareURL string) {
+	label := shareLabel(kind)
+	canonical := shareCanonicalPath(kind, id)
+	siteURL := fmt.Sprintf("%s://%s", func() string {
+		if forwarded := r.Header.Get("X-Forwarded-Proto"); forwarded != "" {
+			return strings.TrimSpace(strings.Split(forwarded, ",")[0])
+		}
+		return "http"
+	}(), r.Host)
+	ogType := shareOgType(kind)
+	docTitle := html.EscapeString(title)
+	docDesc := html.EscapeString(description)
+	docImage := html.EscapeString(image)
+	docURL := html.EscapeString(shareURL)
+	docCanonical := html.EscapeString(siteURL + canonical)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=300")
+	_, _ = fmt.Fprintf(w, `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>%s · %s</title>
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="%s" />
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml" />
+<meta property="og:type" content="%s" />
+<meta property="og:site_name" content="Monochrome" />
+<meta property="og:title" content="%s · %s" />
+<meta property="og:description" content="%s" />
+<meta property="og:url" content="%s" />
+<meta property="og:image" content="%s" />
+<meta property="og:image:alt" content="%s" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content="@monochrome" />
+<meta name="twitter:title" content="%s · %s" />
+<meta name="twitter:description" content="%s" />
+<meta name="twitter:image" content="%s" />
+<meta http-equiv="refresh" content="0;url=%s" />
+<script>
+    if (location.hash) {
+        var path = location.hash.substring(1);
+        if (path.startsWith('/')) location.replace(path);
+    }
+</script>
+</head>
+<body>
+<noscript><a href="%s">Open in Monochrome</a></noscript>
+</body>
+</html>
+`, docTitle, label, docCanonical, ogType, docTitle, label, docDesc, docURL, docImage, docTitle, docTitle, label, docDesc, docImage, docURL, docCanonical)
+}
+
+func handleShare(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(parts) < 3 || parts[0] != "share" {
+		http.NotFound(w, r)
+		return
+	}
+	kind := parts[1]
+	id := strings.Join(parts[2:], "/")
+	if id == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	shareURL := fmt.Sprintf("%s://%s%s", func() string {
+		if forwarded := r.Header.Get("X-Forwarded-Proto"); forwarded != "" {
+			return strings.TrimSpace(strings.Split(forwarded, ",")[0])
+		}
+		return "http"
+	}(), r.Host, r.URL.Path)
+
+	var title, description, image, collection, recordID string
+
+	switch kind {
+	case "track":
+		row, err := pbRequest("GET", "/api/collections/music_tracks/records/"+url.PathEscape(id), "", nil)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		recordID = id
+		collection = recordCollectionID(row, "music_tracks")
+		title = stringField(row, "title")
+		description = stringField(row, "artist")
+		if description == "" {
+			description = "Monochrome"
+		}
+		image = fileURL(r, collection, recordID, stringField(row, "cover"))
+	case "album":
+		row, err := resolveShareAlbum(id)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		recordID = stringField(row, "id")
+		collection = recordCollectionID(row, "music_albums")
+		title = stringField(row, "title")
+		description = stringField(row, "artist_name")
+		if description == "" {
+			description = "Album"
+		}
+		image = fileURL(r, collection, recordID, stringField(row, "cover"))
+	case "artist":
+		row, err := resolveShareArtist(id)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		recordID = stringField(row, "id")
+		collection = recordCollectionID(row, "music_artists")
+		title = stringField(row, "name")
+		description = "Artist"
+		image = fileURL(r, collection, recordID, stringField(row, "image"))
+	case "userplaylist":
+		rows, err := pbList("/api/collections/public_playlists/records?perPage=1&filter=" + url.QueryEscape("uuid='"+id+"'"))
+		if err != nil || len(rows) == 0 {
+			http.NotFound(w, r)
+			return
+		}
+		row := rows[0]
+		recordID = stringField(row, "id")
+		collection = recordCollectionID(row, "public_playlists")
+		title = stringField(row, "title")
+		if title == "" {
+			title = stringField(row, "name")
+		}
+		description = stringField(row, "description")
+		if description == "" {
+			description = "Playlist"
+		}
+		image = fileURL(r, collection, recordID, stringField(row, "image"))
+	default:
+		http.NotFound(w, r)
+		return
+	}
+
+	if title == "" {
+		title = "Monochrome"
+	}
+	if image == "" {
+		image = fmt.Sprintf("%s://%s/assets/appicon.png", func() string {
+			if forwarded := r.Header.Get("X-Forwarded-Proto"); forwarded != "" {
+				return strings.TrimSpace(strings.Split(forwarded, ",")[0])
+			}
+			return "http"
+		}(), r.Host)
+	}
+
+	renderShareDocument(w, r, kind, id, title, description, image, shareURL)
+}
+
 func main() {
 	spot.AppVersion = "7.2.0"
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/selfhost/imports", handleImports)
 	mux.HandleFunc("/api/selfhost/imports/", handleJob)
+	mux.HandleFunc("/share/", handleShare)
 	health := func(w http.ResponseWriter, _ *http.Request) {
 		jsonOut(w, 200, map[string]string{"status": "ok", "engine": "SpotiFLAC Headless 1.5.8"})
 	}

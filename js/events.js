@@ -6,9 +6,9 @@ import {
     getTrackArtists,
     positionMenu,
     prepareContextMenu,
-    getShareUrl,
     escapeHtml,
 } from './utils.js';
+import { buildSharePath, copyShareLink } from './share.js';
 import {
     lastFMStorage,
     libreFmSettings,
@@ -3020,26 +3020,17 @@ export async function handleTrackAction(
         if (displayAlbum?.id) {
             navigate(`/album/${displayAlbum.id}`);
         }
-    } else if (action === 'copy-link' || action === 'share') {
-        // Use stored href from card if available, otherwise construct URL
-        const contextMenu = document.getElementById('context-menu');
-        const storedHref = contextMenu?._contextHref;
-        const typeForUrl = type === 'user-playlist' ? 'userplaylist' : type;
-        const url = getShareUrl(storedHref ? storedHref : `/${typeForUrl}/${item.id || item.uuid}`);
-
-        await navigator.clipboard
-            .writeText(url)
-            .then(() => {
-                showNotification('Link copied to clipboard!');
-            })
-            .catch(console.error);
+    } else if (action === 'copy-link') {
+        await copyShareLink(type, item);
     } else if (action === 'open-in-new-tab') {
         // Use stored href from card if available, otherwise construct URL
         const contextMenu = document.getElementById('context-menu');
         const storedHref = contextMenu?._contextHref;
-        const url = storedHref
-            ? `${window.location.origin}${storedHref}`
-            : `${window.location.origin}/${type}/${item.id || item.uuid}`;
+        const url = buildSharePath(type, item)
+            ? `${window.location.origin}${buildSharePath(type, item)}`
+            : storedHref
+              ? `${window.location.origin}${storedHref}`
+              : `${window.location.origin}/${type}/${item.id || item.uuid}`;
 
         window.open(url, '_blank');
     } else if (action === 'open-in-harmony') {

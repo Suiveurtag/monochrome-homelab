@@ -657,10 +657,18 @@ export function positionMenu(menu, x, y, anchorRect = null) {
     prepareContextMenu(menu);
 }
 
-export const getShareUrl = (path) => {
-    const baseUrl = window.NL_MODE ? 'https://monochrome.tf' : window.location.origin;
+/**
+ * Build a stable share URL for a canonical app path such as `/track/123` or
+ * `/userplaylist/{uuid}`. Returned URLs use the `/share/` prefix so they are
+ * served as server-rendered Open Graph documents (and redirect into the SPA).
+ */
+export const getShareUrl = async (path) => {
+    const { getItemShareUrl } = await import('./share.js');
     const safePath = path.startsWith('/') ? path : `/${path}`;
-    return `${baseUrl}${safePath}`;
+    const parts = safePath.split('/').filter(Boolean);
+    const kind = parts[0];
+    const id = parts.slice(1).join('/');
+    return getItemShareUrl(kind, { id }) || `${window.location.origin}${safePath}`;
 };
 
 /**

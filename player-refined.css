@@ -177,7 +177,7 @@
     overflow: hidden;
     border-radius: 16px;
     background:
-        radial-gradient(circle at 14% 8%, rgb(var(--highlight-rgb) / 0.09), transparent 34%),
+        radial-gradient(circle at 14% 8%, rgb(var(--highlight-rgb), 0.09), transparent 34%),
         color-mix(in srgb, var(--card) 96%, black 4%);
     box-shadow:
         0 22px 58px rgb(0 0 0 / 0.52),
@@ -447,6 +447,27 @@
     background: linear-gradient(145deg, rgb(0 0 0 / 0.16), rgb(0 0 0 / 0.78));
     opacity: 0;
     transition: opacity 240ms ease;
+}
+
+/* Soft contact shadow where the version disc tucks behind the cover. */
+.now-playing-cover-button::before {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    background: radial-gradient(
+        ellipse 92% 70% at 50% -4%,
+        rgb(0 0 0 / 0.3) 0%,
+        rgb(0 0 0 / 0.14) 32%,
+        rgb(0 0 0 / 0) 62%
+    );
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 240ms ease;
+}
+
+.now-playing-bar:has(.version-switch-button:not([hidden])) .now-playing-cover-button::before {
+    opacity: 1;
 }
 
 .cover-fullscreen-icon {
@@ -815,7 +836,7 @@
     background:
         radial-gradient(
             circle at var(--panel-origin-x, 50%) var(--panel-origin-y, 100%),
-            rgb(var(--highlight-rgb) / 0.12),
+            rgb(var(--highlight-rgb), 0.12),
             transparent 42%
         ),
         color-mix(in srgb, var(--card) 94%, transparent);

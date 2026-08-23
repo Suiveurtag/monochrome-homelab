@@ -127,6 +127,22 @@ export function createRouter(ui) {
                     await loadProfile(decodeURIComponent(param.slice(1)));
                 }
                 break;
+            case 'share': {
+                const [shareKind, ...shareIdParts] = param.split('/');
+                const shareId = shareIdParts.join('/');
+                const canonicalKind =
+                    shareKind === 'userplaylist'
+                        ? 'userplaylist'
+                        : ['track', 'album', 'artist', 'playlist'].includes(shareKind)
+                          ? shareKind
+                          : null;
+                if (canonicalKind && shareId) {
+                    window.location.replace(`/${canonicalKind}/${shareId}`);
+                } else {
+                    window.location.replace('/');
+                }
+                break;
+            }
             default:
                 ui.showPage(page);
                 break;

@@ -14,9 +14,9 @@ import {
     formatDuration,
     escapeHtml,
     decodeHtml,
-    getShareUrl,
     getCoverBlob,
 } from './utils.js';
+import { copyShareLink, updateShareMeta } from './share.js';
 import {
     openLyricsPanel,
     renderLyricsInFullscreen,
@@ -560,6 +560,26 @@ export class UIRenderer {
             if (lyricsBtn) lyricsBtn.style.display = 'none';
             if (fsLikeBtn) fsLikeBtn.style.display = 'none';
         }
+    }
+
+    _applyShareMeta(kind, item, image, description = '') {
+        if (!item) return;
+        const id = item.id ?? item.uuid;
+        if (!id) return;
+        const path = `/share/${kind === 'userplaylist' ? 'userplaylist' : kind}/${encodeURIComponent(String(id))}`;
+        updateShareMeta({
+            title: item.title || item.name || 'Monochrome',
+            description: description || item.description || `Listen on Monochrome`,
+            image: image ? this.absoluteAssetUrl(image) : '',
+            url: `${window.location.origin}${path}`,
+            type: kind === 'artist' ? 'profile' : kind === 'track' ? 'music.song' : kind === 'album' ? 'music.album' : 'music.playlist',
+        });
+    }
+
+    absoluteAssetUrl(url) {
+        if (!url) return '';
+        if (/^(https?:|blob:|data:)/i.test(url)) return url;
+        return `${window.location.origin}${url.startsWith('/') ? url : `/${url}`}`;
     }
 
     async updateGlobalTheme() {
@@ -2664,6 +2684,7 @@ export class UIRenderer {
     async showPage(pageId) {
         const previousPage = this.currentPage;
         this.currentPage = pageId;
+        updateShareMeta();
         document.querySelectorAll('.page').forEach((page) => {
             page.classList.toggle('active', page.id === `page-${pageId}`);
         });
@@ -4290,6 +4311,7 @@ export class UIRenderer {
             }
 
             document.title = `${album.title} - ${album.artist.name}`;
+            this._applyShareMeta('album', album, album.cover, `${album.artist.name} · ${tracks.length} songs`);
 
             // "More from Artist" and Related Sections
             const moreAlbumsSection = document.getElementById('album-section-more-albums');
@@ -4693,6 +4715,12 @@ export class UIRenderer {
                     isUserPlaylist: true,
                 });
                 document.title = `${playlistData.name || playlistData.title} - Monochrome`;
+                this._applyShareMeta(
+                    'userplaylist',
+                    playlistData,
+                    playlistData.cover || uniqueCovers[0],
+                    `${playlistData.numberOfTracks ?? playlistData.tracks?.length ?? 0} tracks`
+                );
 
                 // Setup playlist search
                 this.setupTracklistSearch();
@@ -4799,6 +4827,12 @@ export class UIRenderer {
 
                 recentActivityManager.addPlaylist(playlist);
                 document.title = playlist.title || 'Artist Mix';
+                this._applyShareMeta(
+                    'playlist',
+                    playlist,
+                    playlist.squareImage || playlist.image,
+                    `${playlist.numberOfTracks || tracks.length} tracks`
+                );
             }
 
             // Setup playlist search
@@ -5655,6 +5689,7 @@ export class UIRenderer {
             recentActivityManager.addArtist(artist);
 
             document.title = artist.name;
+            this._applyShareMeta('artist', artist, artist.picture, `${artist.tracks?.length || 0} tracks in library`);
         } catch (error) {
             console.error('Failed to load artist:', error);
             tracksContainer.innerHTML = albumsContainer.innerHTML = createPlaceholder(
@@ -5910,11 +5945,7 @@ export class UIRenderer {
             shareBtn.innerHTML = `${SVG_SHARE(20)}<span>Share</span>`;
 
             shareBtn.onclick = () => {
-                const url = getShareUrl(`/userplaylist/${playlist.id || playlist.uuid}`);
-                navigator.clipboard
-                    .writeText(url)
-                    .then(() => alert('Link copied to clipboard!'))
-                    .catch(console.error);
+                void copyShareLink('userplaylist', { id: playlist.id || playlist.uuid, uuid: playlist.uuid });
             };
             fragment.appendChild(shareBtn);
         }
@@ -6302,6 +6333,12 @@ export class UIRenderer {
             }
 
             document.title = `${track.title} - ${getTrackArtists(track)}`;
+            this._applyShareMeta(
+                'track',
+                track,
+                track.cover || this.api.getCoverUrl(track.image || track.album?.cover),
+                getTrackArtists(track)
+            );
         } catch (error) {
             console.error('Failed to load track:', error);
             titleEl.textContent = 'Track not found';

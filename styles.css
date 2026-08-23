@@ -17825,7 +17825,18 @@ img.cd {
     background: rgb(var(--highlight-rgb), 0.1);
 }
 
-.social-message-share > img,
+.social-share-art,
+.social-share-meta {
+    color: inherit;
+    text-decoration: none;
+}
+
+.social-share-art {
+    position: relative;
+    display: block;
+}
+
+.social-share-art > img,
 .social-share-placeholder {
     width: 54px;
     height: 54px;
@@ -17837,7 +17848,35 @@ img.cd {
     font-weight: 800;
 }
 
-.social-message-share > span:nth-child(2) {
+.social-share-overlay {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: rgb(0 0 0 / 0.28);
+    opacity: 0;
+    transition: opacity 160ms ease;
+}
+
+.social-message-share:hover .social-share-overlay,
+.social-share-overlay.is-visible {
+    opacity: 1;
+}
+
+.social-share-play {
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--background);
+    background: var(--foreground);
+    font-size: 0.62rem;
+    padding-left: 2px;
+}
+
+.social-share-meta {
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -17854,20 +17893,48 @@ img.cd {
     text-transform: uppercase;
 }
 
-.social-message-share strong,
-.social-message-share small {
+.social-share-meta strong,
+.social-share-meta small {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.social-message-share strong {
+.social-share-meta strong {
     font-size: 0.76rem;
 }
 
-.social-message-share small {
+.social-share-meta small {
     color: var(--muted-foreground);
     font-size: 0.62rem;
+}
+
+.social-share-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.social-share-play-btn,
+.social-share-open {
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    color: var(--muted-foreground);
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 140ms ease, background 140ms ease;
+}
+
+.social-share-play-btn:hover,
+.social-share-open:hover {
+    color: var(--foreground);
+    background: rgb(var(--highlight-rgb), 0.12);
 }
 
 .social-message-share-arrow {
