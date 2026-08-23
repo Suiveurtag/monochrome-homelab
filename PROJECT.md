@@ -13,18 +13,18 @@ A **self-hosted homelab fork** of [Monochrome](https://github.com/monochrome-mus
 
 ## Tech stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | Vanilla JS (no framework), one giant `index.html` (7k lines) + `styles.css` (18k lines). Some modules are TypeScript |
-| Build | Vite 7, Bun as package manager (`bun.lock`, `bun.lockb`) |
-| Backend / DB / Files | PocketBase 0.30 (`ghcr.io/muchobien/pocketbase:0.30.0`), schema in `pb_migrations/`, data in `pb_data/` |
-| Importer service | Go service wrapping `github.com/afkarxyz/SpotiFLAC` (pinned v7.1.9 / ref `7a3a50e8d5b56fc7335d5822889c499f5e76e39b`) — `services/spotiflac-importer/main.go` |
-| Streaming/playback | hls.js, shaka-player, `@svta/common-media-library`, ffmpeg.wasm for transcodes |
-| Visuals | three, ogl, butterchurn (visualizers), WebGL shaders |
-| PWA | `vite-plugin-pwa` (runtime caching for images/media, offline) |
-| Mobile | Capacitor 8 (`android/`, `ios/`, `capacitor.config.ts`) |
-| Tests | Vitest + Playwright browser provider (headless via `HEADLESS=true`) |
-| Lint | `eslint` (JS), `stylelint` (CSS), `htmlhint` (HTML) |
+| Layer                | Technology                                                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Frontend             | Vanilla JS (no framework), one giant `index.html` (7k lines) + `styles.css` (18k lines). Some modules are TypeScript                                         |
+| Build                | Vite 7, Bun as package manager (`bun.lock`, `bun.lockb`)                                                                                                     |
+| Backend / DB / Files | PocketBase 0.30 (`ghcr.io/muchobien/pocketbase:0.30.0`), schema in `pb_migrations/`, data in `pb_data/`                                                      |
+| Importer service     | Go service wrapping `github.com/afkarxyz/SpotiFLAC` (pinned v7.1.9 / ref `7a3a50e8d5b56fc7335d5822889c499f5e76e39b`) — `services/spotiflac-importer/main.go` |
+| Streaming/playback   | hls.js, shaka-player, `@svta/common-media-library`, ffmpeg.wasm for transcodes                                                                               |
+| Visuals              | three, ogl, butterchurn (visualizers), WebGL shaders                                                                                                         |
+| PWA                  | `vite-plugin-pwa` (runtime caching for images/media, offline)                                                                                                |
+| Mobile               | Capacitor 8 (`android/`, `ios/`, `capacitor.config.ts`)                                                                                                      |
+| Tests                | Vitest + Playwright browser provider (headless via `HEADLESS=true`)                                                                                          |
+| Lint                 | `eslint` (JS), `stylelint` (CSS), `htmlhint` (HTML)                                                                                                          |
 
 ## Architecture
 
@@ -44,26 +44,26 @@ Browser (Vite dev on :5173 / nginx static on :3000)
 
 ## Key files / directories
 
-| Path | Purpose |
-|---|---|
-| `index.html`, `styles.css`, `player-refined.css`, `now-playing-panel.css` | UI markup + all styling (hand-written, no CSS framework) |
-| `js/app.js` | Bootstraps the whole app; wires everything together (3.7k lines) |
-| `js/selfhost-server-api.js` | PocketBase ⇄ internal track model bridge + upload/import/update/delete API |
-| `js/player.js`, `js/player-bar-*.js`, `js/audio-context.js` | Audio engine, gapless playback, custom player UI |
-| `js/now-playing-panel.js` (+ `-model`, `.test.js`) | Custom "Now Playing" fullscreen panel (prototype) |
-| `js/spicy-lyrics-renderer.js`, `spicy-lyrics-ttml.js` | Line-synced lyrics renderer (replaces stock lyrics UI) |
-| `js/track-versions.js`, `track-version-picker.js` | Grouping alternative versions of the same track |
-| `js/upload-gallery.js`, `selfhost-upload-batch.js` | Batch file uploads to the self-hosted library |
-| `js/accounts/config.js`, `auth.js`, `pocketbase.js` | PocketBase auth/sync |
-| `js/db.js`, `js/storage.js` | Local IndexedDB + localStorage settings |
-| `js/music-api.js` | Upstream streaming API layer (hifi/Tidal) — kept from upstream |
-| `pb_migrations/*.js` | PocketBase schema: `music_tracks`, `music_import_jobs`, users, social, track versions, canvas, etc. |
-| `services/spotiflac-importer/` | Go importer (`main.go`, `main_test.go`, `dev-watch.sh`) |
-| `scripts/selfhost_importer.py` | Python variant of the importer (legacy/testing) |
-| `extension/` | Browser extension that spoofs Tidal request headers |
-| `docs/design-references/now-playing/` | Reference screenshots/videos used for the Now Playing design |
-| `Modelfile` | An Ollama model export — **not** part of the app |
-| `functions/` | Leftover upstream Cloudflare Worker-style dirs — mostly legacy, check before relying on them |
+| Path                                                                      | Purpose                                                                                             |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `index.html`, `styles.css`, `player-refined.css`, `now-playing-panel.css` | UI markup + all styling (hand-written, no CSS framework)                                            |
+| `js/app.js`                                                               | Bootstraps the whole app; wires everything together (3.7k lines)                                    |
+| `js/selfhost-server-api.js`                                               | PocketBase ⇄ internal track model bridge + upload/import/update/delete API                          |
+| `js/player.js`, `js/player-bar-*.js`, `js/audio-context.js`               | Audio engine, gapless playback, custom player UI                                                    |
+| `js/now-playing-panel.js` (+ `-model`, `.test.js`)                        | Custom "Now Playing" fullscreen panel (prototype)                                                   |
+| `js/spicy-lyrics-renderer.js`, `spicy-lyrics-ttml.js`                     | Line-synced lyrics renderer (replaces stock lyrics UI)                                              |
+| `js/track-versions.js`, `track-version-picker.js`                         | Grouping alternative versions of the same track                                                     |
+| `js/upload-gallery.js`, `selfhost-upload-batch.js`                        | Batch file uploads to the self-hosted library                                                       |
+| `js/accounts/config.js`, `auth.js`, `pocketbase.js`                       | PocketBase auth/sync                                                                                |
+| `js/db.js`, `js/storage.js`                                               | Local IndexedDB + localStorage settings                                                             |
+| `js/music-api.js`                                                         | Upstream streaming API layer (hifi/Tidal) — kept from upstream                                      |
+| `pb_migrations/*.js`                                                      | PocketBase schema: `music_tracks`, `music_import_jobs`, users, social, track versions, canvas, etc. |
+| `services/spotiflac-importer/`                                            | Go importer (`main.go`, `main_test.go`, `dev-watch.sh`)                                             |
+| `scripts/selfhost_importer.py`                                            | Python variant of the importer (legacy/testing)                                                     |
+| `extension/`                                                              | Browser extension that spoofs Tidal request headers                                                 |
+| `docs/design-references/now-playing/`                                     | Reference screenshots/videos used for the Now Playing design                                        |
+| `Modelfile`                                                               | An Ollama model export — **not** part of the app                                                    |
+| `functions/`                                                              | Leftover upstream Cloudflare Worker-style dirs — mostly legacy, check before relying on them        |
 
 ## Custom features (fork work, per git log)
 

@@ -436,7 +436,9 @@ export class SocialManager {
             if (kind && id) {
                 event.preventDefault();
                 const canonicalKind = kind === 'userplaylist' ? 'userplaylist' : kind;
-                void import('./router.js').then(({ navigate }) => navigate(`/${canonicalKind}/${encodeURIComponent(id)}`));
+                void import('./router.js').then(({ navigate }) =>
+                    navigate(`/${canonicalKind}/${encodeURIComponent(id)}`)
+                );
             }
         });
         document.getElementById('social-composer')?.addEventListener('submit', (event) => {

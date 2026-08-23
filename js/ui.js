@@ -572,7 +572,14 @@ export class UIRenderer {
             description: description || item.description || `Listen on Monochrome`,
             image: image ? this.absoluteAssetUrl(image) : '',
             url: `${window.location.origin}${path}`,
-            type: kind === 'artist' ? 'profile' : kind === 'track' ? 'music.song' : kind === 'album' ? 'music.album' : 'music.playlist',
+            type:
+                kind === 'artist'
+                    ? 'profile'
+                    : kind === 'track'
+                      ? 'music.song'
+                      : kind === 'album'
+                        ? 'music.album'
+                        : 'music.playlist',
         });
     }
 

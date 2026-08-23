@@ -17928,7 +17928,9 @@ img.cd {
     background: transparent;
     cursor: pointer;
     text-decoration: none;
-    transition: color 140ms ease, background 140ms ease;
+    transition:
+        color 140ms ease,
+        background 140ms ease;
 }
 
 .social-share-play-btn:hover,

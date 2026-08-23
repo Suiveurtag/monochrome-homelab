@@ -1,21 +1,21 @@
 {
-  "$schema": "https://opencode.ai/config.json",
-  "provider": {
-    "llama-local": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "Qwen Local",
-      "options": {
-        "baseURL": "http://127.0.0.1:8080/v1"
-      },
-      "models": {
-        "AtomicChat/Qwen3.8-27B-GGUF": {
-          "name": "Qwen3.8 27B Local",
-          "limit": {
-            "context": 131072,
-            "output": 16384
-          }
+    "$schema": "https://opencode.ai/config.json",
+    "provider": {
+        "llama-local": {
+            "npm": "@ai-sdk/openai-compatible",
+            "name": "Qwen Local",
+            "options": {
+                "baseURL": "http://127.0.0.1:8080/v1"
+            },
+            "models": {
+                "AtomicChat/Qwen3.8-27B-GGUF": {
+                    "name": "Qwen3.8 27B Local",
+                    "limit": {
+                        "context": 131072,
+                        "output": 16384
+                    }
+                }
+            }
         }
-      }
     }
-  }
 }
