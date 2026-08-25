@@ -51,53 +51,53 @@ typography:
         lineHeight: 1.3
         letterSpacing: '0.1em'
 rounded:
-  pill: "999px"
-  workspace: "12px"
-  card: "18px"
-  frame: "14px"
-  row: "13px"
-  control: "12px"
-  tool: "9px"
-  bubble-other: "4px 16px 16px 16px"
-  bubble-own: "16px 4px 16px 16px"
-  bubble-grouped: "12px"
+    pill: '999px'
+    workspace: '12px'
+    card: '18px'
+    frame: '14px'
+    row: '13px'
+    control: '12px'
+    tool: '9px'
+    bubble-other: '4px 16px 16px 16px'
+    bubble-own: '16px 4px 16px 16px'
+    bubble-grouped: '12px'
 spacing:
     xs: '0.35rem'
     sm: '0.55rem'
     md: '0.8rem'
     lg: '1.1rem'
 components:
-  social-tab-active:
-    backgroundColor: "transparent"
-    textColor: "{colors.foreground}"
-    rounded: "0"
-    padding: "0.75rem 0 0.72rem"
-  social-primary-button:
-    backgroundColor: "{colors.foreground}"
-    textColor: "{colors.background}"
-    rounded: "{rounded.pill}"
-    padding: "0.42rem 1.05rem"
-  social-chat-row-active:
-    backgroundColor: "rgb(var(--highlight-rgb), 0.09)"
-    textColor: "{colors.foreground}"
-    rounded: "{rounded.row}"
-    padding: "0.55rem"
-  social-unread-pill:
-    backgroundColor: "{colors.foreground}"
-    textColor: "{colors.background}"
-    rounded: "{rounded.pill}"
-    height: "17px"
-    width: "17px"
-  message-bubble-other:
-    backgroundColor: "{colors.card}"
-    textColor: "{colors.foreground}"
-    rounded: "{rounded.bubble-other}"
-    padding: "0.5rem 0.7rem 0.34rem"
-  message-bubble-own:
-    backgroundColor: "color-mix(in srgb, var(--foreground) 12%, var(--card))"
-    textColor: "{colors.foreground}"
-    rounded: "{rounded.bubble-own}"
-    padding: "0.5rem 0.7rem 0.34rem"
+    social-tab-active:
+        backgroundColor: 'transparent'
+        textColor: '{colors.foreground}'
+        rounded: '0'
+        padding: '0.75rem 0 0.72rem'
+    social-primary-button:
+        backgroundColor: '{colors.foreground}'
+        textColor: '{colors.background}'
+        rounded: '{rounded.pill}'
+        padding: '0.42rem 1.05rem'
+    social-chat-row-active:
+        backgroundColor: 'rgb(var(--highlight-rgb), 0.09)'
+        textColor: '{colors.foreground}'
+        rounded: '{rounded.row}'
+        padding: '0.55rem'
+    social-unread-pill:
+        backgroundColor: '{colors.foreground}'
+        textColor: '{colors.background}'
+        rounded: '{rounded.pill}'
+        height: '17px'
+        width: '17px'
+    message-bubble-other:
+        backgroundColor: '{colors.card}'
+        textColor: '{colors.foreground}'
+        rounded: '{rounded.bubble-other}'
+        padding: '0.5rem 0.7rem 0.34rem'
+    message-bubble-own:
+        backgroundColor: 'color-mix(in srgb, var(--foreground) 12%, var(--card))'
+        textColor: '{colors.foreground}'
+        rounded: '{rounded.bubble-own}'
+        padding: '0.5rem 0.7rem 0.34rem'
 ---
 
 # Design System: Monochrome Social
@@ -116,7 +116,7 @@ components:
 
 A private club's noticeboard and mail room, drawn in a single ink. The Social surface never
 introduces a palette of its own: surfaces are `var(--card)` over `var(--background)`, structure is
-1px hairlines, and the *only* accent is the foreground itself — buttons, the active tab underline,
+1px hairlines, and the _only_ accent is the foreground itself — buttons, the active tab underline,
 unread pills, and the send button are all solid `var(--foreground)` ink on `var(--background)`
 paper. Chroma is rationed to two meanings: presence green `#5ee890` says _a member is alive right
 now_, and like-red `#ff5470` says _you loved this_. Nothing else on the surface may be colored.
@@ -241,7 +241,7 @@ containers stay quiet.
 ## Layout
 
 `#page-social` is a full-width container capped at 1380px, centered, and is itself a size
-container (`container-type: inline-size`) so children can respond to the *workspace*, not the
+container (`container-type: inline-size`) so children can respond to the _workspace_, not the
 viewport — necessary because the floating player panel eats horizontal space.
 
 - **Feed tab:** a centered `720px + 240–280px` grid. The main stream stays flat and hairline-divided;
@@ -321,6 +321,7 @@ Pill for people-actions, rounded-rect for content, asymmetric for speech. Border
 ## Components
 
 ### Social header — title, presence summary, line tabs
+
 - Compact identity row: "Social" h1 (1.45rem/750) with a live presence summary beneath
   (0.72rem/550 muted): a 7px `#5ee890` dot pulsing a 7px ring every 2.4s, then "1 listening · 2
   online" (or "Everyone is offline" / "Just you here for now").
@@ -330,6 +331,7 @@ Pill for people-actions, rounded-rect for content, asymmetric for speech. Border
 - View swaps animate `social-view-in`: 320ms rise from `translateY(6px)` + fade.
 
 ### Feed composer
+
 42px avatar + borderless autosizing textarea ("What are you listening to?", max 200px) on the page
 itself. A single bottom hairline contains the
 tools row: 32px icon tools (music-2, image-plus; radius 9px; hover = foreground color + wash 0.09 +
@@ -340,6 +342,7 @@ label, and an X. The music picker unfolds as an inset panel (13px radius, `color
 debounce 220ms.
 
 ### Feed streams and post
+
 The feed is an editorial sequence, not one endless algorithmic list. **Your circle** comes first and
 contains posts from accounts the member follows. **Across Monochrome** follows after a generous
 section break and contains the rest of the instance, so no post is rendered twice. Each stream has
@@ -356,6 +359,7 @@ Comments expand inline (`social-view-in` 260ms) behind a 55%-opacity hairline: 2
 focus. Row hover paints a whisper of wash (0.022) over the whole post.
 
 ### Messages workspace — rail
+
 Left 280px rail on a card/background mix with a right hairline. Head: 36px bordered search field on
 the page background; `:focus-within` mixes foreground into the border. Beside it is a 31px new-group
 tool. Chat rows (8px radius): 42px avatar with presence dot, name (0.8rem/650) +
@@ -419,6 +423,7 @@ group rows), **Pinned** (pin-icon chip rows with unpin buttons; hint text when e
 on wash 0.05.
 
 ### Friendship gate
+
 DMs require both people to follow each other. Until then, the thread is masked by an absolute
 overlay: `color-mix(var(--card) 88%, transparent)` + `backdrop-filter: blur(6px)`, a grayscale 68px
 avatar, state-specific copy, and a solid-ink Follow / Follow back pill when the current member still
@@ -427,6 +432,7 @@ follow-back and hides the redundant button. The composer hides while gated. New 
 recipients, and group member choices all enforce the same mutual rule.
 
 ### Group identity and modal
+
 Groups may carry an uploaded square picture. The image replaces the dashed group tile everywhere:
 conversation rail, thread header, details panel, mutual group rows, and share recipients. The large
 picture in details has a persistent image-plus edit affordance; any group member can replace it.
