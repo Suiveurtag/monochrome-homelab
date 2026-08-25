@@ -260,7 +260,9 @@ export class SocialFeed {
             ? `<span class="social-post-repost-chip">${icon.repeat(13)} Reposted from ${escapeHtml(post.repost_of.author)}</span>`
             : '';
         const card = payload ? `<div class="social-post-card">${shareCardHTML(payload)}</div>` : '';
-        const image = imageFile ? `<div class="social-post-image"><img src="${escapeHtml(imageFile)}" alt="" loading="lazy" /></div>` : '';
+        const image = imageFile
+            ? `<div class="social-post-image"><img src="${escapeHtml(imageFile)}" alt="" loading="lazy" /></div>`
+            : '';
         const comments = this.expandedComments.has(post.id) ? this.renderComments(post) : '';
         return `<article class="social-post" data-post-id="${escapeHtml(post.id)}">
             <a class="social-post-avatar" href="${escapeHtml(profileHref(author))}" aria-label="${escapeHtml(name)}">
@@ -342,7 +344,8 @@ export class SocialFeed {
         const share = event.target.closest('[data-post-share]');
         if (share) {
             const post = this.posts.find((entry) => entry.id === share.closest('[data-post-id]')?.dataset.postId);
-            if (post?.payload) this.manager.openShareSheet({ payload: post.payload, item: null, kind: post.payload.type });
+            if (post?.payload)
+                this.manager.openShareSheet({ payload: post.payload, item: null, kind: post.payload.type });
             return;
         }
         const play = event.target.closest('[data-play-kind][data-play-id]');

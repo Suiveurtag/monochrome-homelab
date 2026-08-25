@@ -112,7 +112,10 @@ migrate(
             new AutodateField({ name: 'created', onCreate: true }),
             new AutodateField({ name: 'updated', onCreate: true, onUpdate: true })
         );
-        posts.indexes = ['CREATE INDEX idx_social_posts_author ON social_posts (author)', 'CREATE INDEX idx_social_posts_created ON social_posts (created)'];
+        posts.indexes = [
+            'CREATE INDEX idx_social_posts_author ON social_posts (author)',
+            'CREATE INDEX idx_social_posts_created ON social_posts (created)',
+        ];
         posts.listRule = '@request.auth.id != ""';
         posts.viewRule = '@request.auth.id != ""';
         posts.createRule = '@request.auth.id != "" && author = @request.auth.id';

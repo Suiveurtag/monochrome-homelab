@@ -17434,7 +17434,9 @@ img.cd {
     width: auto;
     border-radius: 999px;
     background: var(--foreground);
-    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), width 260ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition:
+        transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        width 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .social-tab-unread {
@@ -18140,7 +18142,7 @@ img.cd {
     display: flex;
     align-items: center;
     gap: 0.65rem;
-    padding: 0.55rem 0.55rem;
+    padding: 0.55rem;
     border: 0;
     border-radius: 13px;
     background: transparent;
@@ -18477,9 +18479,7 @@ img.cd {
     min-height: 0;
     display: flex;
     flex-direction: column;
-    background:
-        radial-gradient(120% 60% at 50% -8%, rgb(var(--highlight-rgb), 0.05), transparent 55%),
-        transparent;
+    background: radial-gradient(120% 60% at 50% -8%, rgb(var(--highlight-rgb), 0.05), transparent 55%), transparent;
 }
 
 .social-empty-state {
@@ -18755,7 +18755,7 @@ img.cd {
     width: fit-content;
     padding: 0.5rem 0.7rem 0.34rem;
     border: 1px solid var(--border);
-    border-radius: 4px 16px 16px 16px;
+    border-radius: 4px 16px 16px;
     background: var(--card);
     box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
     transition: border-color 160ms ease;
@@ -19727,7 +19727,9 @@ img.cd {
     font-size: 0.82rem;
     font-weight: 700;
     cursor: pointer;
-    transition: opacity 150ms ease, transform 150ms ease;
+    transition:
+        opacity 150ms ease,
+        transform 150ms ease;
 }
 
 .social-group-create:hover:enabled {
@@ -20012,7 +20014,9 @@ img.cd {
     background: transparent;
     color: var(--foreground);
     cursor: pointer;
-    transition: background 150ms ease, color 150ms ease;
+    transition:
+        background 150ms ease,
+        color 150ms ease;
 }
 
 .share-snippet-play:hover {

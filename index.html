@@ -3258,7 +3258,12 @@
                                             </button>
                                             <input type="file" id="social-post-image-input" accept="image/*" hidden />
                                         </div>
-                                        <button type="submit" id="social-post-submit" class="social-post-submit" disabled>
+                                        <button
+                                            type="submit"
+                                            id="social-post-submit"
+                                            class="social-post-submit"
+                                            disabled
+                                        >
                                             Post
                                         </button>
                                     </div>
@@ -3339,10 +3344,7 @@
                                     >
                                         <span class="social-avatar-wrap">
                                             <img id="social-thread-avatar" src="/assets/appicon.png" alt="" />
-                                            <span
-                                                id="social-thread-presence-dot"
-                                                class="social-presence-dot"
-                                            ></span>
+                                            <span id="social-thread-presence-dot" class="social-presence-dot"></span>
                                         </span>
                                         <span class="social-thread-titles">
                                             <strong id="social-thread-name">Member</strong>
@@ -7142,7 +7144,12 @@
                 <div id="share-sheet-music" class="share-sheet-music" hidden>
                     <label class="share-sheet-search">
                         <use svg="!lucide/search.svg" size="15" />
-                        <input id="share-music-search" type="search" placeholder="Search tracks, albums, artists" autocomplete="off" />
+                        <input
+                            id="share-music-search"
+                            type="search"
+                            placeholder="Search tracks, albums, artists"
+                            autocomplete="off"
+                        />
                     </label>
                     <div id="share-music-results" class="share-sheet-recipients"></div>
                 </div>
@@ -7174,10 +7181,21 @@
                 </div>
                 <label class="share-sheet-search">
                     <use svg="!lucide/search.svg" size="15" />
-                    <input id="share-sheet-search" type="search" placeholder="Search friends and groups" autocomplete="off" />
+                    <input
+                        id="share-sheet-search"
+                        type="search"
+                        placeholder="Search friends and groups"
+                        autocomplete="off"
+                    />
                 </label>
                 <div id="share-sheet-recipients" class="share-sheet-recipients"></div>
-                <input id="share-sheet-note" class="share-sheet-note" type="text" placeholder="Add a note (optional)" maxlength="1024" />
+                <input
+                    id="share-sheet-note"
+                    class="share-sheet-note"
+                    type="text"
+                    placeholder="Add a note (optional)"
+                    maxlength="1024"
+                />
                 <footer class="share-sheet-footer">
                     <button id="share-sheet-copy" class="share-sheet-copy" type="button">
                         <use svg="!lucide/link.svg" size="15" />

@@ -133,9 +133,7 @@ export class SocialManager {
             toPayload: (kind, item) => sharePayload(kind, item),
             nowPlaying: () => {
                 const track = this.player?.currentTrack;
-                return track
-                    ? { raw: track, title: track.title, subtitle: getTrackArtists(track) }
-                    : null;
+                return track ? { raw: track, title: track.title, subtitle: getTrackArtists(track) } : null;
             },
             searchMusic: (query) => this.api.search(query),
         });
@@ -299,10 +297,16 @@ export class SocialManager {
             })
             .filter((entry) =>
                 normalized
-                    ? conversationTitle(entry.conversation, this.profiles, this.userId).toLowerCase().includes(normalized)
+                    ? conversationTitle(entry.conversation, this.profiles, this.userId)
+                          .toLowerCase()
+                          .includes(normalized)
                     : true
             )
-            .sort((a, b) => Date.parse(b.last?.created || b.conversation.updated) - Date.parse(a.last?.created || a.conversation.updated));
+            .sort(
+                (a, b) =>
+                    Date.parse(b.last?.created || b.conversation.updated) -
+                    Date.parse(a.last?.created || a.conversation.updated)
+            );
 
         if (!entries.length) {
             const emptyHtml = `<div class="social-rail-empty">${
@@ -459,16 +463,27 @@ export class SocialManager {
             .catch(() => null);
         if (existing) {
             if (existing.last_read && Date.parse(existing.last_read) >= Date.parse(now)) return;
-            await pb.collection('social_reads').update(existing.id, { last_read: now }).catch(() => {});
+            await pb
+                .collection('social_reads')
+                .update(existing.id, { last_read: now })
+                .catch(() => {});
         } else {
-            await pb.collection('social_reads').create({ user: this.userId, conversation: conversation.id, last_read: now }).catch(() => {});
+            await pb
+                .collection('social_reads')
+                .create({ user: this.userId, conversation: conversation.id, last_read: now })
+                .catch(() => {});
         }
         if (conversation.type === 'dm') {
             const stale = (this.messagesByConversation.get(conversation.id) || []).filter(
                 (message) => message.recipient === this.userId && !message.read
             );
             await Promise.all(
-                stale.map((message) => pb.collection('social_messages').update(message.id, { read: true }).catch(() => {}))
+                stale.map((message) =>
+                    pb
+                        .collection('social_messages')
+                        .update(message.id, { read: true })
+                        .catch(() => {})
+                )
             );
         }
         this.refreshSidebarBadge();
@@ -513,7 +528,11 @@ export class SocialManager {
         await this.markConversationRead(conversation);
         const other = (conversation.members || []).find((member) => member !== this.userId);
         const profile = this.profiles.get(other);
-        history.replaceState({}, '', profile?.username ? `/social/@${encodeURIComponent(profile.username)}` : '/social');
+        history.replaceState(
+            {},
+            '',
+            profile?.username ? `/social/@${encodeURIComponent(profile.username)}` : '/social'
+        );
         if (this.pendingShare) {
             const payload = this.pendingShare;
             this.pendingShare = null;
@@ -562,7 +581,9 @@ export class SocialManager {
         const isGroup = conversation.type === 'group';
         const other = (conversation.members || []).find((member) => member !== this.userId);
         const otherProfile = this.profiles.get(other);
-        const state = isGroup ? { online: false, playing: false, track: null } : presenceState(this.presence.get(other));
+        const state = isGroup
+            ? { online: false, playing: false, track: null }
+            : presenceState(this.presence.get(other));
 
         const avatar = document.getElementById('social-thread-avatar');
         const name = document.getElementById('social-thread-name');
@@ -610,7 +631,8 @@ export class SocialManager {
                 const avatar = document.getElementById('social-gate-avatar');
                 if (avatar) avatar.src = avatarFor(otherProfile);
                 const copy = document.getElementById('social-gate-copy');
-                if (copy) copy.textContent = `Follow ${handleFor(otherProfile) || displayName(otherProfile)} to start chatting.`;
+                if (copy)
+                    copy.textContent = `Follow ${handleFor(otherProfile) || displayName(otherProfile)} to start chatting.`;
                 const button = document.getElementById('social-gate-follow');
                 if (button) {
                     button.innerHTML = `${icon.userPlus(15)}<span>Follow</span>`;
@@ -651,7 +673,9 @@ export class SocialManager {
         for (const message of messages) {
             const key = dayKey(message.created);
             if (key && key !== lastDay) {
-                parts.push(`<div class="social-day-spacer" role="separator"><span>${escapeHtml(formatDayLabel(message.created))}</span></div>`);
+                parts.push(
+                    `<div class="social-day-spacer" role="separator"><span>${escapeHtml(formatDayLabel(message.created))}</span></div>`
+                );
                 lastDay = key;
                 previous = null;
             }
@@ -677,9 +701,12 @@ export class SocialManager {
             !own && isGroup && showAuthor
                 ? `<a class="social-message-author" href="${escapeHtml(profileHref(sender))}">${escapeHtml(displayName(sender))}</a>`
                 : '';
-        const avatar = !own && !grouped
-            ? `<a class="social-message-avatar" href="${escapeHtml(profileHref(sender))}" aria-hidden="true" tabindex="-1"><img src="${escapeHtml(avatarFor(sender))}" alt="" loading="lazy" /></a>`
-            : (!own ? '<span class="social-message-avatar" aria-hidden="true"></span>' : '');
+        const avatar =
+            !own && !grouped
+                ? `<a class="social-message-avatar" href="${escapeHtml(profileHref(sender))}" aria-hidden="true" tabindex="-1"><img src="${escapeHtml(avatarFor(sender))}" alt="" loading="lazy" /></a>`
+                : !own
+                  ? '<span class="social-message-avatar" aria-hidden="true"></span>'
+                  : '';
 
         let content = '';
         if (message.body) content += `<p>${escapeHtml(message.body)}</p>`;
@@ -846,9 +873,7 @@ export class SocialManager {
         if (!panel) return;
         panel.hidden = !this.infoOpen;
         document.getElementById('social-thread-info')?.setAttribute('aria-pressed', String(this.infoOpen));
-        document
-            .querySelector('.social-messages-view')
-            ?.classList.toggle('has-info', this.infoOpen);
+        document.querySelector('.social-messages-view')?.classList.toggle('has-info', this.infoOpen);
         if (this.infoOpen) this.renderInfoPanel();
     }
 
@@ -896,11 +921,7 @@ export class SocialManager {
             .filter(Boolean)
             .map((profile) => {
                 const state = presenceState(this.presence.get(profile.user));
-                const status = state.track
-                    ? state.track.title
-                    : state.online
-                      ? 'Online'
-                      : 'Offline';
+                const status = state.track ? state.track.title : state.online ? 'Online' : 'Offline';
                 return `<a class="social-info-member" href="${escapeHtml(profileHref(profile))}">
                     <span class="social-avatar-wrap"><img src="${escapeHtml(avatarFor(profile))}" alt="" loading="lazy" /><span class="social-presence-dot${state.online ? ' is-online' : ''}${state.playing ? ' is-listening' : ''}"></span></span>
                     <span class="social-info-member-copy"><strong>${escapeHtml(displayName(profile))}</strong><small>${escapeHtml(status)}</small></span>
@@ -1013,7 +1034,9 @@ export class SocialManager {
         const groupRows = commonGroups
             .slice(0, 3)
             .map(
-                (entry) => `<div class="social-info-row"><span class="social-group-tile is-small">${icon.users(14)}</span>
+                (
+                    entry
+                ) => `<div class="social-info-row"><span class="social-group-tile is-small">${icon.users(14)}</span>
                 <span class="social-info-row-copy"><strong>${escapeHtml(conversationTitle(entry, this.profiles, this.userId))}</strong><small>${(entry.members || []).length} members</small></span></div>`
             )
             .join('');
@@ -1053,7 +1076,9 @@ export class SocialManager {
     async pinMessage(messageId) {
         const conversation = this.activeConversation();
         if (!conversation) return;
-        const message = (this.messagesByConversation.get(conversation.id) || []).find((entry) => entry.id === messageId);
+        const message = (this.messagesByConversation.get(conversation.id) || []).find(
+            (entry) => entry.id === messageId
+        );
         if (!message) return;
         const sender = this.profiles.get(message.sender);
         const payload = parseJson(message.payload) || {};
@@ -1071,13 +1096,18 @@ export class SocialManager {
                 created: message.created,
             },
         });
-        this.pins = await pb.collection('social_pins').getFullList({ filter: `user="${this.userId}"`, sort: '-created' });
+        this.pins = await pb
+            .collection('social_pins')
+            .getFullList({ filter: `user="${this.userId}"`, sort: '-created' });
         showNotification('Pinned');
         if (this.infoOpen) this.renderInfoPanel();
     }
 
     async unpin(pinId) {
-        await pb.collection('social_pins').delete(pinId).catch(() => {});
+        await pb
+            .collection('social_pins')
+            .delete(pinId)
+            .catch(() => {});
         this.pins = this.pins.filter((pin) => pin.id !== pinId);
         this.renderInfoPanel();
     }
@@ -1087,11 +1117,16 @@ export class SocialManager {
     async toggleMute(conversationId) {
         const existing = this.muteRecords.get(conversationId);
         if (existing) {
-            await pb.collection('social_mutes').delete(existing).catch(() => {});
+            await pb
+                .collection('social_mutes')
+                .delete(existing)
+                .catch(() => {});
             this.muteRecords.delete(conversationId);
             this.muted.delete(conversationId);
         } else {
-            const record = await pb.collection('social_mutes').create({ user: this.userId, conversation: conversationId });
+            const record = await pb
+                .collection('social_mutes')
+                .create({ user: this.userId, conversation: conversationId });
             this.muteRecords.set(conversationId, record.id);
             this.muted.add(conversationId);
         }
@@ -1169,7 +1204,10 @@ export class SocialManager {
         if (!conversation) return;
         const members = (conversation.members || []).filter((member) => member !== this.userId);
         if (!members.length) {
-            await pb.collection('social_conversations').delete(conversationId).catch(() => {});
+            await pb
+                .collection('social_conversations')
+                .delete(conversationId)
+                .catch(() => {});
         } else {
             await pb.collection('social_conversations').update(conversationId, { members });
         }
@@ -1188,7 +1226,11 @@ export class SocialManager {
                 .collection('social_follows')
                 .getFirstListItem(`follower="${this.userId}" && following="${userId}"`)
                 .catch(() => null);
-            if (record) await pb.collection('social_follows').delete(record.id).catch(() => {});
+            if (record)
+                await pb
+                    .collection('social_follows')
+                    .delete(record.id)
+                    .catch(() => {});
             this.following.delete(userId);
             showNotification('Unfollowed');
         } else {
@@ -1255,7 +1297,8 @@ export class SocialManager {
             box.innerHTML = `<img alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" /><button type="button" class="social-lightbox-close" aria-label="Close">${icon.x(20)}</button>`;
             document.body.appendChild(box);
             box.addEventListener('click', (event) => {
-                if (event.target === box || event.target.closest('.social-lightbox-close')) box.classList.remove('is-open');
+                if (event.target === box || event.target.closest('.social-lightbox-close'))
+                    box.classList.remove('is-open');
             });
             window.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape') box.classList.remove('is-open');
@@ -1266,7 +1309,8 @@ export class SocialManager {
     }
 
     handleSocialEscape() {
-        if (shareSheet.opened || document.getElementById('social-lightbox')?.classList.contains('is-open')) return false;
+        if (shareSheet.opened || document.getElementById('social-lightbox')?.classList.contains('is-open'))
+            return false;
         if (this.infoOpen) {
             this.toggleInfoPanel(false);
             return true;
@@ -1276,7 +1320,13 @@ export class SocialManager {
 
     /* -------------------------------- sharing -------------------------------- */
 
-    openShareSheet({ payload = null, kind = 'track', item = null, preselectUser = null, preselectConversation = null } = {}) {
+    openShareSheet({
+        payload = null,
+        kind = 'track',
+        item = null,
+        preselectUser = null,
+        preselectConversation = null,
+    } = {}) {
         const share = payload || (item ? sharePayload(kind, item) : null);
         shareSheet.open({
             payload: share,
@@ -1406,7 +1456,9 @@ export class SocialManager {
                 this.renderMessages();
                 this.scrollMessagesToBottom();
                 if (record.recipient === this.userId && !record.read && event.action === 'create') {
-                    pb.collection('social_messages').update(record.id, { read: true }).catch(() => {});
+                    pb.collection('social_messages')
+                        .update(record.id, { read: true })
+                        .catch(() => {});
                 }
             }
             this.renderRail(document.getElementById('social-conversation-search')?.value || '');
@@ -1477,7 +1529,9 @@ export class SocialManager {
         ]);
         const isFollowing = this.following.has(profile.user);
         button.dataset.followUser = profile.user;
-        button.innerHTML = isFollowing ? `${icon.check(15)}<span>Following</span>` : `${icon.userPlus(15)}<span>Follow</span>`;
+        button.innerHTML = isFollowing
+            ? `${icon.check(15)}<span>Following</span>`
+            : `${icon.userPlus(15)}<span>Follow</span>`;
         button.classList.toggle('is-following', isFollowing);
         button.style.display = 'inline-flex';
         if (stats) {
@@ -1579,7 +1633,11 @@ export class SocialManager {
         document.getElementById('social-messages')?.addEventListener('click', (event) => {
             const snippet = event.target.closest('[data-snippet-play]');
             if (snippet) {
-                this.playSnippet(snippet.dataset.snippetPlay, Number(snippet.dataset.snippetStart) || 0, Number(snippet.dataset.snippetEnd) || 0).catch(console.error);
+                this.playSnippet(
+                    snippet.dataset.snippetPlay,
+                    Number(snippet.dataset.snippetStart) || 0,
+                    Number(snippet.dataset.snippetEnd) || 0
+                ).catch(console.error);
                 return;
             }
             const lightbox = event.target.closest('[data-lightbox]');
@@ -1678,7 +1736,9 @@ export class SocialManager {
             }
         });
         window.addEventListener('resize', () => {
-            const activeTab = document.getElementById(this.tab === 'messages' ? 'social-tab-messages' : 'social-tab-feed');
+            const activeTab = document.getElementById(
+                this.tab === 'messages' ? 'social-tab-messages' : 'social-tab-feed'
+            );
             this.syncTabsThumb(activeTab);
         });
         window.addEventListener('keydown', (event) => {

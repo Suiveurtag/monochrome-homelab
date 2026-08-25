@@ -10,7 +10,8 @@ migrate(
         if (recipient) {
             recipient.required = false;
         }
-        const memberRead = '@request.auth.id != "" && (sender = @request.auth.id || recipient = @request.auth.id || conversation.members.id ?= @request.auth.id)';
+        const memberRead =
+            '@request.auth.id != "" && (sender = @request.auth.id || recipient = @request.auth.id || conversation.members.id ?= @request.auth.id)';
         messages.listRule = memberRead;
         messages.viewRule = memberRead;
         app.save(messages);

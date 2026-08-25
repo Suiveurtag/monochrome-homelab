@@ -412,7 +412,8 @@ export class ShareSheet {
         const range = document.getElementById('share-snippet-range');
         const length = document.getElementById('share-snippet-length');
         if (!this.selection) return;
-        if (range) range.textContent = `${formatDuration(this.selection.start)} – ${formatDuration(this.selection.end)}`;
+        if (range)
+            range.textContent = `${formatDuration(this.selection.start)} – ${formatDuration(this.selection.end)}`;
         if (length) length.textContent = `${formatDuration(this.selection.end - this.selection.start)} long`;
     }
 

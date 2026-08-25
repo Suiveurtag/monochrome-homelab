@@ -1,242 +1,409 @@
 {
-  "schemaVersion": 2,
-  "generatedAt": "2026-08-24T00:00:00Z",
-  "title": "Design System: Monochrome Social",
-  "extensions": {
-    "colorMeta": {
-      "background": {
-        "role": "neutral",
-        "displayName": "Page Ink",
-        "canonical": "var(--background)",
-        "tonalRamp": ["#050505", "#0a0a0a", "#141414", "#1f1f1f", "#2a2a2a", "#3d3d3d", "#6b6b6b", "#a0a0a0"]
-      },
-      "foreground": {
-        "role": "primary",
-        "displayName": "Foreground Ink (the accent)",
-        "canonical": "var(--foreground)",
-        "tonalRamp": ["#5a5a5a", "#787878", "#969696", "#b4b4b4", "#c7c7c7", "#dadada", "#e8e8e8", "#f5f5f5"]
-      },
-      "card": {
-        "role": "neutral",
-        "displayName": "Card Surface",
-        "canonical": "var(--card)",
-        "tonalRamp": ["#0f0f0f", "#141414", "#1a1a1a", "#222222", "#2a2a2a", "#3a3a3a", "#4d4d4d", "#666666"]
-      },
-      "muted": {
-        "role": "neutral",
-        "displayName": "Muted Fill (avatar/art placeholder)",
-        "canonical": "var(--muted)",
-        "tonalRamp": ["#141414", "#1f1f1f", "#282828", "#333333", "#454545", "#5c5c5c", "#7a7a7a", "#999999"]
-      },
-      "muted-foreground": {
-        "role": "neutral",
-        "displayName": "Muted Text",
-        "canonical": "var(--muted-foreground)",
-        "tonalRamp": ["#4a4a4a", "#5e5e5e", "#727272", "#868686", "#a0a0a0", "#b4b4b4", "#c8c8c8", "#dcdcdc"]
-      },
-      "border": {
-        "role": "neutral",
-        "displayName": "Hairline",
-        "canonical": "var(--border)",
-        "tonalRamp": ["#1a1a1a", "#2a2a2a", "#3a3a3a", "#4a4a4a", "#5f5f5f", "#787878", "#9a9a9a", "#bfbfbf"]
-      },
-      "secondary": {
-        "role": "neutral",
-        "displayName": "Secondary Fill",
-        "canonical": "var(--secondary)",
-        "tonalRamp": ["#141414", "#1f1f1f", "#2a2a2a", "#383838", "#4a4a4a", "#616161", "#808080", "#a5a5a5"]
-      },
-      "highlight": {
-        "role": "primary",
-        "displayName": "Highlight (washes via --highlight-rgb)",
-        "canonical": "rgb(var(--highlight-rgb))",
-        "tonalRamp": ["rgb(245 245 245 / 0.02)", "rgb(245 245 245 / 0.045)", "rgb(245 245 245 / 0.06)", "rgb(245 245 245 / 0.08)", "rgb(245 245 245 / 0.09)", "rgb(245 245 245 / 0.1)", "rgb(245 245 245 / 0.12)", "rgb(245 245 245 / 0.16)"]
-      },
-      "presence-green": {
-        "role": "tertiary",
-        "displayName": "Presence Green (alive only)",
-        "canonical": "#5ee890",
-        "tonalRamp": ["#0d3a20", "#145c32", "#1d7a43", "#279954", "#3cb96a", "#5ee890", "#8cefb0", "#c2f8d5"]
-      },
-      "listening-white": {
-        "role": "tertiary",
-        "displayName": "Listening White (playing now)",
-        "canonical": "#ffffff",
-        "tonalRamp": ["#404040", "#595959", "#737373", "#8c8c8c", "#a6a6a6", "#bfbfbf", "#d9d9d9", "#ffffff"]
-      },
-      "like-red": {
-        "role": "tertiary",
-        "displayName": "Like Red (liked hearts only)",
-        "canonical": "#ff5470",
-        "tonalRamp": ["#4d0f1a", "#7a1728", "#a61f36", "#d02a44", "#ef3f58", "#ff5470", "#ff8ba0", "#ffc4d0"]
-      }
+    "schemaVersion": 2,
+    "generatedAt": "2026-08-24T00:00:00Z",
+    "title": "Design System: Monochrome Social",
+    "extensions": {
+        "colorMeta": {
+            "background": {
+                "role": "neutral",
+                "displayName": "Page Ink",
+                "canonical": "var(--background)",
+                "tonalRamp": ["#050505", "#0a0a0a", "#141414", "#1f1f1f", "#2a2a2a", "#3d3d3d", "#6b6b6b", "#a0a0a0"]
+            },
+            "foreground": {
+                "role": "primary",
+                "displayName": "Foreground Ink (the accent)",
+                "canonical": "var(--foreground)",
+                "tonalRamp": ["#5a5a5a", "#787878", "#969696", "#b4b4b4", "#c7c7c7", "#dadada", "#e8e8e8", "#f5f5f5"]
+            },
+            "card": {
+                "role": "neutral",
+                "displayName": "Card Surface",
+                "canonical": "var(--card)",
+                "tonalRamp": ["#0f0f0f", "#141414", "#1a1a1a", "#222222", "#2a2a2a", "#3a3a3a", "#4d4d4d", "#666666"]
+            },
+            "muted": {
+                "role": "neutral",
+                "displayName": "Muted Fill (avatar/art placeholder)",
+                "canonical": "var(--muted)",
+                "tonalRamp": ["#141414", "#1f1f1f", "#282828", "#333333", "#454545", "#5c5c5c", "#7a7a7a", "#999999"]
+            },
+            "muted-foreground": {
+                "role": "neutral",
+                "displayName": "Muted Text",
+                "canonical": "var(--muted-foreground)",
+                "tonalRamp": ["#4a4a4a", "#5e5e5e", "#727272", "#868686", "#a0a0a0", "#b4b4b4", "#c8c8c8", "#dcdcdc"]
+            },
+            "border": {
+                "role": "neutral",
+                "displayName": "Hairline",
+                "canonical": "var(--border)",
+                "tonalRamp": ["#1a1a1a", "#2a2a2a", "#3a3a3a", "#4a4a4a", "#5f5f5f", "#787878", "#9a9a9a", "#bfbfbf"]
+            },
+            "secondary": {
+                "role": "neutral",
+                "displayName": "Secondary Fill",
+                "canonical": "var(--secondary)",
+                "tonalRamp": ["#141414", "#1f1f1f", "#2a2a2a", "#383838", "#4a4a4a", "#616161", "#808080", "#a5a5a5"]
+            },
+            "highlight": {
+                "role": "primary",
+                "displayName": "Highlight (washes via --highlight-rgb)",
+                "canonical": "rgb(var(--highlight-rgb))",
+                "tonalRamp": [
+                    "rgb(245 245 245 / 0.02)",
+                    "rgb(245 245 245 / 0.045)",
+                    "rgb(245 245 245 / 0.06)",
+                    "rgb(245 245 245 / 0.08)",
+                    "rgb(245 245 245 / 0.09)",
+                    "rgb(245 245 245 / 0.1)",
+                    "rgb(245 245 245 / 0.12)",
+                    "rgb(245 245 245 / 0.16)"
+                ]
+            },
+            "presence-green": {
+                "role": "tertiary",
+                "displayName": "Presence Green (alive only)",
+                "canonical": "#5ee890",
+                "tonalRamp": ["#0d3a20", "#145c32", "#1d7a43", "#279954", "#3cb96a", "#5ee890", "#8cefb0", "#c2f8d5"]
+            },
+            "listening-white": {
+                "role": "tertiary",
+                "displayName": "Listening White (playing now)",
+                "canonical": "#ffffff",
+                "tonalRamp": ["#404040", "#595959", "#737373", "#8c8c8c", "#a6a6a6", "#bfbfbf", "#d9d9d9", "#ffffff"]
+            },
+            "like-red": {
+                "role": "tertiary",
+                "displayName": "Like Red (liked hearts only)",
+                "canonical": "#ff5470",
+                "tonalRamp": ["#4d0f1a", "#7a1728", "#a61f36", "#d02a44", "#ef3f58", "#ff5470", "#ff8ba0", "#ffc4d0"]
+            }
+        },
+        "typographyMeta": {
+            "display": { "displayName": "Display", "purpose": "The single 'Social' page h1." },
+            "title": { "displayName": "Title", "purpose": "Thread names, panel heroes, card headings." },
+            "body": { "displayName": "Body", "purpose": "Feed post text (0.9rem/1.55, pre-wrap)." },
+            "message": { "displayName": "Message", "purpose": "Chat bubble text (0.82rem/1.5, pre-wrap)." },
+            "meta": {
+                "displayName": "Meta",
+                "purpose": "Handles, timestamps, previews, status lines; tabular-nums for clocks."
+            },
+            "label": {
+                "displayName": "Micro Label",
+                "purpose": "Uppercase 0.6rem/750 section labels with 0.1em tracking."
+            }
+        },
+        "shadows": [
+            {
+                "name": "workspace",
+                "value": "0 24px 70px rgb(0 0 0 / 0.18)",
+                "purpose": "The messages workspace shell."
+            },
+            {
+                "name": "composer-focus",
+                "value": "0 2px 6px rgb(0 0 0 / 0.08), 0 14px 38px rgb(0 0 0 / 0.16)",
+                "purpose": "Both composers on :focus-within, with a foreground-mixed border."
+            },
+            {
+                "name": "bubble",
+                "value": "0 1px 2px rgb(0 0 0 / 0.05)",
+                "purpose": "Message bubbles; the only shadowed inline element."
+            },
+            {
+                "name": "hover-tool",
+                "value": "0 3px 10px rgb(0 0 0 / 0.18)",
+                "purpose": "Hover-revealed message pin button."
+            },
+            {
+                "name": "docked-overlay",
+                "value": "-24px 0 60px rgb(0 0 0 / 0.28)",
+                "purpose": "Info panel overlaying the thread below 1240px container width."
+            },
+            {
+                "name": "group-modal",
+                "value": "0 30px 90px rgb(0 0 0 / 0.4)",
+                "purpose": "New-group modal card (opaque overlay recipe)."
+            },
+            {
+                "name": "share-sheet",
+                "value": "0 34px 110px rgb(0 0 0 / 0.45)",
+                "purpose": "Share sheet card (opaque overlay recipe)."
+            },
+            {
+                "name": "lightbox",
+                "value": "0 40px 120px rgb(0 0 0 / 0.5)",
+                "purpose": "Lightbox image on the 82% black veil."
+            }
+        ],
+        "motion": [
+            {
+                "name": "ease-social",
+                "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+                "purpose": "The only easing on the surface: thumb slide, view swaps, message enter, panel slide, share sheet, heart pop, hover lifts."
+            },
+            {
+                "name": "duration-view",
+                "value": "320ms",
+                "purpose": "Tab/view swap: social-view-in (translateY(6px) + fade)."
+            },
+            {
+                "name": "duration-message",
+                "value": "240ms",
+                "purpose": "Message enter: translateY(7px) + fade. Also share-sheet editor and group modal card rise."
+            },
+            { "name": "duration-panel", "value": "280ms", "purpose": "Info panel slide-in: translateX(14px) + fade." },
+            {
+                "name": "duration-thumb",
+                "value": "260ms",
+                "purpose": "Segmented-control thumb transform + width (JS-measured)."
+            },
+            {
+                "name": "duration-sheet",
+                "value": "240ms",
+                "purpose": "Share-sheet card in (translateY(14px) scale(0.985)); scrim 220ms fade."
+            },
+            {
+                "name": "duration-heart",
+                "value": "380ms",
+                "purpose": "social-heart-pop keyframe on like: scale 0.6 -> 1.25 -> 1."
+            },
+            {
+                "name": "loop-presence-pulse",
+                "value": "2.4s ease-out infinite",
+                "purpose": "Presence dot ring: box-shadow 0 0 0 0 rgb(94 232 144 / 0.45) -> 0 0 0 7px transparent. One of two permitted loops."
+            },
+            {
+                "name": "loop-equalizer",
+                "value": "0.75s ease-in-out infinite alternate",
+                "purpose": "3-bar listening equalizer (2px bars, staggered -0.35s/-0.55s delays). The other permitted loop."
+            },
+            {
+                "name": "hover-lift",
+                "value": "140-160ms ease; translateY(-1px)",
+                "purpose": "Buttons, tools, pins, send. Active press: scale(0.94). Chat row hover: translateX(2px)."
+            },
+            {
+                "name": "reduced-motion",
+                "value": "prefers-reduced-motion: reduce -> animation: none; transition: none",
+                "purpose": "Kill-list covers equalizer, pulse, heart, message rows, views, thumb, sheet, scrim, modal, comments, snippet editor, info panel."
+            }
+        ],
+        "breakpoints": [
+            {
+                "name": "container-info-dock",
+                "value": "@container (max-width: 1240px)",
+                "purpose": "Info panel leaves the grid and becomes a right overlay (min(340px, 88%)) — container query on #page-social, not a media query."
+            },
+            {
+                "name": "md",
+                "value": "900px",
+                "purpose": "Messages workspace collapses to one pane; rail/thread swap via .has-thread; back chevron appears; feed posts tighten."
+            },
+            {
+                "name": "sm",
+                "value": "640px",
+                "purpose": "Workspace height calc(100dvh - 250px), radius 16px, info panel full-width shadowless, share sheet 16px radius, message stacks 86%."
+            }
+        ],
+        "patterns": [
+            {
+                "name": "Opaque overlay recipe",
+                "value": "background-color: var(--background); background-image: linear-gradient(var(--card), var(--card));",
+                "purpose": "Every floating card (group modal, share sheet, docked info panel) — opaque and theme-proof."
+            },
+            {
+                "name": "Change-guarded re-render",
+                "value": "if (container.innerHTML !== html) container.innerHTML = html;",
+                "purpose": "All list renders (rail, people, messages, feed) compare before assigning to avoid churn."
+            },
+            {
+                "name": "Optimistic send",
+                "value": "temp id `tmp-N` + pending clock tick, replaced by created record / realtime event",
+                "purpose": "Messages appear instantly with a clock icon; ticks upgrade to double-check (delivered) and accent double-check (read)."
+            },
+            {
+                "name": "Icon factories",
+                "value": "import I_X from '!lucide/x.svg?svg&icon' -> I_X(size, attrs?)",
+                "purpose": "JS-rendered markup (js/social-icons.js registry). Static index.html uses <use svg=\"!lucide/x.svg\" size=\"n\"> build-time transform."
+            },
+            {
+                "name": "escapeHtml everywhere",
+                "value": "escapeHtml(...) on every interpolated value incl. attributes",
+                "purpose": "All template literals rendering user data."
+            },
+            {
+                "name": "Scoped [hidden] overrides",
+                "value": ".social-unread-badge[hidden], .social-tab-unread[hidden], .social-*-view[hidden], .share-sheet[hidden]... { display: none }",
+                "purpose": "Legacy span { display: inline-block } outranks the UA [hidden] stylesheet; each affected component re-asserts display:none."
+            },
+            {
+                "name": "Realtime + polling fallback",
+                "value": "pb.collection('*').subscribe with 15s polling fallback; presence heartbeat 30s / 90s active window / 15s progress",
+                "purpose": "PocketBase collections: social_profiles, social_presence, social_follows, social_conversations (dm|group), social_messages (kind text|image|track|album|artist|snippet, payload JSON incl snippet {start,end,duration,peaks}), social_posts, social_post_likes, social_post_comments, social_pins, social_mutes, social_reads."
+            },
+            {
+                "name": "Waveform pipeline",
+                "value": "downsamplePeaks(peaks, 96) for cards; DPR-aware canvas (bar width ~6px, 60% fill) reading colors from computed --muted-foreground/--foreground",
+                "purpose": "Snippet cards render 96 bars with in-range highlight; share-sheet cropper adds draggable handles (14px hit, 3s min, 30s default)."
+            }
+        ]
     },
-    "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "The single 'Social' page h1." },
-      "title": { "displayName": "Title", "purpose": "Thread names, panel heroes, card headings." },
-      "body": { "displayName": "Body", "purpose": "Feed post text (0.9rem/1.55, pre-wrap)." },
-      "message": { "displayName": "Message", "purpose": "Chat bubble text (0.82rem/1.5, pre-wrap)." },
-      "meta": { "displayName": "Meta", "purpose": "Handles, timestamps, previews, status lines; tabular-nums for clocks." },
-      "label": { "displayName": "Micro Label", "purpose": "Uppercase 0.6rem/750 section labels with 0.1em tracking." }
-    },
-    "shadows": [
-      { "name": "workspace", "value": "0 24px 70px rgb(0 0 0 / 0.18)", "purpose": "The messages workspace shell." },
-      { "name": "composer-focus", "value": "0 2px 6px rgb(0 0 0 / 0.08), 0 14px 38px rgb(0 0 0 / 0.16)", "purpose": "Both composers on :focus-within, with a foreground-mixed border." },
-      { "name": "bubble", "value": "0 1px 2px rgb(0 0 0 / 0.05)", "purpose": "Message bubbles; the only shadowed inline element." },
-      { "name": "hover-tool", "value": "0 3px 10px rgb(0 0 0 / 0.18)", "purpose": "Hover-revealed message pin button." },
-      { "name": "docked-overlay", "value": "-24px 0 60px rgb(0 0 0 / 0.28)", "purpose": "Info panel overlaying the thread below 1240px container width." },
-      { "name": "group-modal", "value": "0 30px 90px rgb(0 0 0 / 0.4)", "purpose": "New-group modal card (opaque overlay recipe)." },
-      { "name": "share-sheet", "value": "0 34px 110px rgb(0 0 0 / 0.45)", "purpose": "Share sheet card (opaque overlay recipe)." },
-      { "name": "lightbox", "value": "0 40px 120px rgb(0 0 0 / 0.5)", "purpose": "Lightbox image on the 82% black veil." }
+    "components": [
+        {
+            "name": "Social Segmented Tabs",
+            "kind": "nav",
+            "refersTo": "social-tab-active",
+            "description": "Pill segmented control (Feed/Messages) with a solid-ink thumb that JS measures and slides beneath the active tab; unread pill inverts when its tab is selected.",
+            "html": "<nav class=\"ds-tabs\" role=\"tablist\" aria-label=\"Social sections\"><span class=\"ds-thumb\" aria-hidden=\"true\"></span><button class=\"ds-tab\" role=\"tab\" aria-selected=\"true\">Feed</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">Messages <span class=\"ds-unread\">2</span></button></nav>",
+            "css": ".ds-tabs { position: relative; display: inline-flex; padding: 3px; border: 1px solid var(--border); border-radius: 999px; background: color-mix(in srgb, var(--card) 72%, transparent); font-family: var(--font-family, Inter, sans-serif); } .ds-thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: 62px; border-radius: 999px; background: var(--foreground); transition: transform 260ms cubic-bezier(0.22,1,0.36,1), width 260ms cubic-bezier(0.22,1,0.36,1); } .ds-tab { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.44rem 1.05rem; border: 0; border-radius: 999px; background: transparent; color: var(--muted-foreground); font: inherit; font-size: 0.8rem; font-weight: 650; cursor: pointer; transition: color 200ms ease; } .ds-tab[aria-selected='true'] { color: var(--background); } .ds-tab:hover { color: var(--foreground); } .ds-tab[aria-selected='true']:hover { color: var(--background); } .ds-tab:focus-visible { outline: 2px solid var(--highlight); outline-offset: 2px; } .ds-unread { min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: var(--foreground); color: var(--background); font-size: 0.6rem; font-weight: 800; line-height: 17px; text-align: center; } .ds-tab[aria-selected='true'] .ds-unread { background: var(--background); color: var(--foreground); outline: 1px solid var(--border); }"
+        },
+        {
+            "name": "Presence Summary",
+            "kind": "custom",
+            "refersTo": null,
+            "description": "Live 'who is here' line under the page title: a 7px presence-green dot pulsing a ring every 2.4s plus a muted count.",
+            "html": "<p class=\"ds-presence\"><span class=\"ds-pulse\" aria-hidden=\"true\"></span>1 listening · 2 online</p>",
+            "css": ".ds-presence { display: inline-flex; align-items: center; gap: 0.45rem; margin: 0; color: var(--muted-foreground); font-family: var(--font-family, Inter, sans-serif); font-size: 0.72rem; font-weight: 550; } .ds-pulse { width: 7px; height: 7px; border-radius: 50%; background: #5ee890; animation: ds-presence-pulse 2.4s ease-out infinite; } @keyframes ds-presence-pulse { 0% { box-shadow: 0 0 0 0 rgb(94 232 144 / 0.45); } 70% { box-shadow: 0 0 0 7px rgb(94 232 144 / 0); } 100% { box-shadow: 0 0 0 0 rgb(94 232 144 / 0); } } @media (prefers-reduced-motion: reduce) { .ds-pulse { animation: none; } }"
+        },
+        {
+            "name": "Feed Post",
+            "kind": "card",
+            "refersTo": null,
+            "description": "Card-less feed post: hairline bottom divider, 42px avatar, author/handle/time head, body, and a pill ghost action row with a liked (red, filled) heart.",
+            "html": "<article class=\"ds-post\"><span class=\"ds-avatar\">N</span><div class=\"ds-main\"><header class=\"ds-head\"><strong class=\"ds-author\">Noah.</strong><span class=\"ds-handle\">@noah</span><span class=\"ds-dot\" aria-hidden=\"true\"></span><time class=\"ds-time\">4h</time></header><p class=\"ds-body\">the homelab FLAC upgrade is audible. no notes.</p><footer class=\"ds-actions\"><button class=\"ds-action is-liked\" aria-pressed=\"true\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z\"/></svg><span>1</span></button><button class=\"ds-action\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M7.9 20A9 9 0 1 0 4 16.1L2 22Z\"/></svg><span></span></button><button class=\"ds-action\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m17 2 4 4-4 4\"/><path d=\"M3 11v-1a4 4 0 0 1 4-4h14\"/><path d=\"m7 22-4-4 4-4\"/><path d=\"M21 13v1a4 4 0 0 1-4 4H3\"/></svg><span></span></button></footer></div></article>",
+            "css": ".ds-post { display: flex; gap: 0.8rem; padding: 1.05rem 0.6rem; border-bottom: 1px solid color-mix(in srgb, var(--border) 62%, transparent); font-family: var(--font-family, Inter, sans-serif); color: var(--foreground); transition: background 180ms ease; max-width: 660px; } .ds-post:hover { background: rgb(var(--highlight-rgb, 245 245 245), 0.022); } .ds-avatar { width: 42px; height: 42px; flex: 0 0 42px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 50%; background: var(--muted); font-size: 0.9rem; font-weight: 700; } .ds-main { min-width: 0; flex: 1; } .ds-head { display: flex; align-items: baseline; gap: 0.45rem; } .ds-author { font-size: 0.86rem; font-weight: 700; letter-spacing: -0.01em; } .ds-handle, .ds-time { color: var(--muted-foreground); font-size: 0.72rem; } .ds-dot::before { content: '\\00b7'; } .ds-time { font-size: 0.7rem; white-space: nowrap; } .ds-body { margin: 0.35rem 0 0; font-size: 0.9rem; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap; } .ds-actions { display: flex; align-items: center; gap: 0.35rem; margin-top: 0.55rem; } .ds-action { display: inline-flex; align-items: center; gap: 0.34rem; padding: 0.32rem 0.6rem; border: 0; border-radius: 999px; background: transparent; color: var(--muted-foreground); font: inherit; font-size: 0.72rem; font-weight: 650; cursor: pointer; transition: color 150ms ease, background 150ms ease, transform 150ms ease; } .ds-action:hover { color: var(--foreground); background: rgb(var(--highlight-rgb, 245 245 245), 0.08); } .ds-action:active { transform: scale(0.94); } .ds-action.is-liked { color: #ff5470; } .ds-action.is-liked svg { fill: currentcolor; animation: ds-heart-pop 380ms cubic-bezier(0.22,1,0.36,1); } @keyframes ds-heart-pop { 0% { transform: scale(0.6); } 55% { transform: scale(1.25); } 100% { transform: scale(1); } } @media (prefers-reduced-motion: reduce) { .ds-action.is-liked svg { animation: none; } }"
+        },
+        {
+            "name": "Chat Rail Row",
+            "kind": "nav",
+            "refersTo": "social-chat-row-active",
+            "description": "Conversation row with avatar + presence dot, preview line, unread pill, and the active state (wash + 3px ink bar).",
+            "html": "<button class=\"ds-row is-active\" type=\"button\"><span class=\"ds-wrap\"><span class=\"ds-face\">L</span><span class=\"ds-presence is-online\" aria-hidden=\"true\"></span></span><span class=\"ds-copy\"><span class=\"ds-top\"><strong>Luna</strong><time>Yesterday</time></span><span class=\"ds-bottom\"><small>You: hear this one?</small><span class=\"ds-pill\">2</span></span></span></button>",
+            "css": ".ds-row { position: relative; width: 100%; display: flex; align-items: center; gap: 0.65rem; padding: 0.55rem; border: 0; border-radius: 13px; background: transparent; color: var(--foreground); font-family: var(--font-family, Inter, sans-serif); cursor: pointer; text-align: left; transition: background 150ms ease, transform 150ms ease; } .ds-row:hover { background: rgb(var(--highlight-rgb, 245 245 245), 0.06); transform: translateX(2px); } .ds-row.is-active { background: rgb(var(--highlight-rgb, 245 245 245), 0.09); } .ds-row.is-active::before { content: ''; position: absolute; left: 0.06rem; top: 50%; width: 3px; height: 55%; border-radius: 999px; background: var(--foreground); transform: translateY(-50%); } .ds-wrap { position: relative; width: 42px; height: 42px; flex: 0 0 42px; } .ds-face { width: 100%; height: 100%; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 50%; background: var(--muted); font-weight: 700; } .ds-presence { position: absolute; right: 0; bottom: 1px; width: 10px; height: 10px; box-sizing: border-box; border: 2px solid var(--card); border-radius: 50%; background: color-mix(in srgb, var(--muted-foreground) 55%, transparent); } .ds-presence.is-online { background: #5ee890; } .ds-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 0.12rem; } .ds-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; } .ds-top strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem; font-weight: 650; } .ds-top time { flex: 0 0 auto; color: var(--muted-foreground); font-size: 0.6rem; } .ds-bottom { display: flex; align-items: center; gap: 0.4rem; min-width: 0; } .ds-bottom small { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-foreground); font-size: 0.68rem; font-weight: 550; } .ds-pill { min-width: 17px; height: 17px; padding: 0 5px; border-radius: 999px; background: var(--foreground); color: var(--background); font-size: 0.58rem; font-weight: 800; line-height: 17px; text-align: center; }"
+        },
+        {
+            "name": "Message Bubbles (other / own)",
+            "kind": "custom",
+            "refersTo": "message-bubble-other",
+            "description": "Asymmetric speech bubbles: 4px corner toward the sender, 16px elsewhere; own bubbles mix 12% foreground into the card; foot carries clock + WhatsApp-style ticks.",
+            "html": "<div class=\"ds-thread\"><div class=\"ds-msg\"><div class=\"ds-bubble other\"><p>you have to hear this part</p><span class=\"ds-foot\"><time>07:24 PM</time></span></div></div><div class=\"ds-msg own\"><div class=\"ds-bubble own-m\"><p>on it now</p><span class=\"ds-foot\"><time>07:25 PM</time><span class=\"ds-ticks is-read\" title=\"Read\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M18 6 7 17l-5-5\"/><path d=\"m22 10-7.5 7.5L13 16\"/></svg></span></span></div></div></div>",
+            "css": ".ds-thread { display: flex; flex-direction: column; gap: 0.55rem; font-family: var(--font-family, Inter, sans-serif); color: var(--foreground); max-width: 560px; } .ds-msg { display: flex; margin: 0; animation: ds-msg-in 240ms cubic-bezier(0.22,1,0.36,1); } .ds-msg.own { justify-content: flex-end; } @keyframes ds-msg-in { from { opacity: 0; transform: translateY(7px); } } .ds-bubble { position: relative; width: fit-content; padding: 0.5rem 0.7rem 0.34rem; border: 1px solid var(--border); border-radius: 4px 16px 16px 16px; background: var(--card); box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); transition: border-color 160ms ease; } .ds-bubble p { margin: 0.05rem 0.02rem 0.3rem; font-size: 0.82rem; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; } .ds-msg:hover .ds-bubble { border-color: color-mix(in srgb, var(--foreground) 26%, var(--border)); } .ds-bubble.own-m { border-color: color-mix(in srgb, var(--foreground) 22%, var(--border)); border-radius: 16px 4px 16px 16px; background: color-mix(in srgb, var(--foreground) 12%, var(--card)); } .ds-foot { display: flex; align-items: center; justify-content: flex-end; gap: 0.28rem; margin-top: 0.12rem; } .ds-foot time { color: var(--muted-foreground); font-size: 0.56rem; white-space: nowrap; font-variant-numeric: tabular-nums; } .ds-ticks { display: inline-flex; color: var(--muted-foreground); } .ds-ticks.is-read { color: var(--foreground); } .ds-ticks.is-pending { opacity: 0.6; } @media (prefers-reduced-motion: reduce) { .ds-msg { animation: none; } }"
+        },
+        {
+            "name": "Snippet Card",
+            "kind": "custom",
+            "refersTo": null,
+            "description": "Shared audio snippet: ink play disc, title/subtitle, 96-bar waveform with in-range highlight, tabular range label.",
+            "html": "<div class=\"ds-snippet\"><div class=\"ds-head\"><button class=\"ds-play\" type=\"button\" aria-label=\"Play snippet\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polygon points=\"6 3 20 12 6 21 6 3\"/></svg></button><div class=\"ds-copy\"><strong>Desire Be Desire Go</strong><small>Tame Impala</small></div></div><div class=\"ds-wave\" aria-hidden=\"true\"><i style=\"height:30%\"></i><i style=\"height:62%\"></i><i style=\"height:88%\" class=\"is-in\"></i><i style=\"height:45%\" class=\"is-in\"></i><i style=\"height:70%\" class=\"is-in\"></i><i style=\"height:24%\"></i><i style=\"height:55%\"></i><i style=\"height:38%\"></i></div><span class=\"ds-range\">0:12 &ndash; 0:45</span></div>",
+            "css": ".ds-snippet { width: min(320px, 66vw); padding: 0.55rem 0.6rem 0.5rem; border: 1px solid color-mix(in srgb, var(--foreground) 16%, var(--border)); border-radius: 12px; background: rgb(0 0 0 / 0.14); font-family: var(--font-family, Inter, sans-serif); color: var(--foreground); } .ds-head { display: flex; align-items: center; gap: 0.5rem; } .ds-play { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; padding: 0 0 0 2px; border: 0; border-radius: 50%; background: var(--foreground); color: var(--background); cursor: pointer; transition: transform 150ms cubic-bezier(0.22,1,0.36,1); } .ds-play:hover { transform: scale(1.07); } .ds-copy { min-width: 0; } .ds-copy strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.74rem; } .ds-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-foreground); font-size: 0.62rem; } .ds-wave { display: flex; align-items: center; gap: 1.5px; height: 34px; margin-top: 0.5rem; } .ds-wave i { flex: 1; min-width: 1px; border-radius: 2px; background: color-mix(in srgb, var(--foreground) 26%, transparent); } .ds-wave i.is-in { background: var(--foreground); } .ds-range { display: block; margin-top: 0.4rem; color: var(--muted-foreground); font-size: 0.6rem; font-variant-numeric: tabular-nums; }"
+        },
+        {
+            "name": "Message Composer Send Button",
+            "kind": "button",
+            "refersTo": "social-primary-button",
+            "description": "Solid-ink send button (38px, 12px radius) that morphs into a circle and lifts 1px on hover; 0.35 opacity when disabled.",
+            "html": "<div class=\"ds-bar\"><button class=\"ds-tool\" type=\"button\" aria-label=\"Send an image\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" ry=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21\"/></svg></button><span class=\"ds-field\">Message</span><button class=\"ds-send\" type=\"submit\" aria-label=\"Send message\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 19V5\"/><path d=\"m5 12 7-7 7 7\"/></svg></button></div>",
+            "css": ".ds-bar { display: flex; align-items: flex-end; gap: 0.35rem; padding: 0.32rem 0.32rem 0.32rem 0.45rem; border: 1px solid var(--border); border-radius: 16px; background: color-mix(in srgb, var(--card) 94%, transparent); box-shadow: 0 10px 30px rgb(0 0 0 / 0.12); font-family: var(--font-family, Inter, sans-serif); color: var(--foreground); transition: border-color 180ms ease, box-shadow 180ms ease; max-width: 560px; } .ds-bar:focus-within { border-color: color-mix(in srgb, var(--foreground) 30%, var(--border)); box-shadow: 0 2px 6px rgb(0 0 0 / 0.08), 0 14px 38px rgb(0 0 0 / 0.16); } .ds-tool { display: grid; place-items: center; width: 36px; height: 38px; flex: 0 0 36px; border: 0; border-radius: 11px; background: transparent; color: var(--muted-foreground); cursor: pointer; transition: color 150ms ease, background 150ms ease, transform 150ms ease; } .ds-tool:hover { color: var(--foreground); background: rgb(var(--highlight-rgb, 245 245 245), 0.09); transform: translateY(-1px); } .ds-field { flex: 1; padding: 0.55rem 0.3rem; color: var(--muted-foreground); font-size: 0.82rem; line-height: 1.45; } .ds-send { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; flex: 0 0 38px; border: 0; border-radius: 12px; background: var(--foreground); color: var(--background); cursor: pointer; transition: transform 160ms cubic-bezier(0.22,1,0.36,1), opacity 160ms ease, border-radius 160ms ease; } .ds-send:hover { transform: translateY(-1px); border-radius: 50%; } .ds-send:disabled { opacity: 0.35; cursor: default; }"
+        },
+        {
+            "name": "Share Sheet Recipient Row",
+            "kind": "chip",
+            "refersTo": null,
+            "description": "Share-target row: avatar (initial fallback), name + handle, and a 20px check circle that fills ink when selected.",
+            "html": "<div class=\"ds-list\"><button class=\"ds-recipient\" type=\"button\" aria-pressed=\"false\"><span class=\"ds-face\">L</span><span class=\"ds-copy\"><strong>Luna</strong><small>@luna</small></span><span class=\"ds-check\" aria-hidden=\"true\"></span></button><button class=\"ds-recipient is-selected\" type=\"button\" aria-pressed=\"true\"><span class=\"ds-face\">N</span><span class=\"ds-copy\"><strong>Noah.</strong><small>@noah</small></span><span class=\"ds-check\" aria-hidden=\"true\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20 6 9 17l-5-5\"/></svg></span></button></div>",
+            "css": ".ds-list { display: flex; flex-direction: column; gap: 0.1rem; max-width: 420px; font-family: var(--font-family, Inter, sans-serif); color: var(--foreground); } .ds-recipient { display: flex; align-items: center; gap: 0.65rem; width: 100%; padding: 0.45rem 0.5rem; border: 0; border-radius: 11px; background: transparent; color: inherit; font: inherit; cursor: pointer; text-align: left; transition: background 140ms ease; } .ds-recipient:hover { background: rgb(var(--highlight-rgb, 245 245 245), 0.06); } .ds-recipient.is-selected { background: rgb(var(--highlight-rgb, 245 245 245), 0.1); } .ds-face { width: 36px; height: 36px; flex: 0 0 36px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 50%; background: var(--muted); font-size: 0.78rem; font-weight: 750; } .ds-copy { min-width: 0; flex: 1; } .ds-copy strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78rem; font-weight: 650; } .ds-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-foreground); font-size: 0.64rem; } .ds-check { display: grid; place-items: center; width: 20px; height: 20px; flex: 0 0 20px; border: 1px solid var(--border); border-radius: 50%; color: transparent; transition: background 150ms ease, border-color 150ms ease, color 150ms ease; } .ds-recipient.is-selected .ds-check { background: var(--foreground); border-color: var(--foreground); color: var(--background); }"
+        },
+        {
+            "name": "Info Panel Section",
+            "kind": "card",
+            "refersTo": null,
+            "description": "Info-panel anatomy: uppercase h3 micro-label over a faded hairline, then artwork rows (tabular index, 40px art, title/subtitle, ghost play).",
+            "html": "<section class=\"ds-section\"><h3>Shared tracks</h3><div class=\"ds-track-row\"><span class=\"ds-index\">1</span><span class=\"ds-art\">D</span><span class=\"ds-row-copy\"><strong>Desire Be Desire Go</strong><small>Tame Impala</small></span><button class=\"ds-row-play\" type=\"button\" aria-label=\"Play\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polygon points=\"6 3 20 12 6 21 6 3\"/></svg></button></div></section>",
+            "css": ".ds-section { margin-top: 1.15rem; padding-top: 0.85rem; border-top: 1px solid color-mix(in srgb, var(--border) 62%, transparent); font-family: var(--font-family, Inter, sans-serif); color: var(--foreground); max-width: 320px; } .ds-section h3 { margin: 0 0 0.55rem; color: var(--muted-foreground); font-size: 0.6rem; font-weight: 750; letter-spacing: 0.1em; text-transform: uppercase; } .ds-track-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.42rem 0.35rem; border-radius: 10px; transition: background 140ms ease; } .ds-track-row:hover { background: rgb(var(--highlight-rgb, 245 245 245), 0.05); } .ds-index { width: 16px; flex: 0 0 16px; color: var(--muted-foreground); font-size: 0.66rem; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; } .ds-art { width: 40px; height: 40px; flex: 0 0 40px; display: grid; place-items: center; border-radius: 8px; background: var(--muted); font-weight: 800; } .ds-row-copy { min-width: 0; flex: 1; } .ds-row-copy strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.76rem; font-weight: 650; } .ds-row-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-foreground); font-size: 0.64rem; } .ds-row-play { display: grid; place-items: center; width: 28px; height: 28px; flex: 0 0 28px; border: 0; border-radius: 50%; background: transparent; color: var(--muted-foreground); cursor: pointer; transition: color 140ms ease, background 140ms ease; } .ds-row-play:hover { color: var(--foreground); background: rgb(var(--highlight-rgb, 245 245 245), 0.12); }"
+        }
     ],
-    "motion": [
-      { "name": "ease-social", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "The only easing on the surface: thumb slide, view swaps, message enter, panel slide, share sheet, heart pop, hover lifts." },
-      { "name": "duration-view", "value": "320ms", "purpose": "Tab/view swap: social-view-in (translateY(6px) + fade)." },
-      { "name": "duration-message", "value": "240ms", "purpose": "Message enter: translateY(7px) + fade. Also share-sheet editor and group modal card rise." },
-      { "name": "duration-panel", "value": "280ms", "purpose": "Info panel slide-in: translateX(14px) + fade." },
-      { "name": "duration-thumb", "value": "260ms", "purpose": "Segmented-control thumb transform + width (JS-measured)." },
-      { "name": "duration-sheet", "value": "240ms", "purpose": "Share-sheet card in (translateY(14px) scale(0.985)); scrim 220ms fade." },
-      { "name": "duration-heart", "value": "380ms", "purpose": "social-heart-pop keyframe on like: scale 0.6 -> 1.25 -> 1." },
-      { "name": "loop-presence-pulse", "value": "2.4s ease-out infinite", "purpose": "Presence dot ring: box-shadow 0 0 0 0 rgb(94 232 144 / 0.45) -> 0 0 0 7px transparent. One of two permitted loops." },
-      { "name": "loop-equalizer", "value": "0.75s ease-in-out infinite alternate", "purpose": "3-bar listening equalizer (2px bars, staggered -0.35s/-0.55s delays). The other permitted loop." },
-      { "name": "hover-lift", "value": "140-160ms ease; translateY(-1px)", "purpose": "Buttons, tools, pins, send. Active press: scale(0.94). Chat row hover: translateX(2px)." },
-      { "name": "reduced-motion", "value": "prefers-reduced-motion: reduce -> animation: none; transition: none", "purpose": "Kill-list covers equalizer, pulse, heart, message rows, views, thumb, sheet, scrim, modal, comments, snippet editor, info panel." }
-    ],
-    "breakpoints": [
-      { "name": "container-info-dock", "value": "@container (max-width: 1240px)", "purpose": "Info panel leaves the grid and becomes a right overlay (min(340px, 88%)) — container query on #page-social, not a media query." },
-      { "name": "md", "value": "900px", "purpose": "Messages workspace collapses to one pane; rail/thread swap via .has-thread; back chevron appears; feed posts tighten." },
-      { "name": "sm", "value": "640px", "purpose": "Workspace height calc(100dvh - 250px), radius 16px, info panel full-width shadowless, share sheet 16px radius, message stacks 86%." }
-    ],
-    "patterns": [
-      { "name": "Opaque overlay recipe", "value": "background-color: var(--background); background-image: linear-gradient(var(--card), var(--card));", "purpose": "Every floating card (group modal, share sheet, docked info panel) — opaque and theme-proof." },
-      { "name": "Change-guarded re-render", "value": "if (container.innerHTML !== html) container.innerHTML = html;", "purpose": "All list renders (rail, people, messages, feed) compare before assigning to avoid churn." },
-      { "name": "Optimistic send", "value": "temp id `tmp-N` + pending clock tick, replaced by created record / realtime event", "purpose": "Messages appear instantly with a clock icon; ticks upgrade to double-check (delivered) and accent double-check (read)." },
-      { "name": "Icon factories", "value": "import I_X from '!lucide/x.svg?svg&icon' -> I_X(size, attrs?)", "purpose": "JS-rendered markup (js/social-icons.js registry). Static index.html uses <use svg=\"!lucide/x.svg\" size=\"n\"> build-time transform." },
-      { "name": "escapeHtml everywhere", "value": "escapeHtml(...) on every interpolated value incl. attributes", "purpose": "All template literals rendering user data." },
-      { "name": "Scoped [hidden] overrides", "value": ".social-unread-badge[hidden], .social-tab-unread[hidden], .social-*-view[hidden], .share-sheet[hidden]... { display: none }", "purpose": "Legacy span { display: inline-block } outranks the UA [hidden] stylesheet; each affected component re-asserts display:none." },
-      { "name": "Realtime + polling fallback", "value": "pb.collection('*').subscribe with 15s polling fallback; presence heartbeat 30s / 90s active window / 15s progress", "purpose": "PocketBase collections: social_profiles, social_presence, social_follows, social_conversations (dm|group), social_messages (kind text|image|track|album|artist|snippet, payload JSON incl snippet {start,end,duration,peaks}), social_posts, social_post_likes, social_post_comments, social_pins, social_mutes, social_reads." },
-      { "name": "Waveform pipeline", "value": "downsamplePeaks(peaks, 96) for cards; DPR-aware canvas (bar width ~6px, 60% fill) reading colors from computed --muted-foreground/--foreground", "purpose": "Snippet cards render 96 bars with in-range highlight; share-sheet cropper adds draggable handles (14px hit, 3s min, 30s default)." }
-    ]
-  },
-  "components": [
-    {
-      "name": "Social Segmented Tabs",
-      "kind": "nav",
-      "refersTo": "social-tab-active",
-      "description": "Pill segmented control (Feed/Messages) with a solid-ink thumb that JS measures and slides beneath the active tab; unread pill inverts when its tab is selected.",
-      "html": "<nav class=\"ds-tabs\" role=\"tablist\" aria-label=\"Social sections\"><span class=\"ds-thumb\" aria-hidden=\"true\"></span><button class=\"ds-tab\" role=\"tab\" aria-selected=\"true\">Feed</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">Messages <span class=\"ds-unread\">2</span></button></nav>",
-      "css": ".ds-tabs { position: relative; display: inline-flex; padding: 3px; border: 1px solid var(--border); border-radius: 999px; background: color-mix(in srgb, var(--card) 72%, transparent); font-family: var(--font-family, Inter, sans-serif); } .ds-thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: 62px; border-radius: 999px; background: var(--foreground); transition: transform 260ms cubic-bezier(0.22,1,0.36,1), width 260ms cubic-bezier(0.22,1,0.36,1); } .ds-tab { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.44rem 1.05rem; border: 0; border-radius: 999px; background: transparent; color: var(--muted-foreground); font: inherit; font-size: 0.8rem; font-weight: 650; cursor: pointer; transition: color 200ms ease; } .ds-tab[aria-selected='true'] { color: var(--background); } .ds-tab:hover { color: var(--foreground); } .ds-tab[aria-selected='true']:hover { color: var(--background); } .ds-tab:focus-visible { outline: 2px solid var(--highlight); outline-offset: 2px; } .ds-unread { min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: var(--foreground); color: var(--background); font-size: 0.6rem; font-weight: 800; line-height: 17px; text-align: center; } .ds-tab[aria-selected='true'] .ds-unread { background: var(--background); color: var(--foreground); outline: 1px solid var(--border); }"
-    },
-    {
-      "name": "Presence Summary",
-      "kind": "custom",
-      "refersTo": null,
-      "description": "Live 'who is here' line under the page title: a 7px presence-green dot pulsing a ring every 2.4s plus a muted count.",
-      "html": "<p class=\"ds-presence\"><span class=\"ds-pulse\" aria-hidden=\"true\"></span>1 listening · 2 online</p>",
-      "css": ".ds-presence { display: inline-flex; align-items: center; gap: 0.45rem; margin: 0; color: var(--muted-foreground); font-family: var(--font-family, Inter, sans-serif); font-size: 0.72rem; font-weight: 550; } .ds-pulse { width: 7px; height: 7px; border-radius: 50%; background: #5ee890; animation: ds-presence-pulse 2.4s ease-out infinite; } @keyframes ds-presence-pulse { 0% { box-shadow: 0 0 0 0 rgb(94 232 144 / 0.45); } 70% { box-shadow: 0 0 0 7px rgb(94 232 144 / 0); } 100% { box-shadow: 0 0 0 0 rgb(94 232 144 / 0); } } @media (prefers-reduced-motion: reduce) { .ds-pulse { animation: none; } }"
-    },
-    {
-      "name": "Feed Post",
-      "kind": "card",
-      "refersTo": null,
-      "description": "Card-less feed post: hairline bottom divider, 42px avatar, author/handle/time head, body, and a pill ghost action row with a liked (red, filled) heart.",
-      "html": "<article class=\"ds-post\"><span class=\"ds-avatar\">N</span><div class=\"ds-main\"><header class=\"ds-head\"><strong class=\"ds-author\">Noah.</strong><span class=\"ds-handle\">@noah</span><span class=\"ds-dot\" aria-hidden=\"true\"></span><time class=\"ds-time\">4h</time></header><p class=\"ds-body\">the homelab FLAC upgrade is audible. no notes.</p><footer class=\"ds-actions\"><button class=\"ds-action is-liked\" aria-pressed=\"true\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z\"/></svg><span>1</span></button><button class=\"ds-action\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M7.9 20A9 9 0 1 0 4 16.1L2 22Z\"/></svg><span></span></button><button class=\"ds-action\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m17 2 4 4-4 4\"/><path d=\"M3 11v-1a4 4 0 0 1 4-4h14\"/><path d=\"m7 22-4-4 4-4\"/><path d=\"M21 13v1a4 4 0 0 1-4 4H3\"/></svg><span></span></button></footer></div></article>",
-      "css": ".ds-post { display: flex; gap: 0.8rem; padding: 1.05rem 0.6rem; border-bottom: 1px solid color-mix(in srgb, var(--border) 62%, transparent); font-family: var(--font-family, Inter, sans-serif); color: var(--foreground); transition: background 180ms ease; max-width: 660px; } .ds-post:hover { background: rgb(var(--highlight-rgb, 245 245 245), 0.022); } .ds-avatar { width: 42px; height: 42px; flex: 0 0 42px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 50%; background: var(--muted); font-size: 0.9rem; font-weight: 700; } .ds-main { min-width: 0; flex: 1; } .ds-head { display: flex; align-items: baseline; gap: 0.45rem; } .ds-author { font-size: 0.86rem; font-weight: 700; letter-spacing: -0.01em; } .ds-handle, .ds-time { color: var(--muted-foreground); font-size: 0.72rem; } .ds-dot::before { content: '\\00b7'; } .ds-time { font-size: 0.7rem; white-space: nowrap; } .ds-body { margin: 0.35rem 0 0; font-size: 0.9rem; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap; } .ds-actions { display: flex; align-items: center; gap: 0.35rem; margin-top: 0.55rem; } .ds-action { display: inline-flex; align-items: center; gap: 0.34rem; padding: 0.32rem 0.6rem; border: 0; border-radius: 999px; background: transparent; color: var(--muted-foreground); font: inherit; font-size: 0.72rem; font-weight: 650; cursor: pointer; transition: color 150ms ease, background 150ms ease, transform 150ms ease; } .ds-action:hover { color: var(--foreground); background: rgb(var(--highlight-rgb, 245 245 245), 0.08); } .ds-action:active { transform: scale(0.94); } .ds-action.is-liked { color: #ff5470; } .ds-action.is-liked svg { fill: currentcolor; animation: ds-heart-pop 380ms cubic-bezier(0.22,1,0.36,1); } @keyframes ds-heart-pop { 0% { transform: scale(0.6); } 55% { transform: scale(1.25); } 100% { transform: scale(1); } } @media (prefers-reduced-motion: reduce) { .ds-action.is-liked svg { animation: none; } }"
-    },
-    {
-      "name": "Chat Rail Row",
-      "kind": "nav",
-      "refersTo": "social-chat-row-active",
-      "description": "Conversation row with avatar + presence dot, preview line, unread pill, and the active state (wash + 3px ink bar).",
-      "html": "<button class=\"ds-row is-active\" type=\"button\"><span class=\"ds-wrap\"><span class=\"ds-face\">L</span><span class=\"ds-presence is-online\" aria-hidden=\"true\"></span></span><span class=\"ds-copy\"><span class=\"ds-top\"><strong>Luna</strong><time>Yesterday</time></span><span class=\"ds-bottom\"><small>You: hear this one?</small><span class=\"ds-pill\">2</span></span></span></button>",
-      "css": ".ds-row { position: relative; width: 100%; display: flex; align-items: center; gap: 0.65rem; padding: 0.55rem; border: 0; border-radius: 13px; background: transparent; color: var(--foreground); font-family: var(--font-family, Inter, sans-serif); cursor: pointer; text-align: left; transition: background 150ms ease, transform 150ms ease; } .ds-row:hover { background: rgb(var(--highlight-rgb, 245 245 245), 0.06); transform: translateX(2px); } .ds-row.is-active { background: rgb(var(--highlight-rgb, 245 245 245), 0.09); } .ds-row.is-active::before { content: ''; position: absolute; left: 0.06rem; top: 50%; width: 3px; height: 55%; border-radius: 999px; background: var(--foreground); transform: translateY(-50%); } .ds-wrap { position: relative; width: 42px; height: 42px; flex: 0 0 42px; } .ds-face { width: 100%; height: 100%; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 50%; background: var(--muted); font-weight: 700; } .ds-presence { position: absolute; right: 0; bottom: 1px; width: 10px; height: 10px; box-sizing: border-box; border: 2px solid var(--card); border-radius: 50%; background: color-mix(in srgb, var(--muted-foreground) 55%, transparent); } .ds-presence.is-online { background: #5ee890; } .ds-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 0.12rem; } .ds-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; } .ds-top strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem; font-weight: 650; } .ds-top time { flex: 0 0 auto; color: var(--muted-foreground); font-size: 0.6rem; } .ds-bottom { display: flex; align-items: center; gap: 0.4rem; min-width: 0; } .ds-bottom small { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-foreground); font-size: 0.68rem; font-weight: 550; } .ds-pill { min-width: 17px; height: 17px; padding: 0 5px; border-radius: 999px; background: var(--foreground); color: var(--background); font-size: 0.58rem; font-weight: 800; line-height: 17px; text-align: center; }"
-    },
-    {
-      "name": "Message Bubbles (other / own)",
-      "kind": "custom",
-      "refersTo": "message-bubble-other",
-      "description": "Asymmetric speech bubbles: 4px corner toward the sender, 16px elsewhere; own bubbles mix 12% foreground into the card; foot carries clock + WhatsApp-style ticks.",
-      "html": "<div class=\"ds-thread\"><div class=\"ds-msg\"><div class=\"ds-bubble other\"><p>you have to hear this part</p><span class=\"ds-foot\"><time>07:24 PM</time></span></div></div><div class=\"ds-msg own\"><div class=\"ds-bubble own-m\"><p>on it now</p><span class=\"ds-foot\"><time>07:25 PM</time><span class=\"ds-ticks is-read\" title=\"Read\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M18 6 7 17l-5-5\"/><path d=\"m22 10-7.5 7.5L13 16\"/></svg></span></span></div></div></div>",
-      "css": ".ds-thread { display: flex; flex-direction: column; gap: 0.55rem; font-family: var(--font-family, Inter, sans-serif); color: var(--foreground); max-width: 560px; } .ds-msg { display: flex; margin: 0; animation: ds-msg-in 240ms cubic-bezier(0.22,1,0.36,1); } .ds-msg.own { justify-content: flex-end; } @keyframes ds-msg-in { from { opacity: 0; transform: translateY(7px); } } .ds-bubble { position: relative; width: fit-content; padding: 0.5rem 0.7rem 0.34rem; border: 1px solid var(--border); border-radius: 4px 16px 16px 16px; background: var(--card); box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); transition: border-color 160ms ease; } .ds-bubble p { margin: 0.05rem 0.02rem 0.3rem; font-size: 0.82rem; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; } .ds-msg:hover .ds-bubble { border-color: color-mix(in srgb, var(--foreground) 26%, var(--border)); } .ds-bubble.own-m { border-color: color-mix(in srgb, var(--foreground) 22%, var(--border)); border-radius: 16px 4px 16px 16px; background: color-mix(in srgb, var(--foreground) 12%, var(--card)); } .ds-foot { display: flex; align-items: center; justify-content: flex-end; gap: 0.28rem; margin-top: 0.12rem; } .ds-foot time { color: var(--muted-foreground); font-size: 0.56rem; white-space: nowrap; font-variant-numeric: tabular-nums; } .ds-ticks { display: inline-flex; color: var(--muted-foreground); } .ds-ticks.is-read { color: var(--foreground); } .ds-ticks.is-pending { opacity: 0.6; } @media (prefers-reduced-motion: reduce) { .ds-msg { animation: none; } }"
-    },
-    {
-      "name": "Snippet Card",
-      "kind": "custom",
-      "refersTo": null,
-      "description": "Shared audio snippet: ink play disc, title/subtitle, 96-bar waveform with in-range highlight, tabular range label.",
-      "html": "<div class=\"ds-snippet\"><div class=\"ds-head\"><button class=\"ds-play\" type=\"button\" aria-label=\"Play snippet\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polygon points=\"6 3 20 12 6 21 6 3\"/></svg></button><div class=\"ds-copy\"><strong>Desire Be Desire Go</strong><small>Tame Impala</small></div></div><div class=\"ds-wave\" aria-hidden=\"true\"><i style=\"height:30%\"></i><i style=\"height:62%\"></i><i style=\"height:88%\" class=\"is-in\"></i><i style=\"height:45%\" class=\"is-in\"></i><i style=\"height:70%\" class=\"is-in\"></i><i style=\"height:24%\"></i><i style=\"height:55%\"></i><i style=\"height:38%\"></i></div><span class=\"ds-range\">0:12 &ndash; 0:45</span></div>",
-      "css": ".ds-snippet { width: min(320px, 66vw); padding: 0.55rem 0.6rem 0.5rem; border: 1px solid color-mix(in srgb, var(--foreground) 16%, var(--border)); border-radius: 12px; background: rgb(0 0 0 / 0.14); font-family: var(--font-family, Inter, sans-serif); color: var(--foreground); } .ds-head { display: flex; align-items: center; gap: 0.5rem; } .ds-play { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; padding: 0 0 0 2px; border: 0; border-radius: 50%; background: var(--foreground); color: var(--background); cursor: pointer; transition: transform 150ms cubic-bezier(0.22,1,0.36,1); } .ds-play:hover { transform: scale(1.07); } .ds-copy { min-width: 0; } .ds-copy strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.74rem; } .ds-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-foreground); font-size: 0.62rem; } .ds-wave { display: flex; align-items: center; gap: 1.5px; height: 34px; margin-top: 0.5rem; } .ds-wave i { flex: 1; min-width: 1px; border-radius: 2px; background: color-mix(in srgb, var(--foreground) 26%, transparent); } .ds-wave i.is-in { background: var(--foreground); } .ds-range { display: block; margin-top: 0.4rem; color: var(--muted-foreground); font-size: 0.6rem; font-variant-numeric: tabular-nums; }"
-    },
-    {
-      "name": "Message Composer Send Button",
-      "kind": "button",
-      "refersTo": "social-primary-button",
-      "description": "Solid-ink send button (38px, 12px radius) that morphs into a circle and lifts 1px on hover; 0.35 opacity when disabled.",
-      "html": "<div class=\"ds-bar\"><button class=\"ds-tool\" type=\"button\" aria-label=\"Send an image\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" ry=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21\"/></svg></button><span class=\"ds-field\">Message</span><button class=\"ds-send\" type=\"submit\" aria-label=\"Send message\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 19V5\"/><path d=\"m5 12 7-7 7 7\"/></svg></button></div>",
-      "css": ".ds-bar { display: flex; align-items: flex-end; gap: 0.35rem; padding: 0.32rem 0.32rem 0.32rem 0.45rem; border: 1px solid var(--border); border-radius: 16px; background: color-mix(in srgb, var(--card) 94%, transparent); box-shadow: 0 10px 30px rgb(0 0 0 / 0.12); font-family: var(--font-family, Inter, sans-serif); color: var(--foreground); transition: border-color 180ms ease, box-shadow 180ms ease; max-width: 560px; } .ds-bar:focus-within { border-color: color-mix(in srgb, var(--foreground) 30%, var(--border)); box-shadow: 0 2px 6px rgb(0 0 0 / 0.08), 0 14px 38px rgb(0 0 0 / 0.16); } .ds-tool { display: grid; place-items: center; width: 36px; height: 38px; flex: 0 0 36px; border: 0; border-radius: 11px; background: transparent; color: var(--muted-foreground); cursor: pointer; transition: color 150ms ease, background 150ms ease, transform 150ms ease; } .ds-tool:hover { color: var(--foreground); background: rgb(var(--highlight-rgb, 245 245 245), 0.09); transform: translateY(-1px); } .ds-field { flex: 1; padding: 0.55rem 0.3rem; color: var(--muted-foreground); font-size: 0.82rem; line-height: 1.45; } .ds-send { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; flex: 0 0 38px; border: 0; border-radius: 12px; background: var(--foreground); color: var(--background); cursor: pointer; transition: transform 160ms cubic-bezier(0.22,1,0.36,1), opacity 160ms ease, border-radius 160ms ease; } .ds-send:hover { transform: translateY(-1px); border-radius: 50%; } .ds-send:disabled { opacity: 0.35; cursor: default; }"
-    },
-    {
-      "name": "Share Sheet Recipient Row",
-      "kind": "chip",
-      "refersTo": null,
-      "description": "Share-target row: avatar (initial fallback), name + handle, and a 20px check circle that fills ink when selected.",
-      "html": "<div class=\"ds-list\"><button class=\"ds-recipient\" type=\"button\" aria-pressed=\"false\"><span class=\"ds-face\">L</span><span class=\"ds-copy\"><strong>Luna</strong><small>@luna</small></span><span class=\"ds-check\" aria-hidden=\"true\"></span></button><button class=\"ds-recipient is-selected\" type=\"button\" aria-pressed=\"true\"><span class=\"ds-face\">N</span><span class=\"ds-copy\"><strong>Noah.</strong><small>@noah</small></span><span class=\"ds-check\" aria-hidden=\"true\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20 6 9 17l-5-5\"/></svg></span></button></div>",
-      "css": ".ds-list { display: flex; flex-direction: column; gap: 0.1rem; max-width: 420px; font-family: var(--font-family, Inter, sans-serif); color: var(--foreground); } .ds-recipient { display: flex; align-items: center; gap: 0.65rem; width: 100%; padding: 0.45rem 0.5rem; border: 0; border-radius: 11px; background: transparent; color: inherit; font: inherit; cursor: pointer; text-align: left; transition: background 140ms ease; } .ds-recipient:hover { background: rgb(var(--highlight-rgb, 245 245 245), 0.06); } .ds-recipient.is-selected { background: rgb(var(--highlight-rgb, 245 245 245), 0.1); } .ds-face { width: 36px; height: 36px; flex: 0 0 36px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 50%; background: var(--muted); font-size: 0.78rem; font-weight: 750; } .ds-copy { min-width: 0; flex: 1; } .ds-copy strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78rem; font-weight: 650; } .ds-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-foreground); font-size: 0.64rem; } .ds-check { display: grid; place-items: center; width: 20px; height: 20px; flex: 0 0 20px; border: 1px solid var(--border); border-radius: 50%; color: transparent; transition: background 150ms ease, border-color 150ms ease, color 150ms ease; } .ds-recipient.is-selected .ds-check { background: var(--foreground); border-color: var(--foreground); color: var(--background); }"
-    },
-    {
-      "name": "Info Panel Section",
-      "kind": "card",
-      "refersTo": null,
-      "description": "Info-panel anatomy: uppercase h3 micro-label over a faded hairline, then artwork rows (tabular index, 40px art, title/subtitle, ghost play).",
-      "html": "<section class=\"ds-section\"><h3>Shared tracks</h3><div class=\"ds-track-row\"><span class=\"ds-index\">1</span><span class=\"ds-art\">D</span><span class=\"ds-row-copy\"><strong>Desire Be Desire Go</strong><small>Tame Impala</small></span><button class=\"ds-row-play\" type=\"button\" aria-label=\"Play\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polygon points=\"6 3 20 12 6 21 6 3\"/></svg></button></div></section>",
-      "css": ".ds-section { margin-top: 1.15rem; padding-top: 0.85rem; border-top: 1px solid color-mix(in srgb, var(--border) 62%, transparent); font-family: var(--font-family, Inter, sans-serif); color: var(--foreground); max-width: 320px; } .ds-section h3 { margin: 0 0 0.55rem; color: var(--muted-foreground); font-size: 0.6rem; font-weight: 750; letter-spacing: 0.1em; text-transform: uppercase; } .ds-track-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.42rem 0.35rem; border-radius: 10px; transition: background 140ms ease; } .ds-track-row:hover { background: rgb(var(--highlight-rgb, 245 245 245), 0.05); } .ds-index { width: 16px; flex: 0 0 16px; color: var(--muted-foreground); font-size: 0.66rem; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; } .ds-art { width: 40px; height: 40px; flex: 0 0 40px; display: grid; place-items: center; border-radius: 8px; background: var(--muted); font-weight: 800; } .ds-row-copy { min-width: 0; flex: 1; } .ds-row-copy strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.76rem; font-weight: 650; } .ds-row-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-foreground); font-size: 0.64rem; } .ds-row-play { display: grid; place-items: center; width: 28px; height: 28px; flex: 0 0 28px; border: 0; border-radius: 50%; background: transparent; color: var(--muted-foreground); cursor: pointer; transition: color 140ms ease, background 140ms ease; } .ds-row-play:hover { color: var(--foreground); background: rgb(var(--highlight-rgb, 245 245 245), 0.12); }"
+    "narrative": {
+        "northStar": "The Monochrome Clubhouse",
+        "overview": "A private club's noticeboard and mail room, drawn in a single ink. The Social surface never introduces a palette of its own: surfaces are var(--card) over var(--background), structure is 1px hairlines, and the only accent is the foreground itself. Chroma is rationed to two meanings: presence green #5ee890 says a member is alive right now, and like-red #ff5470 says you loved this. Density is messenger-compact with uppercase micro-labels for wayfinding; the feed is naked hairline structure while the messages workspace is the one big contained object. Motion is short, eased, and sparse — 240-320ms cubic-bezier(0.22,1,0.36,1), one property per move, with only the presence pulse and listening equalizer looping, all disabled under prefers-reduced-motion.",
+        "keyCharacteristics": [
+            "Foreground-as-accent: solid ink fills for primary actions, active states, and unread counts",
+            "Two chromatic signals only: presence green #5ee890 (alive) and like-red #ff5470 (liked)",
+            "Hairline-first structure; rgb(var(--highlight-rgb), a) washes (0.02-0.12) for hover/selected",
+            "Feed = flat 660px hairline-divided column; messages = one contained 3-pane workspace",
+            "Asymmetric bubble radii (4px toward the sender, 16px elsewhere; 12px when grouped)",
+            "WhatsApp-style delivery ticks: clock = pending, double-check = delivered, accent double-check = read",
+            "Opaque overlay recipe for every floating card",
+            "Info panel docks via a container query on #page-social, not a media query",
+            "All JS-rendered markup goes through escapeHtml; re-renders are change-guarded"
+        ],
+        "rules": [
+            {
+                "name": "The Foreground-Is-the-Accent Rule",
+                "body": "The social surface has no brand hue. When something must demand attention, it gets a solid var(--foreground) fill with var(--background) text — never a new color.",
+                "section": "colors"
+            },
+            {
+                "name": "The Alive-Green Rule",
+                "body": "#5ee890 means a human is present; #ffffff + glow means they are playing. Neither may ever be decorative, and no other hue may carry a presence meaning.",
+                "section": "colors"
+            },
+            {
+                "name": "The Wash Ladder",
+                "body": "Interactive state is rgb(var(--highlight-rgb), a) only: rest 0.02-0.045, hover 0.05-0.09, selected/active 0.09-0.12. Do not invent stronger fills.",
+                "section": "colors"
+            },
+            {
+                "name": "The Micro-Label Rule",
+                "body": "Section headers inside panels are never sentence-case headings; they are 0.6rem/750 uppercase with 0.1em tracking in var(--muted-foreground).",
+                "section": "typography"
+            },
+            {
+                "name": "Names Before Chrome",
+                "body": "Authors and titles are the heaviest things on screen (650-750 weight); containers stay quiet.",
+                "section": "typography"
+            },
+            {
+                "name": "The Container Knows Rule",
+                "body": "Panel docking responds to a container query on #page-social, never a media query — the floating player makes viewport width a lie.",
+                "section": "layout"
+            },
+            {
+                "name": "One Big Object",
+                "body": "The feed is naked structure; the messages workspace is the single contained panel. Don't card-ify the feed or unbox the workspace.",
+                "section": "layout"
+            },
+            {
+                "name": "The Hairline-First Rule",
+                "body": "Reach for 1px solid var(--border) before any shadow. A shadow on a resting inline surface is a bug; shadows belong to things that float.",
+                "section": "elevation"
+            },
+            {
+                "name": "The Opaque Overlay Rule",
+                "body": "Every floating card (group modal, share sheet, docked info panel) uses the same recipe: background-color: var(--background); background-image: linear-gradient(var(--card), var(--card)).",
+                "section": "elevation"
+            }
+        ],
+        "dos": [
+            "Do express every color through tokens (var(--card), var(--border), rgb(var(--highlight-rgb), a), color-mix(...)) so all ten themes work — the fixed hexes #5ee890, #ff5470 are the only exceptions, by contract.",
+            "Do use the wash ladder for state: rest 0.02-0.045, hover 0.05-0.09, selected 0.09-0.12.",
+            "Do keep motion at 240-320ms cubic-bezier(0.22, 1, 0.36, 1) with a single transformed property, and register every new animation/transition in the prefers-reduced-motion kill-list block.",
+            "Do guard re-renders: if (container.innerHTML !== html) container.innerHTML = html.",
+            "Do run all interpolated strings through escapeHtml, including attribute values.",
+            "Do use the icon factories — import I_X from '!lucide/x.svg?svg&icon' then I_X(size) in JS-rendered markup; <use svg=\"!lucide/x.svg\" size=\"n\"> in static index.html.",
+            "Do use the opaque overlay recipe for any new floating card, and container queries for workspace-relative docking.",
+            "Do add a scoped [hidden] { display: none } override when a new component renders inside a span-display rule.",
+            "Do cap unread counts at \"99+\" and debounce library searches (220-240ms)."
+        ],
+        "donts": [
+            "Don't introduce new hues. Presence green = alive, listening white = playing, like-red = liked. Everything else is the theme's neutrals.",
+            "Don't put feed posts in cards — the feed is hairline-divided structure only.",
+            "Don't shadow a resting inline surface; shadows are for the workspace shell, composers' focus state, hover-revealed tools, and floating overlays.",
+            "Don't dock or reflow the messages workspace with media queries when the condition is really about the workspace's own width — use the container query.",
+            "Don't add call UI (video/voice buttons) — mutes and messaging must not grow call features.",
+            "Don't send messages without the optimistic path: temp tmp-N id, pending clock tick, replaced by the realtime/created record.",
+            "Don't hardcode theme hexes from the default theme into new CSS; they will break the other nine themes.",
+            "Don't let loops multiply: the only infinite animations are the presence pulse (2.4s) and the equalizer (0.75s alternate)."
+        ]
     }
-  ],
-  "narrative": {
-    "northStar": "The Monochrome Clubhouse",
-    "overview": "A private club's noticeboard and mail room, drawn in a single ink. The Social surface never introduces a palette of its own: surfaces are var(--card) over var(--background), structure is 1px hairlines, and the only accent is the foreground itself. Chroma is rationed to two meanings: presence green #5ee890 says a member is alive right now, and like-red #ff5470 says you loved this. Density is messenger-compact with uppercase micro-labels for wayfinding; the feed is naked hairline structure while the messages workspace is the one big contained object. Motion is short, eased, and sparse — 240-320ms cubic-bezier(0.22,1,0.36,1), one property per move, with only the presence pulse and listening equalizer looping, all disabled under prefers-reduced-motion.",
-    "keyCharacteristics": [
-      "Foreground-as-accent: solid ink fills for primary actions, active states, and unread counts",
-      "Two chromatic signals only: presence green #5ee890 (alive) and like-red #ff5470 (liked)",
-      "Hairline-first structure; rgb(var(--highlight-rgb), a) washes (0.02-0.12) for hover/selected",
-      "Feed = flat 660px hairline-divided column; messages = one contained 3-pane workspace",
-      "Asymmetric bubble radii (4px toward the sender, 16px elsewhere; 12px when grouped)",
-      "WhatsApp-style delivery ticks: clock = pending, double-check = delivered, accent double-check = read",
-      "Opaque overlay recipe for every floating card",
-      "Info panel docks via a container query on #page-social, not a media query",
-      "All JS-rendered markup goes through escapeHtml; re-renders are change-guarded"
-    ],
-    "rules": [
-      { "name": "The Foreground-Is-the-Accent Rule", "body": "The social surface has no brand hue. When something must demand attention, it gets a solid var(--foreground) fill with var(--background) text — never a new color.", "section": "colors" },
-      { "name": "The Alive-Green Rule", "body": "#5ee890 means a human is present; #ffffff + glow means they are playing. Neither may ever be decorative, and no other hue may carry a presence meaning.", "section": "colors" },
-      { "name": "The Wash Ladder", "body": "Interactive state is rgb(var(--highlight-rgb), a) only: rest 0.02-0.045, hover 0.05-0.09, selected/active 0.09-0.12. Do not invent stronger fills.", "section": "colors" },
-      { "name": "The Micro-Label Rule", "body": "Section headers inside panels are never sentence-case headings; they are 0.6rem/750 uppercase with 0.1em tracking in var(--muted-foreground).", "section": "typography" },
-      { "name": "Names Before Chrome", "body": "Authors and titles are the heaviest things on screen (650-750 weight); containers stay quiet.", "section": "typography" },
-      { "name": "The Container Knows Rule", "body": "Panel docking responds to a container query on #page-social, never a media query — the floating player makes viewport width a lie.", "section": "layout" },
-      { "name": "One Big Object", "body": "The feed is naked structure; the messages workspace is the single contained panel. Don't card-ify the feed or unbox the workspace.", "section": "layout" },
-      { "name": "The Hairline-First Rule", "body": "Reach for 1px solid var(--border) before any shadow. A shadow on a resting inline surface is a bug; shadows belong to things that float.", "section": "elevation" },
-      { "name": "The Opaque Overlay Rule", "body": "Every floating card (group modal, share sheet, docked info panel) uses the same recipe: background-color: var(--background); background-image: linear-gradient(var(--card), var(--card)).", "section": "elevation" }
-    ],
-    "dos": [
-      "Do express every color through tokens (var(--card), var(--border), rgb(var(--highlight-rgb), a), color-mix(...)) so all ten themes work — the fixed hexes #5ee890, #ff5470 are the only exceptions, by contract.",
-      "Do use the wash ladder for state: rest 0.02-0.045, hover 0.05-0.09, selected 0.09-0.12.",
-      "Do keep motion at 240-320ms cubic-bezier(0.22, 1, 0.36, 1) with a single transformed property, and register every new animation/transition in the prefers-reduced-motion kill-list block.",
-      "Do guard re-renders: if (container.innerHTML !== html) container.innerHTML = html.",
-      "Do run all interpolated strings through escapeHtml, including attribute values.",
-      "Do use the icon factories — import I_X from '!lucide/x.svg?svg&icon' then I_X(size) in JS-rendered markup; <use svg=\"!lucide/x.svg\" size=\"n\"> in static index.html.",
-      "Do use the opaque overlay recipe for any new floating card, and container queries for workspace-relative docking.",
-      "Do add a scoped [hidden] { display: none } override when a new component renders inside a span-display rule.",
-      "Do cap unread counts at \"99+\" and debounce library searches (220-240ms)."
-    ],
-    "donts": [
-      "Don't introduce new hues. Presence green = alive, listening white = playing, like-red = liked. Everything else is the theme's neutrals.",
-      "Don't put feed posts in cards — the feed is hairline-divided structure only.",
-      "Don't shadow a resting inline surface; shadows are for the workspace shell, composers' focus state, hover-revealed tools, and floating overlays.",
-      "Don't dock or reflow the messages workspace with media queries when the condition is really about the workspace's own width — use the container query.",
-      "Don't add call UI (video/voice buttons) — mutes and messaging must not grow call features.",
-      "Don't send messages without the optimistic path: temp tmp-N id, pending clock tick, replaced by the realtime/created record.",
-      "Don't hardcode theme hexes from the default theme into new CSS; they will break the other nine themes.",
-      "Don't let loops multiply: the only infinite animations are the presence pulse (2.4s) and the equalizer (0.75s alternate)."
-    ]
-  }
 }
