@@ -6,6 +6,7 @@ import { escapeHtml } from './utils.js';
 import { showNotification } from './downloads.js';
 import { shareCardHTML } from './share.js';
 import { icon } from './social-icons.js';
+import { splitFeedPosts } from './social-state.js';
 import {
     avatarFor,
     displayName,
@@ -15,6 +16,7 @@ import {
     formatRelativeTime,
     formatCount,
     cleanImage,
+    presenceState,
 } from './social-utils.js';
 
 export class SocialFeed {
@@ -211,7 +213,9 @@ export class SocialFeed {
             pb.collection('social_post_likes').getFullList({ filter: `user="${this.userId}"` }),
             pb.collection('social_post_comments').getFullList({ sort: 'created' }),
         ]);
-        this.posts = posts;
+        // Reposts were removed from the product. Keep historical records intact
+        // in PocketBase, but do not let them leak back into the new feed.
+        this.posts = posts.filter((post) => !post.repost_of);
         this.myLikes = new Map(myLikes.map((like) => [like.post, like.id]));
         this.likeCounts = new Map();
         this.commentCounts = new Map();
@@ -227,10 +231,6 @@ export class SocialFeed {
         this.render();
     }
 
-    repostCount(postId) {
-        return this.posts.filter((post) => post.repost_of?.id === postId).length;
-    }
-
     render() {
         const container = document.getElementById('social-feed');
         if (!container) return;
@@ -242,7 +242,55 @@ export class SocialFeed {
             </div>`;
             return;
         }
-        container.innerHTML = this.posts.map((post) => this.renderPost(post)).join('');
+        const { circle, instance } = splitFeedPosts(this.posts, this.manager.following);
+        container.innerHTML = [
+            this.renderStream({
+                posts: circle,
+                title: 'Your circle',
+                description: 'New music and notes from people you follow.',
+                empty: 'Follow a few members and their posts will collect here.',
+                kind: 'circle',
+            }),
+            this.renderStream({
+                posts: instance,
+                title: 'Across Monochrome',
+                description: 'The rest of this instance, from newest to oldest.',
+                empty: 'You are all caught up with the rest of the instance.',
+                kind: 'instance',
+            }),
+        ].join('');
+    }
+
+    renderStream({ posts, title, description, empty, kind }) {
+        const authors = [];
+        const seen = new Set();
+        for (const post of posts) {
+            if (seen.has(post.author)) continue;
+            seen.add(post.author);
+            const profile = this.manager.profiles.get(post.author);
+            if (profile) authors.push(profile);
+            if (authors.length === 5) break;
+        }
+        const faces = authors
+            .map((profile) => {
+                const state = presenceState(this.manager.presence.get(profile.user));
+                return `<span class="social-stream-face" title="${escapeHtml(displayName(profile))}">
+                    <img class="social-stream-face-image" src="${escapeHtml(avatarFor(profile))}" alt="" loading="lazy" />
+                    ${state.online ? `<span class="social-stream-face-dot${state.playing ? ' is-listening' : ''}" aria-hidden="true"></span>` : ''}
+                </span>`;
+            })
+            .join('');
+        const countLabel = `${posts.length} post${posts.length === 1 ? '' : 's'}`;
+        const body = posts.length
+            ? posts.map((post) => this.renderPost(post)).join('')
+            : `<div class="social-stream-empty"><span class="social-stream-empty-icon">${icon.audioLines(17)}</span><span>${escapeHtml(empty)}</span></div>`;
+        return `<section class="social-feed-stream is-${escapeHtml(kind)}" aria-labelledby="social-stream-${escapeHtml(kind)}">
+            <header class="social-stream-head">
+                <div><h2 id="social-stream-${escapeHtml(kind)}" class="social-stream-title">${escapeHtml(title)}</h2><p>${escapeHtml(description)}</p></div>
+                <div class="social-stream-presence" aria-label="${escapeHtml(countLabel)}">${faces}<span class="social-stream-count">${escapeHtml(countLabel)}</span></div>
+            </header>
+            <div class="social-stream-posts">${body}</div>
+        </section>`;
     }
 
     renderPost(post) {
@@ -255,10 +303,6 @@ export class SocialFeed {
         const liked = this.myLikes.has(post.id);
         const likeCount = this.likeCounts.get(post.id) || 0;
         const commentCount = this.commentCounts.get(post.id) || 0;
-        const reposts = this.repostCount(post.id);
-        const repostChip = post.repost_of?.author
-            ? `<span class="social-post-repost-chip">${icon.repeat(13)} Reposted from ${escapeHtml(post.repost_of.author)}</span>`
-            : '';
         const card = payload ? `<div class="social-post-card">${shareCardHTML(payload)}</div>` : '';
         const image = imageFile
             ? `<div class="social-post-image"><img src="${escapeHtml(imageFile)}" alt="" loading="lazy" /></div>`
@@ -269,7 +313,6 @@ export class SocialFeed {
                 <img src="${escapeHtml(avatarFor(author))}" alt="" loading="lazy" />
             </a>
             <div class="social-post-main">
-                ${repostChip}
                 <header class="social-post-head">
                     <a class="social-post-author" href="${escapeHtml(profileHref(author))}"><strong>${escapeHtml(name)}</strong></a>
                     <span class="social-post-handle">${escapeHtml(handleFor(author))}</span>
@@ -285,9 +328,6 @@ export class SocialFeed {
                     </button>
                     <button class="social-post-action" type="button" data-post-comment aria-expanded="${this.expandedComments.has(post.id)}">
                         ${icon.messageCircle(16)}<span>${commentCount ? formatCount(commentCount) : ''}</span>
-                    </button>
-                    <button class="social-post-action" type="button" data-post-repost aria-label="Repost">
-                        ${icon.repeat(16)}<span>${reposts ? formatCount(reposts) : ''}</span>
                     </button>
                     ${payload ? `<button class="social-post-action" type="button" data-post-share aria-label="Send to a friend">${icon.share(16)}</button>` : ''}
                 </footer>
@@ -334,13 +374,6 @@ export class SocialFeed {
             this.render();
             return;
         }
-        const repost = event.target.closest('[data-post-repost]');
-        if (repost) {
-            this.repost(repost.closest('[data-post-id]')?.dataset.postId).catch((error) =>
-                showNotification(error.message, 'error')
-            );
-            return;
-        }
         const share = event.target.closest('[data-post-share]');
         if (share) {
             const post = this.posts.find((entry) => entry.id === share.closest('[data-post-id]')?.dataset.postId);
@@ -377,24 +410,6 @@ export class SocialFeed {
         if (!postId || !body || !this.userId) return;
         await pb.collection('social_post_comments').create({ post: postId, author: this.userId, body });
         input.value = '';
-        await this.refresh();
-    }
-
-    async repost(postId) {
-        const original = this.posts.find((entry) => entry.id === postId);
-        if (!original || !this.userId) return;
-        if (original.author === this.userId) {
-            showNotification('This one is already yours');
-            return;
-        }
-        const author = this.manager.profiles.get(original.author);
-        await pb.collection('social_posts').create({
-            author: this.userId,
-            body: '',
-            payload: original.payload || null,
-            repost_of: { id: original.id, author: displayName(author) },
-        });
-        showNotification(`Reposted ${original.payload?.title || 'post'}`);
         await this.refresh();
     }
 }

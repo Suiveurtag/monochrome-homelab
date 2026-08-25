@@ -9,6 +9,7 @@ import { showNotification } from './downloads.js';
 import { playSharedItem, shareCardHTML } from './share.js';
 import { icon } from './social-icons.js';
 import { SocialFeed } from './social-feed.js';
+import { isMutualFriend, reconcileSentMessage } from './social-state.js';
 import { shareSheet, bindShareSheetRecipientClicks } from './social-share-sheet.js';
 import {
     avatarFor,
@@ -49,9 +50,17 @@ function conversationTitle(conversation, profiles, meId) {
 }
 
 function conversationAvatar(conversation, profiles, meId) {
-    if (conversation.type === 'group') return '';
+    if (conversation.type === 'group') return messageFileUrl(conversation, conversation.avatar, '160x160');
     const other = (conversation.members || []).find((member) => member !== meId);
     return avatarFor(profiles.get(other));
+}
+
+function groupAvatarHTML(conversation, size = '') {
+    const avatar = conversationAvatar(conversation, null, null);
+    const sizeClass = size ? ` is-${size}` : '';
+    return avatar
+        ? `<img class="social-group-avatar${sizeClass}" src="${escapeHtml(avatar)}" alt="" loading="lazy" />`
+        : `<span class="social-group-tile${sizeClass}" aria-hidden="true">${icon.users(size === 'large' ? 24 : size === 'small' ? 14 : 18)}</span>`;
 }
 
 function previewFor(message) {
@@ -241,6 +250,7 @@ export class SocialManager {
     paint() {
         this.renderRail();
         this.renderPresenceSummary();
+        this.renderFeedRail();
         if (this.feed) this.feed.refresh().catch(() => {});
         if (this.activeId) {
             this.renderThread();
@@ -328,12 +338,12 @@ export class SocialManager {
         const avatar = conversationAvatar(conversation, this.profiles, this.userId);
         const state = isGroup ? { online: false, playing: false } : this.presenceStateFor(conversation);
         const art = isGroup
-            ? `<span class="social-group-tile" aria-hidden="true">${icon.users(18)}</span>`
+            ? groupAvatarHTML(conversation)
             : `<img src="${escapeHtml(avatar)}" alt="" loading="lazy" />`;
         const mine = last && last.sender === this.userId;
         const prefix = mine ? 'You: ' : '';
         return `<button class="social-chat-row${active ? ' is-active' : ''}${muted ? ' is-muted' : ''}" type="button" data-conversation="${escapeHtml(conversation.id)}">
-            <span class="social-avatar-wrap">${art}<span class="social-presence-dot${state.online ? ' is-online' : ''}${state.playing ? ' is-listening' : ''}"></span></span>
+            <span class="social-avatar-wrap">${art}${isGroup ? '' : `<span class="social-presence-dot${state.online ? ' is-online' : ''}${state.playing ? ' is-listening' : ''}"></span>`}</span>
             <span class="social-chat-copy">
                 <span class="social-chat-top"><strong>${escapeHtml(title)}</strong><time>${escapeHtml(last ? formatListTime(last.created) : '')}</time></span>
                 <span class="social-chat-bottom"><small>${escapeHtml(prefix + previewFor(last))}</small>
@@ -354,13 +364,27 @@ export class SocialManager {
         const count = document.getElementById('social-people-count');
         if (!container) return;
         const normalized = query.trim().toLowerCase();
-        const others = [...this.profiles.values()].filter((profile) => profile.user !== this.userId);
+        const peopleAlreadyInChats = new Set();
+        for (const conversation of this.conversations.values()) {
+            if (conversation.type !== 'dm') continue;
+            const other = (conversation.members || []).find((member) => member !== this.userId);
+            if (other) peopleAlreadyInChats.add(other);
+        }
+        const others = [...this.profiles.values()].filter(
+            (profile) => profile.user !== this.userId && !peopleAlreadyInChats.has(profile.user)
+        );
         if (count) count.textContent = String(others.length);
         const filtered = others.filter((profile) =>
             `${profile.display_name || ''} ${profile.username || ''}`.toLowerCase().includes(normalized)
         );
         if (!filtered.length) {
-            container.innerHTML = `<div class="social-rail-empty">${others.length ? 'No people match.' : 'Invite people to your instance to see them here.'}</div>`;
+            container.innerHTML = `<div class="social-rail-empty">${
+                others.length
+                    ? 'No people match.'
+                    : this.profiles.size > 1
+                      ? 'Everyone you already chat with is listed above.'
+                      : 'Invite people to your instance to see them here.'
+            }</div>`;
             return;
         }
         const sorted = filtered.sort((a, b) => {
@@ -375,16 +399,17 @@ export class SocialManager {
             .map((profile) => {
                 const state = presenceState(this.presence.get(profile.user));
                 const isFollowing = this.following.has(profile.user);
+                const isFriend = this.canChatWith(profile.user);
                 const status = state.track
                     ? `${state.playing ? 'Listening' : 'Paused'} · ${state.track.title}`
                     : state.online
                       ? 'Online'
                       : 'Offline';
-                return `<div class="social-person${isFollowing ? ' is-followed' : ''}" data-person="${escapeHtml(profile.user)}">
+                return `<div class="social-person${isFollowing ? ' is-followed' : ''}${isFriend ? ' is-friend' : ''}" data-person="${escapeHtml(profile.user)}">
                     <button class="social-person-main" type="button" data-open-person="${escapeHtml(profile.user)}" title="${escapeHtml(displayName(profile))}">
-                        <span class="social-avatar-wrap"><img src="${escapeHtml(avatarFor(profile))}" alt="" loading="lazy" /><span class="social-presence-dot${state.online ? ' is-online' : ''}${state.playing ? ' is-listening' : ''}"></span></span>
+                        <span class="social-avatar-wrap social-live-avatar"><img src="${escapeHtml(avatarFor(profile))}" alt="" loading="lazy" /><span class="social-presence-dot${state.online ? ' is-online' : ''}${state.playing ? ' is-listening' : ''}"></span></span>
                         <span class="social-person-copy">
-                            <span><strong>${escapeHtml(displayName(profile))}</strong>${this.followers.has(profile.user) && isFollowing ? '<em>Mutual</em>' : ''}</span>
+                            <span><strong>${escapeHtml(displayName(profile))}</strong>${isFriend ? '<em>Friend</em>' : ''}</span>
                             <small>${escapeHtml(status)}</small>
                         </span>
                         ${state.playing ? `<span class="social-equalizer" aria-label="Listening now"><i></i><i></i><i></i></span>` : ''}
@@ -419,6 +444,62 @@ export class SocialManager {
         summary.innerHTML = parts.length
             ? `<span class="social-presence-pulse" aria-hidden="true"></span>${parts.join(' · ')}`
             : 'Everyone is offline';
+    }
+
+    renderFeedRail() {
+        const liveList = document.getElementById('social-live-list');
+        const liveCount = document.getElementById('social-live-count');
+        const groupsList = document.getElementById('social-feed-groups');
+        if (!liveList || !groupsList) return;
+
+        const liveProfiles = [...this.profiles.values()]
+            .filter((profile) => profile.user !== this.userId)
+            .map((profile) => ({
+                profile,
+                state: presenceState(this.presence.get(profile.user)),
+                friend: this.canChatWith(profile.user),
+            }))
+            .filter(({ state }) => state.online || state.playing)
+            .sort((a, b) => {
+                if (a.state.playing !== b.state.playing) return a.state.playing ? -1 : 1;
+                if (a.friend !== b.friend) return a.friend ? -1 : 1;
+                return displayName(a.profile).localeCompare(displayName(b.profile));
+            });
+
+        if (liveCount) liveCount.textContent = String(liveProfiles.length);
+        liveList.innerHTML = liveProfiles.length
+            ? liveProfiles
+                  .slice(0, 6)
+                  .map(({ profile, state, friend }) => {
+                      const status = state.track
+                          ? `${state.playing ? 'Listening to' : 'Paused'} ${state.track.title}`
+                          : 'Online now';
+                      return `<a class="social-live-row" href="${escapeHtml(profileHref(profile))}">
+                        <span class="social-avatar-wrap"><img src="${escapeHtml(avatarFor(profile))}" alt="" loading="lazy" /><span class="social-presence-dot${state.online ? ' is-online' : ''}${state.playing ? ' is-listening' : ''}"></span></span>
+                        <span class="social-live-copy"><strong>${escapeHtml(displayName(profile))}</strong><small>${escapeHtml(status)}</small></span>
+                        ${friend ? '<span class="social-live-friend">Friend</span>' : ''}
+                        ${state.playing ? '<span class="social-equalizer" aria-label="Listening now"><i></i><i></i><i></i></span>' : ''}
+                    </a>`;
+                  })
+                  .join('')
+            : `<div class="social-feed-rail-empty"><strong>Quiet right now</strong><span>Listening activity will appear here.</span></div>`;
+
+        const groups = [...this.conversations.values()]
+            .filter((conversation) => conversation.type === 'group')
+            .sort((a, b) => Date.parse(b.updated || b.created || 0) - Date.parse(a.updated || a.created || 0));
+        groupsList.innerHTML = groups.length
+            ? groups
+                  .slice(0, 4)
+                  .map(
+                      (
+                          conversation
+                      ) => `<button class="social-feed-group-row" type="button" data-feed-conversation="${escapeHtml(conversation.id)}">
+                        ${groupAvatarHTML(conversation, 'small')}
+                        <span class="social-feed-group-copy"><strong>${escapeHtml(conversationTitle(conversation, this.profiles, this.userId))}</strong><small>${(conversation.members || []).length} members</small></span>
+                    </button>`
+                  )
+                  .join('')
+            : `<div class="social-feed-rail-empty"><strong>No groups yet</strong><span>Create one with friends you both follow.</span></div>`;
     }
 
     /* ----------------------------- unread handling --------------------------- */
@@ -502,6 +583,9 @@ export class SocialManager {
                 (conversation.members || []).includes(this.userId)
         );
         if (existing) return existing.id;
+        if (!this.canChatWith(userId)) {
+            throw new Error('You need to follow each other before starting a conversation.');
+        }
         const record = await pb.collection('social_conversations').create({
             type: 'dm',
             created_by: this.userId,
@@ -548,8 +632,16 @@ export class SocialManager {
             if (profile) window.location.assign(profileHref(profile));
             return;
         }
-        const conversationId = await this.ensureConversation(userId);
-        if (conversationId) await this.openConversation(conversationId);
+        try {
+            const conversationId = await this.ensureConversation(userId);
+            if (conversationId) await this.openConversation(conversationId);
+        } catch (error) {
+            const profile = this.profiles.get(userId);
+            showNotification(error.message, 'error');
+            if (profile) {
+                void import('./router.js').then(({ navigate }) => navigate(profileHref(profile)));
+            }
+        }
     }
 
     closeConversation() {
@@ -566,7 +658,7 @@ export class SocialManager {
     }
 
     canChatWith(userId) {
-        return this.following.has(userId) || this.followers.has(userId);
+        return isMutualFriend(this.following, this.followers, userId);
     }
 
     /* ------------------------------ thread render ---------------------------- */
@@ -590,14 +682,20 @@ export class SocialManager {
         const status = document.getElementById('social-thread-status');
         const dot = document.getElementById('social-thread-presence-dot');
         const personButton = document.getElementById('social-thread-person');
+        const groupAvatar = document.getElementById('social-thread-group-avatar');
         if (isGroup) {
             if (avatar) avatar.hidden = true;
+            if (groupAvatar) {
+                groupAvatar.hidden = false;
+                groupAvatar.innerHTML = groupAvatarHTML(conversation);
+            }
             if (name) name.textContent = conversationTitle(conversation, this.profiles, this.userId);
             if (status) status.textContent = `${(conversation.members || []).length} members`;
             if (dot) dot.hidden = true;
             if (personButton) personButton.disabled = false;
         } else {
             if (avatar) avatar.hidden = false;
+            if (groupAvatar) groupAvatar.hidden = true;
             if (avatar) avatar.src = avatarFor(otherProfile);
             if (name) name.textContent = displayName(otherProfile);
             if (status) {
@@ -631,11 +729,20 @@ export class SocialManager {
                 const avatar = document.getElementById('social-gate-avatar');
                 if (avatar) avatar.src = avatarFor(otherProfile);
                 const copy = document.getElementById('social-gate-copy');
-                if (copy)
-                    copy.textContent = `Follow ${handleFor(otherProfile) || displayName(otherProfile)} to start chatting.`;
+                const target = handleFor(otherProfile) || displayName(otherProfile);
+                const iFollow = this.following.has(other);
+                const followsMe = this.followers.has(other);
+                if (copy) {
+                    copy.textContent = iFollow
+                        ? `Waiting for ${target} to follow you back. Messages unlock when you are friends.`
+                        : followsMe
+                          ? `Follow ${target} back to become friends and start chatting.`
+                          : `You both need to follow each other before you can message ${target}.`;
+                }
                 const button = document.getElementById('social-gate-follow');
                 if (button) {
-                    button.innerHTML = `${icon.userPlus(15)}<span>Follow</span>`;
+                    button.hidden = iFollow;
+                    button.innerHTML = `${icon.userPlus(15)}<span>${followsMe ? 'Follow back' : 'Follow'}</span>`;
                     button.dataset.followUser = other || '';
                 }
             }
@@ -783,10 +890,16 @@ export class SocialManager {
     async sendToConversation(conversationId, { body = '', share = null, image = null } = {}) {
         const conversation = this.conversations.get(conversationId);
         if (!conversation || !this.userId) return;
+        const recipient =
+            conversation.type === 'dm' ? (conversation.members || []).find((member) => member !== this.userId) : null;
+        if (recipient && !this.canChatWith(recipient)) {
+            throw new Error('You need to follow each other before sending messages.');
+        }
         const text = String(body || '').trim();
         if (!text && !share && !image) return;
         const payload = share ? { ...share } : null;
         const kind = image ? 'image' : payload ? (payload.snippet ? 'snippet' : payload.type || 'track') : 'text';
+        const tempId = `tmp-${++this.tempCounter}`;
         const data = {
             sender: this.userId,
             conversation: conversationId,
@@ -794,13 +907,13 @@ export class SocialManager {
             body: text,
             payload,
             read: false,
+            client_nonce: tempId,
         };
-        if (conversation.type === 'dm') {
-            data.recipient = (conversation.members || []).find((member) => member !== this.userId);
-        }
+        if (recipient) data.recipient = recipient;
 
         const temp = {
-            id: `tmp-${++this.tempCounter}`,
+            id: tempId,
+            client_nonce: tempId,
             sender: this.userId,
             conversation: conversationId,
             kind,
@@ -822,8 +935,7 @@ export class SocialManager {
         if (image) data.image = image;
         const record = await pb.collection('social_messages').create(data);
         const list = this.messagesByConversation.get(conversationId) || [];
-        const index = list.indexOf(temp);
-        if (index >= 0) list.splice(index, 1, record);
+        reconcileSentMessage(list, tempId, record);
         if (conversationId === this.activeId) {
             this.renderMessages();
             this.scrollMessagesToBottom();
@@ -905,7 +1017,11 @@ export class SocialManager {
     renderGroupHeader(conversation) {
         const isMuted = this.muted.has(conversation.id);
         return `<header class="social-info-hero">
-            <span class="social-group-tile is-large" aria-hidden="true">${icon.users(24)}</span>
+            <label class="social-group-avatar-editor" title="Change group picture">
+                ${groupAvatarHTML(conversation, 'large')}
+                <span class="social-group-avatar-action">${icon.imagePlus(15)}</span>
+                <input type="file" accept="image/*" data-group-avatar-input="${escapeHtml(conversation.id)}" hidden />
+            </label>
             <strong>${escapeHtml(conversationTitle(conversation, this.profiles, this.userId))}</strong>
             <small>${(conversation.members || []).length} members</small>
             <div class="social-info-actions">
@@ -1034,9 +1150,7 @@ export class SocialManager {
         const groupRows = commonGroups
             .slice(0, 3)
             .map(
-                (
-                    entry
-                ) => `<div class="social-info-row"><span class="social-group-tile is-small">${icon.users(14)}</span>
+                (entry) => `<div class="social-info-row">${groupAvatarHTML(entry, 'small')}
                 <span class="social-info-row-copy"><strong>${escapeHtml(conversationTitle(entry, this.profiles, this.userId))}</strong><small>${(entry.members || []).length} members</small></span></div>`
             )
             .join('');
@@ -1142,7 +1256,7 @@ export class SocialManager {
         const existing = document.getElementById('social-group-modal');
         if (existing) existing.remove();
         const friends = [...this.profiles.values()].filter(
-            (profile) => profile.user !== this.userId && this.following.has(profile.user)
+            (profile) => profile.user !== this.userId && this.canChatWith(profile.user)
         );
         const overlay = document.createElement('div');
         overlay.id = 'social-group-modal';
@@ -1151,6 +1265,12 @@ export class SocialManager {
             <header><strong>New group</strong>
                 <button type="button" class="btn-icon" data-group-close aria-label="Close">${icon.x(18)}</button>
             </header>
+            <label class="social-group-picture-picker">
+                <span class="social-group-picture-preview" data-group-picture-preview>${icon.imagePlus(20)}</span>
+                <span class="social-group-picture-copy"><strong class="social-group-picture-title">Group picture</strong><small class="social-group-picture-hint">Choose a square image or add one later</small></span>
+                <span class="social-group-picture-choose">Choose</span>
+                <input id="social-group-avatar" type="file" accept="image/*" hidden />
+            </label>
             <input id="social-group-name" type="text" placeholder="Group name" maxlength="128" />
             <div class="social-group-people">
                 ${
@@ -1164,7 +1284,7 @@ export class SocialManager {
                 </label>`
                               )
                               .join('')
-                        : '<p class="social-group-hint">Follow some people first — you can only group with people you follow.</p>'
+                        : '<p class="social-group-hint">Groups are for friends — you both need to follow each other first.</p>'
                 }
             </div>
             <button id="social-group-create" class="social-group-create" ${friends.length ? '' : 'disabled'}>Create group</button>
@@ -1173,30 +1293,50 @@ export class SocialManager {
         overlay.addEventListener('click', (event) => {
             if (event.target === overlay || event.target.closest('[data-group-close]')) overlay.remove();
         });
+        overlay.querySelector('#social-group-avatar')?.addEventListener('change', (event) => {
+            const file = event.target.files?.[0];
+            const preview = overlay.querySelector('[data-group-picture-preview]');
+            if (!file || !preview) return;
+            preview.innerHTML = `<img class="social-group-picture-image" src="${escapeHtml(URL.createObjectURL(file))}" alt="" />`;
+        });
         overlay.querySelector('#social-group-create')?.addEventListener('click', () => {
             const name = overlay.querySelector('#social-group-name')?.value.trim();
             const members = [...overlay.querySelectorAll('.social-group-person input:checked')].map((box) => box.value);
+            const avatar = overlay.querySelector('#social-group-avatar')?.files?.[0] || null;
             if (!name || !members.length) {
                 showNotification('Pick a name and at least one person');
                 return;
             }
-            this.createGroup(name, members)
+            this.createGroup(name, members, avatar)
                 .then(() => overlay.remove())
                 .catch((error) => showNotification(error.message, 'error'));
         });
         overlay.querySelector('#social-group-name')?.focus();
     }
 
-    async createGroup(name, memberIds) {
-        const record = await pb.collection('social_conversations').create({
+    async createGroup(name, memberIds, avatar = null) {
+        const data = {
             type: 'group',
             name,
             created_by: this.userId,
             members: [this.userId, ...memberIds],
-        });
+        };
+        if (avatar) data.avatar = avatar;
+        const record = await pb.collection('social_conversations').create(data);
         this.conversations.set(record.id, record);
         showNotification(`Group “${name}” created`);
         await this.openConversation(record.id);
+    }
+
+    async updateGroupAvatar(conversationId, file) {
+        const conversation = this.conversations.get(conversationId);
+        if (!conversation || conversation.type !== 'group' || !file) return;
+        const record = await pb.collection('social_conversations').update(conversationId, { avatar: file });
+        this.conversations.set(record.id, record);
+        this.renderRail(document.getElementById('social-conversation-search')?.value || '');
+        this.renderThread();
+        if (this.infoOpen) this.renderInfoPanel();
+        showNotification('Group picture updated');
     }
 
     async leaveGroup(conversationId) {
@@ -1345,7 +1485,7 @@ export class SocialManager {
     async shareRecipients() {
         const out = [];
         for (const profile of this.profiles.values()) {
-            if (profile.user === this.userId || !this.following.has(profile.user)) continue;
+            if (profile.user === this.userId || !this.canChatWith(profile.user)) continue;
             out.push({
                 key: `user:${profile.user}`,
                 type: 'user',
@@ -1363,7 +1503,7 @@ export class SocialManager {
                 id: conversation.id,
                 name: conversationTitle(conversation, this.profiles, this.userId),
                 meta: `${(conversation.members || []).length} members`,
-                image: '',
+                image: conversationAvatar(conversation, this.profiles, this.userId),
             });
         }
         return out;
@@ -1447,9 +1587,13 @@ export class SocialManager {
             if (!conversationId || !this.conversations.has(conversationId)) return;
             const list = this.messagesByConversation.get(conversationId) || [];
             const index = list.findIndex((message) => message.id === record.id);
+            const pendingIndex = record.client_nonce
+                ? list.findIndex((message) => message.id === record.client_nonce)
+                : -1;
             if (event.action === 'delete') {
                 if (index >= 0) list.splice(index, 1);
             } else if (index >= 0) list[index] = record;
+            else if (pendingIndex >= 0) list.splice(pendingIndex, 1, record);
             else list.push(record);
             list.sort((a, b) => Date.parse(a.created) - Date.parse(b.created));
             if (conversationId === this.activeId) {
@@ -1538,9 +1682,7 @@ export class SocialManager {
             stats.textContent = `${followers.totalItems} followers · ${following.totalItems} following`;
             stats.style.display = 'block';
         }
-        if (messageButton && !this.canChatWith(profile.user)) {
-            messageButton.style.display = 'none';
-        }
+        if (messageButton) messageButton.style.display = this.canChatWith(profile.user) ? '' : 'none';
     }
 
     /* ------------------------------ page render ------------------------------ */
@@ -1587,6 +1729,10 @@ export class SocialManager {
         if (composer) composer.hidden = true;
         const count = document.getElementById('social-people-count');
         if (count) count.textContent = '0';
+        const live = document.getElementById('social-live-list');
+        const groups = document.getElementById('social-feed-groups');
+        if (live) live.innerHTML = '<div class="social-feed-rail-empty">Sign in to see who is around.</div>';
+        if (groups) groups.innerHTML = '<div class="social-feed-rail-empty">Sign in to see your groups.</div>';
     }
 
     /* --------------------------------- bind ---------------------------------- */
@@ -1601,6 +1747,12 @@ export class SocialManager {
             this.renderRail(event.target.value);
         });
         document.getElementById('social-new-group')?.addEventListener('click', () => this.openGroupModal());
+        document.getElementById('social-feed-new-group')?.addEventListener('click', () => this.openGroupModal());
+
+        document.getElementById('social-feed-groups')?.addEventListener('click', (event) => {
+            const row = event.target.closest('[data-feed-conversation]');
+            if (row) this.openConversation(row.dataset.feedConversation).catch(console.error);
+        });
 
         document.getElementById('social-conversation-list')?.addEventListener('click', (event) => {
             const row = event.target.closest('[data-conversation]');
@@ -1689,6 +1841,15 @@ export class SocialManager {
             const play = event.target.closest('[data-play-share]');
             if (play) {
                 playSharedItem(play.dataset.playKind || 'track', play.dataset.playShare);
+            }
+        });
+        document.getElementById('social-info-panel')?.addEventListener('change', (event) => {
+            const input = event.target.closest('[data-group-avatar-input]');
+            const file = input?.files?.[0];
+            if (input && file) {
+                this.updateGroupAvatar(input.dataset.groupAvatarInput, file).catch((error) =>
+                    showNotification(error.message, 'error')
+                );
             }
         });
 

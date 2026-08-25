@@ -51,53 +51,53 @@ typography:
         lineHeight: 1.3
         letterSpacing: '0.1em'
 rounded:
-    pill: '999px'
-    workspace: '20px'
-    card: '18px'
-    frame: '14px'
-    row: '13px'
-    control: '12px'
-    tool: '9px'
-    bubble-other: '4px 16px 16px 16px'
-    bubble-own: '16px 4px 16px 16px'
-    bubble-grouped: '12px'
+  pill: "999px"
+  workspace: "12px"
+  card: "18px"
+  frame: "14px"
+  row: "13px"
+  control: "12px"
+  tool: "9px"
+  bubble-other: "4px 16px 16px 16px"
+  bubble-own: "16px 4px 16px 16px"
+  bubble-grouped: "12px"
 spacing:
     xs: '0.35rem'
     sm: '0.55rem'
     md: '0.8rem'
     lg: '1.1rem'
 components:
-    social-tab-active:
-        backgroundColor: '{colors.foreground}'
-        textColor: '{colors.background}'
-        rounded: '{rounded.pill}'
-        padding: '0.44rem 1.05rem'
-    social-primary-button:
-        backgroundColor: '{colors.foreground}'
-        textColor: '{colors.background}'
-        rounded: '{rounded.pill}'
-        padding: '0.42rem 1.05rem'
-    social-chat-row-active:
-        backgroundColor: 'rgb(var(--highlight-rgb), 0.09)'
-        textColor: '{colors.foreground}'
-        rounded: '{rounded.row}'
-        padding: '0.55rem'
-    social-unread-pill:
-        backgroundColor: '{colors.foreground}'
-        textColor: '{colors.background}'
-        rounded: '{rounded.pill}'
-        height: '17px'
-        width: '17px'
-    message-bubble-other:
-        backgroundColor: '{colors.card}'
-        textColor: '{colors.foreground}'
-        rounded: '{rounded.bubble-other}'
-        padding: '0.5rem 0.7rem 0.34rem'
-    message-bubble-own:
-        backgroundColor: 'color-mix(in srgb, var(--foreground) 12%, var(--card))'
-        textColor: '{colors.foreground}'
-        rounded: '{rounded.bubble-own}'
-        padding: '0.5rem 0.7rem 0.34rem'
+  social-tab-active:
+    backgroundColor: "transparent"
+    textColor: "{colors.foreground}"
+    rounded: "0"
+    padding: "0.75rem 0 0.72rem"
+  social-primary-button:
+    backgroundColor: "{colors.foreground}"
+    textColor: "{colors.background}"
+    rounded: "{rounded.pill}"
+    padding: "0.42rem 1.05rem"
+  social-chat-row-active:
+    backgroundColor: "rgb(var(--highlight-rgb), 0.09)"
+    textColor: "{colors.foreground}"
+    rounded: "{rounded.row}"
+    padding: "0.55rem"
+  social-unread-pill:
+    backgroundColor: "{colors.foreground}"
+    textColor: "{colors.background}"
+    rounded: "{rounded.pill}"
+    height: "17px"
+    width: "17px"
+  message-bubble-other:
+    backgroundColor: "{colors.card}"
+    textColor: "{colors.foreground}"
+    rounded: "{rounded.bubble-other}"
+    padding: "0.5rem 0.7rem 0.34rem"
+  message-bubble-own:
+    backgroundColor: "color-mix(in srgb, var(--foreground) 12%, var(--card))"
+    textColor: "{colors.foreground}"
+    rounded: "{rounded.bubble-own}"
+    padding: "0.5rem 0.7rem 0.34rem"
 ---
 
 # Design System: Monochrome Social
@@ -116,20 +116,20 @@ components:
 
 A private club's noticeboard and mail room, drawn in a single ink. The Social surface never
 introduces a palette of its own: surfaces are `var(--card)` over `var(--background)`, structure is
-1px hairlines, and the _only_ accent is the foreground itself — buttons, the active tab thumb,
+1px hairlines, and the *only* accent is the foreground itself — buttons, the active tab underline,
 unread pills, and the send button are all solid `var(--foreground)` ink on `var(--background)`
 paper. Chroma is rationed to two meanings: presence green `#5ee890` says _a member is alive right
 now_, and like-red `#ff5470` says _you loved this_. Nothing else on the surface may be colored.
 
 Density is messenger-compact: small type (body text sits at 0.82–0.9rem), tight rows, and generous
 use of uppercase micro-labels for wayfinding. Feed posts deliberately have no card boxes — the feed
-is a single hairline-divided column — while the messages workspace is the one big contained object
-on the page (a 20px-radius, hairline-bordered panel with three panes). Floating layers (share
+uses a broad hairline-divided column with a compact live-activity rail — while the messages workspace
+is the one big contained object on the page (a 12px-radius, hairline-bordered panel with three panes). Floating layers (share
 sheet, group modal, lightbox, docked info panel) are opaque token surfaces with heavy soft shadows;
 everything inline is flat.
 
 Motion is short, eased, and sparse: 240–320ms `cubic-bezier(0.22, 1, 0.36, 1)`, one property per
-move (a 6–7px rise, a 14px slide, a thumb glide). Only two things loop forever — the presence pulse
+move (a 6–7px rise or a 14px slide). Only two things loop forever — the presence pulse
 (2.4s) and the listening equalizer (0.75s alternate) — and every animation and transition is
 switched off under `prefers-reduced-motion: reduce`.
 
@@ -138,7 +138,7 @@ switched off under `prefers-reduced-motion: reduce`.
 - Foreground-as-accent: solid ink fills for primary actions, active states, and unread counts
 - Two chromatic signals only: presence green `#5ee890` (alive) and like-red `#ff5470` (liked)
 - Hairline-first structure; `rgb(var(--highlight-rgb), α)` washes (0.02–0.12) for hover/selected
-- Feed = flat 660px hairline-divided column; messages = one contained 3-pane workspace
+- Feed = flat 720px stream plus a 240–280px live rail when space permits; messages = one contained 3-pane workspace
 - Asymmetric bubble radii (4px toward the sender, 16px elsewhere; 12px when grouped)
 - WhatsApp-style delivery ticks: clock = pending, double-check = delivered, accent double-check = read
 - Opaque overlay recipe (`background-color: var(--background)` + `background-image: linear-gradient(var(--card), var(--card))`) for every floating card
@@ -159,7 +159,7 @@ two fixed hues with reserved meanings, plus translucent washes of the theme high
 ### Primary
 
 - **Foreground ink** (`var(--foreground)`, `#f5f5f5` in the default theme): the accent. Solid fills
-  on: the segmented-control thumb, Post/Follow/Send/Create buttons, unread pills (badge + count),
+  on: Post/Follow/Send/Create buttons, unread pills (badge + count),
   the active-conversation indicator bar, snippet play buttons, in-range waveform bars, the
   listening presence dot, and the "Following"/pressed states of icon buttons. Inverted text
   on these fills is always `var(--background)`.
@@ -240,15 +240,16 @@ containers stay quiet.
 
 ## Layout
 
-`#page-social` is a full-width container capped at 1500px, centered, and is itself a size
-container (`container-type: inline-size`) so children can respond to the _workspace_, not the
+`#page-social` is a full-width container capped at 1380px, centered, and is itself a size
+container (`container-type: inline-size`) so children can respond to the *workspace*, not the
 viewport — necessary because the floating player panel eats horizontal space.
 
-- **Feed tab:** one centered column, `max-width: 660px`. Composer on top, then posts separated by
-  hairlines (no cards, no gutters between columns of cards). Posts tighten their padding at ≤900px.
+- **Feed tab:** a centered `720px + 240–280px` grid. The main stream stays flat and hairline-divided;
+  the sticky secondary rail shows live friends and recent groups. At a 1050px container width the
+  rail hides and the stream recenters.
 - **Messages workspace:** the one big object — `display: grid`,
-  `grid-template-columns: 300px minmax(0, 1fr)`, gaining a third `320px` column when the info panel
-  is open (`.has-info`). Height is `clamp(520px, calc(100dvh - 302px), 980px)`. The rail (chats +
+  `grid-template-columns: 280px minmax(0, 1fr)`, gaining a third `300px` column when the info panel
+  is open (`.has-info`). Height is `clamp(540px, calc(100dvh - 274px), 980px)`. The rail (chats +
   people) and thread each scroll internally; the composer is docked at the thread's foot.
 - **Info panel docking:** `@container (max-width: 1240px)` collapses the third column and floats the
   panel as a right-side overlay — `position: absolute; width: min(340px, 88%)` with a left hairline
@@ -319,23 +320,18 @@ Pill for people-actions, rounded-rect for content, asymmetric for speech. Border
 
 ## Components
 
-### Social header — title, presence summary, segmented tabs
-
+### Social header — title, presence summary, line tabs
 - Compact identity row: "Social" h1 (1.45rem/750) with a live presence summary beneath
   (0.72rem/550 muted): a 7px `#5ee890` dot pulsing a 7px ring every 2.4s, then "1 listening · 2
   online" (or "Everyone is offline" / "Just you here for now").
-- **Segmented control:** pill track (3px padding, 1px border, `color-mix(var(--card) 72%,
-transparent)`), two tabs (0.8rem/650, muted; selected = background text). A JS-measured thumb
-  (solid foreground pill) slides beneath — width from `offsetWidth`, x from `offsetLeft - 3`,
-  transitioned 260ms `cubic-bezier(0.22,1,0.36,1)`, re-measured on `document.fonts.ready` and
-  window resize. The Messages tab carries a 17px unread pill that _inverts_ (background fill,
-  hairline outline) when its tab is selected. Focus-visible: 2px `var(--highlight)` outline.
+- **Line tabs:** the same language as Settings and Search — two quiet labels on the header hairline,
+  with a 2px foreground underline on the selected tab. Messages keeps its 17px unread pill.
+  Focus-visible: 2px `var(--highlight)` outline.
 - View swaps animate `social-view-in`: 320ms rise from `translateY(6px)` + fade.
 
 ### Feed composer
-
-42px avatar + borderless autosizing textarea ("What are you listening to?", max 200px) inside an
-18px-radius, 1px-border card (`color-mix(var(--card) 88%, transparent)`). A hairline divides the
+42px avatar + borderless autosizing textarea ("What are you listening to?", max 200px) on the page
+itself. A single bottom hairline contains the
 tools row: 32px icon tools (music-2, image-plus; radius 9px; hover = foreground color + wash 0.09 +
 `translateY(-1px)`) and the Post pill (disabled at 0.35 opacity until there's text or an
 attachment). Attachments render as 12px chips on wash 0.045 with a 38px thumb, uppercase type
@@ -343,30 +339,34 @@ label, and an X. The music picker unfolds as an inset panel (13px radius, `color
 55%, var(--card))`) with a search row, "Now playing" shortcut, and 36px-art result rows; searches
 debounce 220ms.
 
-### Feed post
+### Feed streams and post
+The feed is an editorial sequence, not one endless algorithmic list. **Your circle** comes first and
+contains posts from accounts the member follows. **Across Monochrome** follows after a generous
+section break and contains the rest of the instance, so no post is rendered twice. Each stream has
+a plain title, one-line description, post count, and a compact author facepile with live presence
+dots. Empty streams keep their heading and collapse to one quiet explanatory row.
 
 No box. 42px round avatar, then a baseline head: author (0.86rem/700, underline on hover) · @handle
-· relative time ("4h", tabular where numeric), optional "Reposted from X" chip (repeat-2 icon,
-0.66rem/650). Body 0.9rem/1.55 pre-wrap. Embedded music rides in a `social-post-card`
-(max-width 430px) and images in a 14px frame capped at 440×420. The action row is four pill
-ghost-buttons (heart / message-circle / repeat-2 / share-2, 0.72rem/650 counts): hover = wash 0.08,
+· relative time ("4h", tabular where numeric). Body 0.9rem/1.55 pre-wrap. Embedded music rides in a `social-post-card`
+(max-width 430px) and images in a 14px frame capped at 440×420. The action row is up to three pill
+ghost-buttons (heart / message-circle / share-2 when music is attached, 0.72rem/650 counts): hover = wash 0.08,
 active = `scale(0.94)`. Liked heart turns `#ff5470`, fills, and pops (380ms: 0.6 → 1.25 → 1).
 Comments expand inline (`social-view-in` 260ms) behind a 55%-opacity hairline: 26px avatars,
 0.72–0.78rem copy, and a pill comment input on wash 0.045 whose border mixes 34% foreground on
 focus. Row hover paints a whisper of wash (0.022) over the whole post.
 
 ### Messages workspace — rail
-
-Left 300px rail on wash 0.02 with a right hairline. Head: borderless search field (wash 0.05 fill,
-transparent border; on `:focus-within` the fill clears and a 26%-foreground border appears) + a
-31px new-group tool. Chat rows (13px radius): 42px avatar with presence dot, name (0.8rem/650) +
+Left 280px rail on a card/background mix with a right hairline. Head: 36px bordered search field on
+the page background; `:focus-within` mixes foreground into the border. Beside it is a 31px new-group
+tool. Chat rows (8px radius): 42px avatar with presence dot, name (0.8rem/650) +
 list time (0.6rem), preview (0.68rem, "You: " prefix for own last message), bell-off glyph at 0.7
-opacity when muted, and a 17px foreground unread pill (99+ cap). Hover nudges `translateX(2px)` +
-wash 0.06; the active row holds wash 0.09 and a 3px×55% foreground bar on the left edge; unread
+opacity when muted, and a 17px foreground unread pill (99+ cap). Hover uses wash 0.06 without
+movement; the active row holds wash 0.09 and a 3px×55% foreground bar on the left edge; unread
 previews bold to 550. Presence dots: 10px, 2px `var(--card)` ring — offline = 55% muted-foreground,
 online = `#5ee890`, listening = white with glow. Below, a "PEOPLE" micro-label with member count,
-then people rows: avatar + dot, name with an optional **Mutual** tag (uppercase 0.5rem pill, wash
-0.09), status line ("Listening · Breathe Deeper" / "Online" / "Offline"), a 3-bar equalizer
+then **Meet people** rows for members who do not already have a DM in the conversation list:
+avatar + dot, name with an optional **Friend** tag (uppercase 0.5rem pill, wash 0.09), status line
+("Listening · Breathe Deeper" / "Online" / "Offline"), a 3-bar equalizer
 (2px bars, 0.75s alternate wave) when playing, and a 28px round follow button — hairline ring with
 user-plus; hover inverts to solid ink + `scale(1.06)`; following = wash 0.1 with a check.
 
@@ -374,8 +374,9 @@ user-plus; hover inverts to solid ink + `scale(1.06)`; following = wash 0.1 with
 
 Header: 38px avatar + presence dot, name (0.84rem/700) and status small ("Listening to · track" /
 "Online now" / "Offline" / "N members"), bell (mute, `aria-pressed` fills it solid) and info icon
-buttons; back chevron appears only ≤900px. The thread pane carries a faint radial highlight glow at
-its top. Day spacers: uppercase 0.62rem/700 labels ("TODAY", "YESTERDAY", weekday, or date) between
+buttons; back chevron appears only ≤900px. The thread pane stays on the base background so people,
+messages, and album art carry the visual interest. Day spacers: uppercase 0.62rem/700 labels
+("TODAY", "YESTERDAY", weekday, or date) between
 72%-opacity hairlines. Message rows animate in (240ms, `translateY(7px)`); other-sender rows lead
 with a 30px bottom-aligned avatar (hidden but space-keeping when grouped) and, in groups, a 0.64rem
 author link. Stacks cap at `min(74%, 560px)` (86% mobile).
@@ -417,19 +418,24 @@ groups** (overlapping 30px avatar stack — `-9px` margins, 2px card ring — pl
 group rows), **Pinned** (pin-icon chip rows with unpin buttons; hint text when empty). Rows hover
 on wash 0.05.
 
-### Follow gate
+### Friendship gate
+DMs require both people to follow each other. Until then, the thread is masked by an absolute
+overlay: `color-mix(var(--card) 88%, transparent)` + `backdrop-filter: blur(6px)`, a grayscale 68px
+avatar, state-specific copy, and a solid-ink Follow / Follow back pill when the current member still
+needs to act. When they already follow the other member, the gate explains that it is waiting for a
+follow-back and hides the redundant button. The composer hides while gated. New DM records, share
+recipients, and group member choices all enforce the same mutual rule.
 
-When you don't follow a DM target, the thread is masked by an absolute overlay: `color-mix(var(--card)
-88%, transparent)` + `backdrop-filter: blur(6px)`, a grayscale 68px avatar, one line of copy, and a
-solid-ink Follow pill. The composer hides while gated.
-
-### Group modal
+### Group identity and modal
+Groups may carry an uploaded square picture. The image replaces the dashed group tile everywhere:
+conversation rail, thread header, details panel, mutual group rows, and share recipients. The large
+picture in details has a persistent image-plus edit affordance; any group member can replace it.
 
 Fixed scrim `rgb(0 0 0 / 0.5)` fading in 180ms; 400px card using the opaque overlay recipe,
 18px radius, `0 30px 90px` shadow, rising 240ms. Header + X, a name input (11px radius, wash 0.04,
-focus border mix 30%), a checkbox list of people you follow (native checkboxes with
-`accent-color: var(--foreground)`), and a solid Create pill (disabled 0.4 until valid). Only people
-you follow are listed — grouping is follow-gated too.
+focus border mix 30%), a picture picker with immediate local preview, a checkbox list of friends
+(native checkboxes with `accent-color: var(--foreground)`), and a solid Create pill (disabled 0.4
+until valid). Only mutual friends are listed.
 
 ### Lightbox
 

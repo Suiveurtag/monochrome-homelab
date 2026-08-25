@@ -3219,57 +3219,100 @@
                     </header>
 
                     <section id="social-feed-view" class="social-feed-view" role="tabpanel" aria-label="Feed">
-                        <div class="social-feed-column">
-                            <form id="social-post-composer" class="social-post-composer" hidden>
-                                <img
-                                    id="social-composer-avatar"
-                                    class="social-composer-avatar"
-                                    src="/assets/appicon.png"
-                                    alt=""
-                                />
-                                <div class="social-composer-body">
-                                    <textarea
-                                        id="social-post-input"
-                                        rows="1"
-                                        placeholder="What are you listening to?"
-                                        maxlength="2048"
-                                    ></textarea>
-                                    <div id="social-post-attachment" class="social-post-attachment" hidden></div>
-                                    <div id="social-post-music-picker" class="social-post-music-picker" hidden></div>
-                                    <div class="social-composer-tools">
-                                        <div class="social-composer-actions">
+                        <div class="social-feed-layout">
+                            <div class="social-feed-column">
+                                <form id="social-post-composer" class="social-post-composer" hidden>
+                                    <img
+                                        id="social-composer-avatar"
+                                        class="social-composer-avatar"
+                                        src="/assets/appicon.png"
+                                        alt=""
+                                    />
+                                    <div class="social-composer-body">
+                                        <textarea
+                                            id="social-post-input"
+                                            rows="1"
+                                            placeholder="What are you listening to?"
+                                            maxlength="2048"
+                                        ></textarea>
+                                        <div id="social-post-attachment" class="social-post-attachment" hidden></div>
+                                        <div
+                                            id="social-post-music-picker"
+                                            class="social-post-music-picker"
+                                            hidden
+                                        ></div>
+                                        <div class="social-composer-tools">
+                                            <div class="social-composer-actions">
+                                                <button
+                                                    type="button"
+                                                    id="social-post-music"
+                                                    class="social-tool"
+                                                    title="Attach music"
+                                                    aria-label="Attach music"
+                                                >
+                                                    <use svg="!lucide/music-2.svg" size="18" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    id="social-post-image"
+                                                    class="social-tool"
+                                                    title="Attach an image"
+                                                    aria-label="Attach an image"
+                                                >
+                                                    <use svg="!lucide/image-plus.svg" size="18" />
+                                                </button>
+                                                <input
+                                                    type="file"
+                                                    id="social-post-image-input"
+                                                    accept="image/*"
+                                                    hidden
+                                                />
+                                            </div>
                                             <button
-                                                type="button"
-                                                id="social-post-music"
-                                                class="social-tool"
-                                                title="Attach music"
-                                                aria-label="Attach music"
+                                                type="submit"
+                                                id="social-post-submit"
+                                                class="social-post-submit"
+                                                disabled
                                             >
-                                                <use svg="!lucide/music-2.svg" size="18" />
+                                                Post
                                             </button>
-                                            <button
-                                                type="button"
-                                                id="social-post-image"
-                                                class="social-tool"
-                                                title="Attach an image"
-                                                aria-label="Attach an image"
-                                            >
-                                                <use svg="!lucide/image-plus.svg" size="18" />
-                                            </button>
-                                            <input type="file" id="social-post-image-input" accept="image/*" hidden />
+                                        </div>
+                                    </div>
+                                </form>
+                                <div id="social-feed" class="social-feed" aria-live="polite"></div>
+                            </div>
+
+                            <aside class="social-feed-rail" aria-label="Social activity">
+                                <section class="social-feed-rail-section" aria-labelledby="social-live-title">
+                                    <header class="social-feed-rail-head">
+                                        <div>
+                                            <h2 id="social-live-title" class="social-feed-rail-title">Live now</h2>
+                                            <p>Friends around the instance.</p>
+                                        </div>
+                                        <span id="social-live-count" class="social-feed-rail-count">0</span>
+                                    </header>
+                                    <div id="social-live-list" class="social-live-list"></div>
+                                </section>
+
+                                <section class="social-feed-rail-section" aria-labelledby="social-groups-title">
+                                    <header class="social-feed-rail-head">
+                                        <div>
+                                            <h2 id="social-groups-title" class="social-feed-rail-title">Your groups</h2>
+                                            <p>Listening rooms you belong to.</p>
                                         </div>
                                         <button
-                                            type="submit"
-                                            id="social-post-submit"
-                                            class="social-post-submit"
-                                            disabled
+                                            id="social-feed-new-group"
+                                            class="social-feed-rail-action"
+                                            type="button"
+                                            aria-label="Create group"
+                                            title="Create group"
                                         >
-                                            Post
+                                            <use svg="!lucide/plus.svg" size="16" />
                                         </button>
-                                    </div>
-                                </div>
-                            </form>
-                            <div id="social-feed" class="social-feed" aria-live="polite"></div>
+                                    </header>
+                                    <div id="social-feed-groups" class="social-feed-groups"></div>
+                                </section>
+                            </aside>
                         </div>
                     </section>
 
@@ -3301,9 +3344,12 @@
                                     <use svg="!lucide/users-round.svg" size="16" />
                                 </button>
                             </div>
+                            <div class="social-rail-toolbar is-chats">
+                                <span class="social-rail-label">Conversations</span>
+                            </div>
                             <div id="social-conversation-list" class="social-conversation-list"></div>
                             <div class="social-rail-toolbar">
-                                <span class="social-rail-label">People</span
+                                <span class="social-rail-label">Meet people</span
                                 ><span id="social-people-count" class="social-rail-count"></span>
                             </div>
                             <div id="social-people-list" class="social-people-list"></div>
@@ -3344,6 +3390,11 @@
                                     >
                                         <span class="social-avatar-wrap">
                                             <img id="social-thread-avatar" src="/assets/appicon.png" alt="" />
+                                            <span
+                                                id="social-thread-group-avatar"
+                                                class="social-thread-group-avatar"
+                                                hidden
+                                            ></span>
                                             <span id="social-thread-presence-dot" class="social-presence-dot"></span>
                                         </span>
                                         <span class="social-thread-titles">
