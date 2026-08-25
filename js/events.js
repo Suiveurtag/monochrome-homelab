@@ -4002,7 +4002,6 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
         if (action === 'share-social' && track) {
             const shareType = ['track', 'album', 'artist'].includes(type) ? type : 'track';
             socialManager.prepareShare(shareType, track);
-            navigate('/social');
         } else if (action && track) {
             const selectedTracks = contextMenu._selectedTracks || [];
             const isMultiSelect = selectedTracks.length > 1;

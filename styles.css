@@ -17308,7 +17308,10 @@ img.cd {
     border: 0.125vw solid #ccc;
 }
 
-/* Social */
+/* Social — feed, messages, groups, share sheet.
+   World: Monochrome's own — hairlines, token surfaces, one accent (the foreground),
+   presence green reserved for "alive" signals. Motion is short, eased, sparse. */
+
 .social-unread-badge {
     min-width: 18px;
     height: 18px;
@@ -17323,205 +17326,1060 @@ img.cd {
     text-align: center;
 }
 
+/* A legacy `span { display: inline-block }` rule outranks the UA [hidden]
+   stylesheet, so these badges would render their zero state forever. */
+.social-unread-badge[hidden],
+.social-tab-unread[hidden] {
+    display: none;
+}
+
 #page-social {
     width: 100%;
     max-width: 1500px;
     margin: 0 auto;
-    padding-bottom: 1rem;
+    container-type: inline-size;
 }
 
-.social-page-header {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 2rem;
-    margin-bottom: 1.35rem;
-}
+/* ---------------------------------- header --------------------------------- */
 
-.social-page-header h1 {
-    margin: 0.15rem 0 0.25rem;
-    font-size: clamp(2rem, 4vw, 3.35rem);
-    letter-spacing: -0.055em;
-}
-
-.social-page-header p {
-    margin: 0;
-    color: var(--muted-foreground);
-    font-size: 0.88rem;
-}
-
-.social-eyebrow {
-    color: var(--muted-foreground);
-    font-size: 0.63rem;
-    font-weight: 800;
-    letter-spacing: 0.16em;
-}
-
-.social-live-pill {
+.social-top {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
-    margin-bottom: 0.25rem;
-    padding: 0.45rem 0.7rem;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    color: var(--muted-foreground);
-    background: color-mix(in srgb, var(--card) 80%, transparent);
-    font-size: 0.68rem;
-    font-weight: 700;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 1.1rem;
 }
 
-.social-live-pill span {
+.social-top-identity h1 {
+    margin: 0;
+    font-size: 1.45rem;
+    font-weight: 750;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+}
+
+.social-presence-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0.2rem 0 0;
+    color: var(--muted-foreground);
+    font-size: 0.72rem;
+    font-weight: 550;
+}
+
+.social-presence-pulse {
     width: 7px;
     height: 7px;
     border-radius: 50%;
     background: #5ee890;
-    box-shadow:
-        0 0 0 4px rgb(94 232 144 / 0.1),
-        0 0 14px rgb(94 232 144 / 0.55);
+    animation: social-presence-pulse 2.4s ease-out infinite;
 }
 
-.social-shell {
-    display: grid;
-    height: clamp(500px, calc(100dvh - 330px), 720px);
-    min-height: 0;
-    overflow: hidden;
-    grid-template-columns: minmax(245px, 320px) minmax(0, 1fr);
+@keyframes social-presence-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgb(94 232 144 / 0.45);
+    }
+
+    70% {
+        box-shadow: 0 0 0 7px rgb(94 232 144 / 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgb(94 232 144 / 0);
+    }
+}
+
+.social-tabs {
+    position: relative;
+    display: inline-flex;
+    padding: 3px;
     border: 1px solid var(--border);
-    border-radius: 22px;
-    background: color-mix(in srgb, var(--card) 86%, transparent);
-    box-shadow: 0 28px 80px rgb(0 0 0 / 0.16);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--card) 72%, transparent);
 }
 
-.social-directory {
-    display: flex;
-    min-height: 0;
-    flex-direction: column;
-    padding: 1rem 0.7rem;
-    border-right: 1px solid var(--border);
-    background: rgb(var(--highlight-rgb), 0.018);
-}
-
-.social-search,
-.social-share-search {
-    display: flex;
+.social-tab {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
     align-items: center;
-    gap: 0.55rem;
-    margin: 0 0.25rem 1rem;
-    padding: 0.68rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 11px;
+    gap: 0.4rem;
+    padding: 0.44rem 1.05rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
     color: var(--muted-foreground);
-    background: rgb(0 0 0 / 0.1);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition: color 200ms ease;
+}
+
+.social-tab[aria-selected='true'] {
+    color: var(--background);
+}
+
+.social-tab:focus-visible {
+    outline: 2px solid var(--highlight);
+    outline-offset: 2px;
+}
+
+.social-tabs-thumb {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: auto;
+    border-radius: 999px;
+    background: var(--foreground);
+    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), width 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.social-tab-unread {
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--foreground);
+    color: var(--background);
+    font-size: 0.6rem;
+    font-weight: 800;
+    line-height: 17px;
+}
+
+.social-tab[aria-selected='true'] .social-tab-unread {
+    background: var(--background);
+    color: var(--foreground);
+    outline: 1px solid var(--border);
+}
+
+/* ------------------------------- feed surface ------------------------------ */
+
+.social-messages-view[hidden],
+.social-feed-view[hidden],
+.social-empty-state[hidden],
+.social-thread[hidden] {
+    display: none;
+}
+
+.social-feed-view {
+    animation: social-view-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.social-messages-view {
+    animation: social-view-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes social-view-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+}
+
+.social-feed-column {
+    max-width: 660px;
+    margin: 0 auto;
+}
+
+.social-post-composer {
+    display: flex;
+    gap: 0.8rem;
+    padding: 0.9rem 1rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--card) 88%, transparent);
     transition:
-        border-color 160ms ease,
-        box-shadow 160ms ease;
+        border-color 200ms ease,
+        box-shadow 200ms ease;
 }
 
-.social-search:focus-within,
-.social-share-search:focus-within {
-    border-color: var(--highlight);
-    box-shadow: 0 0 0 3px rgb(var(--highlight-rgb), 0.09);
+.social-post-composer:focus-within {
+    border-color: color-mix(in srgb, var(--foreground) 34%, var(--border));
+    box-shadow:
+        0 2px 6px rgb(0 0 0 / 0.08),
+        0 14px 38px rgb(0 0 0 / 0.14);
 }
 
-.social-search input,
-.social-share-search input {
+.social-composer-avatar,
+.social-post-avatar img {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--muted);
+}
+
+.social-composer-body {
     min-width: 0;
     flex: 1;
-    color: var(--foreground);
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.social-composer-body textarea {
+    min-height: 44px;
+    padding: 0.55rem 0.15rem 0;
     border: 0;
     outline: 0;
+    resize: none;
     background: transparent;
+    color: var(--foreground);
+    font: inherit;
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.social-composer-body textarea::placeholder {
+    color: var(--muted-foreground);
+}
+
+.social-composer-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.6rem;
+}
+
+.social-composer-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+}
+
+.social-tool {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition:
+        color 150ms ease,
+        background 150ms ease,
+        transform 150ms ease;
+}
+
+.social-tool:hover {
+    color: var(--foreground);
+    background: rgb(var(--highlight-rgb), 0.09);
+    transform: translateY(-1px);
+}
+
+.social-tool:focus-visible,
+.btn-icon:focus-visible,
+.social-rail-tool:focus-visible {
+    outline: 2px solid var(--highlight);
+    outline-offset: 1px;
+}
+
+.social-post-submit {
+    padding: 0.42rem 1.05rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--foreground);
+    color: var(--background);
     font: inherit;
     font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 160ms ease;
 }
 
-.social-directory-label {
+.social-post-submit:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.social-post-submit:hover:enabled {
+    transform: translateY(-1px);
+}
+
+.social-attachment-chip {
     display: flex;
-    justify-content: space-between;
-    padding: 0 0.55rem 0.55rem;
-    color: var(--muted-foreground);
-    font-size: 0.62rem;
-    font-weight: 750;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgb(var(--highlight-rgb), 0.045);
+    font-size: 0.74rem;
 }
 
-.social-people-list {
-    min-height: 0;
-    overflow-y: auto;
+.social-attachment-chip img {
+    width: 38px;
+    height: 38px;
+    object-fit: cover;
+    border-radius: 8px;
 }
 
-.social-pending-share {
-    display: grid;
-    gap: 0.18rem;
-    margin: 0 0.25rem 0.55rem;
-    padding: 0.72rem 0.75rem;
-    border-radius: 11px;
-    color: var(--foreground);
-    background: color-mix(in srgb, var(--primary) 12%, var(--secondary));
-}
-
-.social-pending-share-kicker {
-    color: var(--muted-foreground);
-    font-size: 0.63rem;
-    font-weight: 750;
-    letter-spacing: 0.075em;
-    text-transform: uppercase;
-}
-
-.social-pending-share strong,
-.social-pending-share small {
+.social-attachment-chip span {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.social-pending-share strong {
-    font-size: 0.82rem;
+.social-attachment-chip span em {
+    display: block;
+    color: var(--muted-foreground);
+    font-size: 0.58rem;
+    font-style: normal;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
-.social-pending-share small {
+.social-picker-result em {
+    color: var(--muted-foreground);
+    font-size: 0.56rem;
+    font-style: normal;
+    font-weight: 750;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+}
+
+.social-attachment-remove {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+}
+
+.social-attachment-remove:hover {
+    color: var(--foreground);
+    background: rgb(var(--highlight-rgb), 0.1);
+}
+
+.social-post-music-picker {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: color-mix(in srgb, var(--background) 55%, var(--card));
+}
+
+.social-picker-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted-foreground);
+}
+
+.social-picker-search input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--foreground);
+    font: inherit;
+    font-size: 0.8rem;
+}
+
+.social-picker-results {
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 0.3rem;
+}
+
+.social-picker-result {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.55rem;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--foreground);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.social-picker-result:hover {
+    background: rgb(var(--highlight-rgb), 0.08);
+}
+
+.social-picker-result img {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    object-fit: cover;
+    border-radius: 7px;
+}
+
+.social-picker-result > svg {
+    flex: 0 0 auto;
+    color: var(--muted-foreground);
+}
+
+.social-picker-result span {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.social-picker-result strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.social-picker-hint {
+    padding: 0.9rem;
+    color: var(--muted-foreground);
+    font-size: 0.72rem;
+    text-align: center;
+}
+
+/* ---------------------------------- posts ---------------------------------- */
+
+.social-feed {
+    padding: 0.35rem 0.2rem 1rem;
+}
+
+.social-post {
+    display: flex;
+    gap: 0.8rem;
+    padding: 1.05rem 0.6rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 62%, transparent);
+    transition: background 180ms ease;
+}
+
+.social-post:hover {
+    background: rgb(var(--highlight-rgb), 0.022);
+}
+
+.social-post:last-child {
+    border-bottom: 0;
+}
+
+.social-post-avatar {
+    flex: 0 0 42px;
+}
+
+.social-post-main {
+    min-width: 0;
+    flex: 1;
+}
+
+.social-post-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.social-post-author {
+    color: var(--foreground);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.86rem;
+    letter-spacing: -0.01em;
+}
+
+.social-post-author:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.social-post-handle,
+.social-post-dot {
     color: var(--muted-foreground);
     font-size: 0.72rem;
 }
 
-.social-person {
+.social-post-dot::before {
+    content: '·';
+}
+
+.social-post-head time {
+    color: var(--muted-foreground);
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+.social-post-repost-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.3rem;
+    color: var(--muted-foreground);
+    font-size: 0.66rem;
+    font-weight: 650;
+}
+
+.social-post-body {
+    margin: 0.35rem 0 0;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.social-post-card {
+    max-width: 430px;
+    margin-top: 0.65rem;
+}
+
+.social-post-card .social-message-share {
+    background: color-mix(in srgb, var(--card) 92%, transparent);
+    border: 1px solid var(--border);
+}
+
+.social-post-image {
+    margin-top: 0.65rem;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+}
+
+.social-post-image img {
+    display: block;
+    max-width: min(440px, 100%);
+    max-height: 420px;
+    object-fit: cover;
+}
+
+.social-post-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.55rem;
+}
+
+.social-post-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.34rem;
+    padding: 0.32rem 0.6rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted-foreground);
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition:
+        color 150ms ease,
+        background 150ms ease,
+        transform 150ms ease;
+}
+
+.social-post-action:hover {
+    color: var(--foreground);
+    background: rgb(var(--highlight-rgb), 0.08);
+}
+
+.social-post-action:active {
+    transform: scale(0.94);
+}
+
+.social-post-like.is-liked {
+    color: #ff5470;
+}
+
+.social-post-like.is-liked svg {
+    fill: currentcolor;
+    animation: social-heart-pop 380ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes social-heart-pop {
+    0% {
+        transform: scale(0.6);
+    }
+
+    55% {
+        transform: scale(1.25);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.social-post-comments {
+    margin-top: 0.7rem;
+    padding: 0.35rem 0 0.15rem;
+    border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+    animation: social-view-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.social-comment {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    padding: 0.4rem 0;
+}
+
+.social-comment img {
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
+    object-fit: cover;
+    border-radius: 50%;
+    background: var(--muted);
+}
+
+.social-comment-copy {
+    min-width: 0;
+    flex: 1;
+}
+
+.social-comment-copy strong {
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.social-comment-copy p {
+    margin: 0.05rem 0 0;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.social-comment time {
+    color: var(--muted-foreground);
+    font-size: 0.62rem;
+    white-space: nowrap;
+}
+
+.social-comment-compose {
+    padding: 0.3rem 0 0.2rem;
+}
+
+.social-comment-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    outline: 0;
+    background: rgb(var(--highlight-rgb), 0.045);
+    color: var(--foreground);
+    font: inherit;
+    font-size: 0.78rem;
+    transition: border-color 160ms ease;
+}
+
+.social-comment-input:focus {
+    border-color: color-mix(in srgb, var(--foreground) 34%, var(--border));
+}
+
+.social-feed-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 4rem 1rem;
+    color: var(--muted-foreground);
+    text-align: center;
+}
+
+.social-feed-empty svg {
+    color: color-mix(in srgb, var(--foreground) 40%, transparent);
+}
+
+.social-feed-empty strong {
+    color: var(--foreground);
+    font-size: 0.95rem;
+}
+
+.social-feed-empty span {
+    font-size: 0.78rem;
+}
+
+/* ------------------------------ messages shell ----------------------------- */
+
+.social-messages-view {
+    position: relative;
+    display: grid;
+    height: clamp(520px, calc(100dvh - 302px), 980px);
+    min-height: 0;
+    overflow: hidden;
+    grid-template-columns: 300px minmax(0, 1fr);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--card) 88%, transparent);
+    box-shadow: 0 24px 70px rgb(0 0 0 / 0.18);
+}
+
+.social-messages-view.has-info {
+    grid-template-columns: 300px minmax(0, 1fr) 320px;
+}
+
+/* ----------------------------------- rail ---------------------------------- */
+
+.social-rail {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    background: rgb(var(--highlight-rgb), 0.02);
+}
+
+.social-rail-head {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.75rem 0.65rem 0.55rem;
+}
+
+.social-rail-search {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.42rem 0.62rem;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    color: var(--muted-foreground);
+    background: rgb(var(--highlight-rgb), 0.05);
+    transition:
+        border-color 160ms ease,
+        background 160ms ease;
+}
+
+.social-rail-search:focus-within {
+    border-color: color-mix(in srgb, var(--foreground) 26%, var(--border));
+    background: transparent;
+}
+
+.social-rail-search input {
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--foreground);
+    font: inherit;
+    font-size: 0.78rem;
+}
+
+.social-rail-search input::placeholder {
+    color: var(--muted-foreground);
+}
+
+.social-rail-tool {
+    display: grid;
+    place-items: center;
+    width: 31px;
+    height: 31px;
+    flex: 0 0 31px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition:
+        color 150ms ease,
+        background 150ms ease;
+}
+
+.social-rail-tool:hover {
+    color: var(--foreground);
+    background: rgb(var(--highlight-rgb), 0.09);
+}
+
+.social-rail-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 0.95rem 0.35rem;
+}
+
+.social-rail-label {
+    color: var(--muted-foreground);
+    font-size: 0.6rem;
+    font-weight: 750;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.social-rail-count {
+    color: var(--muted-foreground);
+    font-size: 0.62rem;
+    font-weight: 650;
+}
+
+.social-conversation-list {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 0.45rem 0.4rem;
+}
+
+.social-chat-row {
     position: relative;
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 0.72rem;
-    padding: 0.7rem;
-    color: var(--foreground);
+    gap: 0.65rem;
+    padding: 0.55rem 0.55rem;
     border: 0;
     border-radius: 13px;
     background: transparent;
+    color: var(--foreground);
     cursor: pointer;
     text-align: left;
     transition:
-        background 160ms ease,
-        transform 160ms ease;
+        background 150ms ease,
+        transform 150ms ease;
 }
 
-.social-person:hover,
-.social-person.is-active {
-    background: rgb(var(--highlight-rgb), 0.075);
-}
-
-.social-person:hover {
+.social-chat-row:hover {
+    background: rgb(var(--highlight-rgb), 0.06);
     transform: translateX(2px);
 }
 
-.social-person.is-self {
-    cursor: default;
+.social-chat-row.is-active {
+    background: rgb(var(--highlight-rgb), 0.09);
 }
+
+.social-chat-row.is-active::before {
+    content: '';
+    position: absolute;
+    left: 0.06rem;
+    top: 50%;
+    width: 3px;
+    height: 55%;
+    border-radius: 999px;
+    background: var(--foreground);
+    transform: translateY(-50%);
+}
+
+.social-chat-copy {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+}
+
+.social-chat-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.social-chat-top strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8rem;
+    font-weight: 650;
+}
+
+.social-chat-top time {
+    flex: 0 0 auto;
+    color: var(--muted-foreground);
+    font-size: 0.6rem;
+}
+
+.social-chat-bottom {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+}
+
+.social-chat-bottom small {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--muted-foreground);
+    font-size: 0.68rem;
+}
+
+.social-chat-row.is-active .social-chat-bottom small,
+.social-chat-row:not(.is-muted):has(+ *) .social-chat-unread + small {
+    font-weight: 550;
+}
+
+.social-chat-unread {
+    min-width: 17px;
+    height: 17px;
+    flex: 0 0 auto;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--foreground);
+    color: var(--background);
+    font-size: 0.58rem;
+    font-weight: 800;
+    line-height: 17px;
+    text-align: center;
+}
+
+.social-chat-muted {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    color: var(--muted-foreground);
+    opacity: 0.7;
+}
+
+.social-rail-empty {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 1.2rem 0.9rem;
+    color: var(--muted-foreground);
+    font-size: 0.72rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.social-rail-empty strong {
+    color: var(--foreground);
+    font-size: 0.78rem;
+}
+
+.social-people-list {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 0.45rem 0.6rem;
+}
+
+.social-person {
+    display: flex;
+    align-items: center;
+    border-radius: 13px;
+    transition: background 150ms ease;
+}
+
+.social-person:hover {
+    background: rgb(var(--highlight-rgb), 0.05);
+}
+
+.social-person-main {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.5rem 0.55rem;
+    border: 0;
+    background: transparent;
+    color: var(--foreground);
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+    border-radius: 13px;
+}
+
+.social-person-copy {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.social-person-copy > span {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+}
+
+.social-person-copy strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+.social-person-copy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--muted-foreground);
+    font-size: 0.64rem;
+}
+
+.social-person-copy em {
+    flex: 0 0 auto;
+    padding: 0.1rem 0.32rem;
+    border-radius: 999px;
+    background: rgb(var(--highlight-rgb), 0.09);
+    color: var(--muted-foreground);
+    font-size: 0.5rem;
+    font-style: normal;
+    font-weight: 750;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.social-person-follow {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    margin-right: 0.45rem;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition:
+        color 150ms ease,
+        background 150ms ease,
+        border-color 150ms ease,
+        transform 150ms ease;
+}
+
+.social-person-follow:hover {
+    color: var(--background);
+    background: var(--foreground);
+    border-color: var(--foreground);
+    transform: scale(1.06);
+}
+
+.social-person-follow.is-following {
+    color: var(--foreground);
+    border-color: transparent;
+    background: rgb(var(--highlight-rgb), 0.1);
+}
+
+/* --------------------------------- avatars --------------------------------- */
 
 .social-avatar-wrap {
     position: relative;
-    width: 43px;
-    height: 43px;
-    flex: 0 0 43px;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
 }
 
 .social-avatar-wrap img {
@@ -17542,7 +18400,7 @@ img.cd {
     box-sizing: border-box;
     border: 2px solid var(--card);
     border-radius: 50%;
-    background: var(--muted-foreground);
+    background: color-mix(in srgb, var(--muted-foreground) 55%, transparent);
 }
 
 .social-presence-dot.is-online {
@@ -17551,49 +18409,32 @@ img.cd {
 
 .social-presence-dot.is-listening {
     background: #fff;
-    box-shadow: 0 0 9px rgb(255 255 255 / 0.6);
+    box-shadow: 0 0 9px rgb(255 255 255 / 0.55);
 }
 
-.social-person-copy {
-    min-width: 0;
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 0.2rem;
-}
-
-.social-person-copy > span {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.social-person-copy strong,
-.social-person-copy small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.social-person-copy strong {
-    font-size: 0.8rem;
-}
-
-.social-person-copy small {
+.social-group-tile {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 42px;
+    border: 1px dashed color-mix(in srgb, var(--foreground) 30%, var(--border));
+    border-radius: 50%;
+    background: rgb(var(--highlight-rgb), 0.06);
     color: var(--muted-foreground);
-    font-size: 0.66rem;
 }
 
-.social-person-copy em {
-    padding: 0.13rem 0.32rem;
-    border-radius: 999px;
-    color: var(--muted-foreground);
-    background: var(--muted);
-    font-size: 0.52rem;
-    font-style: normal;
-    font-weight: 700;
-    text-transform: uppercase;
+.social-group-tile.is-large {
+    width: 64px;
+    height: 64px;
+    flex-basis: 64px;
+}
+
+.social-group-tile.is-small {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+    border-radius: 10px;
 }
 
 .social-equalizer {
@@ -17601,6 +18442,7 @@ img.cd {
     display: inline-flex;
     align-items: flex-end;
     gap: 2px;
+    color: var(--foreground);
 }
 
 .social-equalizer i {
@@ -17627,102 +18469,150 @@ img.cd {
     }
 }
 
-.social-directory-empty {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    padding: 1.4rem 0.8rem;
-    color: var(--muted-foreground);
-    text-align: center;
-}
+/* ---------------------------------- thread --------------------------------- */
 
-.social-directory-empty strong {
-    color: var(--foreground);
-    font-size: 0.8rem;
-}
-
-.social-directory-empty span {
-    font-size: 0.68rem;
-    line-height: 1.5;
-}
-
-.social-conversation {
+.social-thread-pane {
     position: relative;
     min-width: 0;
     min-height: 0;
-    background: radial-gradient(circle at 50% 0%, rgb(var(--highlight-rgb), 0.055), transparent 46%);
-}
-
-.social-empty-state[hidden],
-.social-thread[hidden],
-.social-share-panel[hidden],
-.social-share-now-playing[hidden] {
-    display: none;
+    display: flex;
+    flex-direction: column;
+    background:
+        radial-gradient(120% 60% at 50% -8%, rgb(var(--highlight-rgb), 0.05), transparent 55%),
+        transparent;
 }
 
 .social-empty-state {
-    position: absolute;
-    inset: 0;
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-direction: column;
+    gap: 0.45rem;
     padding: 2rem;
     text-align: center;
 }
 
-.social-empty-orbit {
-    width: 72px;
-    height: 72px;
+.social-empty-mark {
+    width: 64px;
+    height: 64px;
     display: grid;
-    margin-bottom: 1.2rem;
     place-items: center;
+    margin-bottom: 0.6rem;
     border: 1px solid var(--border);
-    border-radius: 50%;
-    background: rgb(var(--highlight-rgb), 0.045);
-    box-shadow:
-        0 0 0 14px rgb(var(--highlight-rgb), 0.018),
-        0 0 0 28px rgb(var(--highlight-rgb), 0.008);
+    border-radius: 22px;
+    color: var(--muted-foreground);
+    background: rgb(var(--highlight-rgb), 0.035);
+    transform: rotate(-4deg);
 }
 
 .social-empty-state h2 {
-    margin: 0 0 0.4rem;
-    font-size: 1.2rem;
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
 }
 
 .social-empty-state p {
-    max-width: 320px;
+    max-width: 300px;
     margin: 0;
     color: var(--muted-foreground);
-    font-size: 0.78rem;
-    line-height: 1.6;
+    font-size: 0.76rem;
+    line-height: 1.55;
+}
+
+.social-follow-gate {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    padding: 2rem;
+    text-align: center;
+    background: color-mix(in srgb, var(--card) 88%, transparent);
+    backdrop-filter: blur(6px);
+}
+
+.social-follow-gate[hidden] {
+    display: none;
+}
+
+.social-follow-gate img {
+    width: 68px;
+    height: 68px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    filter: grayscale(0.35);
+}
+
+.social-follow-gate p {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.82rem;
+}
+
+.social-follow-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1.2rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--foreground);
+    color: var(--background);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.social-follow-button:hover {
+    transform: translateY(-1px);
 }
 
 .social-thread {
-    height: 100%;
+    flex: 1;
     min-height: 0;
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .social-thread-header {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
+    gap: 0.6rem;
+    padding: 0.6rem 0.9rem;
     border-bottom: 1px solid var(--border);
-    background: color-mix(in srgb, var(--card) 86%, transparent);
-    backdrop-filter: blur(18px);
+}
+
+.social-thread-back {
+    display: none;
 }
 
 .social-thread-person {
     min-width: 0;
-    display: flex;
     flex: 1;
+    display: flex;
     align-items: center;
     gap: 0.65rem;
+    padding: 0.25rem 0.4rem;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
     color: inherit;
-    text-decoration: none;
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: background 150ms ease;
+}
+
+.social-thread-person:hover {
+    background: rgb(var(--highlight-rgb), 0.05);
 }
 
 .social-thread-person .social-avatar-wrap {
@@ -17731,94 +18621,280 @@ img.cd {
     flex-basis: 38px;
 }
 
-.social-thread-person > span:last-child {
+.social-thread-titles {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.13rem;
+    gap: 0.08rem;
 }
 
-.social-thread-person strong,
-.social-thread-person small {
+.social-thread-titles strong {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-size: 0.84rem;
+    font-weight: 700;
 }
 
-.social-thread-person strong {
-    font-size: 0.82rem;
-}
-
-.social-thread-person small {
+.social-thread-titles small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: var(--muted-foreground);
     font-size: 0.66rem;
 }
 
-.social-thread-back {
-    display: none;
+.social-thread-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
 }
 
+.social-thread-actions .btn-icon[aria-pressed='true'] {
+    color: var(--background);
+    background: var(--foreground);
+}
+
+/* --------------------------------- messages -------------------------------- */
+
 .social-messages {
+    flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding: 1.25rem clamp(1rem, 3vw, 2.25rem);
+    padding: 1.1rem clamp(1rem, 3.5vw, 2.4rem) 1.3rem;
     scroll-behavior: smooth;
 }
 
-.social-message-row {
+.social-day-spacer {
     display: flex;
-    margin: 0.35rem 0;
+    align-items: center;
+    gap: 0.9rem;
+    margin: 1.15rem 0 0.85rem;
+    color: var(--muted-foreground);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.social-day-spacer::before,
+.social-day-spacer::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+.social-message-row {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    margin: 0.55rem 0;
+    animation: social-message-in 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes social-message-in {
+    from {
+        opacity: 0;
+        transform: translateY(7px);
+    }
+}
+
+.social-message-row.is-grouped {
+    margin-top: 0.14rem;
 }
 
 .social-message-row.is-own {
     justify-content: flex-end;
 }
 
-.social-message-bubble {
-    max-width: min(72%, 560px);
-    padding: 0.62rem 0.75rem 0.4rem;
+.social-message-avatar {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    align-self: flex-end;
+    overflow: hidden;
+    border-radius: 50%;
+}
+
+.social-message-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     border: 1px solid var(--border);
-    border-radius: 5px 15px 15px;
-    background: color-mix(in srgb, var(--muted) 78%, transparent);
+    background: var(--muted);
+}
+
+.social-message-row.is-grouped .social-message-avatar {
+    visibility: hidden;
+}
+
+.social-message-stack {
+    min-width: 0;
+    max-width: min(74%, 560px);
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.social-message-author {
+    padding-left: 0.2rem;
+    color: var(--muted-foreground);
+    font-size: 0.64rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.social-message-author:hover {
+    color: var(--foreground);
+}
+
+.social-message-bubble {
+    position: relative;
+    width: fit-content;
+    padding: 0.5rem 0.7rem 0.34rem;
+    border: 1px solid var(--border);
+    border-radius: 4px 16px 16px 16px;
+    background: var(--card);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+    transition: border-color 160ms ease;
+}
+
+.social-message-row.is-grouped .social-message-bubble {
+    border-radius: 12px;
 }
 
 .social-message-row.is-own .social-message-bubble {
-    border-color: color-mix(in srgb, var(--foreground) 18%, var(--border));
-    border-radius: 15px 5px 15px 15px;
-    background: color-mix(in srgb, var(--foreground) 10%, var(--card));
+    border-color: color-mix(in srgb, var(--foreground) 22%, var(--border));
+    border-radius: 16px 4px 16px 16px;
+    background: color-mix(in srgb, var(--foreground) 12%, var(--card));
 }
 
-.social-message-bubble.has-share {
-    width: min(360px, 72vw);
-    padding: 0.35rem;
+.social-message-row.is-own.is-grouped .social-message-bubble {
+    border-radius: 12px;
+}
+
+.social-message-row:hover .social-message-bubble {
+    border-color: color-mix(in srgb, var(--foreground) 26%, var(--border));
+}
+
+.social-message-bubble.is-image-only {
+    padding: 0.28rem;
 }
 
 .social-message-bubble p {
-    margin: 0.15rem 0.1rem 0.25rem;
-    font-size: 0.8rem;
+    margin: 0.05rem 0.02rem 0.3rem;
+    font-size: 0.82rem;
     line-height: 1.5;
+    overflow-wrap: anywhere;
     white-space: pre-wrap;
 }
 
-.social-message-bubble time {
-    display: block;
-    margin: 0.22rem 0.1rem 0;
-    color: var(--muted-foreground);
-    font-size: 0.53rem;
-    text-align: right;
+.social-message-foot {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.28rem;
+    margin-top: 0.12rem;
 }
+
+.social-message-foot time {
+    color: var(--muted-foreground);
+    font-size: 0.56rem;
+    white-space: nowrap;
+}
+
+.social-message-ticks {
+    display: inline-flex;
+    color: var(--muted-foreground);
+}
+
+.social-message-ticks.is-read {
+    color: var(--foreground);
+}
+
+.social-message-ticks.is-pending {
+    opacity: 0.6;
+}
+
+.social-message-pin {
+    position: absolute;
+    top: -11px;
+    right: 2px;
+    display: flex;
+    opacity: 0;
+    transition: opacity 140ms ease;
+}
+
+.social-message-row.is-own .social-message-pin {
+    right: auto;
+    left: 2px;
+}
+
+.social-message-row:hover .social-message-pin {
+    opacity: 1;
+}
+
+.social-message-pin button {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--muted-foreground);
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgb(0 0 0 / 0.18);
+    transition:
+        color 140ms ease,
+        transform 140ms ease;
+}
+
+.social-message-pin button:hover {
+    color: var(--foreground);
+    transform: translateY(-1px);
+}
+
+.social-message-image {
+    display: block;
+    max-width: min(340px, 100%);
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: none;
+    cursor: zoom-in;
+}
+
+.social-message-image img {
+    display: block;
+    max-width: 100%;
+    max-height: 360px;
+    border-radius: 12px;
+    object-fit: cover;
+}
+
+/* share cards inside messages and feed */
 
 .social-message-share {
     display: grid;
     align-items: center;
     gap: 0.65rem;
     grid-template-columns: 54px minmax(0, 1fr) auto;
+    width: min(330px, 68vw);
+    margin-top: 0.3rem;
     padding: 0.45rem;
     color: inherit;
-    border-radius: 11px;
+    border-radius: 12px;
     background: rgb(0 0 0 / 0.16);
     text-decoration: none;
     transition: background 160ms ease;
+}
+
+.social-message-bubble:not(.has-card) .social-message-share {
+    width: min(300px, 64vw);
 }
 
 .social-message-share:hover {
@@ -17883,7 +18959,7 @@ img.cd {
     gap: 0.12rem;
 }
 
-.social-message-share em,
+.social-share-meta em,
 .social-share-result em {
     color: var(--muted-foreground);
     font-size: 0.52rem;
@@ -17939,12 +19015,92 @@ img.cd {
     background: rgb(var(--highlight-rgb), 0.12);
 }
 
-.social-message-share-arrow {
+/* snippet cards */
+
+.social-snippet {
+    width: min(320px, 66vw);
+    margin-top: 0.3rem;
+    padding: 0.55rem 0.6rem 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--foreground) 16%, var(--border));
+    border-radius: 12px;
+    background: rgb(0 0 0 / 0.14);
+}
+
+.social-snippet-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.social-snippet-play {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    padding: 0 0 0 2px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--foreground);
+    color: var(--background);
+    cursor: pointer;
+    transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.social-snippet-play:hover {
+    transform: scale(1.07);
+}
+
+.social-snippet-copy {
+    min-width: 0;
+}
+
+.social-snippet-copy strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.74rem;
+}
+
+.social-snippet-copy small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: var(--muted-foreground);
+    font-size: 0.62rem;
+}
+
+.social-snippet-wave {
+    display: flex;
+    align-items: center;
+    gap: 1.5px;
+    height: 34px;
+    margin-top: 0.5rem;
+}
+
+.social-snippet-wave i {
+    flex: 1;
+    min-width: 1px;
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--foreground) 26%, transparent);
+}
+
+.social-snippet-wave i.is-in {
+    background: var(--foreground);
+}
+
+.social-snippet-range {
+    display: block;
+    margin-top: 0.4rem;
+    color: var(--muted-foreground);
+    font-size: 0.6rem;
+    font-variant-numeric: tabular-nums;
 }
 
 .social-new-thread {
-    height: 100%;
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -17954,170 +19110,313 @@ img.cd {
     text-align: center;
 }
 
-.social-new-thread span {
-    font-size: 0.63rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-}
-
 .social-new-thread strong {
     color: var(--foreground);
-    font-size: 0.9rem;
+    font-size: 0.92rem;
+}
+
+.social-new-thread span {
+    font-size: 0.74rem;
+}
+
+/* --------------------------------- composer -------------------------------- */
+
+.social-attach-strip {
+    padding: 0 1rem;
+}
+
+.social-attach-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgb(var(--highlight-rgb), 0.045);
+    font-size: 0.72rem;
+}
+
+.social-attach-chip img {
+    width: 34px;
+    height: 34px;
+    object-fit: cover;
+    border-radius: 7px;
+}
+
+.social-attach-chip span {
+    flex: 1;
+}
+
+.social-attach-remove {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+}
+
+.social-attach-remove:hover {
+    color: var(--foreground);
+    background: rgb(var(--highlight-rgb), 0.1);
 }
 
 .social-composer {
     display: flex;
     align-items: flex-end;
-    gap: 0.5rem;
-    margin: 0.75rem 1rem 1rem;
-    padding: 0.42rem;
+    gap: 0.35rem;
+    margin: 0.65rem 1rem 1rem;
+    padding: 0.32rem 0.32rem 0.32rem 0.45rem;
     border: 1px solid var(--border);
     border-radius: 16px;
-    background: color-mix(in srgb, var(--card) 92%, transparent);
-    box-shadow: 0 12px 35px rgb(0 0 0 / 0.12);
+    background: color-mix(in srgb, var(--card) 94%, transparent);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.12);
+    transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease;
+}
+
+.social-composer:focus-within {
+    border-color: color-mix(in srgb, var(--foreground) 30%, var(--border));
+    box-shadow:
+        0 2px 6px rgb(0 0 0 / 0.08),
+        0 14px 38px rgb(0 0 0 / 0.16);
+}
+
+.social-composer-tool {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 38px;
+    flex: 0 0 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition:
+        color 150ms ease,
+        background 150ms ease,
+        transform 150ms ease;
+}
+
+.social-composer-tool:hover {
+    color: var(--foreground);
+    background: rgb(var(--highlight-rgb), 0.09);
+    transform: translateY(-1px);
 }
 
 .social-composer textarea {
     min-height: 38px;
-    max-height: 120px;
+    max-height: 140px;
     flex: 1;
     resize: none;
-    padding: 0.6rem 0.3rem;
-    color: var(--foreground);
+    padding: 0.55rem 0.3rem;
     border: 0;
     outline: 0;
     background: transparent;
+    color: var(--foreground);
     font: inherit;
-    font-size: 0.8rem;
-    line-height: 1.4;
+    font-size: 0.82rem;
+    line-height: 1.45;
 }
 
-.social-share-toggle {
-    flex: 0 0 auto;
+.social-composer textarea::placeholder {
+    color: var(--muted-foreground);
 }
 
 .social-send-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
     width: 38px;
     height: 38px;
-    display: grid;
     flex: 0 0 38px;
-    place-items: center;
+    padding: 0;
     color: var(--background);
     border: 0;
-    border-radius: 11px;
+    border-radius: 12px;
     background: var(--foreground);
     cursor: pointer;
-    transition: transform 160ms ease;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    transition:
+        transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 160ms ease,
+        border-radius 160ms ease;
 }
 
-.social-send-button:hover {
-    transform: translateY(-1px) scale(1.03);
+.social-send-button:hover:enabled {
+    transform: translateY(-1px);
+    border-radius: 50%;
 }
 
-.social-share-panel {
-    position: absolute;
-    right: 1rem;
-    bottom: 5.6rem;
-    left: 1rem;
-    z-index: 4;
-    max-height: min(480px, 60vh);
+.social-send-button:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+/* -------------------------------- info panel ------------------------------- */
+
+.social-info-panel {
+    min-height: 0;
     overflow-y: auto;
-    padding: 1rem;
-    border: 1px solid var(--border);
-    border-radius: 17px;
-    background: color-mix(in srgb, var(--card) 96%, transparent);
-    box-shadow: 0 24px 70px rgb(0 0 0 / 0.32);
-    backdrop-filter: blur(24px);
-    animation: social-panel-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 1.1rem 1rem 1.4rem;
+    border-left: 1px solid var(--border);
+    background: rgb(var(--highlight-rgb), 0.02);
+    animation: social-info-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@keyframes social-panel-in {
+.social-info-close {
+    position: sticky;
+    top: 0;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    margin-left: auto;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--card);
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition:
+        color 150ms ease,
+        background 150ms ease;
+}
+
+.social-info-close:hover {
+    color: var(--background);
+    background: var(--foreground);
+}
+
+@keyframes social-info-in {
     from {
         opacity: 0;
-        transform: translateY(8px) scale(0.985);
+        transform: translateX(14px);
     }
 }
 
-.social-share-panel-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 0.8rem;
-}
-
-.social-share-panel-head > div {
+.social-info-hero {
     display: flex;
     flex-direction: column;
-    gap: 0.16rem;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.6rem 0 1.2rem;
+    text-align: center;
 }
 
-.social-share-panel-head strong {
-    font-size: 0.88rem;
+.social-info-hero > img {
+    width: 76px;
+    height: 76px;
+    margin-bottom: 0.4rem;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--muted);
 }
 
-.social-share-panel-head small {
+.social-info-hero > strong {
+    font-size: 0.98rem;
+    font-weight: 750;
+    letter-spacing: -0.015em;
+}
+
+.social-info-hero > small {
     color: var(--muted-foreground);
-    font-size: 0.65rem;
+    font-size: 0.7rem;
 }
 
-.social-share-search {
-    margin: 0 0 0.7rem;
+.social-info-hero > p {
+    margin: 0.45rem 0 0;
+    max-width: 250px;
+    color: var(--muted-foreground);
+    font-size: 0.72rem;
+    line-height: 1.5;
 }
 
-.social-share-now-playing,
-.social-share-result {
-    width: 100%;
+.social-info-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.3rem;
+    margin-top: 0.8rem;
+}
+
+.social-info-actions a,
+.social-info-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    padding: 0.38rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--foreground);
+    font: inherit;
+    font-size: 0.68rem;
+    font-weight: 650;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+        background 150ms ease,
+        color 150ms ease,
+        border-color 150ms ease;
+}
+
+.social-info-actions a:hover,
+.social-info-actions button:hover {
+    background: rgb(var(--highlight-rgb), 0.09);
+}
+
+.social-info-actions .is-following {
+    background: var(--foreground);
+    color: var(--background);
+    border-color: var(--foreground);
+}
+
+.social-info-section {
+    margin-top: 1.15rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid color-mix(in srgb, var(--border) 62%, transparent);
+}
+
+.social-info-section h3 {
+    margin: 0 0 0.55rem;
+    color: var(--muted-foreground);
+    font-size: 0.6rem;
+    font-weight: 750;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.social-info-hint {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.7rem;
+    line-height: 1.5;
+}
+
+.social-info-track {
     display: flex;
     align-items: center;
     gap: 0.65rem;
-    padding: 0.65rem 0.7rem;
-    color: var(--foreground);
-    border: 0;
-    border-radius: 11px;
-    background: transparent;
-    cursor: pointer;
-    text-align: left;
-}
-
-.social-share-now-playing {
-    display: grid;
-    margin-bottom: 0.55rem;
-    grid-template-columns: auto 1fr auto;
+    padding: 0.55rem 0.6rem;
     border: 1px solid var(--border);
+    border-radius: 13px;
     background: rgb(var(--highlight-rgb), 0.04);
 }
 
-.social-share-now-playing span {
-    grid-row: 1 / 3;
-    font-size: 0.55rem;
-    font-weight: 800;
-    writing-mode: vertical-rl;
-}
-
-.social-share-now-playing strong {
-    align-self: end;
-    font-size: 0.78rem;
-}
-
-.social-share-now-playing small {
-    align-self: start;
-    color: var(--muted-foreground);
-    font-size: 0.62rem;
-}
-
-.social-share-now-playing b {
-    grid-column: 3;
-    grid-row: 1 / 3;
-    font-size: 0.65rem;
-}
-
-.social-share-result:hover,
-.social-share-now-playing:hover {
-    background: rgb(var(--highlight-rgb), 0.08);
-}
-
-.social-share-result > img,
-.social-share-result > .social-share-placeholder {
+.social-info-track img {
     width: 44px;
     height: 44px;
     flex: 0 0 44px;
@@ -18125,39 +19424,833 @@ img.cd {
     border-radius: 8px;
 }
 
-.social-share-result > span:nth-child(2) {
+.social-info-track-copy {
     min-width: 0;
-    display: flex;
     flex: 1;
-    flex-direction: column;
-    gap: 0.1rem;
 }
 
-.social-share-result strong,
-.social-share-result small {
+.social-info-track-copy em {
+    display: block;
+    color: var(--muted-foreground);
+    font-size: 0.52rem;
+    font-style: normal;
+    font-weight: 750;
+    letter-spacing: 0.1em;
+}
+
+.social-info-track-copy a {
+    display: block;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--foreground);
+    font-size: 0.78rem;
+    font-weight: 650;
+    text-decoration: none;
 }
 
-.social-share-result strong {
-    font-size: 0.74rem;
+.social-info-track-copy a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
 }
 
-.social-share-result small {
+.social-info-track-copy small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: var(--muted-foreground);
-    font-size: 0.61rem;
+    font-size: 0.64rem;
 }
 
-.social-share-result b {
+.social-info-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.42rem 0.35rem;
+    border-radius: 10px;
+    color: inherit;
+    text-decoration: none;
+    transition: background 140ms ease;
+}
+
+.social-info-row:hover {
+    background: rgb(var(--highlight-rgb), 0.05);
+}
+
+.social-info-index {
+    width: 16px;
+    flex: 0 0 16px;
+    color: var(--muted-foreground);
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.social-info-row img {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    object-fit: cover;
+    border-radius: 8px;
+    background: var(--muted);
+}
+
+.social-info-row-copy {
+    min-width: 0;
+    flex: 1;
+}
+
+.social-info-row-copy strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.76rem;
+    font-weight: 650;
+}
+
+.social-info-row-copy small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--muted-foreground);
+    font-size: 0.64rem;
+}
+
+.social-info-row button {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition:
+        color 140ms ease,
+        background 140ms ease;
+}
+
+.social-info-row button:hover {
+    color: var(--foreground);
+    background: rgb(var(--highlight-rgb), 0.12);
+}
+
+.social-info-row.is-pin .social-info-pin-icon {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
+    border-radius: 8px;
+    background: rgb(var(--highlight-rgb), 0.08);
+    color: var(--muted-foreground);
+}
+
+.social-info-member {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0.35rem;
+    border-radius: 10px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.social-info-member:hover {
+    background: rgb(var(--highlight-rgb), 0.05);
+}
+
+.social-info-member .social-avatar-wrap {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+}
+
+.social-info-member-copy {
+    min-width: 0;
+    flex: 1;
+}
+
+.social-info-member-copy strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.76rem;
+}
+
+.social-info-member-copy small {
+    display: block;
+    color: var(--muted-foreground);
     font-size: 0.62rem;
 }
 
-.social-share-hint {
+.social-info-mutual {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0.2rem 0.35rem 0.55rem;
+}
+
+.social-info-mutual img {
+    width: 30px;
+    height: 30px;
+    margin-right: -9px;
+    object-fit: cover;
+    border: 2px solid var(--card);
+    border-radius: 50%;
+    background: var(--muted);
+}
+
+.social-info-mutual span {
+    margin-left: 1.1rem;
+    color: var(--muted-foreground);
+    font-size: 0.68rem;
+    font-weight: 600;
+}
+
+/* ------------------------------ group modal -------------------------------- */
+
+.social-group-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: grid;
+    place-items: center;
     padding: 1.2rem;
+    background: rgb(0 0 0 / 0.5);
+    animation: social-fade-in 180ms ease;
+}
+
+@keyframes social-fade-in {
+    from {
+        opacity: 0;
+    }
+}
+
+.social-group-modal-card {
+    width: min(400px, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background-color: var(--background);
+    background-image: linear-gradient(var(--card), var(--card));
+    box-shadow: 0 30px 90px rgb(0 0 0 / 0.4);
+    animation: social-view-in 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.social-group-modal-card header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.social-group-modal-card strong {
+    font-size: 0.95rem;
+}
+
+.social-group-modal-card input[type='text'] {
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    outline: 0;
+    background: rgb(var(--highlight-rgb), 0.04);
+    color: var(--foreground);
+    font: inherit;
+    font-size: 0.84rem;
+    transition: border-color 160ms ease;
+}
+
+.social-group-modal-card input[type='text']:focus {
+    border-color: color-mix(in srgb, var(--foreground) 30%, var(--border));
+}
+
+.social-group-people {
+    max-height: 260px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.social-group-person {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background 140ms ease;
+}
+
+.social-group-person:hover {
+    background: rgb(var(--highlight-rgb), 0.06);
+}
+
+.social-group-person img {
+    width: 30px;
+    height: 30px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.social-group-person input {
+    accent-color: var(--foreground);
+}
+
+.social-group-hint {
+    margin: 0;
+    padding: 0.6rem;
+    color: var(--muted-foreground);
+    font-size: 0.72rem;
+    text-align: center;
+}
+
+.social-group-create {
+    padding: 0.62rem;
+    border: 0;
+    border-radius: 12px;
+    background: var(--foreground);
+    color: var(--background);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.social-group-create:hover:enabled {
+    transform: translateY(-1px);
+}
+
+.social-group-create:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+/* -------------------------------- lightbox --------------------------------- */
+
+.social-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 95;
+    display: grid;
+    place-items: center;
+    padding: 2rem;
+    background: rgb(0 0 0 / 0.82);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms ease;
+    cursor: zoom-out;
+}
+
+.social-lightbox.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.social-lightbox img {
+    max-width: min(1100px, 92vw);
+    max-height: 88vh;
+    border-radius: 14px;
+    box-shadow: 0 40px 120px rgb(0 0 0 / 0.5);
+}
+
+.social-lightbox-close {
+    position: absolute;
+    top: 1.2rem;
+    right: 1.2rem;
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: 1px solid rgb(255 255 255 / 0.25);
+    border-radius: 50%;
+    background: rgb(0 0 0 / 0.4);
+    color: #fff;
+    cursor: pointer;
+}
+
+/* -------------------------------- share sheet ------------------------------ */
+
+.share-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 92;
+    display: grid;
+    place-items: center;
+    padding: 1.2rem;
+}
+
+.share-sheet[hidden] {
+    display: none;
+}
+
+.share-sheet-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 0.55);
+    opacity: 0;
+    transition: opacity 220ms ease;
+}
+
+.share-sheet.is-open .share-sheet-scrim {
+    opacity: 1;
+}
+
+.share-sheet-card {
+    position: relative;
+    width: min(460px, 100%);
+    max-height: min(86vh, 720px);
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    padding: 1.05rem;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background-color: var(--background);
+    background-image: linear-gradient(var(--card), var(--card));
+    box-shadow: 0 34px 110px rgb(0 0 0 / 0.45);
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+    transition:
+        opacity 240ms cubic-bezier(0.22, 1, 0.36, 1),
+        transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.share-sheet.is-open .share-sheet-card {
+    opacity: 1;
+    transform: none;
+}
+
+.share-sheet-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.share-sheet-head strong {
+    font-size: 0.95rem;
+    letter-spacing: -0.015em;
+}
+
+.share-sheet-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgb(var(--highlight-rgb), 0.04);
+}
+
+.share-sheet-item[hidden],
+.share-sheet-music[hidden] {
+    display: none;
+}
+
+.share-sheet-music {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.share-recipient-copy em {
+    display: block;
+    color: var(--muted-foreground);
+    font-size: 0.54rem;
+    font-style: normal;
+    font-weight: 750;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.share-sheet-item img,
+.share-sheet-item-fallback {
+    width: 52px;
+    height: 52px;
+    flex: 0 0 52px;
+    display: grid;
+    place-items: center;
+    object-fit: cover;
+    border-radius: 10px;
+    background: var(--muted);
+    color: var(--muted-foreground);
+}
+
+.share-sheet-item-copy {
+    min-width: 0;
+}
+
+.share-sheet-item-copy em {
+    display: block;
+    color: var(--muted-foreground);
+    font-size: 0.54rem;
+    font-style: normal;
+    font-weight: 750;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.share-sheet-item-copy strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.share-sheet-item-copy small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--muted-foreground);
+    font-size: 0.68rem;
+}
+
+.share-snippet-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    align-self: flex-start;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted-foreground);
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition:
+        color 150ms ease,
+        border-color 150ms ease,
+        background 150ms ease;
+}
+
+.share-snippet-toggle:hover:enabled {
+    color: var(--foreground);
+    border-color: color-mix(in srgb, var(--foreground) 30%, var(--border));
+}
+
+.share-snippet-toggle.is-active {
+    color: var(--background);
+    background: var(--foreground);
+    border-color: var(--foreground);
+}
+
+.share-snippet-toggle:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.share-snippet-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    animation: social-view-in 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.share-snippet-wave {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgb(var(--highlight-rgb), 0.035);
+    overflow: hidden;
+}
+
+.share-snippet-wave canvas {
+    display: block;
+    width: 100%;
+    height: 96px;
+    cursor: ew-resize;
+    touch-action: none;
+}
+
+.share-snippet-loading {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
     color: var(--muted-foreground);
     font-size: 0.7rem;
+    background: color-mix(in srgb, var(--card) 70%, transparent);
+}
+
+.share-snippet-loading[hidden] {
+    display: none;
+}
+
+.share-snippet-transport {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.share-snippet-play {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--foreground);
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease;
+}
+
+.share-snippet-play:hover {
+    background: var(--foreground);
+    color: var(--background);
+}
+
+.share-snippet-range {
+    color: var(--foreground);
+    font-size: 0.74rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+
+.share-snippet-length {
+    color: var(--muted-foreground);
+    font-size: 0.66rem;
+}
+
+.share-snippet-reset {
+    margin-left: auto;
+    padding: 0.3rem 0.65rem;
+    border: 0;
+    border-radius: 999px;
+    background: rgb(var(--highlight-rgb), 0.08);
+    color: var(--muted-foreground);
+    font: inherit;
+    font-size: 0.66rem;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.share-snippet-reset:hover {
+    color: var(--foreground);
+}
+
+.share-sheet-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    color: var(--muted-foreground);
+    transition: border-color 160ms ease;
+}
+
+.share-sheet-search:focus-within {
+    border-color: color-mix(in srgb, var(--foreground) 30%, var(--border));
+}
+
+.share-sheet-search input {
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--foreground);
+    font: inherit;
+    font-size: 0.8rem;
+}
+
+.share-sheet-recipients {
+    min-height: 120px;
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0 0.1rem;
+}
+
+.share-recipient {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0.45rem 0.5rem;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--foreground);
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: background 140ms ease;
+}
+
+.share-recipient:hover {
+    background: rgb(var(--highlight-rgb), 0.06);
+}
+
+.share-recipient.is-selected {
+    background: rgb(var(--highlight-rgb), 0.1);
+}
+
+.share-recipient img,
+.share-recipient-initial {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    display: grid;
+    place-items: center;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 750;
+}
+
+.share-recipient-copy {
+    min-width: 0;
+    flex: 1;
+}
+
+.share-recipient-copy strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.78rem;
+    font-weight: 650;
+}
+
+.share-recipient-copy small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--muted-foreground);
+    font-size: 0.64rem;
+}
+
+.share-recipient-check {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: transparent;
+    transition:
+        background 150ms ease,
+        border-color 150ms ease,
+        color 150ms ease;
+}
+
+.share-recipient.is-selected .share-recipient-check {
+    background: var(--foreground);
+    border-color: var(--foreground);
+    color: var(--background);
+}
+
+.share-sheet-empty {
+    padding: 1.4rem 1rem;
+    color: var(--muted-foreground);
+    font-size: 0.72rem;
+    line-height: 1.5;
     text-align: center;
+}
+
+.share-sheet-note {
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    outline: 0;
+    background: transparent;
+    color: var(--foreground);
+    font: inherit;
+    font-size: 0.8rem;
+    transition: border-color 160ms ease;
+}
+
+.share-sheet-note:focus {
+    border-color: color-mix(in srgb, var(--foreground) 30%, var(--border));
+}
+
+.share-sheet-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    padding-top: 0.2rem;
+}
+
+.share-sheet-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.48rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted-foreground);
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition:
+        color 150ms ease,
+        background 150ms ease;
+}
+
+.share-sheet-copy:hover {
+    color: var(--foreground);
+    background: rgb(var(--highlight-rgb), 0.07);
+}
+
+.share-sheet-send {
+    width: auto;
+    flex: 0 0 auto;
+    padding: 0 1.1rem;
+}
+
+body.share-sheet-open {
+    overflow: hidden;
+}
+
+/* ------------------------------ profile page ------------------------------- */
+
+.profile-social-stats {
+    margin: 0.3rem 0 0;
+    color: var(--muted-foreground);
+    font-size: 0.74rem;
+    font-weight: 600;
+}
+
+.profile-follow-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.profile-follow-btn.is-following {
+    background: var(--secondary);
+    color: var(--foreground);
 }
 
 .profile-now-playing {
@@ -18202,77 +20295,115 @@ img.cd {
     text-decoration: none;
 }
 
-@media (max-width: 760px) {
-    #page-social {
-        padding: 0;
+/* -------------------------------- responsive ------------------------------- */
+
+/* The info panel docks beside the thread only when the workspace itself is
+   wide enough — the floating player panel eats viewport width, so this is a
+   container query, not a media query. */
+@container (max-width: 1240px) {
+    .social-messages-view.has-info {
+        grid-template-columns: 300px minmax(0, 1fr);
     }
 
-    .social-page-header {
-        align-items: flex-start;
-        margin-bottom: 1rem;
+    .social-info-panel {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 8;
+        width: min(340px, 88%);
+        border-left: 1px solid var(--border);
+        box-shadow: -24px 0 60px rgb(0 0 0 / 0.28);
+        background-color: var(--background);
+        background-image: linear-gradient(var(--card), var(--card));
     }
+}
 
-    .social-page-header p {
-        max-width: 250px;
-    }
-
-    .social-shell {
-        height: max(430px, calc(100dvh - 340px));
-        min-height: 0;
+@media (max-width: 900px) {
+    .social-messages-view,
+    .social-messages-view.has-info {
+        position: relative;
         grid-template-columns: 1fr;
-        border-radius: 16px;
+        height: clamp(480px, calc(100dvh - 280px), 940px);
     }
 
-    .social-directory {
+    .social-rail {
         border-right: 0;
     }
 
-    .social-conversation {
-        position: absolute;
-        inset: 0;
+    .social-messages-view.has-thread .social-rail {
         display: none;
-        z-index: 3;
-        background: var(--card);
     }
 
-    .social-shell {
-        position: relative;
+    .social-thread-pane {
+        display: none;
     }
 
-    .social-shell.has-thread .social-conversation {
-        display: block;
-    }
-
-    .social-thread {
-        min-height: 0;
+    .social-messages-view.has-thread .social-thread-pane {
+        display: flex;
     }
 
     .social-thread-back {
         display: grid;
     }
 
-    #social-open-profile {
-        display: none;
+    .social-top {
+        flex-wrap: wrap;
+        gap: 0.75rem;
     }
 
-    .social-message-bubble {
+    .social-post {
+        padding: 0.95rem 0.2rem;
+    }
+
+    .social-message-stack {
         max-width: 86%;
-    }
-
-    .social-share-panel {
-        right: 0.6rem;
-        bottom: 5.2rem;
-        left: 0.6rem;
-    }
-
-    .social-composer {
-        margin: 0.55rem 0.6rem 0.65rem;
     }
 }
 
+@media (max-width: 640px) {
+    .social-messages-view,
+    .social-messages-view.has-info {
+        height: calc(100dvh - 250px);
+        border-radius: 16px;
+    }
+
+    .social-info-panel {
+        width: 100%;
+        box-shadow: none;
+    }
+
+    .share-sheet-card {
+        border-radius: 16px;
+    }
+
+    .social-messages {
+        padding: 1rem 0.8rem 1.1rem;
+    }
+
+    .social-composer {
+        margin: 0.5rem 0.6rem 0.65rem;
+    }
+}
+
+/* ------------------------------ reduced motion ----------------------------- */
+
 @media (prefers-reduced-motion: reduce) {
     .social-equalizer i,
-    .social-share-panel {
+    .social-presence-pulse,
+    .social-post-like.is-liked svg,
+    .social-message-row,
+    .social-feed-view,
+    .social-messages-view,
+    .social-info-panel,
+    .social-tabs-thumb,
+    .share-sheet-card,
+    .share-sheet-scrim,
+    .social-group-modal,
+    .social-group-modal-card,
+    .social-post-comments,
+    .share-snippet-editor {
         animation: none;
+        transition: none;
     }
 }

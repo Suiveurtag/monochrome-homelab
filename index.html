@@ -3188,39 +3188,137 @@
                 </div>
 
                 <div id="page-social" class="page">
-                    <div class="social-page-header">
-                        <div>
-                            <span class="social-eyebrow">HOMELAB NETWORK</span>
+                    <header class="social-top">
+                        <div class="social-top-identity">
                             <h1>Social</h1>
-                            <p>See what everyone is listening to and share music privately.</p>
+                            <p id="social-presence-summary" class="social-presence-summary"></p>
                         </div>
-                        <div class="social-live-pill"><span></span>Live</div>
-                    </div>
+                        <nav id="social-tabs" class="social-tabs" role="tablist" aria-label="Social sections">
+                            <span id="social-tabs-thumb" class="social-tabs-thumb" aria-hidden="true"></span>
+                            <button
+                                id="social-tab-feed"
+                                class="social-tab"
+                                type="button"
+                                role="tab"
+                                aria-selected="true"
+                                aria-controls="social-feed-view"
+                            >
+                                Feed
+                            </button>
+                            <button
+                                id="social-tab-messages"
+                                class="social-tab"
+                                type="button"
+                                role="tab"
+                                aria-selected="false"
+                                aria-controls="social-messages-view"
+                            >
+                                Messages<span id="social-tab-unread" class="social-tab-unread" hidden></span>
+                            </button>
+                        </nav>
+                    </header>
 
-                    <div class="social-shell">
-                        <aside class="social-directory">
-                            <label class="social-search">
-                                <use svg="!lucide/search.svg" size="17" />
-                                <input
-                                    id="social-user-search"
-                                    type="search"
-                                    placeholder="Search people"
-                                    autocomplete="off"
+                    <section id="social-feed-view" class="social-feed-view" role="tabpanel" aria-label="Feed">
+                        <div class="social-feed-column">
+                            <form id="social-post-composer" class="social-post-composer" hidden>
+                                <img
+                                    id="social-composer-avatar"
+                                    class="social-composer-avatar"
+                                    src="/assets/appicon.png"
+                                    alt=""
                                 />
-                            </label>
-                            <div class="social-directory-label">
-                                <span>People</span><span id="social-people-count">0</span>
+                                <div class="social-composer-body">
+                                    <textarea
+                                        id="social-post-input"
+                                        rows="1"
+                                        placeholder="What are you listening to?"
+                                        maxlength="2048"
+                                    ></textarea>
+                                    <div id="social-post-attachment" class="social-post-attachment" hidden></div>
+                                    <div id="social-post-music-picker" class="social-post-music-picker" hidden></div>
+                                    <div class="social-composer-tools">
+                                        <div class="social-composer-actions">
+                                            <button
+                                                type="button"
+                                                id="social-post-music"
+                                                class="social-tool"
+                                                title="Attach music"
+                                                aria-label="Attach music"
+                                            >
+                                                <use svg="!lucide/music-2.svg" size="18" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                id="social-post-image"
+                                                class="social-tool"
+                                                title="Attach an image"
+                                                aria-label="Attach an image"
+                                            >
+                                                <use svg="!lucide/image-plus.svg" size="18" />
+                                            </button>
+                                            <input type="file" id="social-post-image-input" accept="image/*" hidden />
+                                        </div>
+                                        <button type="submit" id="social-post-submit" class="social-post-submit" disabled>
+                                            Post
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                            <div id="social-feed" class="social-feed" aria-live="polite"></div>
+                        </div>
+                    </section>
+
+                    <section
+                        id="social-messages-view"
+                        class="social-messages-view"
+                        role="tabpanel"
+                        aria-label="Messages"
+                        hidden
+                    >
+                        <aside class="social-rail">
+                            <div class="social-rail-head">
+                                <label class="social-rail-search">
+                                    <use svg="!lucide/search.svg" size="15" />
+                                    <input
+                                        id="social-conversation-search"
+                                        type="search"
+                                        placeholder="Search"
+                                        autocomplete="off"
+                                    />
+                                </label>
+                                <button
+                                    id="social-new-group"
+                                    class="social-rail-tool"
+                                    type="button"
+                                    title="New group"
+                                    aria-label="New group"
+                                >
+                                    <use svg="!lucide/users-round.svg" size="16" />
+                                </button>
+                            </div>
+                            <div id="social-conversation-list" class="social-conversation-list"></div>
+                            <div class="social-rail-toolbar">
+                                <span class="social-rail-label">People</span
+                                ><span id="social-people-count" class="social-rail-count"></span>
                             </div>
                             <div id="social-people-list" class="social-people-list"></div>
                         </aside>
 
-                        <section id="social-conversation" class="social-conversation">
+                        <section class="social-thread-pane">
                             <div id="social-empty-state" class="social-empty-state">
-                                <div class="social-empty-orbit">
-                                    <use svg="!lucide/message-circle.svg" size="32" />
+                                <div class="social-empty-mark" aria-hidden="true">
+                                    <use svg="!lucide/audio-lines.svg" size="26" />
                                 </div>
-                                <h2>Start a conversation</h2>
-                                <p>Select someone to send a message, track, album or artist.</p>
+                                <h2>Pick up a conversation</h2>
+                                <p>Choose someone on the left, or share what you're playing from the feed.</p>
+                            </div>
+
+                            <div id="social-follow-gate" class="social-follow-gate" hidden>
+                                <img id="social-gate-avatar" src="/assets/appicon.png" alt="" />
+                                <p id="social-gate-copy">Follow to start chatting.</p>
+                                <button id="social-gate-follow" class="social-follow-button" type="button">
+                                    Follow
+                                </button>
                             </div>
 
                             <div id="social-thread" class="social-thread" hidden>
@@ -3229,73 +3327,80 @@
                                         id="social-thread-back"
                                         class="btn-icon social-thread-back"
                                         type="button"
-                                        aria-label="Back to people"
+                                        aria-label="Back to chats"
                                     >
-                                        <use svg="!lucide/arrow-left.svg" size="20" />
+                                        <use svg="!lucide/chevron-left.svg" size="20" />
                                     </button>
-                                    <a id="social-thread-profile" class="social-thread-person" href="#">
+                                    <button
+                                        id="social-thread-person"
+                                        class="social-thread-person"
+                                        type="button"
+                                        aria-label="Conversation details"
+                                    >
                                         <span class="social-avatar-wrap">
                                             <img id="social-thread-avatar" src="/assets/appicon.png" alt="" />
-                                            <span id="social-thread-presence-dot" class="social-presence-dot"></span>
+                                            <span
+                                                id="social-thread-presence-dot"
+                                                class="social-presence-dot"
+                                            ></span>
                                         </span>
-                                        <span
-                                            ><strong id="social-thread-name">Member</strong
-                                            ><small id="social-thread-status">Offline</small></span
+                                        <span class="social-thread-titles">
+                                            <strong id="social-thread-name">Member</strong>
+                                            <small id="social-thread-status">Offline</small>
+                                        </span>
+                                    </button>
+                                    <div class="social-thread-actions">
+                                        <button
+                                            id="social-thread-mute"
+                                            class="btn-icon"
+                                            type="button"
+                                            title="Mute"
+                                            aria-label="Mute conversation"
                                         >
-                                    </a>
-                                    <a id="social-open-profile" class="btn-secondary" href="#">View profile</a>
+                                            <use svg="!lucide/bell.svg" size="18" />
+                                        </button>
+                                        <button
+                                            id="social-thread-info"
+                                            class="btn-icon"
+                                            type="button"
+                                            title="Details"
+                                            aria-label="Conversation details"
+                                            aria-pressed="false"
+                                        >
+                                            <use svg="!lucide/info.svg" size="18" />
+                                        </button>
+                                    </div>
                                 </header>
 
                                 <div id="social-messages" class="social-messages" aria-live="polite"></div>
 
-                                <div id="social-share-panel" class="social-share-panel" hidden>
-                                    <div class="social-share-panel-head">
-                                        <div>
-                                            <strong>Share music</strong
-                                            ><small>Tracks, albums and artists from your library</small>
-                                        </div>
-                                        <button
-                                            id="social-share-close"
-                                            class="btn-icon"
-                                            type="button"
-                                            aria-label="Close sharing panel"
-                                        >
-                                            <use svg="!lucide/x.svg" size="18" />
-                                        </button>
-                                    </div>
-                                    <label class="social-share-search">
-                                        <use svg="!lucide/search.svg" size="17" />
-                                        <input
-                                            id="social-share-search"
-                                            type="search"
-                                            placeholder="Search your music"
-                                            autocomplete="off"
-                                        />
-                                    </label>
-                                    <button
-                                        id="social-share-now-playing"
-                                        class="social-share-now-playing"
-                                        type="button"
-                                        hidden
-                                    ></button>
-                                    <div id="social-share-results" class="social-share-results"></div>
-                                </div>
+                                <div id="social-attach-strip" class="social-attach-strip" hidden></div>
 
                                 <form id="social-composer" class="social-composer">
                                     <button
+                                        id="social-attach-image"
+                                        class="social-composer-tool"
+                                        type="button"
+                                        title="Send an image or GIF"
+                                        aria-label="Send an image or GIF"
+                                    >
+                                        <use svg="!lucide/image-plus.svg" size="19" />
+                                    </button>
+                                    <input type="file" id="social-image-input" accept="image/*" hidden />
+                                    <button
                                         id="social-share-toggle"
-                                        class="btn-icon social-share-toggle"
+                                        class="social-composer-tool"
                                         type="button"
                                         title="Share music"
                                         aria-label="Share music"
                                     >
-                                        <use svg="!lucide/music-2.svg" size="20" />
+                                        <use svg="!lucide/music-2.svg" size="19" />
                                     </button>
                                     <textarea
                                         id="social-message-input"
                                         rows="1"
                                         maxlength="4096"
-                                        placeholder="Write a message…"
+                                        placeholder="Message"
                                     ></textarea>
                                     <button class="social-send-button" type="submit" aria-label="Send message">
                                         <use svg="!lucide/arrow-up.svg" size="19" />
@@ -3303,7 +3408,9 @@
                                 </form>
                             </div>
                         </section>
-                    </div>
+
+                        <aside id="social-info-panel" class="social-info-panel" hidden></aside>
+                    </section>
                 </div>
 
                 <div id="page-profile" class="page">
@@ -3314,6 +3421,7 @@
                             <div class="profile-details">
                                 <h1 id="profile-display-name">User</h1>
                                 <div id="profile-username" class="profile-username">@username</div>
+                                <div id="profile-social-stats" class="profile-social-stats" style="display: none"></div>
                                 <div id="profile-status" class="profile-status" style="display: none"></div>
                                 <div id="profile-about" class="profile-about"></div>
                                 <div class="profile-links">
@@ -3336,6 +3444,13 @@
                                 </div>
                             </div>
                             <div class="profile-actions">
+                                <button
+                                    id="profile-follow-btn"
+                                    class="btn-primary profile-follow-btn"
+                                    style="display: none"
+                                >
+                                    Follow
+                                </button>
                                 <a id="profile-message-btn" class="btn-secondary" href="#" style="display: none"
                                     >Message</a
                                 >
@@ -7013,6 +7128,66 @@
                 >
                     ×
                 </button>
+            </div>
+        </div>
+        <div id="share-sheet" class="share-sheet" role="dialog" aria-modal="true" aria-label="Share" hidden>
+            <div class="share-sheet-scrim" data-share-close></div>
+            <div class="share-sheet-card">
+                <header class="share-sheet-head">
+                    <strong id="share-sheet-title">Share</strong>
+                    <button id="share-sheet-close" class="btn-icon" type="button" aria-label="Close share sheet">
+                        <use svg="!lucide/x.svg" size="18" />
+                    </button>
+                </header>
+                <div id="share-sheet-music" class="share-sheet-music" hidden>
+                    <label class="share-sheet-search">
+                        <use svg="!lucide/search.svg" size="15" />
+                        <input id="share-music-search" type="search" placeholder="Search tracks, albums, artists" autocomplete="off" />
+                    </label>
+                    <div id="share-music-results" class="share-sheet-recipients"></div>
+                </div>
+                <div id="share-sheet-item" class="share-sheet-item"></div>
+                <div id="share-sheet-snippet" class="share-sheet-snippet" hidden>
+                    <button id="share-snippet-toggle" class="share-snippet-toggle" type="button" aria-pressed="false">
+                        <use svg="!lucide/audio-lines.svg" size="16" />
+                        <span>Share a snippet</span>
+                    </button>
+                    <div id="share-snippet-editor" class="share-snippet-editor" hidden>
+                        <div class="share-snippet-wave">
+                            <canvas id="share-snippet-canvas" height="96" aria-label="Song waveform"></canvas>
+                            <div id="share-snippet-loading" class="share-snippet-loading">Reading the song…</div>
+                        </div>
+                        <div class="share-snippet-transport">
+                            <button
+                                id="share-snippet-play"
+                                class="share-snippet-play"
+                                type="button"
+                                aria-label="Preview snippet"
+                            >
+                                <use svg="!lucide/play.svg" size="15" />
+                            </button>
+                            <span id="share-snippet-range" class="share-snippet-range">0:00 – 0:00</span>
+                            <span id="share-snippet-length" class="share-snippet-length"></span>
+                            <button id="share-snippet-reset" class="share-snippet-reset" type="button">Reset</button>
+                        </div>
+                    </div>
+                </div>
+                <label class="share-sheet-search">
+                    <use svg="!lucide/search.svg" size="15" />
+                    <input id="share-sheet-search" type="search" placeholder="Search friends and groups" autocomplete="off" />
+                </label>
+                <div id="share-sheet-recipients" class="share-sheet-recipients"></div>
+                <input id="share-sheet-note" class="share-sheet-note" type="text" placeholder="Add a note (optional)" maxlength="1024" />
+                <footer class="share-sheet-footer">
+                    <button id="share-sheet-copy" class="share-sheet-copy" type="button">
+                        <use svg="!lucide/link.svg" size="15" />
+                        <span>Copy link</span>
+                    </button>
+                    <button id="share-sheet-send" class="social-send-button share-sheet-send" type="button" disabled>
+                        <span>Send</span>
+                        <use svg="!lucide/arrow-up.svg" size="17" />
+                    </button>
+                </footer>
             </div>
         </div>
         <script type="module" src="/js/app.js"></script>

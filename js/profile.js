@@ -603,6 +603,9 @@ export async function loadProfile(username) {
         messageButton.href = `/social/@${encodeURIComponent(username)}`;
         messageButton.style.display = 'inline-flex';
     }
+    if (!isOwner && authManager.user) {
+        socialManager.renderProfileSocial(username).catch(console.error);
+    }
 
     if (profile.privacy?.playlists !== 'private' || isOwner) {
         const container = document.getElementById('profile-playlists-container');
