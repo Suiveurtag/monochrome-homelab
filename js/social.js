@@ -349,6 +349,10 @@ export class SocialManager {
     renderRail(query = '') {
         const list = document.getElementById('social-conversation-list');
         if (!list) return;
+        const previousActive = list.querySelector('.social-chat-row.is-active');
+        const previousConversation = previousActive?.dataset.conversation || '';
+        const previousTop = previousActive?.offsetTop ?? 0;
+        const previousHeight = previousActive?.offsetHeight ?? 0;
         const normalized = query.trim().toLowerCase();
         const entries = [...this.conversations.values()]
             .map((conversation) => {
@@ -375,8 +379,32 @@ export class SocialManager {
             }</div>`;
             if (list.innerHTML !== emptyHtml) list.innerHTML = emptyHtml;
         } else {
-            const html = entries.map((entry) => this.renderConversationRow(entry)).join('');
+            const html = `<span class="social-conversation-indicator" aria-hidden="true"></span>${entries
+                .map((entry) => this.renderConversationRow(entry))
+                .join('')}`;
             if (list.innerHTML !== html) list.innerHTML = html;
+            const indicator = list.querySelector('.social-conversation-indicator');
+            const nextActive = list.querySelector('.social-chat-row.is-active');
+            if (indicator && nextActive) {
+                indicator.style.height = `${nextActive.offsetHeight}px`;
+                indicator.style.transform = `translateY(${nextActive.offsetTop}px)`;
+                if (
+                    previousConversation &&
+                    previousConversation !== nextActive.dataset.conversation &&
+                    !matchMedia('(prefers-reduced-motion: reduce)').matches
+                ) {
+                    indicator.animate(
+                        [
+                            { height: `${previousHeight}px`, transform: `translateY(${previousTop}px)` },
+                            {
+                                height: `${nextActive.offsetHeight}px`,
+                                transform: `translateY(${nextActive.offsetTop}px)`,
+                            },
+                        ],
+                        { duration: 240, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }
+                    );
+                }
+            }
         }
         this.renderPeople(query);
     }
@@ -896,6 +924,8 @@ export class SocialManager {
         }
 
         const ticks = own ? this.renderTicks(message) : '';
+        const pinRecord = this.pins.find((pin) => pin.ref === message.id);
+        const pinned = Boolean(pinRecord);
         return `<div class="social-message-row${own ? ' is-own' : ''}${grouped ? ' is-grouped' : ''}" data-message-id="${escapeHtml(message.id)}">
             ${avatar}
             <div class="social-message-stack">
@@ -905,7 +935,7 @@ export class SocialManager {
                     <span class="social-message-foot"><time>${escapeHtml(formatClock(message.created))}</time>${ticks}</span>
                 </div>
             </div>
-            <span class="social-message-pin">${message.id.startsWith('tmp') ? '' : `<button type="button" data-pin-message="${escapeHtml(message.id)}" title="Pin">${icon.pin(14)}</button>`}</span>
+            <span class="social-message-pin${pinned ? ' is-pinned' : ''}">${message.id.startsWith('tmp') ? '' : `<button type="button" data-pin-message="${escapeHtml(message.id)}" title="${pinned ? 'Unpin' : 'Pin'}" aria-pressed="${pinned}">${icon.pin(14)}</button>`}</span>
         </div>`;
     }
 
@@ -1286,6 +1316,11 @@ export class SocialManager {
     async pinMessage(messageId) {
         const conversation = this.activeConversation();
         if (!conversation) return;
+        const existing = this.pins.find((pin) => pin.ref === messageId);
+        if (existing) {
+            await this.unpin(existing.id);
+            return;
+        }
         const message = (this.messagesByConversation.get(conversation.id) || []).find(
             (entry) => entry.id === messageId
         );
@@ -1310,6 +1345,7 @@ export class SocialManager {
             .collection('social_pins')
             .getFullList({ filter: `user="${this.userId}"`, sort: '-created' });
         showNotification('Pinned');
+        this.renderMessages();
         if (this.infoOpen) this.renderInfoPanel();
     }
 
@@ -1319,7 +1355,8 @@ export class SocialManager {
             .delete(pinId)
             .catch(() => {});
         this.pins = this.pins.filter((pin) => pin.id !== pinId);
-        this.renderInfoPanel();
+        this.renderMessages();
+        if (this.infoOpen) this.renderInfoPanel();
     }
 
     /* -------------------------------- mutes ---------------------------------- */

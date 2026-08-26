@@ -18486,14 +18486,31 @@ img.cd {
 }
 
 .social-conversation-list {
+    position: relative;
+    isolation: isolate;
     min-height: 0;
     overflow-y: auto;
     padding: 0 0.45rem 0.75rem;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 62%, transparent);
 }
 
+.social-conversation-indicator {
+    position: absolute;
+    z-index: 0;
+    top: 0;
+    right: 0.45rem;
+    left: 0.45rem;
+    border-radius: 9px;
+    background:
+        radial-gradient(circle at 27px 50%, rgb(var(--highlight-rgb) / 0.2), transparent 66%),
+        rgb(var(--highlight-rgb) / 0.065);
+    pointer-events: none;
+    will-change: height, transform;
+}
+
 .social-chat-row {
     position: relative;
+    z-index: 1;
     width: 100%;
     display: flex;
     align-items: center;
@@ -18512,18 +18529,14 @@ img.cd {
     background: rgb(var(--highlight-rgb), 0.06);
 }
 
-.social-chat-row.is-active {
-    background: rgb(var(--highlight-rgb), 0.09);
-}
-
 .social-chat-row.is-active::before {
     content: '';
     position: absolute;
     left: 0;
     top: 50%;
-    width: 3px;
-    height: 55%;
-    border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+    width: 2px;
+    height: calc(100% - 32px);
+    border-radius: 2px;
     background: var(--foreground);
     transform: translateY(-50%);
 }
@@ -19268,20 +19281,20 @@ img.cd {
 }
 
 .social-message-pin {
-    position: absolute;
-    top: -11px;
-    right: 2px;
+    position: relative;
+    align-self: center;
+    flex: 0 0 24px;
     display: flex;
     opacity: 0;
     transition: opacity 140ms ease;
 }
 
 .social-message-row.is-own .social-message-pin {
-    right: auto;
-    left: 2px;
+    order: -1;
 }
 
-.social-message-row:hover .social-message-pin {
+.social-message-row:hover .social-message-pin,
+.social-message-pin.is-pinned {
     opacity: 1;
 }
 
@@ -19305,6 +19318,22 @@ img.cd {
 .social-message-pin button:hover {
     color: var(--foreground);
     transform: translateY(-1px);
+}
+
+.social-message-pin.is-pinned button {
+    border-color: rgb(255 255 255 / 0.18);
+    background: #111;
+    color: #fff;
+}
+
+.social-message-pin.is-pinned button svg {
+    fill: #fff;
+    stroke: #fff;
+}
+
+.social-rail-toolbar[hidden],
+.social-people-list[hidden] {
+    display: none;
 }
 
 .social-message-image {

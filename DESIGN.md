@@ -365,7 +365,8 @@ the page background; `:focus-within` mixes foreground into the border. Beside it
 tool. Chat rows (8px radius): 42px avatar with presence dot, name (0.8rem/650) +
 list time (0.6rem), preview (0.68rem, "You: " prefix for own last message), bell-off glyph at 0.7
 opacity when muted, and a 17px foreground unread pill (99+ cap). Hover uses wash 0.06 without
-movement; the active row holds wash 0.09 and a 3px×55% foreground bar on the left edge; unread
+movement; a shared active-row wash glides between conversations with the playback-quality menu's
+240ms easing, while a slim version-selector-style foreground bar marks the selected row; unread
 previews bold to 550. Presence dots: 10px, 2px `var(--card)` ring — offline = 55% muted-foreground,
 online = `#5ee890`, listening = white with glow. Below, sentence-case section labels with member count,
 then **Meet people** rows for members who do not already have a DM in the conversation list:
@@ -390,7 +391,8 @@ own bubbles mix 12% foreground into the fill and 22% into the border; row hover 
 to 26%. The foot is right-aligned: clock (0.56rem, tabular) plus delivery ticks for own messages —
 **clock icon at 0.6 opacity = pending** (optimistic send), **double-check in muted = delivered**,
 **double-check in `var(--foreground)` = read**. Hovering any row reveals a pin button (24px, 8px
-radius, card fill, hairline, soft shadow) floating above the outer corner.
+radius, card fill, hairline, soft shadow) in the outer message margin. A pinned message keeps the
+button visible, with a dark fill and a solid white pin, and pressing it again unpins the message.
 
 **Message content:** images render borderless in 12px frames (max 340px wide, 360px tall, cursor
 zoom-in → lightbox). Music share cards are 54px-art + type-em/title/subtitle + play/open buttons over
@@ -424,7 +426,7 @@ on wash 0.05.
 
 Blocking is reciprocal in normal Social surfaces: either participant's block hides both accounts from
 each other's profiles, presence, direct conversations, messages, feed activity, follows, and share recipients.
-The Meet people section is removed once the member has more than six conversations. DMs use the standard
+The Meet people section, including its heading, is removed once the member has more than six conversations. DMs use the standard
 conversation surface and do not support uploaded background images.
 
 ### Friendship gate
