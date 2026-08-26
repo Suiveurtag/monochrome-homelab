@@ -3191,7 +3191,20 @@
                     <header class="social-top">
                         <div class="social-top-identity">
                             <h1>Social</h1>
-                            <p id="social-presence-summary" class="social-presence-summary"></p>
+                            <div class="social-presence-shell">
+                                <button
+                                    id="social-presence-summary"
+                                    class="social-presence-summary"
+                                    type="button"
+                                    aria-controls="social-presence-popover"
+                                ></button>
+                                <div
+                                    id="social-presence-popover"
+                                    class="social-presence-popover"
+                                    role="region"
+                                    aria-label="Accounts online"
+                                ></div>
+                            </div>
                         </div>
                         <nav id="social-tabs" class="social-tabs" role="tablist" aria-label="Social sections">
                             <span id="social-tabs-thumb" class="social-tabs-thumb" aria-hidden="true"></span>
@@ -3425,7 +3438,16 @@
                                     </div>
                                 </header>
 
-                                <div id="social-messages" class="social-messages" aria-live="polite"></div>
+                                <div id="social-messages-stage" class="social-messages-stage">
+                                    <img
+                                        id="social-chat-background"
+                                        class="social-chat-background"
+                                        src="/assets/appicon.png"
+                                        alt=""
+                                        hidden
+                                    />
+                                    <div id="social-messages" class="social-messages" aria-live="polite"></div>
+                                </div>
 
                                 <div id="social-attach-strip" class="social-attach-strip" hidden></div>
 

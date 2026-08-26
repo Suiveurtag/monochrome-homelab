@@ -129,9 +129,10 @@ export class ShareSheet {
         const results = document.getElementById('share-music-results');
         if (!results) return;
         const track = this.deps.nowPlaying?.();
+        const nowPlayingImage = track?.raw ? this.deps.toPayload('track', track.raw)?.image : '';
         results.innerHTML = track
-            ? `<button class="share-recipient" type="button" data-music-nowplaying>
-                ${icon.audioLines(18)}
+            ? `<button class="share-recipient share-music-result" type="button" data-music-nowplaying>
+                ${nowPlayingImage ? `<img src="${escapeHtml(nowPlayingImage)}" alt="" />` : `<span class="share-recipient-initial">${icon.disc(18)}</span>`}
                 <span class="share-recipient-copy"><em>Now playing</em><strong>${escapeHtml(track.title || 'Untitled')}</strong><small>${escapeHtml(track.subtitle || '')}</small></span>
             </button>
             <div class="share-sheet-empty">Or search the library above.</div>`
@@ -168,7 +169,7 @@ export class ShareSheet {
                         : kind === 'album'
                           ? entry.cover
                           : entry.picture || entry.image;
-                return `<button class="share-recipient" type="button" data-music-key="${escapeHtml(key)}">
+                return `<button class="share-recipient share-music-result" type="button" data-music-key="${escapeHtml(key)}">
                     ${image ? `<img src="${escapeHtml(image)}" alt="" />` : `<span class="share-recipient-initial">${escapeHtml(kind.slice(0, 1).toUpperCase())}</span>`}
                     <span class="share-recipient-copy"><em>${escapeHtml(kind)}</em><strong>${escapeHtml(entry.title || entry.name || 'Untitled')}</strong><small>${escapeHtml(entry.artist?.name || entry.artists?.[0]?.name || '')}</small></span>
                 </button>`;

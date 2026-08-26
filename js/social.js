@@ -97,7 +97,7 @@ export class SocialManager {
         this.shareItems = new Map();
         this.pendingShare = null;
         this.attachments = [];
-        this.snippetAudio = null;
+        this.activeSnippet = null;
         this.unsubscribe = [];
         this.initialized = false;
         this.bound = false;
@@ -425,25 +425,33 @@ export class SocialManager {
 
     renderPresenceSummary() {
         const summary = document.getElementById('social-presence-summary');
+        const popover = document.getElementById('social-presence-popover');
         if (!summary) return;
-        const others = [...this.profiles.values()].filter((profile) => profile.user !== this.userId);
-        let listening = 0;
-        let online = 0;
-        for (const profile of others) {
-            const state = presenceState(this.presence.get(profile.user));
-            if (state.playing) listening += 1;
-            else if (state.online) online += 1;
-        }
-        if (!others.length) {
-            summary.textContent = 'Just you here for now';
-            return;
-        }
-        const parts = [];
-        if (listening) parts.push(`${listening} listening`);
-        if (online) parts.push(`${online} online`);
-        summary.innerHTML = parts.length
-            ? `<span class="social-presence-pulse" aria-hidden="true"></span>${parts.join(' · ')}`
-            : 'Everyone is offline';
+        const people = [...this.profiles.values()];
+        const onlineProfiles = people
+            .map((profile) => ({ profile, state: presenceState(this.presence.get(profile.user)) }))
+            .filter(({ state }) => state.online || state.playing)
+            .sort((a, b) => {
+                if (a.state.playing !== b.state.playing) return a.state.playing ? -1 : 1;
+                return displayName(a.profile).localeCompare(displayName(b.profile));
+            });
+        const peopleLabel = `${people.length} ${people.length === 1 ? 'person' : 'people'}`;
+        const onlineLabel = `${onlineProfiles.length} online`;
+        summary.innerHTML = `${onlineProfiles.length ? '<span class="social-presence-pulse" aria-hidden="true"></span>' : ''}<span>${peopleLabel} · ${onlineLabel}</span>`;
+        summary.setAttribute('aria-label', `${peopleLabel} on this instance. ${onlineLabel}.`);
+        if (!popover) return;
+        const visible = onlineProfiles.slice(0, 8);
+        const remaining = onlineProfiles.length - visible.length;
+        popover.innerHTML = visible.length
+            ? `<strong>Online now</strong>${visible
+                  .map(
+                      ({ profile, state }) => `<a href="${escapeHtml(profileHref(profile))}">
+                        <span class="social-avatar-wrap"><img src="${escapeHtml(avatarFor(profile))}" alt="" loading="lazy" /><span class="social-presence-dot is-online${state.playing ? ' is-listening' : ''}"></span></span>
+                        <span><b>${escapeHtml(displayName(profile))}</b><small>${escapeHtml(state.track ? `${state.playing ? 'Listening to' : 'Paused'} ${state.track.title}` : 'Online')}</small></span>
+                    </a>`
+                  )
+                  .join('')}${remaining > 0 ? `<p>+${remaining} more online</p>` : ''}`
+            : '<p>Nobody is online right now.</p>';
     }
 
     renderFeedRail() {
@@ -683,6 +691,16 @@ export class SocialManager {
         const dot = document.getElementById('social-thread-presence-dot');
         const personButton = document.getElementById('social-thread-person');
         const groupAvatar = document.getElementById('social-thread-group-avatar');
+        const backgroundStage = document.getElementById('social-messages-stage');
+        const backgroundImage = document.getElementById('social-chat-background');
+        const backgroundUrl =
+            !isGroup && conversation.background ? messageFileUrl(conversation, conversation.background) : '';
+        if (backgroundImage) {
+            backgroundImage.hidden = !backgroundUrl;
+            if (backgroundUrl) backgroundImage.src = backgroundUrl;
+            else backgroundImage.removeAttribute('src');
+        }
+        backgroundStage?.classList.toggle('has-background', Boolean(backgroundUrl));
         if (isGroup) {
             if (avatar) avatar.hidden = true;
             if (groupAvatar) {
@@ -797,6 +815,7 @@ export class SocialManager {
         }
         const html = parts.join('');
         if (container.innerHTML !== html) container.innerHTML = html;
+        this.updateSnippetButtons();
     }
 
     renderMessage(message, { own, grouped, isGroup }) {
@@ -855,16 +874,32 @@ export class SocialManager {
 
     renderSnippetCard(payload) {
         const snippet = payload.snippet || {};
-        const peaks = Array.isArray(snippet.peaks) ? snippet.peaks : [];
+        const rawPeaks = Array.isArray(snippet.peaks) ? snippet.peaks : [];
+        const maxBars = 56;
+        const sampleSize = Math.max(1, Math.ceil(rawPeaks.length / maxBars));
+        const peaks = rawPeaks.length
+            ? Array.from({ length: Math.ceil(rawPeaks.length / sampleSize) }, (_, index) =>
+                  Math.max(...rawPeaks.slice(index * sampleSize, (index + 1) * sampleSize))
+              )
+            : Array.from({ length: 40 }, (_, index) => 0.18 + Math.abs(Math.sin(index * 0.62)) * 0.35);
+        const duration = Number(snippet.duration) || 1;
+        const selectionStart = Math.max(0, Math.min(100, ((Number(snippet.start) || 0) / duration) * 100));
+        const selectionEnd = Math.max(
+            selectionStart,
+            Math.min(100, ((Number(snippet.end) || duration) / duration) * 100)
+        );
         const bars = peaks
             .map((peak, index) => {
-                const time = (index / peaks.length) * (snippet.duration || 1);
-                const inRange = time >= (snippet.start || 0) && time <= (snippet.end || snippet.duration || 1);
-                return `<i style="height:${Math.max(8, Math.round((peak || 0.08) * 100))}%" class="${inRange ? 'is-in' : ''}"></i>`;
+                const time = (index / Math.max(1, peaks.length - 1)) * duration;
+                const inRange = time >= (snippet.start || 0) && time <= (snippet.end || duration);
+                return `<i style="height:${Math.max(12, Math.min(82, Math.round((peak || 0.08) * 72)))}%" class="${inRange ? 'is-in' : ''}"></i>`;
             })
             .join('');
         const playable = Boolean(payload.id);
         return `<div class="social-snippet" data-snippet-id="${escapeHtml(payload.id || '')}">
+            ${payload.image ? `<img class="social-snippet-backdrop" src="${escapeHtml(payload.image)}" alt="" loading="lazy" />` : ''}
+            <span class="social-snippet-shade" aria-hidden="true"></span>
+            <div class="social-snippet-content">
             <div class="social-snippet-head">
                 ${playable ? `<button class="social-snippet-play" type="button" data-snippet-play="${escapeHtml(payload.id)}" data-snippet-start="${Number(snippet.start) || 0}" data-snippet-end="${Number(snippet.end) || 0}" aria-label="Play snippet">${icon.play(15)}</button>` : ''}
                 <div class="social-snippet-copy">
@@ -872,8 +907,12 @@ export class SocialManager {
                     <small>${escapeHtml(payload.subtitle || '')}</small>
                 </div>
             </div>
-            <div class="social-snippet-wave" aria-hidden="true">${bars}</div>
+            <div class="social-snippet-wave-wrap">
+                <div class="social-snippet-wave" aria-hidden="true">${bars}</div>
+                <span class="social-snippet-selection" style="--selection-start:${selectionStart}%;--selection-end:${selectionEnd}%" role="img" aria-label="Selected excerpt from ${escapeHtml(formatDuration(snippet.start || 0))} to ${escapeHtml(formatDuration(snippet.end || 0))}"></span>
+            </div>
             <span class="social-snippet-range">${escapeHtml(formatDuration(snippet.start || 0))} – ${escapeHtml(formatDuration(snippet.end || 0))}</span>
+            </div>
         </div>`;
     }
 
@@ -1060,6 +1099,7 @@ export class SocialManager {
             ${about ? `<p>${escapeHtml(about)}</p>` : ''}
             <div class="social-info-actions">
                 <a href="${escapeHtml(profileHref(profile))}">${icon.user(15)}<span>Profile</span></a>
+                ${this.canChatWith(profile.user) ? `<button type="button" data-chat-background-picker="${escapeHtml(conversation.id)}" title="Change chat background">${icon.imagePlus(15)}<span>Background</span></button><input type="file" accept="image/*" data-chat-background-input="${escapeHtml(conversation.id)}" hidden />` : ''}
                 <button type="button" data-toggle-mute="${escapeHtml(conversation.id)}">${isMuted ? icon.bell(15) : icon.bellOff(15)}<span>${isMuted ? 'Unmute' : 'Mute'}</span></button>
                 <button type="button" data-toggle-follow="${escapeHtml(profile.user)}" class="${isFollowing ? 'is-following' : ''}">${isFollowing ? icon.check(15) : icon.userPlus(15)}<span>${isFollowing ? 'Following' : 'Follow'}</span></button>
             </div>
@@ -1144,14 +1184,16 @@ export class SocialManager {
             .slice(0, 6)
             .map(
                 (profile) =>
-                    `<img src="${escapeHtml(avatarFor(profile))}" alt="${escapeHtml(displayName(profile))}" title="${escapeHtml(displayName(profile))}" loading="lazy" />`
+                    `<a class="social-info-mutual-person" href="${escapeHtml(profileHref(profile))}" title="View ${escapeHtml(displayName(profile))}"><img src="${escapeHtml(avatarFor(profile))}" alt="${escapeHtml(displayName(profile))}" loading="lazy" /></a>`
             )
             .join('');
         const groupRows = commonGroups
             .slice(0, 3)
             .map(
-                (entry) => `<div class="social-info-row">${groupAvatarHTML(entry, 'small')}
-                <span class="social-info-row-copy"><strong>${escapeHtml(conversationTitle(entry, this.profiles, this.userId))}</strong><small>${(entry.members || []).length} members</small></span></div>`
+                (
+                    entry
+                ) => `<button class="social-info-row is-conversation" type="button" data-info-conversation="${escapeHtml(entry.id)}">${groupAvatarHTML(entry, 'small')}
+                <span class="social-info-row-copy"><strong>${escapeHtml(conversationTitle(entry, this.profiles, this.userId))}</strong><small>${(entry.members || []).length} members</small></span>${icon.chevronLeft(14)}</button>`
             )
             .join('');
         const label = mutualFriends.length
@@ -1339,6 +1381,16 @@ export class SocialManager {
         showNotification('Group picture updated');
     }
 
+    async updateChatBackground(conversationId, file) {
+        const conversation = this.conversations.get(conversationId);
+        if (!conversation || conversation.type !== 'dm' || !file) return;
+        const record = await pb.collection('social_conversations').update(conversationId, { background: file });
+        this.conversations.set(record.id, record);
+        this.renderThread();
+        if (this.infoOpen) this.renderInfoPanel();
+        showNotification('Chat background updated');
+    }
+
     async leaveGroup(conversationId) {
         const conversation = this.conversations.get(conversationId);
         if (!conversation) return;
@@ -1388,28 +1440,65 @@ export class SocialManager {
 
     async playSnippet(trackId, start, end) {
         try {
-            const meta = await this.api.getTrackMetadata(trackId);
-            if (meta?.serverAudioUrl) {
+            const current = this.activeSnippet;
+            const activeElement = this.player?.activeElement;
+            if (current?.trackId === trackId && activeElement && !activeElement.paused) {
                 this.stopSnippetPlayback();
-                this.snippetAudio = new Audio(meta.serverAudioUrl);
-                this.snippetAudio.currentTime = start;
-                this.snippetAudio.addEventListener('timeupdate', () => {
-                    if (this.snippetAudio && this.snippetAudio.currentTime >= end) this.stopSnippetPlayback();
-                });
-                await this.snippetAudio.play();
                 return;
             }
+            this.stopSnippetPlayback();
+            const meta = await this.api.getTrackMetadata(trackId);
+            if (!meta || !this.player) throw new Error('Track unavailable');
+            await this.player.setQueue([meta], 0, false, {
+                kind: 'single',
+                id: String(trackId),
+                label: meta.title || 'Shared snippet',
+                href: `/track/${trackId}`,
+            });
+            this.player.enableAutoplay();
+            await this.player.playTrackFromQueue(Math.max(0, start));
+            const element = this.player.activeElement;
+            if (!element) return;
+            const stopAtEnd = () => {
+                if (Number(end) > Number(start) && element.currentTime >= Number(end)) this.stopSnippetPlayback();
+            };
+            const reflectStopped = () => this.clearSnippetPlayback(element);
+            element.addEventListener('timeupdate', stopAtEnd);
+            element.addEventListener('pause', reflectStopped, { once: true });
+            element.addEventListener('ended', reflectStopped, { once: true });
+            this.activeSnippet = { trackId, element, stopAtEnd, reflectStopped };
+            this.updateSnippetButtons();
         } catch (error) {
-            console.warn('[Social] Snippet fallback to full playback:', error);
+            console.warn('[Social] Snippet playback failed:', error);
+            this.stopSnippetPlayback(false);
+            playSharedItem('track', trackId);
         }
-        playSharedItem('track', trackId);
     }
 
-    stopSnippetPlayback() {
-        if (this.snippetAudio) {
-            this.snippetAudio.pause();
-            this.snippetAudio = null;
-        }
+    clearSnippetPlayback(element = null) {
+        const active = this.activeSnippet;
+        if (!active || (element && active.element !== element)) return;
+        active.element.removeEventListener('timeupdate', active.stopAtEnd);
+        active.element.removeEventListener('pause', active.reflectStopped);
+        active.element.removeEventListener('ended', active.reflectStopped);
+        this.activeSnippet = null;
+        this.updateSnippetButtons();
+    }
+
+    stopSnippetPlayback(pause = true) {
+        const active = this.activeSnippet;
+        if (!active) return;
+        this.clearSnippetPlayback();
+        if (pause && !active.element.paused) active.element.pause();
+    }
+
+    updateSnippetButtons() {
+        document.querySelectorAll('[data-snippet-play]').forEach((button) => {
+            const playing = this.activeSnippet?.trackId === button.dataset.snippetPlay;
+            button.classList.toggle('is-playing', playing);
+            button.setAttribute('aria-label', playing ? 'Pause snippet' : 'Play snippet');
+            button.innerHTML = playing ? icon.pause(15) : icon.play(15);
+        });
     }
 
     playSnippetAware(element) {
@@ -1841,6 +1930,21 @@ export class SocialManager {
             const play = event.target.closest('[data-play-share]');
             if (play) {
                 playSharedItem(play.dataset.playKind || 'track', play.dataset.playShare);
+                return;
+            }
+            const conversation = event.target.closest('[data-info-conversation]');
+            if (conversation) {
+                this.toggleInfoPanel(false);
+                this.openConversation(conversation.dataset.infoConversation).catch(console.error);
+                return;
+            }
+            const backgroundPicker = event.target.closest('[data-chat-background-picker]');
+            if (backgroundPicker) {
+                document
+                    .querySelector(
+                        `[data-chat-background-input="${CSS.escape(backgroundPicker.dataset.chatBackgroundPicker)}"]`
+                    )
+                    ?.click();
             }
         });
         document.getElementById('social-info-panel')?.addEventListener('change', (event) => {
@@ -1848,6 +1952,14 @@ export class SocialManager {
             const file = input?.files?.[0];
             if (input && file) {
                 this.updateGroupAvatar(input.dataset.groupAvatarInput, file).catch((error) =>
+                    showNotification(error.message, 'error')
+                );
+                return;
+            }
+            const backgroundInput = event.target.closest('[data-chat-background-input]');
+            const backgroundFile = backgroundInput?.files?.[0];
+            if (backgroundInput && backgroundFile) {
+                this.updateChatBackground(backgroundInput.dataset.chatBackgroundInput, backgroundFile).catch((error) =>
                     showNotification(error.message, 'error')
                 );
             }

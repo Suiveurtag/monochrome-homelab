@@ -360,14 +360,14 @@ focus. Row hover paints a whisper of wash (0.022) over the whole post.
 
 ### Messages workspace — rail
 
-Left 280px rail on a card/background mix with a right hairline. Head: 36px bordered search field on
+Left 280px rail on a card/background mix with a right hairline. Head: 36px fully rounded search field on
 the page background; `:focus-within` mixes foreground into the border. Beside it is a 31px new-group
 tool. Chat rows (8px radius): 42px avatar with presence dot, name (0.8rem/650) +
 list time (0.6rem), preview (0.68rem, "You: " prefix for own last message), bell-off glyph at 0.7
 opacity when muted, and a 17px foreground unread pill (99+ cap). Hover uses wash 0.06 without
 movement; the active row holds wash 0.09 and a 3px×55% foreground bar on the left edge; unread
 previews bold to 550. Presence dots: 10px, 2px `var(--card)` ring — offline = 55% muted-foreground,
-online = `#5ee890`, listening = white with glow. Below, a "PEOPLE" micro-label with member count,
+online = `#5ee890`, listening = white with glow. Below, sentence-case section labels with member count,
 then **Meet people** rows for members who do not already have a DM in the conversation list:
 avatar + dot, name with an optional **Friend** tag (uppercase 0.5rem pill, wash 0.09), status line
 ("Listening · Breathe Deeper" / "Online" / "Offline"), a 3-bar equalizer
