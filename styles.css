@@ -19106,30 +19106,6 @@ img.cd {
     isolation: isolate;
 }
 
-.social-chat-background {
-    position: absolute;
-    inset: -16px;
-    z-index: -2;
-    width: calc(100% + 32px);
-    height: calc(100% + 32px);
-    object-fit: cover;
-    filter: blur(8px) saturate(0.72);
-}
-
-.social-messages-stage::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background: color-mix(in srgb, var(--background) 78%, transparent);
-    opacity: 0;
-    transition: opacity 180ms ease;
-}
-
-.social-messages-stage.has-background::after {
-    opacity: 1;
-}
-
 .social-messages {
     flex: 1;
     min-height: 0;
@@ -19589,6 +19565,17 @@ img.cd {
     object-fit: cover;
     filter: blur(14px) brightness(1.18) saturate(0.82);
     opacity: 0.5;
+    transition:
+        transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        filter 260ms ease,
+        opacity 260ms ease;
+}
+
+.social-snippet:hover .social-snippet-backdrop,
+.social-snippet:focus-within .social-snippet-backdrop {
+    filter: blur(13px) brightness(1.28) saturate(0.88);
+    opacity: 0.58;
+    transform: scale(1.1);
 }
 
 .social-snippet-shade {
@@ -19609,20 +19596,24 @@ img.cd {
 .social-snippet-play {
     display: grid;
     place-items: center;
-    width: 30px;
-    height: 30px;
-    flex: 0 0 30px;
-    padding: 0 0 0 2px;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    padding: 0;
     border: 0;
     border-radius: 50%;
-    background: var(--foreground);
-    color: var(--background);
+    background: transparent;
+    color: #050505;
     cursor: pointer;
     transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .social-snippet-play:hover {
     transform: scale(1.07);
+}
+
+.social-snippet-play .social-share-play {
+    transform: none;
 }
 
 .social-snippet-play.is-playing {
@@ -19664,6 +19655,13 @@ img.cd {
     padding: 0 3px;
 }
 
+.social-snippet-wave.is-selected {
+    position: absolute;
+    inset: 0;
+    clip-path: inset(0 calc(100% - var(--selection-end)) 0 var(--selection-start));
+    pointer-events: none;
+}
+
 .social-snippet-wave i {
     flex: 1;
     min-width: 1px;
@@ -19671,7 +19669,7 @@ img.cd {
     background: color-mix(in srgb, var(--foreground) 20%, transparent);
 }
 
-.social-snippet-wave i.is-in {
+.social-snippet-wave.is-selected i {
     background: color-mix(in srgb, var(--foreground) 82%, transparent);
 }
 
@@ -20816,6 +20814,7 @@ img.cd {
     display: flex;
     flex-direction: column;
     gap: 0.55rem;
+    margin-top: 0.75rem;
     animation: social-view-in 240ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -20830,9 +20829,38 @@ img.cd {
 .share-snippet-wave canvas {
     display: block;
     width: 100%;
-    height: 96px;
+    height: 78px;
     cursor: ew-resize;
     touch-action: none;
+}
+
+.share-snippet-brackets {
+    position: absolute;
+    top: 7px;
+    bottom: 7px;
+    left: var(--selection-start, 0%);
+    width: calc(var(--selection-end, 0%) - var(--selection-start, 0%));
+    pointer-events: none;
+}
+
+.share-snippet-brackets::before,
+.share-snippet-brackets::after {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    border-block: 1.5px solid var(--foreground);
+    content: '';
+}
+
+.share-snippet-brackets::before {
+    left: 0;
+    border-left: 1.5px solid var(--foreground);
+}
+
+.share-snippet-brackets::after {
+    right: 0;
+    border-right: 1.5px solid var(--foreground);
 }
 
 .share-snippet-loading {
@@ -21307,6 +21335,7 @@ body.share-sheet-open {
     .social-share-placeholder,
     .social-share-play,
     .social-share-overlay,
+    .social-snippet-backdrop,
     .social-info-art > img,
     .social-info-art-placeholder,
     .social-info-art-play,

@@ -215,15 +215,20 @@ export class SocialFeed {
         ]);
         // Reposts were removed from the product. Keep historical records intact
         // in PocketBase, but do not let them leak back into the new feed.
-        this.posts = posts.filter((post) => !post.repost_of);
-        this.myLikes = new Map(myLikes.map((like) => [like.post, like.id]));
+        this.posts = posts.filter((post) => !post.repost_of && !this.manager.isBlocked(post.author));
+        const visiblePostIds = new Set(this.posts.map((post) => post.id));
+        this.myLikes = new Map(
+            myLikes.filter((like) => visiblePostIds.has(like.post)).map((like) => [like.post, like.id])
+        );
         this.likeCounts = new Map();
         this.commentCounts = new Map();
         this.comments = new Map();
         for (const like of allLikes) {
+            if (!visiblePostIds.has(like.post) || this.manager.isBlocked(like.user)) continue;
             this.likeCounts.set(like.post, (this.likeCounts.get(like.post) || 0) + 1);
         }
         for (const comment of comments) {
+            if (!visiblePostIds.has(comment.post) || this.manager.isBlocked(comment.author)) continue;
             this.commentCounts.set(comment.post, (this.commentCounts.get(comment.post) || 0) + 1);
             if (!this.comments.has(comment.post)) this.comments.set(comment.post, []);
             this.comments.get(comment.post).push(comment);

@@ -33,6 +33,14 @@ const PRESENCE_PROGRESS_MS = 15_000;
 const SOCIAL_POLL_MS = 15_000;
 const GROUP_MESSAGE_GAP_MS = 4 * 60_000;
 
+function snippetPlayIcon(playing = false) {
+    return `<span class="social-share-play"><svg class="social-share-morph-play-icon" viewBox="0 0 24 24" aria-hidden="true">${
+        playing
+            ? '<path d="M7 5.5H10.5V18.5H7Z"></path><path d="M13.5 5.5H17V18.5H13.5Z"></path>'
+            : '<path d="M8 5.5L19 12L8 18.5Z"></path>'
+    }</svg></span>`;
+}
+
 function messageFileUrl(record, filename, thumb = '') {
     if (!filename) return '';
     if (typeof filename === 'string' && (filename.startsWith('http') || filename.startsWith('blob:'))) return filename;
@@ -95,6 +103,8 @@ export class SocialManager {
         this.presence = new Map();
         this.following = new Set();
         this.followers = new Set();
+        this.blocked = new Set();
+        this.blockRecords = new Map();
         this.conversations = new Map();
         this.messagesByConversation = new Map();
         this.muted = new Set();
@@ -221,7 +231,7 @@ export class SocialManager {
 
     async _loadEverything() {
         const uid = this.userId;
-        const [profiles, presence, follows, conversations, mutes, reads, pins, messages] = await Promise.all([
+        const [profiles, presence, follows, conversations, mutes, reads, pins, messages, blocks] = await Promise.all([
             pb.collection('social_profiles').getFullList({ sort: 'display_name,username' }),
             pb.collection('social_presence').getFullList({ sort: '-last_seen' }),
             pb.collection('social_follows').getFullList({ filter: `follower="${uid}" || following="${uid}"` }),
@@ -230,16 +240,46 @@ export class SocialManager {
             pb.collection('social_reads').getFullList({ filter: `user="${uid}"` }),
             pb.collection('social_pins').getFullList({ filter: `user="${uid}"`, sort: '-created' }),
             pb.collection('social_messages').getFullList({ sort: 'created' }),
+            pb
+                .collection('social_blocks')
+                .getFullList({ filter: `blocker="${uid}" || blocked="${uid}"` })
+                .catch(() => []),
         ]);
 
-        this.profiles = new Map(profiles.map((profile) => [profile.user, profile]));
+        this.blocked = new Set();
+        this.blockRecords = new Map();
+        for (const block of blocks) {
+            const other = block.blocker === uid ? block.blocked : block.blocker;
+            if (other) this.blocked.add(other);
+            if (block.blocker === uid) this.blockRecords.set(block.blocked, block.id);
+        }
+
+        this.profiles = new Map(
+            profiles
+                .filter((profile) => profile.user === uid || !this.blocked.has(profile.user))
+                .map((profile) => [profile.user, profile])
+        );
         if (!this.profiles.has(uid)) {
             await this.syncCurrentProfile().catch(() => {});
         }
-        this.presence = new Map(presence.map((item) => [item.user, item]));
-        this.following = new Set(follows.filter((f) => f.follower === uid).map((f) => f.following));
-        this.followers = new Set(follows.filter((f) => f.following === uid).map((f) => f.follower));
-        this.conversations = new Map(conversations.map((conversation) => [conversation.id, conversation]));
+        this.presence = new Map(
+            presence.filter((item) => !this.blocked.has(item.user)).map((item) => [item.user, item])
+        );
+        this.following = new Set(
+            follows.filter((f) => f.follower === uid && !this.blocked.has(f.following)).map((f) => f.following)
+        );
+        this.followers = new Set(
+            follows.filter((f) => f.following === uid && !this.blocked.has(f.follower)).map((f) => f.follower)
+        );
+        this.conversations = new Map(
+            conversations
+                .filter((conversation) => {
+                    if (conversation.type !== 'dm') return true;
+                    const other = (conversation.members || []).find((member) => member !== uid);
+                    return !this.blocked.has(other);
+                })
+                .map((conversation) => [conversation.id, conversation])
+        );
         this.muteRecords = new Map(mutes.map((mute) => [mute.conversation, mute.id]));
         this.muted = new Set(this.muteRecords.keys());
         this.readState = new Map(reads.map((read) => [read.conversation, Date.parse(read.last_read || 0)]));
@@ -247,6 +287,7 @@ export class SocialManager {
         this.messagesByConversation = new Map();
         for (const message of messages) {
             if (!message.conversation) continue;
+            if (this.blocked.has(message.sender)) continue;
             if (!this.messagesByConversation.has(message.conversation)) {
                 this.messagesByConversation.set(message.conversation, []);
             }
@@ -372,7 +413,12 @@ export class SocialManager {
     renderPeople(query = '') {
         const container = document.getElementById('social-people-list');
         const count = document.getElementById('social-people-count');
+        const toolbar = document.getElementById('social-people-toolbar');
         if (!container) return;
+        const hidePeople = this.conversations.size > 6;
+        container.hidden = hidePeople;
+        if (toolbar) toolbar.hidden = hidePeople;
+        if (hidePeople) return;
         const normalized = query.trim().toLowerCase();
         const peopleAlreadyInChats = new Set();
         for (const conversation of this.conversations.values()) {
@@ -645,6 +691,7 @@ export class SocialManager {
     }
 
     async openConversationForUser(userId) {
+        if (this.isBlocked(userId)) return;
         if (userId === this.userId) {
             const profile = this.profiles.get(userId);
             if (profile) window.location.assign(profileHref(profile));
@@ -676,7 +723,7 @@ export class SocialManager {
     }
 
     canChatWith(userId) {
-        return isMutualFriend(this.following, this.followers, userId);
+        return !this.isBlocked(userId) && isMutualFriend(this.following, this.followers, userId);
     }
 
     /* ------------------------------ thread render ---------------------------- */
@@ -701,16 +748,6 @@ export class SocialManager {
         const dot = document.getElementById('social-thread-presence-dot');
         const personButton = document.getElementById('social-thread-person');
         const groupAvatar = document.getElementById('social-thread-group-avatar');
-        const backgroundStage = document.getElementById('social-messages-stage');
-        const backgroundImage = document.getElementById('social-chat-background');
-        const backgroundUrl =
-            !isGroup && conversation.background ? messageFileUrl(conversation, conversation.background) : '';
-        if (backgroundImage) {
-            backgroundImage.hidden = !backgroundUrl;
-            if (backgroundUrl) backgroundImage.src = backgroundUrl;
-            else backgroundImage.removeAttribute('src');
-        }
-        backgroundStage?.classList.toggle('has-background', Boolean(backgroundUrl));
         if (isGroup) {
             if (avatar) avatar.hidden = true;
             if (groupAvatar) {
@@ -899,11 +936,7 @@ export class SocialManager {
             Math.min(100, ((Number(snippet.end) || duration) / duration) * 100)
         );
         const bars = peaks
-            .map((peak, index) => {
-                const time = (index / Math.max(1, peaks.length - 1)) * duration;
-                const inRange = time >= (snippet.start || 0) && time <= (snippet.end || duration);
-                return `<i style="height:${Math.max(12, Math.min(82, Math.round((peak || 0.08) * 72)))}%" class="${inRange ? 'is-in' : ''}"></i>`;
-            })
+            .map((peak) => `<i style="height:${Math.max(12, Math.min(82, Math.round((peak || 0.08) * 72)))}%"></i>`)
             .join('');
         const playable = Boolean(payload.id);
         return `<div class="social-snippet" data-snippet-id="${escapeHtml(payload.id || '')}">
@@ -911,14 +944,15 @@ export class SocialManager {
             <span class="social-snippet-shade" aria-hidden="true"></span>
             <div class="social-snippet-content">
             <div class="social-snippet-head">
-                ${playable ? `<button class="social-snippet-play" type="button" data-snippet-play="${escapeHtml(payload.id)}" data-snippet-start="${Number(snippet.start) || 0}" data-snippet-end="${Number(snippet.end) || 0}" aria-label="Play snippet">${icon.play(15)}</button>` : ''}
+                ${playable ? `<button class="social-snippet-play" type="button" data-snippet-play="${escapeHtml(payload.id)}" data-snippet-start="${Number(snippet.start) || 0}" data-snippet-end="${Number(snippet.end) || 0}" aria-label="Play snippet">${snippetPlayIcon()}</button>` : ''}
                 <div class="social-snippet-copy">
                     <strong>${escapeHtml(payload.title || 'Snippet')}</strong>
                     <small>${escapeHtml(payload.subtitle || '')}</small>
                 </div>
             </div>
-            <div class="social-snippet-wave-wrap">
+            <div class="social-snippet-wave-wrap" style="--selection-start:${selectionStart}%;--selection-end:${selectionEnd}%">
                 <div class="social-snippet-wave" aria-hidden="true">${bars}</div>
+                <div class="social-snippet-wave is-selected" aria-hidden="true">${bars}</div>
                 <span class="social-snippet-selection" style="--selection-start:${selectionStart}%;--selection-end:${selectionEnd}%" role="img" aria-label="Selected excerpt from ${escapeHtml(formatDuration(snippet.start || 0))} to ${escapeHtml(formatDuration(snippet.end || 0))}"></span>
             </div>
             <span class="social-snippet-range">${escapeHtml(formatDuration(snippet.start || 0))} – ${escapeHtml(formatDuration(snippet.end || 0))}</span>
@@ -1109,9 +1143,9 @@ export class SocialManager {
             ${about ? `<p>${escapeHtml(about)}</p>` : ''}
             <div class="social-info-actions">
                 <a href="${escapeHtml(profileHref(profile))}">${icon.user(15)}<span>Profile</span></a>
-                ${this.canChatWith(profile.user) ? `<button type="button" data-chat-background-picker="${escapeHtml(conversation.id)}" title="Change chat background">${icon.imagePlus(15)}<span>Background</span></button><input type="file" accept="image/*" data-chat-background-input="${escapeHtml(conversation.id)}" hidden />` : ''}
                 <button type="button" data-toggle-mute="${escapeHtml(conversation.id)}">${isMuted ? icon.bell(15) : icon.bellOff(15)}<span>${isMuted ? 'Unmute' : 'Mute'}</span></button>
                 <button type="button" data-toggle-follow="${escapeHtml(profile.user)}" class="${isFollowing ? 'is-following' : ''}">${isFollowing ? icon.check(15) : icon.userPlus(15)}<span>${isFollowing ? 'Following' : 'Follow'}</span></button>
+                <button type="button" data-block-user="${escapeHtml(profile.user)}">${icon.x(15)}<span>Block</span></button>
             </div>
         </header>`;
     }
@@ -1401,14 +1435,19 @@ export class SocialManager {
         showNotification('Group picture updated');
     }
 
-    async updateChatBackground(conversationId, file) {
-        const conversation = this.conversations.get(conversationId);
-        if (!conversation || conversation.type !== 'dm' || !file) return;
-        const record = await pb.collection('social_conversations').update(conversationId, { background: file });
-        this.conversations.set(record.id, record);
-        this.renderThread();
-        if (this.infoOpen) this.renderInfoPanel();
-        showNotification('Chat background updated');
+    isBlocked(userId) {
+        return Boolean(userId && this.blocked.has(userId));
+    }
+
+    async blockUser(userId) {
+        if (!userId || userId === this.userId || this.blocked.has(userId)) return;
+        await pb.collection('social_blocks').create({ blocker: this.userId, blocked: userId });
+        if (this.activeConversation()?.type === 'dm') this.closeConversation();
+        showNotification('Account blocked');
+        await this.refreshAll();
+        if (document.getElementById('page-profile')?.classList.contains('active')) {
+            void import('./router.js').then(({ navigate }) => navigate('/social'));
+        }
     }
 
     async leaveGroup(conversationId) {
@@ -1517,7 +1556,7 @@ export class SocialManager {
             const playing = this.activeSnippet?.trackId === button.dataset.snippetPlay;
             button.classList.toggle('is-playing', playing);
             button.setAttribute('aria-label', playing ? 'Pause snippet' : 'Play snippet');
-            button.innerHTML = playing ? icon.pause(15) : icon.play(15);
+            button.innerHTML = snippetPlayIcon(playing);
         });
     }
 
@@ -1692,6 +1731,7 @@ export class SocialManager {
 
         const unsubscribeMessages = await pb.collection('social_messages').subscribe('*', async (event) => {
             const record = event.record;
+            if (this.isBlocked(record.sender)) return;
             const conversationId = record.conversation;
             if (!conversationId || !this.conversations.has(conversationId)) return;
             const list = this.messagesByConversation.get(conversationId) || [];
@@ -1719,7 +1759,13 @@ export class SocialManager {
         });
         subscriptions.push(unsubscribeMessages);
 
-        for (const collection of ['social_conversations', 'social_profiles', 'social_presence', 'social_follows']) {
+        for (const collection of [
+            'social_conversations',
+            'social_profiles',
+            'social_presence',
+            'social_follows',
+            'social_blocks',
+        ]) {
             const unsubscribe = await pb.collection(collection).subscribe('*', async () => {
                 await this.refreshAll();
             });
@@ -1752,6 +1798,7 @@ export class SocialManager {
             .getFirstListItem(`username="${String(username).replaceAll('"', '\\"')}"`)
             .catch(() => null);
         if (!profile) return;
+        if (this.isBlocked(profile.user)) return;
         const presence = await pb
             .collection('social_presence')
             .getFirstListItem(`user="${profile.user}"`)
@@ -1766,6 +1813,7 @@ export class SocialManager {
         const button = document.getElementById('profile-follow-btn');
         const stats = document.getElementById('profile-social-stats');
         const messageButton = document.getElementById('profile-message-btn');
+        const blockButton = document.getElementById('profile-block-btn');
         if (!button) return;
         const profile = await pb
             .collection('social_profiles')
@@ -1773,8 +1821,12 @@ export class SocialManager {
             .catch(() => null);
         button.dataset.followUser = '';
         button.style.display = 'none';
+        if (blockButton) {
+            blockButton.dataset.blockUser = '';
+            blockButton.style.display = 'none';
+        }
         if (stats) stats.style.display = 'none';
-        if (!profile || profile.user === this.userId) return;
+        if (!profile || profile.user === this.userId || this.isBlocked(profile.user)) return;
 
         const [followers, following] = await Promise.all([
             pb.collection('social_follows').getList(1, 1, { filter: `following="${profile.user}"` }),
@@ -1787,6 +1839,10 @@ export class SocialManager {
             : `${icon.userPlus(15)}<span>Follow</span>`;
         button.classList.toggle('is-following', isFollowing);
         button.style.display = 'inline-flex';
+        if (blockButton) {
+            blockButton.dataset.blockUser = profile.user;
+            blockButton.style.display = 'inline-flex';
+        }
         if (stats) {
             stats.textContent = `${followers.totalItems} followers · ${following.totalItems} following`;
             stats.style.display = 'block';
@@ -1951,6 +2007,15 @@ export class SocialManager {
                 this.toggleFollow(follow.dataset.toggleFollow).catch(console.error);
                 return;
             }
+            const block = event.target.closest('[data-block-user]');
+            if (block) {
+                block.disabled = true;
+                this.blockUser(block.dataset.blockUser).catch((error) => {
+                    block.disabled = false;
+                    showNotification(error?.message || 'Could not block this account', 'error');
+                });
+                return;
+            }
             const unpin = event.target.closest('[data-unpin]');
             if (unpin) {
                 this.unpin(unpin.dataset.unpin).catch(console.error);
@@ -1967,14 +2032,6 @@ export class SocialManager {
                 this.openConversation(conversation.dataset.infoConversation).catch(console.error);
                 return;
             }
-            const backgroundPicker = event.target.closest('[data-chat-background-picker]');
-            if (backgroundPicker) {
-                document
-                    .querySelector(
-                        `[data-chat-background-input="${CSS.escape(backgroundPicker.dataset.chatBackgroundPicker)}"]`
-                    )
-                    ?.click();
-            }
         });
         document.getElementById('social-info-panel')?.addEventListener('change', (event) => {
             const input = event.target.closest('[data-group-avatar-input]');
@@ -1984,13 +2041,6 @@ export class SocialManager {
                     showNotification(error.message, 'error')
                 );
                 return;
-            }
-            const backgroundInput = event.target.closest('[data-chat-background-input]');
-            const backgroundFile = backgroundInput?.files?.[0];
-            if (backgroundInput && backgroundFile) {
-                this.updateChatBackground(backgroundInput.dataset.chatBackgroundInput, backgroundFile).catch((error) =>
-                    showNotification(error.message, 'error')
-                );
             }
         });
 
@@ -2051,6 +2101,15 @@ export class SocialManager {
         document.getElementById('profile-follow-btn')?.addEventListener('click', (event) => {
             const button = event.target.closest('[data-follow-user]');
             if (button) this.toggleFollow(button.dataset.followUser).catch(console.error);
+        });
+        document.getElementById('profile-block-btn')?.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-block-user]');
+            if (!button) return;
+            button.disabled = true;
+            this.blockUser(button.dataset.blockUser).catch((error) => {
+                button.disabled = false;
+                showNotification(error?.message || 'Could not block this account', 'error');
+            });
         });
     }
 }

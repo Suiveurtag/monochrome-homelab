@@ -3361,7 +3361,7 @@
                                 <span class="social-rail-label">Conversations</span>
                             </div>
                             <div id="social-conversation-list" class="social-conversation-list"></div>
-                            <div class="social-rail-toolbar">
+                            <div id="social-people-toolbar" class="social-rail-toolbar">
                                 <span class="social-rail-label">Meet people</span
                                 ><span id="social-people-count" class="social-rail-count"></span>
                             </div>
@@ -3439,13 +3439,6 @@
                                 </header>
 
                                 <div id="social-messages-stage" class="social-messages-stage">
-                                    <img
-                                        id="social-chat-background"
-                                        class="social-chat-background"
-                                        src="/assets/appicon.png"
-                                        alt=""
-                                        hidden
-                                    />
                                     <div id="social-messages" class="social-messages" aria-live="polite"></div>
                                 </div>
 
@@ -3529,6 +3522,9 @@
                                 <a id="profile-message-btn" class="btn-secondary" href="#" style="display: none"
                                     >Message</a
                                 >
+                                <button id="profile-block-btn" class="btn-secondary" style="display: none">
+                                    Block
+                                </button>
                                 <button id="profile-edit-btn" class="btn-secondary" style="display: none">
                                     Edit Profile
                                 </button>
@@ -7234,7 +7230,8 @@
                     </button>
                     <div id="share-snippet-editor" class="share-snippet-editor" hidden>
                         <div class="share-snippet-wave">
-                            <canvas id="share-snippet-canvas" height="96" aria-label="Song waveform"></canvas>
+                            <canvas id="share-snippet-canvas" height="78" aria-label="Song waveform"></canvas>
+                            <span id="share-snippet-brackets" class="share-snippet-brackets" aria-hidden="true"></span>
                             <div id="share-snippet-loading" class="share-snippet-loading">Reading the song…</div>
                         </div>
                         <div class="share-snippet-transport">

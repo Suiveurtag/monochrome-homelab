@@ -393,11 +393,11 @@ to 26%. The foot is right-aligned: clock (0.56rem, tabular) plus delivery ticks 
 radius, card fill, hairline, soft shadow) floating above the outer corner.
 
 **Message content:** images render borderless in 12px frames (max 340px wide, 360px tall, cursor
-zoom-in → lightbox). Music share cards are 54px-art + type-em/title/subtitle + play/open buttons in
-a 12px card on `rgb(0 0 0 / 0.16)` (wash 0.1 on hover, dark play disc on art hover). **Snippet
-cards** (12px, hairline mixed 16% foreground): 30px ink play disc, title/subtitle, a 96-bar
-waveform (`downsamplePeaks` to 96; in-range bars solid foreground, the rest 26% foreground), and a
-tabular "0:12 – 0:45" range line. Snippet plays are scoped with `new Audio()` start/end guards.
+zoom-in → lightbox). Music share cards are 54px-art + type-em/title/subtitle + play/open buttons over
+a brightened blurred cover ground that zooms on hover. **Snippet cards** (12px, hairline mixed 16%
+foreground) use the same 34px player-style control, a zooming blurred cover, title/subtitle, and a
+56-bar waveform. Its selected foreground layer is clipped at the exact start/end pixels—even through
+a bar—and framed by square brackets. Snippet plays use the global player with start/end guards.
 
 ### Message composer
 
@@ -413,7 +413,7 @@ and doubles the shadow.
 320px third pane (overlay below 1240px container width) on wash 0.02, left hairline, entering with
 `social-info-in` (280ms, `translateX(14px)`). A sticky 30px round close X sits top-right (hover
 inverts to ink). Hero: 76px avatar, name (0.98rem/750), @handle, about line, and a centered row of
-hairline pills — Profile / Mute / Follow (following = solid ink with check). Groups swap in a large
+hairline pills — Profile / Mute / Follow / Block (following = solid ink with check). Groups swap in a large
 dashed tile, member count, and Mute/Leave pills. Sections follow, each opened by an uppercase h3
 micro-label above a 62%-opacity hairline: **Currently listening** (44px-art track card on wash 0.04
 with equalizer or "PAUSED" label and a play button), **Shared tracks** (numbered rows: tabular
@@ -421,6 +421,11 @@ index, 40px art, title/subtitle, play), **Shared albums** (same rows, linked), *
 groups** (overlapping 30px avatar stack — `-9px` margins, 2px card ring — plus count line and small
 group rows), **Pinned** (pin-icon chip rows with unpin buttons; hint text when empty). Rows hover
 on wash 0.05.
+
+Blocking is reciprocal in normal Social surfaces: either participant's block hides both accounts from
+each other's profiles, presence, direct conversations, messages, feed activity, follows, and share recipients.
+The Meet people section is removed once the member has more than six conversations. DMs use the standard
+conversation surface and do not support uploaded background images.
 
 ### Friendship gate
 

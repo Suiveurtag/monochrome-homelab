@@ -55,6 +55,20 @@
         transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.version-switch-button::before {
+    position: absolute;
+    z-index: 6;
+    top: calc(50% - 9px);
+    right: 6px;
+    left: 6px;
+    height: 13px;
+    border-radius: 50%;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0.24) 42%, transparent 88%);
+    content: '';
+    filter: blur(1.5px);
+    pointer-events: none;
+}
+
 .version-switch-button:hover,
 .version-switch-button:focus-visible {
     outline: none;
@@ -118,7 +132,13 @@
     z-index: 3;
     inset: 0;
     border-radius: inherit;
-    background: linear-gradient(to top, rgb(0 0 0 / 0.48) 0%, rgb(0 0 0 / 0.2) 18%, transparent 46%);
+    background: linear-gradient(
+        to bottom,
+        transparent 12%,
+        rgb(0 0 0 / 0.08) 26%,
+        rgb(0 0 0 / 0.44) 48%,
+        rgb(0 0 0 / 0.68) 100%
+    );
     content: '';
     pointer-events: none;
 }

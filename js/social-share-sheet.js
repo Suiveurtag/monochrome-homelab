@@ -267,6 +267,7 @@ export class ShareSheet {
         this.peaks = result.peaks;
         this.duration = result.duration;
         this.selection = { start: 0, end: Math.min(DEFAULT_SNIPPET_LENGTH, this.duration) };
+        this.syncSnippetPayload();
         this.drawWave();
         this.updateSnippetLabels();
     }
@@ -278,9 +279,9 @@ export class ShareSheet {
         const dpr = window.devicePixelRatio || 1;
         if (canvas.width !== Math.round(width * dpr)) {
             canvas.width = Math.round(width * dpr);
-            canvas.height = Math.round(96 * dpr);
+            canvas.height = Math.round(78 * dpr);
         }
-        return { canvas, width, height: 96, dpr };
+        return { canvas, width, height: 78, dpr };
     }
 
     drawWave() {
@@ -294,9 +295,9 @@ export class ShareSheet {
         const active = styles.getPropertyValue('--foreground').trim() || '#fff';
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const barCount = Math.max(24, Math.floor(width / 6));
+        const barCount = Math.max(48, Math.floor(width / 4));
         const step = this.peaks.length / barCount;
-        const barWidth = (width / barCount) * 0.6;
+        const barWidth = (width / barCount) * 0.48;
         const centerY = height / 2;
         const { start, end } = this.selection;
         const progress = this.playing && this.audio ? this.audio.currentTime : null;
@@ -309,7 +310,7 @@ export class ShareSheet {
             const x = (i / barCount) * width;
             const time = (x / width) * this.duration;
             const inRange = time >= start && time <= end;
-            const barHeight = Math.max(2, peak * (height - 14));
+            const barHeight = Math.max(2, peak * (height - 20));
             ctx.fillStyle = inRange ? active : base;
             ctx.globalAlpha = inRange ? 1 : 0.42;
             ctx.beginPath();
@@ -324,6 +325,11 @@ export class ShareSheet {
             ctx.fillRect(x * dpr, 4 * dpr, 1.5 * dpr, (height - 8) * dpr);
         }
         ctx.globalAlpha = 1;
+        const brackets = document.getElementById('share-snippet-brackets');
+        if (brackets) {
+            brackets.style.setProperty('--selection-start', `${(start / this.duration) * 100}%`);
+            brackets.style.setProperty('--selection-end', `${(end / this.duration) * 100}%`);
+        }
     }
 
     timeAtEvent(event) {
@@ -393,10 +399,18 @@ export class ShareSheet {
 
     syncSnippetPayload() {
         if (!this.payload || !this.selection) return;
+        const sourcePeaks = Array.from(this.peaks || []);
+        const peakBucket = Math.max(1, Math.ceil(sourcePeaks.length / 240));
+        const compactPeaks = sourcePeaks.length
+            ? Array.from({ length: Math.ceil(sourcePeaks.length / peakBucket) }, (_, index) =>
+                  Number(Math.max(...sourcePeaks.slice(index * peakBucket, (index + 1) * peakBucket)).toFixed(3))
+              )
+            : [];
         this.payload.snippet = {
             start: Number(this.selection.start.toFixed(2)),
             end: Number(this.selection.end.toFixed(2)),
             duration: Number(this.duration.toFixed(2)),
+            peaks: compactPeaks,
         };
     }
 
