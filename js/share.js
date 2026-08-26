@@ -4,7 +4,6 @@
 
 import { escapeHtml, getTrackArtists } from './utils.js';
 import { showNotification } from './downloads.js';
-
 /**
  * Normalize an internal content type into a share-path kind.
  * Kept tiny so every call site (context menu, social cards, player) agrees.
@@ -169,20 +168,24 @@ export function shareCardHTML(payload) {
     const href = escapeHtml(payload?.href || '#');
     const id = escapeHtml(payload?.id || '');
     const playable = ['track', 'album'].includes(kind);
+    const coverBackdrop =
+        ['track', 'album'].includes(kind) && payload?.image
+            ? `<img class="social-track-backdrop" src="${escapeHtml(payload.image)}" alt="" loading="lazy" /><span class="social-track-shade" aria-hidden="true"></span>`
+            : '';
 
     return `
-        <div class="social-message-share" data-share-kind="${escapeHtml(normalizeShareKind(kind))}" data-share-id="${id}">
-            <a class="social-share-art" href="${href}" aria-label="${title}">
-                ${image}
-                <span class="social-share-overlay"><span class="social-share-play">▶</span></span>
-            </a>
+        <div class="social-message-share${coverBackdrop ? ' has-track-backdrop' : ''}" data-share-kind="${escapeHtml(normalizeShareKind(kind))}" data-share-id="${id}">
+            ${coverBackdrop}
+            <span class="social-share-art">
+                <a class="social-share-art-link" href="${href}" aria-label="Open ${title}">${image}</a>
+                ${playable ? `<button class="social-share-overlay" type="button" data-play-kind="${escapeHtml(kind)}" data-play-id="${id}" aria-label="Play ${title}"><span class="social-share-play"><svg class="social-share-morph-play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5L19 12L8 18.5Z"></path></svg></span></button>` : ''}
+            </span>
             <a class="social-share-meta" href="${href}">
                 <em>${escapeHtml(kind)}</em>
                 <strong>${title}</strong>
                 <small>${subtitle}</small>
             </a>
             <span class="social-share-actions">
-                ${playable ? `<button class="social-share-play-btn" type="button" data-play-kind="${escapeHtml(kind)}" data-play-id="${id}" aria-label="Play ${title}">▶</button>` : ''}
                 <a class="social-share-open" href="${href}" aria-label="Open ${title}">↗</a>
             </span>
         </div>`;

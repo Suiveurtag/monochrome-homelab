@@ -55,12 +55,22 @@ function conversationAvatar(conversation, profiles, meId) {
     return avatarFor(profiles.get(other));
 }
 
-function groupAvatarHTML(conversation, size = '') {
+function groupAvatarHTML(conversation, profiles, size = '') {
     const avatar = conversationAvatar(conversation, null, null);
     const sizeClass = size ? ` is-${size}` : '';
-    return avatar
-        ? `<img class="social-group-avatar${sizeClass}" src="${escapeHtml(avatar)}" alt="" loading="lazy" />`
-        : `<span class="social-group-tile${sizeClass}" aria-hidden="true">${icon.users(size === 'large' ? 24 : size === 'small' ? 14 : 18)}</span>`;
+    if (avatar) {
+        return `<img class="social-group-avatar${sizeClass}" src="${escapeHtml(avatar)}" alt="" loading="lazy" />`;
+    }
+    const memberAvatars = (conversation.members || [])
+        .map((member) => profiles?.get(member))
+        .filter(Boolean)
+        .slice(0, 4);
+    if (memberAvatars.length) {
+        return `<span class="social-group-collage${sizeClass} has-${memberAvatars.length}" aria-hidden="true">${memberAvatars
+            .map((profile) => `<img src="${escapeHtml(avatarFor(profile))}" alt="" loading="lazy" />`)
+            .join('')}</span>`;
+    }
+    return `<span class="social-group-tile${sizeClass}" aria-hidden="true">${icon.users(size === 'large' ? 24 : size === 'small' ? 14 : 18)}</span>`;
 }
 
 function previewFor(message) {
@@ -338,7 +348,7 @@ export class SocialManager {
         const avatar = conversationAvatar(conversation, this.profiles, this.userId);
         const state = isGroup ? { online: false, playing: false } : this.presenceStateFor(conversation);
         const art = isGroup
-            ? groupAvatarHTML(conversation)
+            ? groupAvatarHTML(conversation, this.profiles)
             : `<img src="${escapeHtml(avatar)}" alt="" loading="lazy" />`;
         const mine = last && last.sender === this.userId;
         const prefix = mine ? 'You: ' : '';
@@ -502,7 +512,7 @@ export class SocialManager {
                       (
                           conversation
                       ) => `<button class="social-feed-group-row" type="button" data-feed-conversation="${escapeHtml(conversation.id)}">
-                        ${groupAvatarHTML(conversation, 'small')}
+                        ${groupAvatarHTML(conversation, this.profiles, 'small')}
                         <span class="social-feed-group-copy"><strong>${escapeHtml(conversationTitle(conversation, this.profiles, this.userId))}</strong><small>${(conversation.members || []).length} members</small></span>
                     </button>`
                   )
@@ -705,7 +715,7 @@ export class SocialManager {
             if (avatar) avatar.hidden = true;
             if (groupAvatar) {
                 groupAvatar.hidden = false;
-                groupAvatar.innerHTML = groupAvatarHTML(conversation);
+                groupAvatar.innerHTML = groupAvatarHTML(conversation, this.profiles);
             }
             if (name) name.textContent = conversationTitle(conversation, this.profiles, this.userId);
             if (status) status.textContent = `${(conversation.members || []).length} members`;
@@ -1057,7 +1067,7 @@ export class SocialManager {
         const isMuted = this.muted.has(conversation.id);
         return `<header class="social-info-hero">
             <label class="social-group-avatar-editor" title="Change group picture">
-                ${groupAvatarHTML(conversation, 'large')}
+                ${groupAvatarHTML(conversation, this.profiles, 'large')}
                 <span class="social-group-avatar-action">${icon.imagePlus(15)}</span>
                 <input type="file" accept="image/*" data-group-avatar-input="${escapeHtml(conversation.id)}" hidden />
             </label>
@@ -1112,7 +1122,8 @@ export class SocialManager {
         const track = state.track;
         return `<section class="social-info-section">
             <h3>${state.playing ? 'Currently listening' : 'Paused on'}</h3>
-            <div class="social-info-track">
+            <div class="social-info-track${track.image ? ' has-track-backdrop' : ''}">
+                ${track.image ? `<img class="social-track-backdrop" src="${escapeHtml(track.image)}" alt="" loading="lazy" /><span class="social-track-shade" aria-hidden="true"></span>` : ''}
                 ${track.image ? `<img src="${escapeHtml(track.image)}" alt="" />` : ''}
                 <div class="social-info-track-copy">
                     ${state.playing ? '<span class="social-equalizer"><i></i><i></i><i></i></span>' : '<em>PAUSED</em>'}
@@ -1142,28 +1153,37 @@ export class SocialManager {
         const tracks = this.sharedFromMessages(messages, 'track');
         const rows = tracks
             .map(
-                (entry, index) => `<div class="social-info-row">
+                (
+                    entry,
+                    index
+                ) => `<div class="social-info-row is-shared-track${entry.payload.image ? ' has-track-backdrop' : ''}">
+                ${entry.payload.image ? `<img class="social-track-backdrop" src="${escapeHtml(entry.payload.image)}" alt="" loading="lazy" /><span class="social-track-shade" aria-hidden="true"></span>` : ''}
                 <span class="social-info-index">${index + 1}</span>
-                ${entry.payload.image ? `<img src="${escapeHtml(entry.payload.image)}" alt="" />` : ''}
+                <span class="social-info-art">
+                    ${entry.payload.image ? `<img src="${escapeHtml(entry.payload.image)}" alt="" />` : '<span class="social-info-art-placeholder" aria-hidden="true">T</span>'}
+                    <button class="social-info-art-play" type="button" data-play-share="${escapeHtml(entry.payload.id)}" data-play-kind="track" aria-label="Play ${escapeHtml(entry.payload.title || 'track')}"><span class="social-share-play"><svg class="social-share-morph-play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5L19 12L8 18.5Z"></path></svg></span></button>
+                </span>
                 <span class="social-info-row-copy"><strong>${escapeHtml(entry.payload.title || '')}</strong><small>${escapeHtml(entry.payload.subtitle || '')}</small></span>
-                <button type="button" data-play-share="${escapeHtml(entry.payload.id)}" data-play-kind="track" aria-label="Play">${icon.play(14)}</button>
             </div>`
             )
             .join('');
-        return `<section class="social-info-section"><h3>Shared tracks</h3>${rows || '<p class="social-info-hint">Nothing shared yet — drop a track in the chat.</p>'}</section>`;
+        return `<section class="social-info-section is-shared-tracks"><h3>Shared tracks</h3>${rows || '<p class="social-info-hint">Nothing shared yet — drop a track in the chat.</p>'}</section>`;
     }
 
     renderSharedAlbums(messages) {
         const albums = this.sharedFromMessages(messages, 'album');
         const rows = albums
             .map(
-                (entry) => `<a class="social-info-row" href="${escapeHtml(entry.payload.href || '#')}">
+                (
+                    entry
+                ) => `<a class="social-info-row is-shared-album${entry.payload.image ? ' has-track-backdrop' : ''}" href="${escapeHtml(entry.payload.href || '#')}">
+                ${entry.payload.image ? `<img class="social-track-backdrop" src="${escapeHtml(entry.payload.image)}" alt="" loading="lazy" /><span class="social-track-shade" aria-hidden="true"></span>` : ''}
                 ${entry.payload.image ? `<img src="${escapeHtml(entry.payload.image)}" alt="" />` : ''}
                 <span class="social-info-row-copy"><strong>${escapeHtml(entry.payload.title || '')}</strong><small>${escapeHtml(entry.payload.subtitle || '')}</small></span>
             </a>`
             )
             .join('');
-        return `<section class="social-info-section"><h3>Shared albums</h3>${rows || '<p class="social-info-hint">No albums shared yet.</p>'}</section>`;
+        return `<section class="social-info-section is-shared-albums"><h3>Shared albums</h3>${rows || '<p class="social-info-hint">No albums shared yet.</p>'}</section>`;
     }
 
     renderMutual(other) {
@@ -1192,7 +1212,7 @@ export class SocialManager {
             .map(
                 (
                     entry
-                ) => `<button class="social-info-row is-conversation" type="button" data-info-conversation="${escapeHtml(entry.id)}">${groupAvatarHTML(entry, 'small')}
+                ) => `<button class="social-info-row is-conversation" type="button" data-info-conversation="${escapeHtml(entry.id)}">${groupAvatarHTML(entry, this.profiles, 'small')}
                 <span class="social-info-row-copy"><strong>${escapeHtml(conversationTitle(entry, this.profiles, this.userId))}</strong><small>${(entry.members || []).length} members</small></span>${icon.chevronLeft(14)}</button>`
             )
             .join('');
@@ -1915,6 +1935,15 @@ export class SocialManager {
             const mute = event.target.closest('[data-toggle-mute]');
             if (mute) {
                 this.toggleMute(mute.dataset.toggleMute).catch(console.error);
+                return;
+            }
+            const leave = event.target.closest('[data-leave-group]');
+            if (leave) {
+                leave.disabled = true;
+                this.leaveGroup(leave.dataset.leaveGroup).catch((error) => {
+                    leave.disabled = false;
+                    showNotification(error?.message || 'Could not leave the group', 'error');
+                });
                 return;
             }
             const follow = event.target.closest('[data-toggle-follow]');
