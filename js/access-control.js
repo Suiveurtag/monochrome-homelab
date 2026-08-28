@@ -2,19 +2,107 @@ import { authManager } from './accounts/auth.js';
 import { pb } from './accounts/config.js';
 import { initializeDotField } from './dot-field.js';
 
-const DEFAULT_CONFIG = {
+export const DEFAULT_CONFIG = {
     registrations_open: true,
     maintenance_mode: false,
     announcement: '',
+    instance_name: 'Monochrome',
+    support_email: '',
+    feature_social: true,
+    feature_stats: true,
+    feature_uploads: true,
+    feature_parties: true,
+    allow_uploads: true,
+    allow_catalog_edits: true,
+    allow_catalog_deletes: true,
+    allow_downloads: true,
+    allow_social_posts: true,
+    allow_parties: true,
 };
 
+let cachedAppConfig = { ...DEFAULT_CONFIG };
+
+const FEATURE_FIELDS = {
+    social: 'feature_social',
+    stats: 'feature_stats',
+    uploads: 'feature_uploads',
+    parties: 'feature_parties',
+};
+
+const PERMISSION_FIELDS = {
+    upload_music: 'allow_uploads',
+    edit_catalog: 'allow_catalog_edits',
+    delete_catalog: 'allow_catalog_deletes',
+    download_music: 'allow_downloads',
+    create_social_posts: 'allow_social_posts',
+    create_parties: 'allow_parties',
+};
+
+export function isAdminAccount(user = authManager.user) {
+    return user?.access_status === 'active' && user?.role === 'admin';
+}
+
+export function getCachedAppConfig() {
+    return cachedAppConfig;
+}
+
+export function isFeatureEnabled(feature, user = authManager.user, config = cachedAppConfig) {
+    if (isAdminAccount(user)) return true;
+    const field = FEATURE_FIELDS[feature];
+    return field ? config[field] !== false : true;
+}
+
+export function canUsePermission(permission, user = authManager.user, config = cachedAppConfig) {
+    if (isAdminAccount(user)) return true;
+    if (!user || user.access_status !== 'active') return false;
+    const field = PERMISSION_FIELDS[permission];
+    if (!field) return true;
+    if (permission === 'upload_music' && config.feature_uploads === false) return false;
+    if (permission === 'create_social_posts' && config.feature_social === false) return false;
+    if (permission === 'create_parties' && config.feature_parties === false) return false;
+    return config[field] !== false;
+}
+
+export function applyInstancePolicy(config = cachedAppConfig) {
+    cachedAppConfig = { ...DEFAULT_CONFIG, ...config };
+    const root = document.documentElement;
+    const featureTargets = {
+        social: document.getElementById('sidebar-nav-social'),
+        stats: document.getElementById('sidebar-nav-recent'),
+        uploads: document.getElementById('sidebar-nav-upload'),
+        parties: document.getElementById('sidebar-nav-party'),
+    };
+    for (const [feature, element] of Object.entries(featureTargets)) {
+        if (element) element.hidden = !isFeatureEnabled(feature);
+    }
+    root.dataset.canUpload = String(canUsePermission('upload_music'));
+    root.dataset.canEditCatalog = String(canUsePermission('edit_catalog'));
+    root.dataset.canDeleteCatalog = String(canUsePermission('delete_catalog'));
+    root.dataset.canDownload = String(canUsePermission('download_music'));
+    root.dataset.canPost = String(canUsePermission('create_social_posts'));
+    root.dataset.canHostParties = String(canUsePermission('create_parties'));
+    const name = cachedAppConfig.instance_name?.trim() || 'Monochrome';
+    document.documentElement.style.setProperty('--instance-name-length', String(name.length));
+    window.dispatchEvent(new CustomEvent('instance-policy-applied', { detail: cachedAppConfig }));
+    return cachedAppConfig;
+}
+
 async function loadAppConfig() {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 5000);
     try {
-        const result = await pb.collection('app_config').getList(1, 1, { requestKey: null });
-        return result.items[0] || DEFAULT_CONFIG;
+        const result = await pb.collection('app_config').getList(1, 1, {
+            requestKey: null,
+            signal: controller.signal,
+        });
+        cachedAppConfig = { ...DEFAULT_CONFIG, ...(result.items[0] || {}) };
+        return cachedAppConfig;
     } catch (error) {
         console.warn('Unable to load app configuration:', error);
-        return DEFAULT_CONFIG;
+        cachedAppConfig = { ...DEFAULT_CONFIG };
+        return cachedAppConfig;
+    } finally {
+        window.clearTimeout(timeout);
     }
 }
 
@@ -83,6 +171,7 @@ async function playAccessGrantedAnimation(card, message) {
 export async function enforceAccessGate({ onReady } = {}) {
     await authManager.ready;
     const config = await loadAppConfig();
+    applyInstancePolicy(config);
     applyAnnouncement(config);
 
     if (!window.__AUTH_GATE__) {

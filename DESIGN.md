@@ -520,3 +520,156 @@ ink-on-paper with user-plus/check + label; `is-following` swaps to `var(--second
   nine themes.
 - **Don't** let loops multiply: the only infinite animations are the presence pulse (2.4s) and the
   equalizer (0.75s alternate).
+
+# Surface Addendum: Admin Control Room
+
+> **Boundary.** This addendum documents only `#page-admin`, its local control-room shell, member
+> ledger and inspector, policy ledgers, and sticky save state. It does not broaden, replace, or
+> weaken the Social design system above; Social's colors, component rules, and motion limits remain
+> authoritative inside Social. The Admin surface is the shipped option A operator-console direction,
+> concept seed `f18fcf08`, with `.impeccable/mocks/admin-console-a.png` as its approved reference.
+
+## Admin Overview
+
+**Creative North Star: "The Calm Control Room"**
+
+Administration is an operating surface, not an analytics dashboard. The composition uses one
+contained shell and a sequence of attached ledgers: health first, then four compact metrics, member
+access, permissions and features, and finally instance policy. The first viewport must preserve that
+order so an operator can establish service state and act on member access before changing policy.
+
+The material is matte and exact: ink-on-ink token surfaces, one-pixel rules, compact native controls,
+tabular counts, and sentence-case operational copy. Resting content stays flat. The member inspector
+and sticky save state are the only elements allowed to lift because each represents a temporary layer
+above the ledger.
+
+**Key Characteristics:**
+
+- One 1460px-capped operator shell with a local rail and a minmax workspace
+- Status ribbon, metric strip, member table, and policy rows built as aligned ledgers, not card mosaics
+- Member access precedes permissions, features, and instance identity in the document order
+- Container-driven reflow at 1040px, 800px, and 560px
+- Attached inspector at wide sizes, edge overlay in constrained columns, modal drawer on phones
+- Semantic color is reserved for health, pending attention, and destructive outcomes
+- Explicit labels, focus return, live feedback, and a complete reduced-motion path
+
+**The Ledgers Before Cards Rule.** Operational information is organized by shared edges and row
+dividers. Do not turn metrics, members, switches, or instance policy into a decorative card grid.
+
+## Admin Colors
+
+The Admin surface inherits every neutral from the active Monochrome theme. Foreground ink owns
+primary actions and checked switches; `var(--border)` and low-alpha highlight washes own structure
+and interaction state.
+
+- **Healthy / active:** `#5ee890` is reserved for a connected service, active member, successful save,
+  or current online state. A green dot is always paired with text such as "Instance online",
+  "Healthy", or "Active".
+- **Attention / pending:** `#e3b35f` marks degraded health, pending access, and warning-bearing controls.
+  It means operator attention, never decoration.
+- **Unknown:** `var(--muted-foreground)` carries checking and unavailable-to-evaluate states.
+- **Destructive:** `var(--destructive)` is reserved for suspended accounts, deletion controls, failed
+  loads/saves, and destructive permission cues. Destructive account deletion remains a text-labelled,
+  confirmed action; red never acts as the only warning.
+
+**The Semantic Chroma Rule.** Admin may use green for healthy/success, amber for degraded/pending,
+and the inherited destructive token for harmful or failed outcomes. Every colored state also needs
+plain-language status copy.
+
+## Admin Layout and Container Behavior
+
+`#page-admin` is the named inline-size container `admin-page`. Its shell is capped at 1460px and uses
+`220px minmax(0, 1fr)` columns inside a 16px clipped frame. The local rail is a section index, while
+the workspace owns all vertical reading and action flow. Layout decisions respond to the Admin
+container rather than the browser viewport so the console remains correct inside Monochrome's
+variable content column.
+
+- **Above 1040px:** the selected member inspector is an attached 290–340px column beside a member
+  ledger that never shrinks below 520px.
+- **At 1040px:** the rail narrows to 178px; the status ribbon becomes 2-by-2; policy ledgers stack;
+  the inspector leaves the grid and overlays the table's right edge at `min(340px, 88%)`.
+- **At 800px:** the shell becomes one column. The local rail turns into a sticky, horizontally
+  scrollable index with its active marker moved to the bottom edge. Joined and role metadata leave
+  the table, preserving member identity, status, and the inspect action.
+- **At 560px:** the status ribbon stacks, metrics become a 2-by-2 strip, search spans both filter
+  columns, the table becomes an identity-first three-column list, instance fields and the save state
+  stack, and the inspector becomes a fixed edge drawer (`min(92vw, 360px)`, `100dvh`).
+
+Inspector presentation is container-driven in CSS. Its modal semantics are activated by the shipped
+`max-width: 560px` viewport check in JavaScript: `aria-modal` becomes true, background regions become
+inert, and page interaction is restored on close.
+
+**The Local Container Rule.** Reflow the rail, ledger metadata, inspector, and policy columns with
+`@container admin-page`; do not add page-level horizontal overflow or infer usable width from the
+viewport alone.
+
+## Admin Elevation & Depth
+
+The shell's `0 30px 80px rgb(0 0 0 / 0.16)` shadow separates the entire operator console from the
+application, not one metric from another. Inline status, metric, table, and control rows stay flat
+and use hairlines. The inspector uses the opaque overlay recipe with a leftward shadow
+(`-24px 0 60px rgb(0 0 0 / 0.18)`), growing to `-28px 0 80px rgb(0 0 0 / 0.48)` as a phone drawer.
+The sticky save state may use `0 14px 38px rgb(0 0 0 / 0.2)` because it floats above scrolling policy
+content.
+
+**The Local Lift Rule.** Only the shell, a displaced inspector, and the sticky save state receive
+shadows. A resting metric, table row, or switch row never does.
+
+## Admin Shapes
+
+The shell uses a restrained 16px radius; attached ledgers and the status ribbon use 12–14px outer
+corners; compact controls use 8–10px; avatars and switches use circles or full pills. Joined surfaces
+share edges: the member toolbar owns only the top corners and the table shell owns only the bottom
+corners. The wide inspector inherits the table's lower-right corner; the phone drawer is square to the
+viewport edge.
+
+## Admin Components and Accessibility
+
+### Status ribbon and metric strip
+
+The status ribbon is a labelled `role="status"` region. Each condition includes readable state text;
+dots and semantic color supplement it. Metrics are four equal ledger cells with tabular numerals and
+muted labels, divided by one-pixel rules rather than individual cards.
+
+### Member ledger and filters
+
+Member data stays a semantic `<table aria-label="Instance members">` with scoped column headers and
+an `aria-live="polite"` body for load, empty, error, and refreshed states. Search, status, role, row
+selection, and inspect actions have programmatic labels. Checkboxes use the foreground accent; self
+selection is disabled. When columns collapse, identity and the explicitly labelled inspect action
+remain available rather than converting the row into ambiguous tap-only chrome.
+
+### Member inspector dialog
+
+The inspector is labelled by the selected member's name and exposes dialog semantics at every size.
+Opening it moves focus to the close control; Escape and the close control dismiss it; closing returns
+focus to the originating member button. On phones it becomes modal, marks the surrounding Admin
+regions inert, and restores them on exit. Self role/access changes are disabled and explained. Account
+deletion requires confirmation, and the final administrator cannot be demoted or deleted.
+
+### Policy switch ledgers and save state
+
+Permissions and features are complete labelled rows: icon, title, explanatory sentence, and native
+checkbox with `role="switch"`. Checked state uses foreground ink, while keyboard focus gets a 2px
+`var(--ring)` outline with 3px offset. Instance inputs retain visible token-based focus treatment.
+Save feedback is an `aria-live="polite"` sentence whose copy changes for saving, success, partial
+failure, and failure; the sticky save bar rises 2px only while the form is dirty.
+
+**The Meaning Beyond Color Rule.** Health, access, validation, and destructive state must remain
+understandable when hue cannot be perceived: preserve the status words, control labels, confirmation
+copy, disabled state, and live feedback.
+
+## Admin Motion
+
+Admin motion uses `cubic-bezier(0.22, 1, 0.36, 1)` and explains a state transition: the overview
+reveals once over 440ms, the inspector slides 12px from the right over 280ms, and the bulk-action bar
+rises 6px over 220ms. The 2.8s health pulse is the only Admin loop and is semantic, not decorative.
+These Admin timings do not alter Social's separate motion contract above.
+
+Under `prefers-reduced-motion: reduce`, every Admin animation and transition, including pseudo-elements,
+is reduced to 0.01ms and a single iteration; scroll behavior becomes immediate. The inspector's
+JavaScript scroll uses `auto` instead of `smooth` under the same preference.
+
+**The State-Change Motion Rule.** Motion may reveal overview readiness, inspector attachment, bulk
+selection, dirty policy state, or live health. It must never decorate idle ledger content, and every
+new Admin transition must be covered by the scoped reduced-motion rule.

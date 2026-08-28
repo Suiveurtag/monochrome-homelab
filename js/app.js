@@ -32,7 +32,7 @@ import { db } from './db.js';
 import { downloadTracks, showNotification } from './downloads.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { authManager } from './accounts/auth.js';
-import { enforceAccessGate } from './access-control.js';
+import { canUsePermission, enforceAccessGate, isFeatureEnabled } from './access-control.js';
 import {
     beginSiteIntro,
     initializeSiteIntroActivityTracking,
@@ -374,6 +374,11 @@ async function initializeSelfHostedUploads() {
     input.addEventListener('change', async (event) => {
         const files = Array.from(event.target.files || []);
         if (files.length === 0) return;
+        if (!canUsePermission('upload_music')) {
+            input.value = '';
+            showNotification('Music uploads are disabled by the instance administrator.', 'error');
+            return;
+        }
 
         const { readTrackMetadata } = await loadMetadataModule();
         const result = await uploadSelfHostedFilesBatch(files, {
@@ -400,6 +405,10 @@ async function initializeSelfHostedUploads() {
     const importFromSpotify = async () => {
         const url = spotifyInput?.value?.trim();
         if (!url) return;
+        if (!canUsePermission('upload_music')) {
+            showNotification('Music imports are disabled by the instance administrator.', 'error');
+            return;
+        }
         if (!authManager.user) {
             showNotification('Sign in before importing music to the server.', 'error');
             return;
@@ -581,6 +590,10 @@ async function initializeSelfHostedUploads() {
             return;
         }
         if (action === 'download') {
+            if (!canUsePermission('download_music')) {
+                showNotification('Music downloads are disabled by the instance administrator.', 'error');
+                return;
+            }
             await downloadTracks(
                 tracks,
                 MusicAPI.instance,
@@ -591,6 +604,10 @@ async function initializeSelfHostedUploads() {
         }
         if (!authManager.user) return showNotification('Sign in to manage the community catalogue.', 'error');
         if (action === 'edit') {
+            if (!canUsePermission('edit_catalog')) {
+                showNotification('Catalogue editing is disabled by the instance administrator.', 'error');
+                return;
+            }
             if (tracks.length === 1) {
                 await UIRenderer.instance.openMetadataEditor('track', tracks[0]);
                 return;
@@ -607,6 +624,10 @@ async function initializeSelfHostedUploads() {
             return;
         }
         if (action === 'delete') {
+            if (!canUsePermission('delete_catalog')) {
+                showNotification('Track deletion is disabled by the instance administrator.', 'error');
+                return;
+            }
             if (
                 !confirm(
                     `Permanently delete ${tracks.length} selected track${tracks.length === 1 ? '' : 's'} from the community server?`
@@ -1148,7 +1169,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await initializePlayerEvents(Player.instance, audioPlayer, scrobbler, UIRenderer.instance);
     authManager.onAuthStateChanged((user) => {
-        if (user) socialManager.initialize(MusicAPI.instance, Player.instance).catch(console.error);
+        if (user && isFeatureEnabled('social', user)) {
+            socialManager.initialize(MusicAPI.instance, Player.instance).catch(console.error);
+        }
     });
     initializeTrackInteractions(
         Player.instance,

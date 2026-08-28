@@ -1,6 +1,6 @@
 {
     "schemaVersion": 2,
-    "generatedAt": "2026-08-24T00:00:00Z",
+    "generatedAt": "2026-08-26T17:02:36Z",
     "title": "Design System: Monochrome Social",
     "extensions": {
         "colorMeta": {
@@ -134,6 +134,21 @@
                 "name": "lightbox",
                 "value": "0 40px 120px rgb(0 0 0 / 0.5)",
                 "purpose": "Lightbox image on the 82% black veil."
+            },
+            {
+                "name": "admin-shell",
+                "value": "0 30px 80px rgb(0 0 0 / 0.16)",
+                "purpose": "Admin Control Room shell; the whole operator surface lifts as one object."
+            },
+            {
+                "name": "admin-inspector",
+                "value": "-24px 0 60px rgb(0 0 0 / 0.18)",
+                "purpose": "Member inspector only when it overlays the ledger; becomes -28px 0 80px rgb(0 0 0 / 0.48) as the phone drawer."
+            },
+            {
+                "name": "admin-save-state",
+                "value": "0 14px 38px rgb(0 0 0 / 0.2)",
+                "purpose": "Sticky instance-policy save state above scrolling control ledgers."
             }
         ],
         "motion": [
@@ -187,6 +202,21 @@
                 "name": "reduced-motion",
                 "value": "prefers-reduced-motion: reduce -> animation: none; transition: none",
                 "purpose": "Kill-list covers equalizer, pulse, heart, message rows, views, thumb, sheet, scrim, modal, comments, snippet editor, info panel."
+            },
+            {
+                "name": "ease-admin",
+                "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+                "purpose": "Admin overview reveal, member inspector attachment, bulk-action entry, and dirty save-state movement."
+            },
+            {
+                "name": "admin-state-transitions",
+                "value": "overview 440ms clip reveal; inspector 280ms translateX(12px); bulk bar 220ms translateY(6px); health pulse 2.8s",
+                "purpose": "Bounded Admin-only motion; the pulse is its sole loop and communicates live health."
+            },
+            {
+                "name": "admin-reduced-motion",
+                "value": "prefers-reduced-motion: reduce -> 0.01ms duration; 1 iteration; scroll-behavior auto",
+                "purpose": "Scoped to #page-admin including pseudo-elements; JavaScript inspector scrolling also switches from smooth to auto."
             }
         ],
         "breakpoints": [
@@ -204,6 +234,21 @@
                 "name": "sm",
                 "value": "640px",
                 "purpose": "Workspace height calc(100dvh - 250px), radius 16px, info panel full-width shadowless, share sheet 16px radius, message stacks 86%."
+            },
+            {
+                "name": "admin-inspector-overlay",
+                "value": "@container admin-page (max-width: 1040px)",
+                "purpose": "Admin rail narrows, status becomes 2-by-2, policy ledgers stack, and the member inspector overlays the table at min(340px, 88%)."
+            },
+            {
+                "name": "admin-local-index",
+                "value": "@container admin-page (max-width: 800px)",
+                "purpose": "Admin shell becomes one column; the local rail becomes a sticky horizontal index and table role/joined metadata collapses."
+            },
+            {
+                "name": "admin-phone",
+                "value": "@container admin-page (max-width: 560px)",
+                "purpose": "Metrics become 2-by-2, status and forms stack, the ledger becomes identity-first, and the inspector becomes a fixed edge drawer."
             }
         ],
         "patterns": [
@@ -246,6 +291,21 @@
                 "name": "Waveform pipeline",
                 "value": "downsamplePeaks(peaks, 96) for cards; DPR-aware canvas (bar width ~6px, 60% fill) reading colors from computed --muted-foreground/--foreground",
                 "purpose": "Snippet cards render 96 bars with in-range highlight; share-sheet cropper adds draggable handles (14px hit, 3s min, 30s default)."
+            },
+            {
+                "name": "Admin flat-ledger grammar",
+                "value": "status ribbon -> four-cell metric strip -> attached toolbar/table -> permissions/features row ledgers -> instance fields -> sticky save state",
+                "purpose": "Preserves the approved option A operator-console order and avoids a generic analytics card mosaic."
+            },
+            {
+                "name": "Admin semantic chroma",
+                "value": "#5ee890 healthy/active/success; #e3b35f degraded/pending; var(--muted-foreground) unknown; var(--destructive) suspended/delete/error",
+                "purpose": "Every colored state is paired with plain-language copy; red remains reserved for harmful or failed outcomes."
+            },
+            {
+                "name": "Admin dialog accessibility",
+                "value": "role=dialog + aria-labelledby; aria-modal on phone; inert background; focus close on open; Escape close; focus return to opener",
+                "purpose": "The attached inspector becomes a complete modal drawer at the shipped 560px phone condition."
             }
         ]
     },
@@ -321,6 +381,22 @@
             "description": "Info-panel anatomy: uppercase h3 micro-label over a faded hairline, then artwork rows (tabular index, 40px art, title/subtitle, ghost play).",
             "html": "<section class=\"ds-section\"><h3>Shared tracks</h3><div class=\"ds-track-row\"><span class=\"ds-index\">1</span><span class=\"ds-art\">D</span><span class=\"ds-row-copy\"><strong>Desire Be Desire Go</strong><small>Tame Impala</small></span><button class=\"ds-row-play\" type=\"button\" aria-label=\"Play\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polygon points=\"6 3 20 12 6 21 6 3\"/></svg></button></div></section>",
             "css": ".ds-section { margin-top: 1.15rem; padding-top: 0.85rem; border-top: 1px solid color-mix(in srgb, var(--border) 62%, transparent); font-family: var(--font-family, Inter, sans-serif); color: var(--foreground); max-width: 320px; } .ds-section h3 { margin: 0 0 0.55rem; color: var(--muted-foreground); font-size: 0.6rem; font-weight: 750; letter-spacing: 0.1em; text-transform: uppercase; } .ds-track-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.42rem 0.35rem; border-radius: 10px; transition: background 140ms ease; } .ds-track-row:hover { background: rgb(var(--highlight-rgb, 245 245 245), 0.05); } .ds-index { width: 16px; flex: 0 0 16px; color: var(--muted-foreground); font-size: 0.66rem; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; } .ds-art { width: 40px; height: 40px; flex: 0 0 40px; display: grid; place-items: center; border-radius: 8px; background: var(--muted); font-weight: 800; } .ds-row-copy { min-width: 0; flex: 1; } .ds-row-copy strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.76rem; font-weight: 650; } .ds-row-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-foreground); font-size: 0.64rem; } .ds-row-play { display: grid; place-items: center; width: 28px; height: 28px; flex: 0 0 28px; border: 0; border-radius: 50%; background: transparent; color: var(--muted-foreground); cursor: pointer; transition: color 140ms ease, background 140ms ease; } .ds-row-play:hover { color: var(--foreground); background: rgb(var(--highlight-rgb, 245 245 245), 0.12); }"
+        },
+        {
+            "name": "Admin Member Ledger Row",
+            "kind": "custom",
+            "refersTo": null,
+            "description": "Identity-first member row from the Admin flat ledger: explicit selection, avatar and email, text-labelled status, role, joined date, and a labelled inspector action.",
+            "html": "<div class=\"ds-admin-ledger\" role=\"row\"><label class=\"ds-admin-check\" aria-label=\"Select Alex Lee\"><input type=\"checkbox\" /></label><button class=\"ds-admin-person\" type=\"button\"><span class=\"ds-admin-avatar\" aria-hidden=\"true\">AL</span><span><strong>Alex Lee</strong><small>alex.lee@example.com</small></span></button><span class=\"ds-admin-status\"><i aria-hidden=\"true\"></i>Active</span><span class=\"ds-admin-role\">Member</span><time datetime=\"2024-05-12\">May 12, 2024</time><button class=\"ds-admin-open\" type=\"button\" aria-label=\"Inspect Alex Lee\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m9 18 6-6-6-6\"/></svg></button></div>",
+            "css": ".ds-admin-ledger { display: grid; grid-template-columns: 28px minmax(190px,1.35fr) 90px 90px 108px 30px; align-items: center; gap: 0.6rem; min-height: 62px; padding: 0.52rem 0.65rem; border: 1px solid var(--border); background: color-mix(in srgb,var(--background) 94%,var(--card)); color: var(--foreground); font-family: var(--font-family,Inter,sans-serif); transition: background-color 200ms cubic-bezier(0.22,1,0.36,1); } .ds-admin-ledger:hover { background: rgb(var(--highlight-rgb,245 245 245) / 0.045); } .ds-admin-check { display: grid; place-items: center; } .ds-admin-check input { width: 15px; height: 15px; margin: 0; accent-color: var(--foreground); } .ds-admin-person { display: flex; align-items: center; gap: 0.68rem; min-width: 0; border: 0; background: transparent; color: inherit; text-align: left; } .ds-admin-person:focus-visible,.ds-admin-open:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; } .ds-admin-person > span:last-child { display: grid; min-width: 0; } .ds-admin-person strong,.ds-admin-person small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-admin-person strong { font-size: 0.75rem; font-weight: 650; } .ds-admin-person small,.ds-admin-role,.ds-admin-ledger time { color: var(--muted-foreground); font-size: 0.64rem; } .ds-admin-avatar { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border: 1px solid color-mix(in srgb,var(--border) 72%,var(--foreground)); border-radius: 50%; background: rgb(var(--highlight-rgb,245 245 245) / 0.065); font-size: 0.62rem; font-weight: 700; } .ds-admin-status { display: inline-flex; align-items: center; gap: 0.38rem; color: #5ee890; font-size: 0.64rem; } .ds-admin-status i { width: 6px; height: 6px; border-radius: 50%; background: currentcolor; } .ds-admin-open { display: grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 8px; color: var(--muted-foreground); background: transparent; } .ds-admin-open:hover { color: var(--foreground); background: rgb(var(--highlight-rgb,245 245 245) / 0.08); } @media (prefers-reduced-motion: reduce) { .ds-admin-ledger { transition-duration: 0.01ms; } }"
+        },
+        {
+            "name": "Admin Policy Switch Row",
+            "kind": "input",
+            "refersTo": null,
+            "description": "Complete policy-ledger label with semantic icon, title, explanatory sentence, and native checkbox switch; the entire row is the target.",
+            "html": "<label class=\"ds-admin-policy\"><span class=\"ds-admin-policy-icon\" aria-hidden=\"true\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 2v20\"/><path d=\"m17 5-5-3-5 3\"/><path d=\"m17 19-5 3-5-3\"/></svg></span><span class=\"ds-admin-policy-copy\"><strong>Edit catalogue</strong><small>Change metadata, artwork, lyrics and versions</small></span><input class=\"ds-admin-switch\" type=\"checkbox\" role=\"switch\" checked /></label>",
+            "css": ".ds-admin-policy { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; gap: 0.75rem; min-height: 68px; padding: 0.72rem 0.9rem; border: 1px solid var(--border); background: color-mix(in srgb,var(--background) 94%,var(--card)); color: var(--foreground); font-family: var(--font-family,Inter,sans-serif); cursor: pointer; transition: background-color 180ms ease; } .ds-admin-policy:hover { background: rgb(var(--highlight-rgb,245 245 245) / 0.035); } .ds-admin-policy-icon { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid var(--border); border-radius: 9px; color: var(--muted-foreground); background: rgb(var(--highlight-rgb,245 245 245) / 0.025); } .ds-admin-policy-copy { display: grid; gap: 0.18rem; min-width: 0; } .ds-admin-policy-copy strong { font-size: 0.72rem; font-weight: 650; } .ds-admin-policy-copy small { color: var(--muted-foreground); font-size: 0.61rem; line-height: 1.35; } .ds-admin-switch { position: relative; width: 36px; height: 20px; margin: 0; border: 1px solid var(--border); border-radius: 999px; appearance: none; background: var(--muted); cursor: pointer; transition: border-color 180ms ease,background-color 180ms ease; } .ds-admin-switch::after { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted-foreground); content: ''; transition: transform 220ms cubic-bezier(0.22,1,0.36,1),background-color 180ms ease; } .ds-admin-switch:checked { border-color: var(--foreground); background: var(--foreground); } .ds-admin-switch:checked::after { background: var(--background); transform: translateX(16px); } .ds-admin-switch:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; } @media (prefers-reduced-motion: reduce) { .ds-admin-policy,.ds-admin-switch,.ds-admin-switch::after { transition-duration: 0.01ms; } }"
         }
     ],
     "narrative": {

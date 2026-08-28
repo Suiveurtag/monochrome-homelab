@@ -23,6 +23,7 @@ import { MusicAPI } from './music-api.js';
 import { LyricsManager } from './lyrics.js';
 import { enableCornerDrag } from './corner-drag.js';
 import { getTrackDisplayAlbum, getTrackPlayerArtwork } from './track-versions.js';
+import { canUsePermission } from './access-control.js';
 
 const downloadTasks = new Map();
 const bulkDownloadTasks = new Map();
@@ -641,6 +642,10 @@ async function startBulkDownload({
     metadata = null,
     single = false,
 }) {
+    if (!canUsePermission('download_music')) {
+        showNotification('Music downloads are disabled by the instance administrator.', 'error');
+        return;
+    }
     const notification = createBulkDownloadNotification(type, name, tracks.length);
 
     try {
@@ -1046,6 +1051,10 @@ export async function downloadTrackWithMetadata(
     lyricsManager = null,
     abortController = null
 ) {
+    if (!canUsePermission('download_music')) {
+        showNotification('Music downloads are disabled by the instance administrator.', 'error');
+        return;
+    }
     if (!track) {
         alert('No track is currently playing');
         return;

@@ -7,6 +7,7 @@ import { showNotification } from './downloads.js';
 import { shareCardHTML } from './share.js';
 import { icon } from './social-icons.js';
 import { splitFeedPosts } from './social-state.js';
+import { canUsePermission } from './access-control.js';
 import {
     avatarFor,
     displayName,
@@ -80,7 +81,14 @@ export class SocialFeed {
         const input = document.getElementById('social-post-input');
         const button = document.getElementById('social-post-submit');
         if (!button) return;
-        button.disabled = !input?.value.trim() && !this.attachment;
+        const canPost = canUsePermission('create_social_posts');
+        button.disabled = !canPost || (!input?.value.trim() && !this.attachment);
+        if (input) {
+            input.disabled = !canPost;
+            input.placeholder = canPost
+                ? 'What are you listening to?'
+                : 'Posting is disabled by the instance administrator';
+        }
     }
 
     setAttachment(attachment) {
@@ -189,6 +197,9 @@ export class SocialFeed {
 
     async submitPost() {
         if (!this.userId) return;
+        if (!canUsePermission('create_social_posts')) {
+            throw new Error('Posting is disabled by the instance administrator.');
+        }
         const input = document.getElementById('social-post-input');
         const body = input?.value.trim() || '';
         if (!body && !this.attachment) return;

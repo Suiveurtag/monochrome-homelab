@@ -6,6 +6,7 @@ import { getTrackArtists, escapeHtml } from './utils.js';
 import { audioContextManager } from './audio-context.js';
 import { showNotification } from './downloads.js';
 import { SVG_PAUSE } from './icons.js';
+import { canUsePermission } from './access-control.js';
 
 class Modal {
     static async show({ title, content, actions = [] }) {
@@ -105,6 +106,10 @@ export class ListeningPartyManager {
         const user = authManager.user;
         if (!user) {
             await Modal.alert('Login Required', 'You must be logged in to host a listening party.');
+            return;
+        }
+        if (!canUsePermission('create_parties')) {
+            await Modal.alert('Hosting disabled', 'The instance administrator has disabled new listening parties.');
             return;
         }
 

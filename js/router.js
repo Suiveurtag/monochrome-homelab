@@ -4,6 +4,7 @@ import { loadProfile } from './profile.js';
 import { settingsUiState } from './storage.js';
 import { socialManager } from './social.js';
 import { adminManager } from './admin.js';
+import { isFeatureEnabled, loadAppConfig } from './access-control.js';
 
 export function navigate(path) {
     if (path === window.location.pathname) {
@@ -35,8 +36,25 @@ export function createRouter(ui) {
         }
 
         const parts = path.split('/');
-        const page = parts[0];
+        let page = parts[0];
         const param = parts.slice(1).join('/');
+
+        const guardedFeatures = {
+            social: 'social',
+            recent: 'stats',
+            upload: 'uploads',
+            parties: 'parties',
+            party: 'parties',
+            user: 'social',
+        };
+        const guardedFeature = guardedFeatures[page];
+        if (guardedFeature) {
+            const config = await loadAppConfig();
+            if (!isFeatureEnabled(guardedFeature, undefined, config)) {
+                window.history.replaceState({}, '', '/');
+                page = 'home';
+            }
+        }
 
         // Helper to extract provider prefix and ID from params
         // Supports formats like: /track/t/123 (Tidal), /track/123 (default)
