@@ -22289,15 +22289,33 @@ body.share-sheet-open {
 }
 
 @keyframes admin-save-enter {
-    0% { opacity: 0; transform: translateY(calc(100% + 1rem)); }
-    76% { opacity: 1; transform: translateY(-5px); }
-    100% { opacity: 1; transform: translateY(0); }
+    0% {
+        opacity: 0;
+        transform: translateY(calc(100% + 1rem));
+    }
+    76% {
+        opacity: 1;
+        transform: translateY(-5px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @keyframes admin-save-exit {
-    0% { opacity: 1; transform: translateY(0); }
-    24% { opacity: 1; transform: translateY(-4px); }
-    100% { opacity: 0; transform: translateY(calc(100% + 1rem)); }
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    24% {
+        opacity: 1;
+        transform: translateY(-4px);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(calc(100% + 1rem));
+    }
 }
 
 .admin-save-bar.is-blocked {
@@ -22310,11 +22328,22 @@ body.share-sheet-open {
 }
 
 @keyframes admin-save-shake {
-    0%, 100% { transform: translateX(0); }
-    22% { transform: translateX(-7px); }
-    44% { transform: translateX(6px); }
-    66% { transform: translateX(-4px); }
-    84% { transform: translateX(2px); }
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+    22% {
+        transform: translateX(-7px);
+    }
+    44% {
+        transform: translateX(6px);
+    }
+    66% {
+        transform: translateX(-4px);
+    }
+    84% {
+        transform: translateX(2px);
+    }
 }
 
 .admin-save-bar.is-visible {

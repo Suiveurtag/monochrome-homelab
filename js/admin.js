@@ -464,14 +464,12 @@ async function loadInspectorTab(user, tab) {
                       .collection('social_presence')
                       .getFirstListItem(`user="${user.id}"`, { fields: 'track,is_playing,last_seen' })
                       .catch(() => null)
-                : await pb
-                      .collection('music_tracks')
-                      .getFullList({
-                          filter: `owner="${user.id}"`,
-                          fields: 'id,title,artist,album',
-                          sort: '-created',
-                          requestKey: null,
-                      });
+                : await pb.collection('music_tracks').getFullList({
+                      filter: `owner="${user.id}"`,
+                      fields: 'id,title,artist,album',
+                      sort: '-created',
+                      requestKey: null,
+                  });
         let normalized = value || [];
         if (tab === 'activity' && value) {
             let track = value.track;
@@ -605,7 +603,10 @@ function triggerUnsavedWarning() {
 }
 
 function hasUnsavedAdminChanges() {
-    return document.getElementById('page-admin')?.classList.contains('active') && Boolean(document.getElementById('admin-config-form')?.classList.contains('is-dirty'));
+    return (
+        document.getElementById('page-admin')?.classList.contains('active') &&
+        Boolean(document.getElementById('admin-config-form')?.classList.contains('is-dirty'))
+    );
 }
 
 function bindPage() {
