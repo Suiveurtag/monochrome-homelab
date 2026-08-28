@@ -1,7 +1,7 @@
 {
-  "useCase": "ui-mockup",
-  "surface": "admin",
-  "composition": "Section rail and one broad editorial ledger with inline member inspector",
-  "prompt": "Monochrome admin operator console, compact section rail, broad flat ledger, global member or setting search, thin overview ribbon, pending-first borderless roster, attached inline member inspector, sticky section index, and full-width permission and feature rows; matte near-black surfaces, hairlines, restrained workhorse typography, semantic color only; no bento cards, gradients, glass, neon, or excessive rounding.",
-  "approved": false
+    "useCase": "ui-mockup",
+    "surface": "admin",
+    "composition": "Section rail and one broad editorial ledger with inline member inspector",
+    "prompt": "Monochrome admin operator console, compact section rail, broad flat ledger, global member or setting search, thin overview ribbon, pending-first borderless roster, attached inline member inspector, sticky section index, and full-width permission and feature rows; matte near-black surfaces, hairlines, restrained workhorse typography, semantic color only; no bento cards, gradients, glass, neon, or excessive rounding.",
+    "approved": false
 }

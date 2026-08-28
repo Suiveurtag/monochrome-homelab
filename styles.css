@@ -2021,7 +2021,6 @@ body.site-intro-active {
     .access-gate-footer {
         padding: 1rem;
     }
-
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -22146,7 +22145,10 @@ body.share-sheet-open {
     border: 1px solid var(--border);
     border-radius: 12px;
     background-color: var(--background);
-    background-image: linear-gradient(color-mix(in srgb, var(--card) 94%, transparent), color-mix(in srgb, var(--card) 94%, transparent));
+    background-image: linear-gradient(
+        color-mix(in srgb, var(--card) 94%, transparent),
+        color-mix(in srgb, var(--card) 94%, transparent)
+    );
     box-shadow: 0 14px 38px rgb(0 0 0 / 0.2);
     transition:
         border-color 200ms ease,

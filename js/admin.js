@@ -112,17 +112,33 @@ function renderMetrics() {
 
 function renderHealth() {
     const states = Object.values(state.health);
-    const overall = states.includes('degraded') ? 'degraded' : states.every((value) => value === 'healthy') ? 'healthy' : 'unknown';
+    const overall = states.includes('degraded')
+        ? 'degraded'
+        : states.every((value) => value === 'healthy')
+          ? 'healthy'
+          : 'unknown';
     const labels = {
         healthy: ['Instance online', 'All systems operational'],
         degraded: ['Instance degraded', 'Some services need attention'],
         unknown: ['Checking instance…', 'Checking services…'],
     };
-    const pocketbaseLabel = state.health.pocketbase === 'healthy' ? 'Healthy' : state.health.pocketbase === 'degraded' ? 'Unavailable' : 'Checking';
+    const pocketbaseLabel =
+        state.health.pocketbase === 'healthy'
+            ? 'Healthy'
+            : state.health.pocketbase === 'degraded'
+              ? 'Unavailable'
+              : 'Checking';
     setText('admin-instance-health-label', labels[overall][0]);
     setText('admin-system-status-label', labels[overall][1]);
     setText('admin-pocketbase-health', pocketbaseLabel);
-    setText('admin-nav-health', state.health.pocketbase === 'healthy' ? 'PocketBase connected' : state.health.pocketbase === 'degraded' ? 'PocketBase unavailable' : 'Checking PocketBase…');
+    setText(
+        'admin-nav-health',
+        state.health.pocketbase === 'healthy'
+            ? 'PocketBase connected'
+            : state.health.pocketbase === 'degraded'
+              ? 'PocketBase unavailable'
+              : 'Checking PocketBase…'
+    );
     document.getElementById('admin-instance-health')?.setAttribute('data-state', overall);
     document.getElementById('admin-system-status')?.setAttribute('data-state', overall);
     document.getElementById('admin-nav-health-dot')?.setAttribute('data-state', state.health.pocketbase);
@@ -228,16 +244,24 @@ function renderInspector() {
 
 function setInspectorBackgroundInert(enabled) {
     if (!window.matchMedia('(max-width: 560px)').matches && enabled) return;
-    document.querySelectorAll('#page-admin .admin-local-nav, #page-admin .admin-page-header, #page-admin .admin-overview-section, #page-admin .admin-member-toolbar, #page-admin .admin-table-shell, #page-admin .admin-config-form').forEach((element) => {
-        element.inert = enabled;
-    });
+    document
+        .querySelectorAll(
+            '#page-admin .admin-local-nav, #page-admin .admin-page-header, #page-admin .admin-overview-section, #page-admin .admin-member-toolbar, #page-admin .admin-table-shell, #page-admin .admin-config-form'
+        )
+        .forEach((element) => {
+            element.inert = enabled;
+        });
     document.body.classList.toggle('admin-inspector-open', enabled);
 }
 
 function trapInspectorFocus(event) {
     if (event.key !== 'Tab' || !state.inspectedUserId || !window.matchMedia('(max-width: 560px)').matches) return;
     const inspector = document.getElementById('admin-member-inspector');
-    const focusable = [...inspector.querySelectorAll('button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])')];
+    const focusable = [
+        ...inspector.querySelectorAll(
+            'button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ),
+    ];
     if (!focusable.length) return;
     const first = focusable[0];
     const last = focusable.at(-1);
@@ -346,7 +370,9 @@ async function loadMetrics() {
 
 async function loadUsers() {
     const container = document.getElementById('admin-users-list');
-    if (container) container.innerHTML = '<tr><td colspan="6"><div class="admin-loading"><span></span><span>Loading members…</span></div></td></tr>';
+    if (container)
+        container.innerHTML =
+            '<tr><td colspan="6"><div class="admin-loading"><span></span><span>Loading members…</span></div></td></tr>';
     try {
         state.users = await pb.collection('users').getFullList({ sort: '-created', requestKey: null });
         state.usersReady = true;
@@ -380,7 +406,8 @@ async function updateUsers(ids, data, successMessage) {
         state.selected.clear();
         await loadUsers();
         if (failed === 0) showFeedback(successMessage, 'success');
-        else if (succeeded > 0) showFeedback(`${succeeded} updated; ${failed} failed. The list has been refreshed.`, 'error');
+        else if (succeeded > 0)
+            showFeedback(`${succeeded} updated; ${failed} failed. The list has been refreshed.`, 'error');
         else showFeedback('No accounts were updated. The list has been refreshed.', 'error');
     } finally {
         state.bulkPending = false;
@@ -446,7 +473,11 @@ function bindPage() {
     document.getElementById('admin-role-filter')?.addEventListener('change', renderUsers);
     document.getElementById('admin-approve-all')?.addEventListener('click', () => {
         const ids = state.users.filter((user) => user.access_status === 'pending').map((user) => user.id);
-        void updateUsers(ids, { access_status: 'active' }, `${ids.length} pending account${ids.length === 1 ? '' : 's'} approved.`);
+        void updateUsers(
+            ids,
+            { access_status: 'active' },
+            `${ids.length} pending account${ids.length === 1 ? '' : 's'} approved.`
+        );
     });
 
     usersContainer.addEventListener('click', (event) => {
@@ -529,9 +560,9 @@ function bindPage() {
 
     document.querySelectorAll('[data-admin-section]').forEach((link) => {
         link.addEventListener('click', () => {
-            document.querySelectorAll('[data-admin-section]').forEach((candidate) =>
-                candidate.classList.remove('is-active')
-            );
+            document
+                .querySelectorAll('[data-admin-section]')
+                .forEach((candidate) => candidate.classList.remove('is-active'));
             link.classList.add('is-active');
         });
     });

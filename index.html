@@ -3614,8 +3614,16 @@
                             </header>
 
                             <section id="admin-overview" class="admin-section admin-overview-section">
-                                <div id="admin-system-status" class="admin-status-strip" role="status" data-state="unknown">
-                                    <span><span class="admin-live-dot" aria-hidden="true"></span><span id="admin-system-status-label">Checking services…</span></span>
+                                <div
+                                    id="admin-system-status"
+                                    class="admin-status-strip"
+                                    role="status"
+                                    data-state="unknown"
+                                >
+                                    <span
+                                        ><span class="admin-live-dot" aria-hidden="true"></span
+                                        ><span id="admin-system-status-label">Checking services…</span></span
+                                    >
                                     <span>PocketBase <strong id="admin-pocketbase-health">Checking</strong></span>
                                     <span>Access gate <strong id="admin-access-state">Open</strong></span>
                                     <span>Imports <strong id="admin-import-state">0 running</strong></span>
@@ -3623,26 +3631,33 @@
                                 <div class="admin-metrics" aria-label="Instance overview">
                                     <article>
                                         <use svg="!lucide/users.svg" size="20" />
-                                        <span>Members</span><strong id="admin-users-count">—</strong><small>Total accounts</small>
+                                        <span>Members</span><strong id="admin-users-count">—</strong
+                                        ><small>Total accounts</small>
                                     </article>
                                     <article>
                                         <use svg="!lucide/clock-3.svg" size="20" />
-                                        <span>Pending</span><strong id="admin-pending-count">—</strong><small>Awaiting approval</small>
+                                        <span>Pending</span><strong id="admin-pending-count">—</strong
+                                        ><small>Awaiting approval</small>
                                     </article>
                                     <article>
                                         <use svg="!lucide/music-2.svg" size="20" />
-                                        <span>Tracks</span><strong id="admin-tracks-count">—</strong><small>Shared catalogue</small>
+                                        <span>Tracks</span><strong id="admin-tracks-count">—</strong
+                                        ><small>Shared catalogue</small>
                                     </article>
                                     <article>
                                         <use svg="!lucide/radio.svg" size="20" />
-                                        <span>Online</span><strong id="admin-online-count">—</strong><small>Last 90 seconds</small>
+                                        <span>Online</span><strong id="admin-online-count">—</strong
+                                        ><small>Last 90 seconds</small>
                                     </article>
                                 </div>
                             </section>
 
                             <section id="admin-members" class="admin-section admin-members-section">
                                 <div class="admin-section-heading">
-                                    <div><h2>Members</h2><p>Approve access, assign administrators and suspend accounts.</p></div>
+                                    <div>
+                                        <h2>Members</h2>
+                                        <p>Approve access, assign administrators and suspend accounts.</p>
+                                    </div>
                                     <button id="admin-approve-all" class="btn-secondary" type="button" hidden>
                                         <use svg="!lucide/user-check.svg" size="17" />Approve all pending
                                     </button>
@@ -3651,10 +3666,30 @@
                                     <label class="admin-search-field">
                                         <use svg="!lucide/search.svg" size="18" />
                                         <span class="sr-only">Search members</span>
-                                        <input id="admin-user-search" type="search" placeholder="Search name or email" autocomplete="off" />
+                                        <input
+                                            id="admin-user-search"
+                                            type="search"
+                                            placeholder="Search name or email"
+                                            autocomplete="off"
+                                        />
                                     </label>
-                                    <label><span class="sr-only">Filter by status</span><select id="admin-status-filter"><option value="all">All statuses</option><option value="pending">Pending</option><option value="active">Active</option><option value="banned">Suspended</option></select></label>
-                                    <label><span class="sr-only">Filter by role</span><select id="admin-role-filter"><option value="all">All roles</option><option value="member">Members</option><option value="admin">Administrators</option></select></label>
+                                    <label
+                                        ><span class="sr-only">Filter by status</span
+                                        ><select id="admin-status-filter">
+                                            <option value="all">All statuses</option>
+                                            <option value="pending">Pending</option>
+                                            <option value="active">Active</option>
+                                            <option value="banned">Suspended</option>
+                                        </select></label
+                                    >
+                                    <label
+                                        ><span class="sr-only">Filter by role</span
+                                        ><select id="admin-role-filter">
+                                            <option value="all">All roles</option>
+                                            <option value="member">Members</option>
+                                            <option value="admin">Administrators</option>
+                                        </select></label
+                                    >
                                     <span id="admin-filter-count" class="admin-filter-count">0 members</span>
                                 </div>
                                 <div class="admin-members-workspace">
@@ -3662,63 +3697,218 @@
                                         <table class="admin-members-table" aria-label="Instance members">
                                             <thead>
                                                 <tr class="admin-table-head">
-                                                    <th scope="col" aria-label="Select"></th><th scope="col">Member</th><th scope="col">Status</th><th scope="col">Role</th><th scope="col">Joined</th><th scope="col" aria-label="Actions"></th>
+                                                    <th scope="col" aria-label="Select"></th>
+                                                    <th scope="col">Member</th>
+                                                    <th scope="col">Status</th>
+                                                    <th scope="col">Role</th>
+                                                    <th scope="col">Joined</th>
+                                                    <th scope="col" aria-label="Actions"></th>
                                                 </tr>
                                             </thead>
-                                            <tbody id="admin-users-list" class="admin-users-list" aria-live="polite"></tbody>
+                                            <tbody
+                                                id="admin-users-list"
+                                                class="admin-users-list"
+                                                aria-live="polite"
+                                            ></tbody>
                                         </table>
                                         <div id="admin-bulk-bar" class="admin-bulk-bar" hidden>
                                             <strong><span id="admin-selected-count">0</span> selected</strong>
                                             <div>
-                                                <button type="button" data-bulk-status="active"><use svg="!lucide/check.svg" size="16" />Approve</button>
-                                                <button type="button" data-bulk-status="banned"><use svg="!lucide/ban.svg" size="16" />Suspend</button>
-                                                <button type="button" data-bulk-clear><use svg="!lucide/x.svg" size="16" />Clear</button>
+                                                <button type="button" data-bulk-status="active">
+                                                    <use svg="!lucide/check.svg" size="16" />Approve
+                                                </button>
+                                                <button type="button" data-bulk-status="banned">
+                                                    <use svg="!lucide/ban.svg" size="16" />Suspend
+                                                </button>
+                                                <button type="button" data-bulk-clear>
+                                                    <use svg="!lucide/x.svg" size="16" />Clear
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
-                                    <aside id="admin-member-inspector" class="admin-member-inspector" role="dialog" aria-modal="false" aria-labelledby="admin-inspector-title" tabindex="-1" hidden></aside>
+                                    <aside
+                                        id="admin-member-inspector"
+                                        class="admin-member-inspector"
+                                        role="dialog"
+                                        aria-modal="false"
+                                        aria-labelledby="admin-inspector-title"
+                                        tabindex="-1"
+                                        hidden
+                                    ></aside>
                                 </div>
                             </section>
 
                             <form id="admin-config-form" class="admin-config-form">
                                 <div class="admin-control-grid">
                                     <section id="admin-permissions" class="admin-section admin-control-section">
-                                        <div class="admin-section-heading"><div><h2>Permissions</h2><p>Choose what every active member can change.</p></div></div>
+                                        <div class="admin-section-heading">
+                                            <div>
+                                                <h2>Permissions</h2>
+                                                <p>Choose what every active member can change.</p>
+                                            </div>
+                                        </div>
                                         <div class="admin-control-list">
-                                            <label class="admin-control-row"><span class="admin-control-icon"><use svg="!lucide/upload-cloud.svg" size="19" /></span><span><strong>Upload music</strong><small>Upload FLAC files and start Spotify imports</small></span><input id="admin-allow-uploads" type="checkbox" role="switch" /></label>
-                                            <label class="admin-control-row"><span class="admin-control-icon"><use svg="!lucide/pencil.svg" size="19" /></span><span><strong>Edit catalogue</strong><small>Change metadata, artwork, lyrics and versions</small></span><input id="admin-allow-catalog-edits" type="checkbox" role="switch" /></label>
-                                            <label class="admin-control-row"><span class="admin-control-icon is-danger"><use svg="!lucide/trash-2.svg" size="19" /></span><span><strong>Delete tracks</strong><small>Permanently remove music from the shared server</small></span><input id="admin-allow-catalog-deletes" type="checkbox" role="switch" /></label>
-                                            <label class="admin-control-row"><span class="admin-control-icon"><use svg="!lucide/download.svg" size="19" /></span><span><strong>Download music</strong><small>Save original audio files from Monochrome</small></span><input id="admin-allow-downloads" type="checkbox" role="switch" /></label>
-                                            <label class="admin-control-row"><span class="admin-control-icon"><use svg="!lucide/message-square-plus.svg" size="19" /></span><span><strong>Publish posts</strong><small>Create posts and share music in the social feed</small></span><input id="admin-allow-social-posts" type="checkbox" role="switch" /></label>
-                                            <label class="admin-control-row"><span class="admin-control-icon"><use svg="!lucide/users-round.svg" size="19" /></span><span><strong>Host parties</strong><small>Create synchronized listening sessions</small></span><input id="admin-allow-parties" type="checkbox" role="switch" /></label>
+                                            <label class="admin-control-row"
+                                                ><span class="admin-control-icon"
+                                                    ><use svg="!lucide/upload-cloud.svg" size="19" /></span
+                                                ><span
+                                                    ><strong>Upload music</strong
+                                                    ><small>Upload FLAC files and start Spotify imports</small></span
+                                                ><input id="admin-allow-uploads" type="checkbox" role="switch"
+                                            /></label>
+                                            <label class="admin-control-row"
+                                                ><span class="admin-control-icon"
+                                                    ><use svg="!lucide/pencil.svg" size="19" /></span
+                                                ><span
+                                                    ><strong>Edit catalogue</strong
+                                                    ><small>Change metadata, artwork, lyrics and versions</small></span
+                                                ><input id="admin-allow-catalog-edits" type="checkbox" role="switch"
+                                            /></label>
+                                            <label class="admin-control-row"
+                                                ><span class="admin-control-icon is-danger"
+                                                    ><use svg="!lucide/trash-2.svg" size="19" /></span
+                                                ><span
+                                                    ><strong>Delete tracks</strong
+                                                    ><small
+                                                        >Permanently remove music from the shared server</small
+                                                    ></span
+                                                ><input id="admin-allow-catalog-deletes" type="checkbox" role="switch"
+                                            /></label>
+                                            <label class="admin-control-row"
+                                                ><span class="admin-control-icon"
+                                                    ><use svg="!lucide/download.svg" size="19" /></span
+                                                ><span
+                                                    ><strong>Download music</strong
+                                                    ><small>Save original audio files from Monochrome</small></span
+                                                ><input id="admin-allow-downloads" type="checkbox" role="switch"
+                                            /></label>
+                                            <label class="admin-control-row"
+                                                ><span class="admin-control-icon"
+                                                    ><use svg="!lucide/message-square-plus.svg" size="19" /></span
+                                                ><span
+                                                    ><strong>Publish posts</strong
+                                                    ><small
+                                                        >Create posts and share music in the social feed</small
+                                                    ></span
+                                                ><input id="admin-allow-social-posts" type="checkbox" role="switch"
+                                            /></label>
+                                            <label class="admin-control-row"
+                                                ><span class="admin-control-icon"
+                                                    ><use svg="!lucide/users-round.svg" size="19" /></span
+                                                ><span
+                                                    ><strong>Host parties</strong
+                                                    ><small>Create synchronized listening sessions</small></span
+                                                ><input id="admin-allow-parties" type="checkbox" role="switch"
+                                            /></label>
                                         </div>
                                     </section>
 
                                     <section id="admin-features" class="admin-section admin-control-section">
-                                        <div class="admin-section-heading"><div><h2>Features</h2><p>Hide complete areas for members without removing data.</p></div></div>
+                                        <div class="admin-section-heading">
+                                            <div>
+                                                <h2>Features</h2>
+                                                <p>Hide complete areas for members without removing data.</p>
+                                            </div>
+                                        </div>
                                         <div class="admin-control-list">
-                                            <label class="admin-control-row"><span class="admin-control-icon"><use svg="!lucide/messages-square.svg" size="19" /></span><span><strong>Social</strong><small>Profiles, feed, friends and messages</small></span><input id="admin-feature-social" type="checkbox" role="switch" /></label>
-                                            <label class="admin-control-row"><span class="admin-control-icon"><use svg="!lucide/chart-no-axes-column-increasing.svg" size="19" /></span><span><strong>Listening stats</strong><small>Recent listening history and activity insights</small></span><input id="admin-feature-stats" type="checkbox" role="switch" /></label>
-                                            <label class="admin-control-row"><span class="admin-control-icon"><use svg="!lucide/library-big.svg" size="19" /></span><span><strong>Community catalogue</strong><small>Shared uploads and lossless imports</small></span><input id="admin-feature-uploads" type="checkbox" role="switch" /></label>
-                                            <label class="admin-control-row"><span class="admin-control-icon"><use svg="!lucide/audio-lines.svg" size="19" /></span><span><strong>Listening parties</strong><small>Synchronized rooms and party chat</small></span><input id="admin-feature-parties" type="checkbox" role="switch" /></label>
+                                            <label class="admin-control-row"
+                                                ><span class="admin-control-icon"
+                                                    ><use svg="!lucide/messages-square.svg" size="19" /></span
+                                                ><span
+                                                    ><strong>Social</strong
+                                                    ><small>Profiles, feed, friends and messages</small></span
+                                                ><input id="admin-feature-social" type="checkbox" role="switch"
+                                            /></label>
+                                            <label class="admin-control-row"
+                                                ><span class="admin-control-icon"
+                                                    ><use
+                                                        svg="!lucide/chart-no-axes-column-increasing.svg"
+                                                        size="19" /></span
+                                                ><span
+                                                    ><strong>Listening stats</strong
+                                                    ><small>Recent listening history and activity insights</small></span
+                                                ><input id="admin-feature-stats" type="checkbox" role="switch"
+                                            /></label>
+                                            <label class="admin-control-row"
+                                                ><span class="admin-control-icon"
+                                                    ><use svg="!lucide/library-big.svg" size="19" /></span
+                                                ><span
+                                                    ><strong>Community catalogue</strong
+                                                    ><small>Shared uploads and lossless imports</small></span
+                                                ><input id="admin-feature-uploads" type="checkbox" role="switch"
+                                            /></label>
+                                            <label class="admin-control-row"
+                                                ><span class="admin-control-icon"
+                                                    ><use svg="!lucide/audio-lines.svg" size="19" /></span
+                                                ><span
+                                                    ><strong>Listening parties</strong
+                                                    ><small>Synchronized rooms and party chat</small></span
+                                                ><input id="admin-feature-parties" type="checkbox" role="switch"
+                                            /></label>
                                         </div>
                                     </section>
                                 </div>
 
                                 <section id="admin-instance" class="admin-section admin-instance-section">
-                                    <div class="admin-section-heading"><div><h2>Instance</h2><p>Identity, entry policy and the message shown to everyone.</p></div></div>
+                                    <div class="admin-section-heading">
+                                        <div>
+                                            <h2>Instance</h2>
+                                            <p>Identity, entry policy and the message shown to everyone.</p>
+                                        </div>
+                                    </div>
                                     <div class="admin-instance-fields">
-                                        <label class="admin-field"><span>Instance name</span><input id="admin-instance-name" type="text" maxlength="128" placeholder="Monochrome" /></label>
-                                        <label class="admin-field"><span>Support email</span><input id="admin-support-email" type="email" maxlength="254" placeholder="admin@example.com" /></label>
-                                        <label class="admin-control-row admin-instance-toggle"><span class="admin-control-icon"><use svg="!lucide/user-plus.svg" size="19" /></span><span><strong>Open registrations</strong><small>Allow new people to request an account</small></span><input id="admin-registrations-open" type="checkbox" role="switch" /></label>
-                                        <label class="admin-control-row admin-instance-toggle"><span class="admin-control-icon is-warning"><use svg="!lucide/construction.svg" size="19" /></span><span><strong>Maintenance mode</strong><small>Reserve the application for administrators</small></span><input id="admin-maintenance-mode" type="checkbox" role="switch" /></label>
-                                        <label class="admin-field admin-announcement-field"><span>Global announcement</span><textarea id="admin-announcement" maxlength="1000" rows="4" placeholder="Optional message displayed across Monochrome"></textarea><small><span id="admin-announcement-count">0</span>/1000</small></label>
+                                        <label class="admin-field"
+                                            ><span>Instance name</span
+                                            ><input
+                                                id="admin-instance-name"
+                                                type="text"
+                                                maxlength="128"
+                                                placeholder="Monochrome"
+                                        /></label>
+                                        <label class="admin-field"
+                                            ><span>Support email</span
+                                            ><input
+                                                id="admin-support-email"
+                                                type="email"
+                                                maxlength="254"
+                                                placeholder="admin@example.com"
+                                        /></label>
+                                        <label class="admin-control-row admin-instance-toggle"
+                                            ><span class="admin-control-icon"
+                                                ><use svg="!lucide/user-plus.svg" size="19" /></span
+                                            ><span
+                                                ><strong>Open registrations</strong
+                                                ><small>Allow new people to request an account</small></span
+                                            ><input id="admin-registrations-open" type="checkbox" role="switch"
+                                        /></label>
+                                        <label class="admin-control-row admin-instance-toggle"
+                                            ><span class="admin-control-icon is-warning"
+                                                ><use svg="!lucide/construction.svg" size="19" /></span
+                                            ><span
+                                                ><strong>Maintenance mode</strong
+                                                ><small>Reserve the application for administrators</small></span
+                                            ><input id="admin-maintenance-mode" type="checkbox" role="switch"
+                                        /></label>
+                                        <label class="admin-field admin-announcement-field"
+                                            ><span>Global announcement</span
+                                            ><textarea
+                                                id="admin-announcement"
+                                                maxlength="1000"
+                                                rows="4"
+                                                placeholder="Optional message displayed across Monochrome"
+                                            ></textarea
+                                            ><small><span id="admin-announcement-count">0</span>/1000</small></label
+                                        >
                                     </div>
                                 </section>
 
                                 <div class="admin-save-bar">
-                                    <p id="admin-feedback" class="admin-feedback" aria-live="polite">Changes are applied to the whole instance.</p>
-                                    <button type="submit" class="btn-primary"><use svg="!lucide/save.svg" size="17" />Save instance policy</button>
+                                    <p id="admin-feedback" class="admin-feedback" aria-live="polite">
+                                        Changes are applied to the whole instance.
+                                    </p>
+                                    <button type="submit" class="btn-primary">
+                                        <use svg="!lucide/save.svg" size="17" />Save instance policy
+                                    </button>
                                 </div>
                             </form>
                         </main>

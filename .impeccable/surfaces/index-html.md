@@ -1,8 +1,9 @@
 ---
 version: 1
-slug: "index-html"
-primary_target: "index.html"
-related_targets: ["js/admin.js","styles.css","js/access-control.js","pb_migrations/1719202000_admin_control_center.js"]
+slug: 'index-html'
+primary_target: 'index.html'
+related_targets:
+    ['js/admin.js', 'styles.css', 'js/access-control.js', 'pb_migrations/1719202000_admin_control_center.js']
 ---
 
 # Admin Control Room

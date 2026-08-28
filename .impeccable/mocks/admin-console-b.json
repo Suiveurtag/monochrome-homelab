@@ -1,7 +1,7 @@
 {
-  "useCase": "ui-mockup",
-  "surface": "admin",
-  "composition": "Section rail, instance pulse, member queue and roster, continuous control ledger",
-  "prompt": "Monochrome admin operator console, narrow section rail, instance pulse overview, two-column working deck with pending approval queue and searchable roster on the left and a continuous permissions, features, and instance control ledger on the right; near-black flat surfaces, exact dividers, familiar controls, semantic status colors only; no bento mosaic, gradients, neon, glass, or decorative dashboard tropes.",
-  "approved": false
+    "useCase": "ui-mockup",
+    "surface": "admin",
+    "composition": "Section rail, instance pulse, member queue and roster, continuous control ledger",
+    "prompt": "Monochrome admin operator console, narrow section rail, instance pulse overview, two-column working deck with pending approval queue and searchable roster on the left and a continuous permissions, features, and instance control ledger on the right; near-black flat surfaces, exact dividers, familiar controls, semantic status colors only; no bento mosaic, gradients, neon, glass, or decorative dashboard tropes.",
+    "approved": false
 }

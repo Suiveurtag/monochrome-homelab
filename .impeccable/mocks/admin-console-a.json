@@ -1,7 +1,7 @@
 {
-  "useCase": "ui-mockup",
-  "surface": "admin",
-  "composition": "Section rail, metrics, member table, floating inspector",
-  "prompt": "Monochrome admin operator console, compact section rail, instance status, four metrics, dense member table with search and filters, floating member inspector, permissions and feature controls; near-black token surfaces, hairlines, workhorse sans, semantic status colors only; no gradients, glass, bento grid, oversized KPI type, or generic AI dashboard decoration.",
-  "approved": true
+    "useCase": "ui-mockup",
+    "surface": "admin",
+    "composition": "Section rail, metrics, member table, floating inspector",
+    "prompt": "Monochrome admin operator console, compact section rail, instance status, four metrics, dense member table with search and filters, floating member inspector, permissions and feature controls; near-black token surfaces, hairlines, workhorse sans, semantic status colors only; no gradients, glass, bento grid, oversized KPI type, or generic AI dashboard decoration.",
+    "approved": true
 }
