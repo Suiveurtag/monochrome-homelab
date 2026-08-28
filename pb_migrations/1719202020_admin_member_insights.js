@@ -19,13 +19,17 @@ migrate(
     },
     (app) => {
         const userData = app.findCollectionByNameOrId('DB_users');
-        userData.listRule = '@request.auth.id != "" && @request.auth.access_status = "active" && firebase_id = @request.auth.id';
-        userData.viewRule = '@request.auth.id != "" && @request.auth.access_status = "active" && firebase_id = @request.auth.id';
+        userData.listRule =
+            '@request.auth.id != "" && @request.auth.access_status = "active" && firebase_id = @request.auth.id';
+        userData.viewRule =
+            '@request.auth.id != "" && @request.auth.access_status = "active" && firebase_id = @request.auth.id';
         app.save(userData);
 
         const tracks = app.findCollectionByNameOrId('music_tracks');
-        tracks.listRule = '@request.auth.id != "" && @request.auth.access_status = "active" && owner = @request.auth.id';
-        tracks.viewRule = '@request.auth.id != "" && @request.auth.access_status = "active" && owner = @request.auth.id';
+        tracks.listRule =
+            '@request.auth.id != "" && @request.auth.access_status = "active" && owner = @request.auth.id';
+        tracks.viewRule =
+            '@request.auth.id != "" && @request.auth.access_status = "active" && owner = @request.auth.id';
         app.save(tracks);
     }
 );

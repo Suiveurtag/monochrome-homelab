@@ -233,11 +233,20 @@ function inspectorHtml(user) {
               : '<p class="admin-inspector-loading">Loading activity…</p>';
         tabContent = `<section class="admin-inspector-panel" aria-live="polite"><h3>Recent activity</h3>${activityContent}</section>`;
     } else if (tab === 'library') {
-        const libraryContent = library === null
-            ? '<p class="admin-inspector-loading">Loading library…</p>'
-            : library.length
-              ? `<ul class="admin-library-list">${library.slice(0, 8).map((track) => `<li><span><strong>${escapeHtml(track.title || 'Untitled track')}</strong><small>${escapeHtml(track.artist || 'Unknown artist')}${track.album ? ` · ${escapeHtml(track.album)}` : ''}</small></span></li>`).join('')}</ul>${library.length > 8 ? `<p class="admin-inspector-note">Showing 8 of ${formatCount(library.length)} uploaded tracks.</p>` : ''}`
-              : '<p class="admin-inspector-empty">No uploaded tracks yet.</p>';
+        const libraryContent =
+            library === null
+                ? '<p class="admin-inspector-loading">Loading library…</p>'
+                : library.length
+                  ? `<ul class="admin-library-list">${library
+                        .slice(0, 8)
+                        .map(
+                            (track) =>
+                                `<li><span><strong>${escapeHtml(track.title || 'Untitled track')}</strong><small>${escapeHtml(track.artist || 'Unknown artist')}${track.album ? ` · ${escapeHtml(track.album)}` : ''}</small></span></li>`
+                        )
+                        .join(
+                            ''
+                        )}</ul>${library.length > 8 ? `<p class="admin-inspector-note">Showing 8 of ${formatCount(library.length)} uploaded tracks.</p>` : ''}`
+                  : '<p class="admin-inspector-empty">No uploaded tracks yet.</p>';
         tabContent = `<section class="admin-inspector-panel" aria-live="polite"><div class="admin-inspector-panel-heading"><h3>Uploaded library</h3><span>${library === null ? '—' : formatCount(library.length)} tracks</span></div>${libraryContent}</section>`;
     } else {
         tabContent = `<dl class="admin-member-facts">
@@ -416,7 +425,10 @@ async function loadUsers() {
     try {
         const [users, profiles] = await Promise.all([
             pb.collection('users').getFullList({ sort: '-created', requestKey: null }),
-            pb.collection('social_profiles').getFullList({ fields: 'user,avatar_url', requestKey: null }).catch(() => []),
+            pb
+                .collection('social_profiles')
+                .getFullList({ fields: 'user,avatar_url', requestKey: null })
+                .catch(() => []),
         ]);
         state.users = users;
         state.profiles = new Map(profiles.map((profile) => [String(profile.user), profile]));
@@ -443,9 +455,20 @@ async function loadInspectorTab(user, tab) {
     state.inspectorData.set(user.id, { ...current, [tab]: null });
     renderInspector();
     try {
-        const value = tab === 'activity'
-            ? await pb.collection('social_presence').getFirstListItem(`user="${user.id}"`, { fields: 'track,is_playing,last_seen' }).catch(() => null)
-            : await pb.collection('music_tracks').getFullList({ filter: `owner="${user.id}"`, fields: 'id,title,artist,album', sort: '-created', requestKey: null });
+        const value =
+            tab === 'activity'
+                ? await pb
+                      .collection('social_presence')
+                      .getFirstListItem(`user="${user.id}"`, { fields: 'track,is_playing,last_seen' })
+                      .catch(() => null)
+                : await pb
+                      .collection('music_tracks')
+                      .getFullList({
+                          filter: `owner="${user.id}"`,
+                          fields: 'id,title,artist,album',
+                          sort: '-created',
+                          requestKey: null,
+                      });
         let normalized = value || [];
         if (tab === 'activity' && value) {
             let track = value.track;
