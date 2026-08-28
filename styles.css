@@ -21137,15 +21137,15 @@ body.share-sheet-open {
     --admin-ease: cubic-bezier(0.22, 1, 0.36, 1);
 
     display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
-    width: min(100%, 1460px);
+    grid-template-columns: 1fr;
+    width: 100%;
     min-height: calc(100dvh - 9rem);
     margin: 0 auto;
-    border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-    border-radius: 16px;
-    overflow: clip;
-    background: color-mix(in srgb, var(--background) 94%, var(--card));
-    box-shadow: 0 30px 80px rgb(0 0 0 / 0.16);
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+    background: transparent;
+    box-shadow: none;
 }
 
 .admin-shell [hidden] {
@@ -21257,7 +21257,44 @@ body.share-sheet-open {
 
 .admin-workspace {
     min-width: 0;
-    padding: clamp(1.2rem, 2.3vw, 2.25rem);
+    width: min(100%, 1460px);
+    margin: 0 auto;
+    padding: clamp(1.2rem, 3vw, 3rem) clamp(1rem, 4vw, 4rem) 4rem;
+}
+
+.admin-section-index {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    gap: 0.3rem;
+    width: 100%;
+    margin: 0 0 2rem;
+    padding: 0.45rem;
+    overflow-x: auto;
+    border-block: 1px solid var(--border);
+    background: color-mix(in srgb, var(--background) 94%, transparent);
+    backdrop-filter: blur(12px);
+}
+
+.admin-section-index a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 34px;
+    padding: 0.42rem 0.7rem;
+    border-radius: 8px;
+    color: var(--muted-foreground);
+    font-size: 0.68rem;
+    font-weight: 650;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.admin-section-index a:hover,
+.admin-section-index a.is-active {
+    color: var(--foreground);
+    background: rgb(var(--highlight-rgb) / 0.08);
 }
 
 .admin-page-header {
@@ -21621,12 +21658,95 @@ body.share-sheet-open {
     background: rgb(var(--highlight-rgb) / 0.065);
     font-size: 0.62rem;
     font-weight: 700;
+    object-fit: cover;
 }
 
 .admin-avatar-large {
     width: 48px;
     height: 48px;
     font-size: 0.75rem;
+}
+
+.admin-inspector-panel {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.admin-inspector-panel h3 {
+    margin: 0 0 0.75rem;
+    color: var(--muted-foreground);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.admin-inspector-panel-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.7rem;
+}
+
+.admin-inspector-panel-heading span {
+    color: var(--muted-foreground);
+    font-size: 0.62rem;
+}
+
+.admin-activity-now,
+.admin-library-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+    padding: 0.68rem 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+.admin-activity-now > div,
+.admin-library-list li > span {
+    display: grid;
+    min-width: 0;
+    gap: 0.18rem;
+}
+
+.admin-activity-now strong,
+.admin-library-list strong {
+    overflow: hidden;
+    font-size: 0.72rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-activity-now small,
+.admin-library-list small {
+    overflow: hidden;
+    color: var(--muted-foreground);
+    font-size: 0.61rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-activity-pulse {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: #5ee890;
+}
+
+.admin-library-list {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-inspector-empty,
+.admin-inspector-loading {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.68rem;
 }
 
 .admin-status {
@@ -22197,7 +22317,7 @@ html[data-can-host-parties='false'] #create-party-btn {
 
 @container admin-page (max-width: 1040px) {
     .admin-shell {
-        grid-template-columns: 178px minmax(0, 1fr);
+        grid-template-columns: 1fr;
     }
 
     .admin-status-strip {

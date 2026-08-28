@@ -3572,35 +3572,6 @@
 
                 <div id="page-admin" class="page">
                     <div class="admin-shell">
-                        <aside class="admin-local-nav" aria-label="Administration sections">
-                            <div class="admin-local-nav-heading">
-                                <strong>Control room</strong>
-                                <span id="admin-instance-name-nav">Monochrome</span>
-                            </div>
-                            <nav>
-                                <a href="#admin-overview" class="is-active" data-admin-section="overview">
-                                    <use svg="!lucide/activity.svg" size="18" /><span>Overview</span>
-                                </a>
-                                <a href="#admin-members" data-admin-section="members">
-                                    <use svg="!lucide/users.svg" size="18" /><span>Members</span>
-                                    <span id="admin-pending-nav-count" class="admin-local-nav-count" hidden>0</span>
-                                </a>
-                                <a href="#admin-permissions" data-admin-section="permissions">
-                                    <use svg="!lucide/shield-check.svg" size="18" /><span>Permissions</span>
-                                </a>
-                                <a href="#admin-features" data-admin-section="features">
-                                    <use svg="!lucide/sliders-horizontal.svg" size="18" /><span>Features</span>
-                                </a>
-                                <a href="#admin-instance" data-admin-section="instance">
-                                    <use svg="!lucide/server.svg" size="18" /><span>Instance</span>
-                                </a>
-                            </nav>
-                            <div class="admin-local-nav-foot">
-                                <span id="admin-nav-health-dot" class="admin-live-dot" aria-hidden="true"></span>
-                                <span id="admin-nav-health">Checking PocketBase…</span>
-                            </div>
-                        </aside>
-
                         <main class="admin-workspace">
                             <header class="admin-page-header">
                                 <div>
@@ -3612,6 +3583,13 @@
                                     <span id="admin-instance-health-label">Checking instance…</span>
                                 </div>
                             </header>
+                            <nav class="admin-section-index" aria-label="Administration sections">
+                                <a href="#admin-overview" class="is-active" data-admin-section="overview">Overview</a>
+                                <a href="#admin-members" data-admin-section="members">Members <span id="admin-pending-nav-count" class="admin-local-nav-count" hidden>0</span></a>
+                                <a href="#admin-permissions" data-admin-section="permissions">Permissions</a>
+                                <a href="#admin-features" data-admin-section="features">Features</a>
+                                <a href="#admin-instance" data-admin-section="instance">Instance</a>
+                            </nav>
 
                             <section id="admin-overview" class="admin-section admin-overview-section">
                                 <div

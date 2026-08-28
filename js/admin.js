@@ -35,6 +35,7 @@ const CONFIG_FIELDS = {
 
 const state = {
     users: [],
+    profiles: new Map(),
     usersReady: false,
     selected: new Set(),
     inspectedUserId: null,
@@ -42,6 +43,8 @@ const state = {
     metrics: { tracks: null, online: null, imports: null },
     health: { pocketbase: 'unknown', importer: 'unknown', metrics: 'unknown' },
     bulkPending: false,
+    inspectorTab: 'details',
+    inspectorData: new Map(),
 };
 
 let inspectorReturnUserId = null;
@@ -61,6 +64,22 @@ function initials(user) {
 
 function displayName(user) {
     return user.name || user.email?.split('@')[0] || 'Unnamed member';
+}
+
+function profileFor(user) {
+    return state.profiles.get(String(user.id)) || null;
+}
+
+function avatarUrl(user) {
+    return profileFor(user)?.avatar_url || '';
+}
+
+function avatarMarkup(user, size = '') {
+    const url = avatarUrl(user);
+    const className = `admin-avatar${size ? ` admin-avatar-${size}` : ''}`;
+    return url
+        ? `<img class="${className}" src="${escapeHtml(url)}" alt="" loading="lazy" onerror="this.src='/assets/appicon.png'; this.onerror=null;" />`
+        : `<span class="${className}" aria-hidden="true">${escapeHtml(initials(user))}</span>`;
 }
 
 function formatDate(value) {
@@ -167,7 +186,7 @@ function userRow(user) {
             <input type="checkbox" data-select-user="${escapeHtml(user.id)}" ${selected ? 'checked' : ''} ${self ? 'disabled' : ''} />
         </label></td>
         <td><button class="admin-user-identity" type="button" data-inspect-user="${escapeHtml(user.id)}">
-            <span class="admin-avatar" aria-hidden="true">${escapeHtml(initials(user))}</span>
+            ${avatarMarkup(user)}
             <span><strong>${escapeHtml(displayName(user))}${self ? '<em>You</em>' : ''}</strong><small>${escapeHtml(user.email || 'No email')}</small></span>
         </button></td>
         <td><span class="admin-status admin-status-${escapeHtml(user.access_status)}"><i aria-hidden="true"></i>${escapeHtml(statusLabel(user.access_status))}</span></td>
@@ -201,17 +220,27 @@ function renderBulkBar() {
 
 function inspectorHtml(user) {
     const self = isSelf(user);
-    return `<div class="admin-inspector-head">
-        <span class="admin-avatar admin-avatar-large" aria-hidden="true">${escapeHtml(initials(user))}</span>
-        <div><strong id="admin-inspector-title">${escapeHtml(displayName(user))}</strong><span>${escapeHtml(user.email || 'No email')}</span></div>
-        <button type="button" data-close-inspector aria-label="Close member details">${I_X(18)}</button>
-    </div>
-    <div class="admin-inspector-tabs" role="tablist" aria-label="Member detail sections">
-        <button class="is-active" type="button" role="tab" aria-selected="true">Details</button>
-        <button type="button" role="tab" aria-selected="false" disabled>Activity</button>
-        <button type="button" role="tab" aria-selected="false" disabled>Library</button>
-    </div>
-    <dl class="admin-member-facts">
+    const tab = state.inspectorTab;
+    const data = state.inspectorData.get(user.id) || {};
+    const activity = data.activity || null;
+    const library = data.library || null;
+    let tabContent = '';
+    if (tab === 'activity') {
+        const activityContent = activity?.track
+            ? `<div class="admin-activity-now"><span class="admin-activity-pulse" aria-hidden="true"></span><div><strong>${escapeHtml(activity.track.title || 'Untitled track')}</strong><small>${escapeHtml(activity.track.subtitle || 'Playing in Monochrome')} · ${activity.is_playing ? 'Listening now' : 'Paused'}</small></div></div>`
+            : activity
+              ? '<p class="admin-inspector-empty">No listening activity in the last 90 seconds.</p>'
+              : '<p class="admin-inspector-loading">Loading activity…</p>';
+        tabContent = `<section class="admin-inspector-panel" aria-live="polite"><h3>Recent activity</h3>${activityContent}</section>`;
+    } else if (tab === 'library') {
+        const libraryContent = library === null
+            ? '<p class="admin-inspector-loading">Loading library…</p>'
+            : library.length
+              ? `<ul class="admin-library-list">${library.slice(0, 8).map((track) => `<li><span><strong>${escapeHtml(track.title || 'Untitled track')}</strong><small>${escapeHtml(track.artist || 'Unknown artist')}${track.album ? ` · ${escapeHtml(track.album)}` : ''}</small></span></li>`).join('')}</ul>${library.length > 8 ? `<p class="admin-inspector-note">Showing 8 of ${formatCount(library.length)} uploaded tracks.</p>` : ''}`
+              : '<p class="admin-inspector-empty">No uploaded tracks yet.</p>';
+        tabContent = `<section class="admin-inspector-panel" aria-live="polite"><div class="admin-inspector-panel-heading"><h3>Uploaded library</h3><span>${library === null ? '—' : formatCount(library.length)} tracks</span></div>${libraryContent}</section>`;
+    } else {
+        tabContent = `<dl class="admin-member-facts">
         <div><dt>Email</dt><dd>${escapeHtml(user.email || 'Not set')}</dd></div>
         <div><dt>Joined</dt><dd>${escapeHtml(formatDate(user.created))}</dd></div>
         <div><dt>Verified</dt><dd>${user.verified ? 'Yes' : 'No'}</dd></div>
@@ -227,6 +256,16 @@ function inspectorHtml(user) {
         <button class="btn-secondary danger" type="button" data-delete-member ${self ? 'disabled' : ''}>${I_TRASH(16)}Delete account</button>
     </div>
     ${self ? '<p class="admin-inspector-note">Your own role and access cannot be changed from this console.</p>' : ''}`;
+    }
+    return `<div class="admin-inspector-head">
+        ${avatarMarkup(user, 'large')}
+        <div><strong id="admin-inspector-title">${escapeHtml(displayName(user))}</strong><span>${escapeHtml(user.email || 'No email')}</span></div>
+        <button type="button" data-close-inspector aria-label="Close member details">${I_X(18)}</button>
+    </div>
+    <div class="admin-inspector-tabs" role="tablist" aria-label="Member detail sections">
+        ${['details', 'activity', 'library'].map((value) => `<button class="${tab === value ? 'is-active' : ''}" type="button" role="tab" aria-selected="${tab === value}" data-inspector-tab="${value}">${value[0].toUpperCase()}${value.slice(1)}</button>`).join('')}
+    </div>
+    ${tabContent}`;
 }
 
 function renderInspector() {
@@ -277,6 +316,7 @@ function trapInspectorFocus(event) {
 function openInspector(userId) {
     inspectorReturnUserId = userId;
     state.inspectedUserId = userId;
+    state.inspectorTab = 'details';
     renderUsers();
     renderInspector();
     const inspector = document.getElementById('admin-member-inspector');
@@ -374,7 +414,12 @@ async function loadUsers() {
         container.innerHTML =
             '<tr><td colspan="6"><div class="admin-loading"><span></span><span>Loading members…</span></div></td></tr>';
     try {
-        state.users = await pb.collection('users').getFullList({ sort: '-created', requestKey: null });
+        const [users, profiles] = await Promise.all([
+            pb.collection('users').getFullList({ sort: '-created', requestKey: null }),
+            pb.collection('social_profiles').getFullList({ fields: 'user,avatar_url', requestKey: null }).catch(() => []),
+        ]);
+        state.users = users;
+        state.profiles = new Map(profiles.map((profile) => [String(profile.user), profile]));
         state.usersReady = true;
         state.selected = new Set([...state.selected].filter((id) => state.users.some((user) => user.id === id)));
         if (state.inspectedUserId && !state.users.some((user) => user.id === state.inspectedUserId)) {
@@ -390,6 +435,34 @@ async function loadUsers() {
             container.innerHTML = `<tr><td colspan="6"><div class="admin-empty-state is-error"><strong>Members could not be loaded</strong><span>${escapeHtml(error.message)}</span></div></td></tr>`;
         }
     }
+}
+
+async function loadInspectorTab(user, tab) {
+    if (tab === 'details' || state.inspectorData.get(user.id)?.[tab]) return;
+    const current = state.inspectorData.get(user.id) || {};
+    state.inspectorData.set(user.id, { ...current, [tab]: null });
+    renderInspector();
+    try {
+        const value = tab === 'activity'
+            ? await pb.collection('social_presence').getFirstListItem(`user="${user.id}"`, { fields: 'track,is_playing,last_seen' }).catch(() => null)
+            : await pb.collection('music_tracks').getFullList({ filter: `owner="${user.id}"`, fields: 'id,title,artist,album', sort: '-created', requestKey: null });
+        let normalized = value || [];
+        if (tab === 'activity' && value) {
+            let track = value.track;
+            if (typeof track === 'string') {
+                try {
+                    track = JSON.parse(track || 'null');
+                } catch {
+                    track = null;
+                }
+            }
+            normalized = { ...value, track };
+        }
+        state.inspectorData.set(user.id, { ...current, [tab]: normalized });
+    } catch {
+        state.inspectorData.set(user.id, { ...current, [tab]: [] });
+    }
+    renderInspector();
 }
 
 async function updateUsers(ids, data, successMessage) {
@@ -511,6 +584,13 @@ function bindPage() {
         const user = state.users.find((candidate) => candidate.id === state.inspectedUserId);
         if (!user) return;
         if (event.target.closest('[data-close-inspector]')) return closeInspector();
+        const tab = event.target.closest('[data-inspector-tab]')?.dataset.inspectorTab;
+        if (tab) {
+            state.inspectorTab = tab;
+            renderInspector();
+            void loadInspectorTab(user, tab);
+            return;
+        }
         if (event.target.closest('[data-delete-member]')) return void deleteUser(user);
         if (event.target.closest('[data-reset-member]')) {
             try {
