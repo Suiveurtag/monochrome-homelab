@@ -3,18 +3,20 @@
 
 // Administrators can inspect member profile data and uploaded catalogue items
 // from the in-app control room. Members retain their existing self-only rules.
-const ADMIN = '@request.auth.id != "" && @request.auth.access_status = "active" && @request.auth.role = "admin"';
+const ACTIVE_ADMIN =
+    '@request.auth.id != "" && @request.auth.access_status = "active" && @request.auth.role = "admin"';
+const ACTIVE_MEMBER = '@request.auth.id != "" && @request.auth.access_status = "active"';
 
 migrate(
     (app) => {
         const userData = app.findCollectionByNameOrId('DB_users');
-        userData.listRule = `${ADMIN} || ${userData.listRule || 'false'}`;
-        userData.viewRule = `${ADMIN} || ${userData.viewRule || 'false'}`;
+        userData.listRule = `${ACTIVE_MEMBER} && (${ACTIVE_ADMIN} || firebase_id = @request.auth.id)`;
+        userData.viewRule = `${ACTIVE_MEMBER} && (${ACTIVE_ADMIN} || firebase_id = @request.auth.id)`;
         app.save(userData);
 
         const tracks = app.findCollectionByNameOrId('music_tracks');
-        tracks.listRule = `${ADMIN} || ${tracks.listRule || 'false'}`;
-        tracks.viewRule = `${ADMIN} || ${tracks.viewRule || 'false'}`;
+        tracks.listRule = `${ACTIVE_MEMBER} && (${ACTIVE_ADMIN} || owner = @request.auth.id)`;
+        tracks.viewRule = `${ACTIVE_MEMBER} && (${ACTIVE_ADMIN} || owner = @request.auth.id)`;
         app.save(tracks);
     },
     (app) => {
