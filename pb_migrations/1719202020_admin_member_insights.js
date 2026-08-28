@@ -3,8 +3,7 @@
 
 // Administrators can inspect member profile data and uploaded catalogue items
 // from the in-app control room. Members retain their existing self-only rules.
-const ACTIVE_ADMIN =
-    '@request.auth.id != "" && @request.auth.access_status = "active" && @request.auth.role = "admin"';
+const ACTIVE_ADMIN = '@request.auth.id != "" && @request.auth.access_status = "active" && @request.auth.role = "admin"';
 const ACTIVE_MEMBER = '@request.auth.id != "" && @request.auth.access_status = "active"';
 
 migrate(
