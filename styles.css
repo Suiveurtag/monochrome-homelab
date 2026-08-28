@@ -21920,7 +21920,11 @@ body.share-sheet-open {
     color: var(--foreground);
     background: transparent;
     font-size: 0.64rem;
-    transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
+    transition:
+        color 180ms ease,
+        background-color 180ms ease,
+        border-color 180ms ease,
+        transform 180ms ease;
 }
 
 .admin-bulk-bar button:hover:not(:disabled) {
@@ -22422,10 +22426,12 @@ body.share-sheet-open {
         opacity: 0;
         transform: translateY(calc(100% + 1rem));
     }
+
     76% {
         opacity: 1;
         transform: translateY(-5px);
     }
+
     100% {
         opacity: 1;
         transform: translateY(0);
@@ -22437,10 +22443,12 @@ body.share-sheet-open {
         opacity: 1;
         transform: translateY(0);
     }
+
     24% {
         opacity: 1;
         transform: translateY(-4px);
     }
+
     100% {
         opacity: 0;
         transform: translateY(calc(100% + 1rem));
@@ -22461,15 +22469,19 @@ body.share-sheet-open {
     100% {
         transform: translateX(0);
     }
+
     22% {
         transform: translateX(-7px);
     }
+
     44% {
         transform: translateX(6px);
     }
+
     66% {
         transform: translateX(-4px);
     }
+
     84% {
         transform: translateX(2px);
     }

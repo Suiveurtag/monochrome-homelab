@@ -252,7 +252,12 @@ async function deleteSelectedUsers() {
         showFeedback('Keep at least one administrator on the instance.', 'error');
         return;
     }
-    if (!window.confirm(`Delete ${selectedUsers.length} selected account${selectedUsers.length === 1 ? '' : 's'}? This cannot be undone.`)) return;
+    if (
+        !window.confirm(
+            `Delete ${selectedUsers.length} selected account${selectedUsers.length === 1 ? '' : 's'}? This cannot be undone.`
+        )
+    )
+        return;
     state.bulkPending = true;
     renderBulkBar();
     const results = await Promise.allSettled(selectedUsers.map((user) => pb.collection('users').delete(user.id)));
@@ -261,7 +266,9 @@ async function deleteSelectedUsers() {
     state.selected.clear();
     await loadUsers();
     showFeedback(
-        failed.length ? `${selectedUsers.length - failed.length} account${selectedUsers.length - failed.length === 1 ? '' : 's'} deleted; ${failed.length} failed.` : `${selectedUsers.length} account${selectedUsers.length === 1 ? '' : 's'} deleted.`,
+        failed.length
+            ? `${selectedUsers.length - failed.length} account${selectedUsers.length - failed.length === 1 ? '' : 's'} deleted; ${failed.length} failed.`
+            : `${selectedUsers.length} account${selectedUsers.length === 1 ? '' : 's'} deleted.`,
         failed.length ? 'error' : 'success'
     );
 }
