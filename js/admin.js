@@ -46,6 +46,8 @@ const state = {
     inspectorTab: 'details',
     inspectorData: new Map(),
     savedConfig: null,
+    memberPage: 1,
+    memberPageSize: 1,
 };
 
 let inspectorReturnUserId = null;
@@ -185,8 +187,9 @@ function userRow(user) {
     const selected = state.selected.has(user.id);
     const inspected = state.inspectedUserId === user.id;
     return `<tr class="admin-user-row${inspected ? ' is-inspected' : ''}" data-user-id="${escapeHtml(user.id)}">
-        <td><label class="admin-check-cell" aria-label="Select ${escapeHtml(displayName(user))}">
+        <td><label class="checkBox admin-user-checkbox" aria-label="Select ${escapeHtml(displayName(user))}">
             <input type="checkbox" data-select-user="${escapeHtml(user.id)}" ${selected ? 'checked' : ''} ${self ? 'disabled' : ''} />
+            <div class="transition" aria-hidden="true"></div>
         </label></td>
         <td><button class="admin-user-identity" type="button" data-inspect-user="${escapeHtml(user.id)}">
             ${avatarMarkup(user)}
@@ -199,13 +202,29 @@ function userRow(user) {
     </tr>`;
 }
 
+function renderPagination(total) {
+    const pagination = document.getElementById('admin-pagination');
+    if (!pagination) return;
+    const pages = Math.max(1, Math.ceil(total / state.memberPageSize));
+    state.memberPage = Math.min(Math.max(1, state.memberPage), pages);
+    pagination.hidden = total <= state.memberPageSize;
+    setText('admin-page-status', `Page ${state.memberPage} of ${pages}`);
+    const previous = document.getElementById('admin-page-previous');
+    const next = document.getElementById('admin-page-next');
+    if (previous) previous.disabled = state.memberPage <= 1;
+    if (next) next.disabled = state.memberPage >= pages;
+}
+
 function renderUsers() {
     const container = document.getElementById('admin-users-list');
     if (!container) return;
     const users = filteredUsers();
     setText('admin-filter-count', `${users.length} member${users.length === 1 ? '' : 's'}`);
+    renderPagination(users.length);
+    const start = (state.memberPage - 1) * state.memberPageSize;
+    const visibleUsers = users.slice(start, start + state.memberPageSize);
     const html = users.length
-        ? users.map(userRow).join('')
+        ? visibleUsers.map(userRow).join('')
         : '<tr><td colspan="6"><div class="admin-empty-state"><strong>No members found</strong><span>Change the search or filters to see more accounts.</span></div></td></tr>';
     if (container.innerHTML !== html) container.innerHTML = html;
     renderBulkBar();
@@ -216,9 +235,35 @@ function renderBulkBar() {
     if (!bar) return;
     bar.hidden = state.selected.size === 0;
     setText('admin-selected-count', state.selected.size);
+    setText('admin-selected-label', state.selected.size === 1 ? 'Selected user' : 'Selected users');
     bar.querySelectorAll('button').forEach((button) => {
         button.disabled = state.bulkPending;
     });
+}
+
+async function deleteSelectedUsers() {
+    const selectedUsers = state.users.filter((user) => state.selected.has(user.id) && !isSelf(user));
+    if (!selectedUsers.length) {
+        showFeedback('Select at least one other account to delete.', 'error');
+        return;
+    }
+    const admins = state.users.filter((user) => user.role === 'admin');
+    if (selectedUsers.some((user) => user.role === 'admin') && admins.length <= 1) {
+        showFeedback('Keep at least one administrator on the instance.', 'error');
+        return;
+    }
+    if (!window.confirm(`Delete ${selectedUsers.length} selected account${selectedUsers.length === 1 ? '' : 's'}? This cannot be undone.`)) return;
+    state.bulkPending = true;
+    renderBulkBar();
+    const results = await Promise.allSettled(selectedUsers.map((user) => pb.collection('users').delete(user.id)));
+    const failed = results.filter((result) => result.status === 'rejected');
+    state.bulkPending = false;
+    state.selected.clear();
+    await loadUsers();
+    showFeedback(
+        failed.length ? `${selectedUsers.length - failed.length} account${selectedUsers.length - failed.length === 1 ? '' : 's'} deleted; ${failed.length} failed.` : `${selectedUsers.length} account${selectedUsers.length === 1 ? '' : 's'} deleted.`,
+        failed.length ? 'error' : 'success'
+    );
 }
 
 function inspectorHtml(user) {
@@ -616,9 +661,31 @@ function bindPage() {
     if (!usersContainer || usersContainer.dataset.bound) return;
     usersContainer.dataset.bound = 'true';
 
-    document.getElementById('admin-user-search')?.addEventListener('input', renderUsers);
-    document.getElementById('admin-status-filter')?.addEventListener('change', renderUsers);
-    document.getElementById('admin-role-filter')?.addEventListener('change', renderUsers);
+    document.getElementById('admin-user-search')?.addEventListener('input', () => {
+        state.memberPage = 1;
+        renderUsers();
+    });
+    document.getElementById('admin-status-filter')?.addEventListener('change', () => {
+        state.memberPage = 1;
+        renderUsers();
+    });
+    document.getElementById('admin-role-filter')?.addEventListener('change', () => {
+        state.memberPage = 1;
+        renderUsers();
+    });
+    document.getElementById('admin-page-size')?.addEventListener('change', (event) => {
+        state.memberPageSize = Number(event.target.value) || 1;
+        state.memberPage = 1;
+        renderUsers();
+    });
+    document.getElementById('admin-page-previous')?.addEventListener('click', () => {
+        state.memberPage -= 1;
+        renderUsers();
+    });
+    document.getElementById('admin-page-next')?.addEventListener('click', () => {
+        state.memberPage += 1;
+        renderUsers();
+    });
     document.getElementById('admin-approve-all')?.addEventListener('click', () => {
         const ids = state.users.filter((user) => user.access_status === 'pending').map((user) => user.id);
         void updateUsers(
@@ -648,6 +715,9 @@ function bindPage() {
                 { access_status: status },
                 `Selected accounts marked ${statusLabel(status).toLowerCase()}.`
             );
+        }
+        if (event.target.closest('[data-bulk-delete]')) {
+            void deleteSelectedUsers();
         }
         if (event.target.closest('[data-bulk-clear]')) {
             state.selected.clear();

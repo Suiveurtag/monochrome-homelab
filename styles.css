@@ -21297,6 +21297,51 @@ body.share-sheet-open {
     background: rgb(var(--highlight-rgb) / 0.08);
 }
 
+.admin-user-checkbox {
+    display: block;
+    position: relative;
+    width: 22px;
+    height: 22px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 7px;
+    box-shadow: 0 0 0 1.5px var(--foreground);
+}
+
+.admin-user-checkbox .transition {
+    position: absolute;
+    z-index: 1;
+    top: -38px;
+    left: -38px;
+    width: 44px;
+    height: 44px;
+    background: var(--foreground);
+    transform: rotateZ(45deg);
+    transition: 300ms ease;
+}
+
+.admin-user-checkbox input[type='checkbox'] {
+    position: absolute;
+    left: 50px;
+    visibility: hidden;
+}
+
+.admin-user-checkbox input[type='checkbox']:checked + .transition {
+    top: -8px;
+    left: -8px;
+}
+
+.admin-user-checkbox:has(input:focus-visible) {
+    outline: 2px solid var(--foreground);
+    outline-offset: 3px;
+}
+
+.admin-user-checkbox:has(input:disabled) {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
 .admin-page-header {
     display: flex;
     align-items: center;
@@ -21599,6 +21644,12 @@ body.share-sheet-open {
     accent-color: var(--foreground);
 }
 
+.admin-user-row > td:first-child {
+    display: grid;
+    place-items: center;
+    transform: translateX(0);
+}
+
 .admin-user-identity {
     display: flex;
     align-items: center;
@@ -21820,11 +21871,22 @@ body.share-sheet-open {
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    min-height: 48px;
-    padding: 0.55rem 0.75rem;
+    min-height: 64px;
+    padding: 0.7rem 0.85rem;
     border-top: 1px solid var(--border);
     background: color-mix(in srgb, var(--card) 90%, var(--background));
     animation: admin-bulk-in 220ms var(--admin-ease) both;
+}
+
+.admin-bulk-summary {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.admin-bulk-summary small {
+    display: block;
+    color: var(--muted-foreground);
+    font-size: 0.58rem;
 }
 
 @keyframes admin-bulk-in {
@@ -21838,13 +21900,14 @@ body.share-sheet-open {
     font-size: 0.7rem;
 }
 
-.admin-bulk-bar div,
 .admin-bulk-bar button {
     display: flex;
     align-items: center;
 }
 
-.admin-bulk-bar div {
+.admin-bulk-actions {
+    display: flex;
+    align-items: center;
     gap: 0.35rem;
 }
 
@@ -21857,6 +21920,72 @@ body.share-sheet-open {
     color: var(--foreground);
     background: transparent;
     font-size: 0.64rem;
+    transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+.admin-bulk-bar button:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.admin-bulk-bar button.is-approve:hover:not(:disabled) {
+    border-color: #5ee890;
+    color: #5ee890;
+    background: rgb(94 232 144 / 0.1);
+}
+
+.admin-bulk-bar button.is-suspend:hover:not(:disabled) {
+    border-color: #e3b35f;
+    color: #e3b35f;
+    background: rgb(227 179 95 / 0.1);
+}
+
+.admin-bulk-bar button.is-delete:hover:not(:disabled) {
+    border-color: var(--destructive);
+    color: var(--destructive);
+    background: color-mix(in srgb, var(--destructive) 12%, transparent);
+}
+
+.admin-bulk-bar button.is-clear:hover:not(:disabled) {
+    color: var(--foreground);
+    background: rgb(var(--highlight-rgb) / 0.1);
+}
+
+.admin-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    padding: 0.7rem 0.85rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted-foreground);
+    font-size: 0.62rem;
+}
+
+.admin-pagination label,
+.admin-pagination > div {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.admin-pagination select,
+.admin-pagination button {
+    min-height: 29px;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--foreground);
+    background: transparent;
+    font: inherit;
+}
+
+.admin-pagination button:not(:disabled):hover {
+    background: rgb(var(--highlight-rgb) / 0.1);
+}
+
+.admin-pagination button:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
 }
 
 .admin-member-inspector {
@@ -22519,6 +22648,21 @@ html[data-can-host-parties='false'] #create-party-btn {
     .admin-page-header p,
     .admin-header-state {
         font-size: 0.64rem;
+    }
+
+    .admin-bulk-bar,
+    .admin-pagination {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-bulk-actions {
+        flex-wrap: wrap;
+    }
+
+    .admin-bulk-actions button {
+        flex: 1 1 auto;
+        justify-content: center;
     }
 
     .admin-status-strip {

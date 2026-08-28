@@ -3682,17 +3682,37 @@
                                             ></tbody>
                                         </table>
                                         <div id="admin-bulk-bar" class="admin-bulk-bar" hidden>
-                                            <strong><span id="admin-selected-count">0</span> selected</strong>
-                                            <div>
-                                                <button type="button" data-bulk-status="active">
+                                            <div class="admin-bulk-summary">
+                                                <strong><span id="admin-selected-count">0</span> <span id="admin-selected-label">Selected users</span></strong>
+                                                <small>Actions apply across all pages</small>
+                                            </div>
+                                            <div class="admin-bulk-actions">
+                                                <button type="button" class="is-approve" data-bulk-status="active">
                                                     <use svg="!lucide/check.svg" size="16" />Approve
                                                 </button>
-                                                <button type="button" data-bulk-status="banned">
+                                                <button type="button" class="is-suspend" data-bulk-status="banned">
                                                     <use svg="!lucide/ban.svg" size="16" />Suspend
                                                 </button>
-                                                <button type="button" data-bulk-clear>
+                                                <button type="button" class="is-delete" data-bulk-delete>
+                                                    <use svg="!lucide/trash-2.svg" size="16" />Delete
+                                                </button>
+                                                <button type="button" class="is-clear" data-bulk-clear>
                                                     <use svg="!lucide/x.svg" size="16" />Clear
                                                 </button>
+                                            </div>
+                                        </div>
+                                        <div id="admin-pagination" class="admin-pagination" hidden>
+                                            <label>Members per page<select id="admin-page-size">
+                                                <option value="1" selected>1</option>
+                                                <option value="5">5</option>
+                                                <option value="10">10</option>
+                                                <option value="25">25</option>
+                                                <option value="50">50</option>
+                                            </select></label>
+                                            <span id="admin-page-status" aria-live="polite">Page 1 of 1</span>
+                                            <div>
+                                                <button id="admin-page-previous" type="button" disabled>Previous</button>
+                                                <button id="admin-page-next" type="button">Next</button>
                                             </div>
                                         </div>
                                     </div>
