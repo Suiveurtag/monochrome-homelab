@@ -3583,17 +3583,6 @@
                                     <span id="admin-instance-health-label">Checking instance…</span>
                                 </div>
                             </header>
-                            <nav class="admin-section-index" aria-label="Administration sections">
-                                <a href="#admin-overview" class="is-active" data-admin-section="overview">Overview</a>
-                                <a href="#admin-members" data-admin-section="members"
-                                    >Members
-                                    <span id="admin-pending-nav-count" class="admin-local-nav-count" hidden>0</span></a
-                                >
-                                <a href="#admin-permissions" data-admin-section="permissions">Permissions</a>
-                                <a href="#admin-features" data-admin-section="features">Features</a>
-                                <a href="#admin-instance" data-admin-section="instance">Instance</a>
-                            </nav>
-
                             <section id="admin-overview" class="admin-section admin-overview-section">
                                 <div
                                     id="admin-system-status"
@@ -3883,13 +3872,12 @@
                                     </div>
                                 </section>
 
-                                <div class="admin-save-bar">
-                                    <p id="admin-feedback" class="admin-feedback" aria-live="polite">
-                                        Changes are applied to the whole instance.
-                                    </p>
-                                    <button type="submit" class="btn-primary">
-                                        <use svg="!lucide/save.svg" size="17" />Save instance policy
-                                    </button>
+                                <div class="admin-save-bar" hidden>
+                                    <p id="admin-feedback" class="admin-feedback" aria-live="polite">Changes are applied to the whole instance.</p>
+                                    <div class="admin-save-actions">
+                                        <button id="admin-reset-policy" type="button" class="admin-reset-button">Reset changes</button>
+                                        <button type="submit" class="btn-primary"><use svg="!lucide/save.svg" size="17" />Save instance policy</button>
+                                    </div>
                                 </div>
                             </form>
                         </main>

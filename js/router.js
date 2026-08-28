@@ -39,6 +39,11 @@ export function createRouter(ui) {
         let page = parts[0];
         const param = parts.slice(1).join('/');
 
+        if (page !== 'admin' && adminManager.shouldBlockNavigation?.(`/${path}`)) {
+            window.history.pushState({ app: true }, '', '/admin');
+            return;
+        }
+
         const guardedFeatures = {
             social: 'social',
             recent: 'stats',

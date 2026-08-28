@@ -45,10 +45,13 @@ const state = {
     bulkPending: false,
     inspectorTab: 'details',
     inspectorData: new Map(),
+    savedConfig: null,
 };
 
 let inspectorReturnUserId = null;
 let healthRefreshTimer = null;
+let saveBarTimer = null;
+let adminGuardBound = false;
 
 const ownId = () => authManager.user?.id || authManager.user?.$id;
 
@@ -544,6 +547,7 @@ function populateConfig(config) {
         config.maintenance_mode ? 'Admins only' : config.registrations_open ? 'Open' : 'Invite only'
     );
     setText('admin-announcement-count', String(config.announcement || '').length);
+    state.savedConfig = readConfigForm();
 }
 
 function readConfigForm() {
@@ -555,6 +559,53 @@ function readConfigForm() {
     }
     if (!data.instance_name) data.instance_name = 'Monochrome';
     return data;
+}
+
+function configIsSaved() {
+    return state.savedConfig && JSON.stringify(readConfigForm()) === JSON.stringify(state.savedConfig);
+}
+
+function setSaveBarVisibility(visible, { animate = true } = {}) {
+    const form = document.getElementById('admin-config-form');
+    const bar = document.querySelector('.admin-save-bar');
+    if (!form || !bar) return;
+    window.clearTimeout(saveBarTimer);
+    form.classList.toggle('is-dirty', visible);
+    if (visible) {
+        const wasVisible = bar.classList.contains('is-visible');
+        bar.hidden = false;
+        bar.classList.remove('is-hiding');
+        if (animate && !wasVisible) {
+            bar.classList.remove('is-visible');
+            window.requestAnimationFrame(() => bar.classList.add('is-visible'));
+        } else {
+            bar.classList.add('is-visible');
+        }
+        return;
+    }
+    bar.classList.remove('is-visible');
+    if (animate && !bar.hidden) {
+        bar.classList.add('is-hiding');
+        saveBarTimer = window.setTimeout(() => {
+            bar.hidden = true;
+            bar.classList.remove('is-hiding');
+        }, 320);
+    } else {
+        bar.hidden = true;
+        bar.classList.remove('is-hiding');
+    }
+}
+
+function triggerUnsavedWarning() {
+    const bar = document.querySelector('.admin-save-bar');
+    if (!bar || bar.hidden) return;
+    bar.classList.remove('is-blocked');
+    window.requestAnimationFrame(() => bar.classList.add('is-blocked'));
+    showFeedback('Save or reset your changes before leaving this page.', 'error');
+}
+
+function hasUnsavedAdminChanges() {
+    return document.getElementById('page-admin')?.classList.contains('active') && Boolean(document.getElementById('admin-config-form')?.classList.contains('is-dirty'));
 }
 
 function bindPage() {
@@ -640,8 +691,14 @@ function bindPage() {
     });
 
     configForm?.addEventListener('input', (event) => {
-        configForm.classList.add('is-dirty');
+        setSaveBarVisibility(!configIsSaved());
         if (event.target.id === 'admin-announcement') setText('admin-announcement-count', event.target.value.length);
+    });
+    document.getElementById('admin-reset-policy')?.addEventListener('click', () => {
+        if (!state.config) return;
+        populateConfig(state.config);
+        setSaveBarVisibility(false);
+        showFeedback('Changes reset.', 'success');
     });
     configForm?.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -652,7 +709,7 @@ function bindPage() {
             const saved = await pb.collection('app_config').update(configForm.dataset.recordId, readConfigForm());
             const config = applyInstancePolicy(saved);
             populateConfig(config);
-            configForm.classList.remove('is-dirty');
+            setSaveBarVisibility(false);
             showFeedback('Instance policy saved and applied.', 'success');
         } catch (error) {
             showFeedback(error.message || 'The instance policy could not be saved.', 'error');
@@ -669,9 +726,24 @@ function bindPage() {
             link.classList.add('is-active');
         });
     });
+
+    if (!adminGuardBound) {
+        adminGuardBound = true;
+        window.addEventListener('beforeunload', (event) => {
+            if (!hasUnsavedAdminChanges()) return;
+            event.preventDefault();
+            event.returnValue = '';
+        });
+    }
 }
 
 export const adminManager = {
+    shouldBlockNavigation(path) {
+        if (!hasUnsavedAdminChanges() || path === '/admin') return false;
+        triggerUnsavedWarning();
+        return true;
+    },
+
     async renderPage(ui) {
         if (!isAdminAccount()) {
             window.history.replaceState({}, '', '/');
@@ -681,6 +753,7 @@ export const adminManager = {
 
         await ui.showPage('admin');
         bindPage();
+        setSaveBarVisibility(false, { animate: false });
         showFeedback('Changes are applied to the whole instance.');
         try {
             const config = await loadAppConfig();

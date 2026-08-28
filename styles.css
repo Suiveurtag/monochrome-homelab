@@ -22254,8 +22254,8 @@ body.share-sheet-open {
 
 .admin-save-bar {
     position: sticky;
-    bottom: 0.75rem;
-    z-index: 4;
+    bottom: calc(var(--player-bar-height-desktop, 80px) + 1rem);
+    z-index: 2060;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -22270,14 +22270,76 @@ body.share-sheet-open {
         color-mix(in srgb, var(--card) 94%, transparent)
     );
     box-shadow: 0 14px 38px rgb(0 0 0 / 0.2);
-    transition:
-        border-color 200ms ease,
-        transform 240ms var(--admin-ease);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(calc(100% + 1rem));
+    visibility: hidden;
 }
 
-.admin-config-form.is-dirty .admin-save-bar {
+.admin-save-bar.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+    visibility: visible;
+    animation: admin-save-enter 360ms var(--admin-ease) both;
+}
+
+.admin-save-bar.is-hiding {
+    animation: admin-save-exit 320ms var(--admin-ease) both;
+}
+
+@keyframes admin-save-enter {
+    0% { opacity: 0; transform: translateY(calc(100% + 1rem)); }
+    76% { opacity: 1; transform: translateY(-5px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes admin-save-exit {
+    0% { opacity: 1; transform: translateY(0); }
+    24% { opacity: 1; transform: translateY(-4px); }
+    100% { opacity: 0; transform: translateY(calc(100% + 1rem)); }
+}
+
+.admin-save-bar.is-blocked {
+    border-color: var(--destructive);
+    animation: admin-save-shake 420ms ease both;
+}
+
+.admin-save-bar.is-visible.is-blocked {
+    border-color: var(--destructive);
+}
+
+@keyframes admin-save-shake {
+    0%, 100% { transform: translateX(0); }
+    22% { transform: translateX(-7px); }
+    44% { transform: translateX(6px); }
+    66% { transform: translateX(-4px); }
+    84% { transform: translateX(2px); }
+}
+
+.admin-save-bar.is-visible {
     border-color: color-mix(in srgb, var(--foreground) 38%, var(--border));
-    transform: translateY(-2px);
+}
+
+.admin-save-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.7rem;
+}
+
+.admin-reset-button {
+    padding: 0.35rem 0.2rem;
+    border: 0;
+    color: var(--muted-foreground);
+    background: transparent;
+    font-size: 0.66rem;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+.admin-reset-button:hover {
+    color: var(--foreground);
 }
 
 .admin-save-bar .btn-primary {
@@ -22521,7 +22583,7 @@ html[data-can-host-parties='false'] #create-party-btn {
     .admin-save-bar {
         align-items: stretch;
         flex-direction: column;
-        bottom: 0.35rem;
+        bottom: calc(var(--player-bar-height-mobile, 64px) + 0.65rem);
     }
 
     .admin-save-bar .btn-primary {
