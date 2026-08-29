@@ -109,6 +109,27 @@
     isolation: isolate;
 }
 
+/* The cover hides the lower half of the CD; shade the visible edge just above that overlap. */
+.version-disc-player::after {
+    position: absolute;
+    z-index: 5;
+    top: 24%;
+    right: 4%;
+    left: 4%;
+    height: 32%;
+    border-radius: 50%;
+    background: linear-gradient(
+        to bottom,
+        transparent,
+        rgb(0 0 0 / 0.24) 42%,
+        rgb(0 0 0 / 0.58) 68%,
+        transparent
+    );
+    content: '';
+    filter: blur(2px);
+    pointer-events: none;
+}
+
 .version-disc::before {
     position: absolute;
     z-index: 2;
@@ -461,27 +482,6 @@
     background: linear-gradient(145deg, rgb(0 0 0 / 0.16), rgb(0 0 0 / 0.78));
     opacity: 0;
     transition: opacity 240ms ease;
-}
-
-/* Soft contact shadow where the version disc tucks behind the cover. */
-.now-playing-cover-button::before {
-    content: '';
-    position: absolute;
-    z-index: 1;
-    inset: 0;
-    background: radial-gradient(
-        ellipse 92% 70% at 50% -4%,
-        rgb(0 0 0 / 0.3) 0%,
-        rgb(0 0 0 / 0.14) 32%,
-        rgb(0 0 0 / 0) 62%
-    );
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 240ms ease;
-}
-
-.now-playing-bar:has(.version-switch-button:not([hidden])) .now-playing-cover-button::before {
-    opacity: 1;
 }
 
 .cover-fullscreen-icon {
