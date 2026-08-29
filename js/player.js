@@ -28,7 +28,7 @@ import { db } from './db.js';
 import { getProxyUrl } from './proxy-utils.js';
 import { isVideoArtwork } from './animated-artwork.js';
 import { hydrateQueuedTracks } from './queue-track-hydration.js';
-import { getTrackDisplayAlbum, getTrackPlayerArtwork } from './track-versions.js';
+import { getTrackDisplayAlbum, getTrackPlayerArtwork, getTrackPlayerCanvas } from './track-versions.js';
 import {
     getApiQuality,
     getAvailableQualityOptions,
@@ -1345,7 +1345,7 @@ export class Player {
         const trackArtistsHTML = getTrackArtistsHTML(track, { asButtons: true });
         const yearDisplay = getTrackYearDisplay(track);
 
-        if (track.type !== 'video' && !track.videoCoverUrl && !track.album?.videoCoverUrl) {
+        if (track.type !== 'video' && !getTrackPlayerCanvas(track)) {
             this.api.getVideoArtwork(trackTitle, artistName).then((result) => {
                 if (this.currentTrack?.id === track.id && result && (result.videoUrl || result.hlsUrl)) {
                     track.videoCoverUrl = result.videoUrl || result.hlsUrl;

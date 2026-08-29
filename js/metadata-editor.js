@@ -227,6 +227,11 @@ function versionGroupEditor(track, availableTracks = []) {
                 <span></span>
                 <div><strong>Hide this version from the artist page</strong><small>Removes its own album association. It remains available through search, playlists, liked tracks, and the main track's version picker.</small></div>
             </label>
+            <label class="metadata-switch metadata-version-assets">
+                <input type="checkbox" name="useOriginalTrackAssets" ${track.useOriginalTrackAssets !== false ? 'checked' : ''} />
+                <span></span>
+                <div><strong>Keep the original track’s assets</strong><small>Uses the main track’s cover and Canvas for this version. Turn this off to use this track’s own artwork.</small></div>
+            </label>
         </div>`;
 }
 
@@ -366,7 +371,12 @@ async function saveTrack(track, form, availableTracks = []) {
               genre: value(form, 'genre'),
               artist,
               cover: coverData || existingArtwork.static,
-              videoCoverUrl: canvasFile?.size || removeCanvas ? null : track.album?.videoCoverUrl || null,
+              videoCoverUrl:
+                  canvasFile?.size || removeCanvas
+                      ? null
+                      : form.get('useOriginalTrackAssets') === 'on'
+                        ? track.album?.videoCoverUrl || null
+                        : track.videoCoverUrl || null,
           };
     const updated = {
         ...track,
@@ -385,12 +395,16 @@ async function saveTrack(track, form, availableTracks = []) {
         copyright: value(form, 'copyright'),
         explicit: form.get('explicit') === 'on',
         videoUrl: track.type === 'video' ? track.videoUrl || null : null,
-        videoCoverUrl: removeCanvas ? null : canvasData || track.videoCoverUrl || track.videoUrl || null,
+        videoCoverUrl:
+            removeCanvas || form.get('useOriginalTrackAssets') !== 'on'
+                ? canvasData || (form.get('useOriginalTrackAssets') !== 'on' ? track.videoCoverUrl || track.videoUrl || null : null)
+                : canvasData || track.videoCoverUrl || track.videoUrl || null,
         themeColor: normalizeTrackThemeColor(value(form, 'themeColor')),
         lyrics: String(form.get('lyrics') || ''),
         credits: collectRows(form, 'credits', ['name', 'role']),
         versionLabel: value(form, 'versionLabel'),
         hideFromArtistPage,
+        useOriginalTrackAssets: form.get('useOriginalTrackAssets') === 'on',
     };
     const selectedIds = form.getAll('alternativeVersionIds').map(String);
     const versionUpdates = buildTrackVersionUpdates(
@@ -739,6 +753,7 @@ function setupVersionGroupEditor(form, availableTracks, currentTrack) {
     const noResults = control.querySelector('[data-version-no-results]');
     const mainSelect = control.querySelector('[data-version-main]');
     const visibility = control.querySelector('input[name="hideFromArtistPage"]');
+    const assets = control.querySelector('input[name="useOriginalTrackAssets"]');
     const albumInput = form.querySelector('input[name="album"]');
     const currentId = String(currentTrack.id);
     const trackMap = new Map(availableTracks.map((track) => [String(track.id), track]));
@@ -756,9 +771,14 @@ function setupVersionGroupEditor(form, availableTracks, currentTrack) {
         if (mainSelect?.selectedOptions[0]?.disabled) mainSelect.value = currentId;
 
         const canHide = selected.length > 0 && mainSelect?.value !== currentId;
+        const canChooseAssets = canHide;
         if (visibility) {
             visibility.disabled = !canHide;
             if (!canHide) visibility.checked = false;
+        }
+        if (assets) {
+            assets.disabled = !canChooseAssets;
+            if (!canChooseAssets) assets.checked = true;
         }
         const hiddenAlternative = Boolean(canHide && visibility?.checked);
         if (albumInput) {

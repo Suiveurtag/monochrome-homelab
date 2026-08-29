@@ -75,6 +75,7 @@ export function mapPocketBaseTrack(record, client = pb) {
             : [],
         versionLabel: record.version_label || null,
         hideFromArtistPage,
+        useOriginalTrackAssets: record.use_original_track_assets !== false,
         cover: coverUrl,
         uploadedAt: record.created ? Date.parse(record.created) : Date.now(),
         updatedAt: record.updated ? Date.parse(record.updated) : Date.now(),
@@ -183,6 +184,7 @@ export function createTrackFormData(track, file, ownerId, coverFile = null) {
     formData.set('alternative_version_ids', JSON.stringify(track?.alternativeVersionIds || []));
     formData.set('version_label', track?.versionLabel || '');
     formData.set('hide_from_artist_page', String(Boolean(track?.hideFromArtistPage)));
+    formData.set('use_original_track_assets', String(track?.useOriginalTrackAssets !== false));
     formData.set('lyrics', track?.lyrics || '');
     formData.set('audio', file);
     if (coverFile) formData.set('cover', coverFile);
@@ -262,6 +264,7 @@ export async function updateSelfHostedTrack(id, track, coverFile = null, clientO
     formData.set('alternative_version_ids', JSON.stringify(track?.alternativeVersionIds || []));
     formData.set('version_label', track?.versionLabel || '');
     formData.set('hide_from_artist_page', String(Boolean(track?.hideFromArtistPage)));
+    formData.set('use_original_track_assets', String(track?.useOriginalTrackAssets !== false));
     formData.set('lyrics', track?.lyrics || '');
     if (coverFile) formData.set('cover', coverFile);
     if (canvasFile) formData.set('canvas', canvasFile);

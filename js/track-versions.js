@@ -69,6 +69,7 @@ export function getTrackDisplayAlbum(track, allTracks = []) {
 
 export function getTrackPlayerArtwork(track, allTracks = []) {
     if (
+        track?.useOriginalTrackAssets !== false &&
         track?.versionMainTrackId &&
         String(track.versionMainTrackId) !== String(track.id) &&
         track.versionMainAlbum?.cover
@@ -77,6 +78,14 @@ export function getTrackPlayerArtwork(track, allTracks = []) {
     }
     const mainTrack = getTrackVersionMainTrack(track, allTracks);
     return getTrackVersionArtwork(mainTrack || track);
+}
+
+export function getTrackPlayerCanvas(track, allTracks = []) {
+    if (track?.useOriginalTrackAssets === false) {
+        return track?.videoUrl || track?.videoCoverUrl || track?.album?.videoCoverUrl || null;
+    }
+    const mainTrack = getTrackVersionMainTrack(track, allTracks);
+    return mainTrack?.videoUrl || mainTrack?.videoCoverUrl || mainTrack?.album?.videoCoverUrl || null;
 }
 
 export function hydrateTrackVersionDisplayMetadata(tracks = []) {
@@ -148,6 +157,7 @@ export function buildTrackVersionUpdates(currentTrack, allTracks, selectedIds, c
                 versionMainAlbum: isMember ? mainAlbum : null,
                 alternativeVersionIds: isMember ? memberIdList.filter((memberId) => memberId !== id) : [],
             };
+            merged.useOriginalTrackAssets = isMember ? merged.useOriginalTrackAssets !== false : true;
             const isMain = isMember && id === resolvedMainId;
             const hiddenAlternative = isMember && !isMain && Boolean(merged.hideFromArtistPage);
             return {

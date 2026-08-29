@@ -336,6 +336,7 @@ export class MusicDatabase {
                 alternativeVersionIds: item.alternativeVersionIds || [],
                 versionLabel: item.versionLabel || null,
                 hideFromArtistPage: Boolean(item.hideFromArtistPage),
+                useOriginalTrackAssets: item.useOriginalTrackAssets !== false,
                 videoUrl: item.videoUrl || null,
                 videoCoverUrl: item.videoCoverUrl || null,
                 credits: item.credits || null,

@@ -1,7 +1,7 @@
 import { getTrackArtists, getTrackTitle, getTrackYearDisplay } from './utils.js';
 import { isVideoArtwork } from './animated-artwork.js';
 import { getArtworkSources } from './artwork-media.js';
-import { getTrackDisplayAlbum, getTrackPlayerArtwork } from './track-versions.js';
+import { getTrackDisplayAlbum, getTrackPlayerArtwork, getTrackPlayerCanvas } from './track-versions.js';
 
 const SOURCE_KINDS = new Set(['playlist', 'album', 'artist', 'liked', 'radio', 'single', 'unknown']);
 
@@ -17,7 +17,7 @@ export function normalizeSourceContext(value) {
 
 function resolveArtwork(track, api) {
     const albumArtwork = getTrackDisplayAlbum(track) || {};
-    const explicitAnimated = track?.videoUrl || track?.videoCoverUrl || albumArtwork.videoCoverUrl || null;
+    const explicitAnimated = getTrackPlayerCanvas(track) || (track?.useOriginalTrackAssets === false ? null : albumArtwork.videoCoverUrl) || null;
     const coverId = getTrackPlayerArtwork(track);
     const sources = getArtworkSources({
         cover: coverId,

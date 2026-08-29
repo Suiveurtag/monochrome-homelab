@@ -207,6 +207,7 @@ const syncManager = {
                 alternativeVersionIds: item.alternativeVersionIds || [],
                 versionLabel: item.versionLabel || null,
                 hideFromArtistPage: Boolean(item.hideFromArtistPage),
+                useOriginalTrackAssets: item.useOriginalTrackAssets !== false,
                 artist: item.artist || (item.artists && item.artists.length > 0 ? item.artists[0] : null) || null,
                 artists: item.artists?.map((a) => ({ id: a.id, name: a.name || null })) || [],
                 album: item.album

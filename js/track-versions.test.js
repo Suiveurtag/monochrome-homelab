@@ -82,6 +82,7 @@ describe('track version groups', () => {
             album: { id: 'album-alt', title: 'Instrumentals', cover: '/instrumental.jpg' },
             cover: '/instrumental.jpg',
             hideFromArtistPage: true,
+            useOriginalTrackAssets: false,
         };
         const updates = buildTrackVersionUpdates(main, [main, hidden], ['instrumental'], {}, 'original');
         const savedTracks = updates.map(({ updated }) => updated);
@@ -92,7 +93,7 @@ describe('track version groups', () => {
         expect(savedHidden.versionMainAlbum).toEqual(main.album);
         expect(getTrackVersionMainId(savedHidden, savedTracks)).toBe('original');
         expect(getTrackDisplayAlbum(savedHidden)).toEqual(main.album);
-        expect(getTrackPlayerArtwork(savedHidden)).toBe('/main.jpg');
+        expect(getTrackPlayerArtwork(savedHidden)).toBe('/instrumental.jpg');
         expect(hydrateTrackVersionDisplayMetadata(savedTracks)[1].versionMainAlbum).toEqual(main.album);
     });
 });
