@@ -47,7 +47,7 @@ const state = {
     inspectorData: new Map(),
     savedConfig: null,
     memberPage: 1,
-    memberPageSize: 1,
+    memberPageSize: 10,
 };
 
 let inspectorReturnUserId = null;
