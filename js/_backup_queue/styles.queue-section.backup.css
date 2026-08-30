@@ -2925,6 +2925,150 @@ input[type='search']::-webkit-search-cancel-button {
     }
 }
 
+@keyframes like-confetti {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+        opacity: 0.95;
+    }
+
+    50% {
+        transform: translate(calc(var(--confetti-dx, 14px) * var(--confetti-idx, 1)), calc(var(--confetti-dy, -34px) * var(--confetti-idx, 1))) rotate(var(--confetti-rot, 32deg));
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(calc(var(--confetti-dx, 14px) * var(--confetti-idx, 1)), calc(var(--confetti-dy, -34px) * var(--confetti-idx, 1)) - 22px) rotate(calc(var(--confetti-rot, 32deg) * 2));
+        opacity: 0;
+    }
+}
+
+.like-confetti {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 6px;
+    background: var(--highlight);
+    border-radius: 1px;
+    transform: rotate(var(--confetti-rot, 32deg));
+    pointer-events: none;
+    z-index: var(--z-sticky, 1100);
+    animation: like-confetti 620ms var(--ease-out-back) forwards;
+}
+
+@keyframes like-shockwave {
+    0% {
+        transform: scale(0);
+        opacity: 0.62;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 0;
+    }
+}
+
+.like-shockwave {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 40px;
+    height: 40px;
+    margin: auto;
+    border-radius: 50%;
+    border: 2px solid var(--highlight);
+    pointer-events: none;
+    z-index: var(--z-sticky, 1100);
+    animation: like-shockwave 580ms var(--ease-out-back) forwards;
+}
+
+@keyframes like-burst-flip-add {
+    0% {
+        transform: rotateX(0deg) rotateY(0deg) scale(1);
+    }
+
+    100% {
+        transform: rotateX(900deg) rotateY(-210deg) scale(0.85);
+    }
+}
+
+@keyframes like-burst-flip-remove {
+    0% {
+        transform: rotateX(90deg) rotateY(180deg) scale(1);
+    }
+
+    100% {
+        transform: rotateX(0deg) rotateY(0deg) scale(0.8);
+    }
+}
+
+.like-burst-add {
+    animation: like-burst-flip-add 380ms var(--ease-in-out) forwards;
+}
+
+.like-burst-remove {
+    animation: like-burst-flip-remove 340ms var(--ease-in-out) forwards;
+}
+
+.like-burst-wrap {
+    transform-style: preserve-3d;
+}
+
+/* --- Like celebration effects (cards, playlists, now-playing) --- */
+
+@keyframes like-confetti {
+    0% {
+        transform: translate(-50%, 0) rotate(0deg);
+        opacity: 0.95;
+    }
+
+    40% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(calc(var(--confetti-dx) * var(--confetti-idx)), calc(var(--confetti-dy) * var(--confetti-idx))) rotate(calc(var(--confetti-rot) * 2));
+        opacity: 0;
+    }
+}
+
+.like-confetti {
+    position: fixed;
+    top: 0;
+    left: 0;
+    will-change: transform, opacity;
+    transform: translateX(-50%) rotate(var(--confetti-rot));
+    pointer-events: none;
+    z-index: var(--z-sticky, 1100);
+    animation: like-confetti 640ms var(--ease-out-back) forwards;
+}
+
+@keyframes like-shockwave {
+    0% {
+        transform: scale(0);
+        opacity: 0.64;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 0;
+    }
+}
+
+.like-shockwave {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 40px;
+    height: 40px;
+    margin: auto;
+    border-radius: 50%;
+    border: 2px solid var(--highlight);
+    pointer-events: none;
+    z-index: var(--z-sticky, 1100);
+    animation: like-shockwave 580ms var(--ease-out-back) forwards;
+}
+
 @keyframes heart-beat {
     0% {
         transform: scale(1);
@@ -2941,103 +3085,6 @@ input[type='search']::-webkit-search-cancel-button {
     100% {
         transform: scale(1);
     }
-}
-
-/* ---- Like button celebration ---- */
-/* Emitted by js/like-burst.js; all trajectories use CSS vars so a single
-     keyframe handles any particle direction/rotation/size/duration. */
-
-@keyframes like-fling {
-    0% {
-        transform: translate(-50%, -50%) rotate(0deg) scale(0.4);
-        opacity: 0.95;
-    }
-
-    20% {
-        opacity: 1;
-    }
-
-    100% {
-        transform: translate(calc(var(--cf-dx) * 1px), calc(var(--cf-dy) * 1px)) rotate(var(--cf-rot) 1turn) scale(var(--cf-spread, 0.6));
-        opacity: 0;
-    }
-}
-
-.like-particle {
-    position: fixed;
-    left: 50%;
-    top: 50%;
-    will-change: transform, opacity;
-    pointer-events: none;
-    border-radius: 9999px;
-    background: var(--cf-color, var(--highlight));
-    box-shadow: 0 0 6px var(--cf-color, var(--highlight));
-}
-
-@keyframes like-ring {
-    0% {
-        transform: translate(-50%, -50%) scale(0.2);
-        opacity: 0.75;
-    }
-
-    100% {
-        transform: translate(-50%, -50%) scale(var(--ring-spread, 1.4));
-        opacity: 0;
-    }
-}
-
-.like-ring {
-    position: fixed;
-    left: 50%;
-    top: 50%;
-    border-radius: 9999px;
-    border: 2px solid var(--ring-color, var(--highlight));
-    box-shadow: 0 0 16px var(--ring-color, var(--highlight) / 0.6);
-    pointer-events: none;
-    will-change: transform, opacity;
-}
-
-@keyframes like-flip-to-like {
-    0% {
-        transform: rotateX(0) scale(1);
-    }
-
-    50% {
-        transform: rotateX(-90deg) scale(0.85);
-    }
-
-    100% {
-        transform: rotateX(0) scale(1);
-    }
-}
-
-@keyframes like-flip-to-add {
-    0% {
-        transform: rotateX(0) scale(1);
-    }
-
-    50% {
-        transform: rotateX(90deg) scale(0.85);
-    }
-
-    100% {
-        transform: rotateX(0) scale(1);
-    }
-}
-
-.like-flip {
-    transform-style: preserve-3d;
-    backface-visibility: hidden;
-    transition: transform var(--flair-dur, 320ms) var(--flair-ease, var(--ease-out-back));
-}
-
-/* Flip used by .filled/.added state toggles to reveal the fill animation. */
-.like-flip-like {
-    animation: like-flip-to-like var(--flair-dur, 320ms) var(--flair-ease, var(--ease-out-back)) both;
-}
-
-.like-flip-add {
-    animation: like-flip-to-add var(--flair-dur, 320ms) var(--flair-ease, var(--ease-out-back)) both;
 }
 
 @keyframes skeleton-loading {
@@ -3861,8 +3908,6 @@ body.multi-select-mode .track-item:hover {
 
 .track-save-btn {
     color: #a8a8a8;
-    position: relative;
-    isolation: isolate;
 }
 
 .track-save-btn .track-save-icon {
@@ -3870,37 +3915,10 @@ body.multi-select-mode .track-item:hover {
     height: 20px;
     overflow: visible;
     color: inherit;
-    display: block;
     transition:
         color 180ms ease,
         filter 220ms ease,
         transform 260ms var(--ease-elastic);
-}
-
-/* Circle + symbol base – transform origin for fill/unfill morph */
-.track-save-btn .track-save-circle,
-.track-save-btn .track-save-symbol {
-    transform-box: fill-box;
-    transform-origin: 50% 50%;
-    will-change: transform, opacity;
-}
-
-.track-save-btn .track-save-circle--filled {
-    fill: currentcolor;
-}
-
-.track-save-btn .track-save-circle--outline {
-    fill: none;
-    stroke: currentcolor;
-}
-
-/* Check uses primary-foreground so it contrasts on the highlight fill for every theme */
-.track-save-btn .track-save-symbol--check {
-    stroke: var(--primary-foreground, #fff);
-}
-
-.track-save-btn .track-save-symbol--plus {
-    stroke: currentcolor;
 }
 
 .track-save-btn:hover,
@@ -3917,179 +3935,6 @@ body.multi-select-mode .track-item:hover {
 
 .track-save-btn.track-save-transition .track-save-icon {
     animation: track-save-pop 440ms var(--ease-elastic);
-}
-
-/* ---- Minimalist fill / unfill + SVG check/plus draw ---- */
-.track-save-btn.track-save-animate-in .track-save-circle--filled {
-    animation: track-save-circle-fill-in 420ms var(--ease-out-back) both;
-}
-
-.track-save-btn.track-save-animate-in .track-save-symbol--check {
-    stroke-dasharray: 1;
-    stroke-dashoffset: 1;
-    animation: track-save-check-draw 380ms cubic-bezier(0.22, 1, 0.36, 1) 85ms both;
-}
-
-.track-save-btn.track-save-animate-out .track-save-circle--outline {
-    animation: track-save-circle-fill-out 360ms var(--ease-out-back) both;
-}
-
-.track-save-btn.track-save-animate-out .track-save-symbol--plus {
-    stroke-dasharray: 1;
-    stroke-dashoffset: 1;
-    animation: track-save-plus-draw 340ms cubic-bezier(0.22, 1, 0.36, 1) 70ms both;
-}
-
-@keyframes track-save-circle-fill-in {
-    0% {
-        transform: scale(0.28);
-        opacity: 0;
-    }
-
-    55% {
-        transform: scale(1.12);
-        opacity: 1;
-    }
-
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-@keyframes track-save-circle-fill-out {
-    0% {
-        transform: scale(0.32);
-        opacity: 0;
-    }
-
-    60% {
-        transform: scale(1.06);
-        opacity: 1;
-    }
-
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-@keyframes track-save-check-draw {
-    0% {
-        stroke-dashoffset: 1;
-        opacity: 0;
-        transform: scale(0.72) rotate(-10deg);
-    }
-
-    45% {
-        opacity: 1;
-    }
-
-    100% {
-        stroke-dashoffset: 0;
-        opacity: 1;
-        transform: scale(1) rotate(0);
-    }
-}
-
-@keyframes track-save-plus-draw {
-    0% {
-        stroke-dashoffset: 1;
-        opacity: 0;
-        transform: scale(0.72) rotate(22deg);
-    }
-
-    50% {
-        opacity: 1;
-    }
-
-    100% {
-        stroke-dashoffset: 0;
-        opacity: 1;
-        transform: scale(1) rotate(0);
-    }
-}
-
-/* ---- Shockwave ring (theme colour, minimalist) ---- */
-.track-save-shockwave {
-    position: fixed;
-    border-radius: 50%;
-    border: 1.5px solid var(--highlight);
-    pointer-events: none;
-    opacity: 0;
-    will-change: transform, opacity;
-    animation: track-save-shockwave 540ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes track-save-shockwave {
-    0% {
-        transform: scale(0.38);
-        opacity: 0.5;
-        box-shadow: 0 0 10px rgb(var(--highlight-rgb) / 0.22);
-    }
-
-    100% {
-        transform: scale(1);
-        opacity: 0;
-        box-shadow: 0 0 0 rgb(var(--highlight-rgb) / 0);
-    }
-}
-
-/* ---- Tiny circle confettis above the button (only on like/add) ---- */
-.track-save-confetti-layer {
-    position: fixed;
-    width: 0;
-    height: 0;
-    pointer-events: none;
-    overflow: visible;
-    z-index: 9999;
-}
-
-.track-save-confetti {
-    position: absolute;
-    left: 0;
-    top: 0;
-    border-radius: 50%;
-    background: var(--highlight);
-    box-shadow: 0 0 6px rgb(var(--highlight-rgb) / 0.45);
-    opacity: 0;
-    will-change: transform, opacity;
-    transform: translate(-50%, 0) scale(0.2);
-    animation: track-save-confetti-burst var(--dur, 620ms) cubic-bezier(0.22, 1, 0.36, 1) var(--delay, 0ms) both;
-}
-
-@keyframes track-save-confetti-burst {
-    0% {
-        opacity: 0;
-        transform: translate(-50%, 0) scale(0.22) rotate(0deg);
-    }
-
-    18% {
-        opacity: 1;
-        transform: translate(-50%, -2px) scale(1) rotate(calc(var(--rot) * 0.25));
-    }
-
-    100% {
-        opacity: 0;
-        transform: translate(calc(-50% + var(--tx)), var(--ty)) scale(0.88) rotate(var(--rot));
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .track-save-btn .track-save-symbol--check,
-    .track-save-btn .track-save-symbol--plus {
-        stroke-dasharray: none !important;
-        stroke-dashoffset: 0 !important;
-    }
-
-    .track-save-btn.track-save-animate-in .track-save-circle--filled,
-    .track-save-btn.track-save-animate-in .track-save-symbol--check,
-    .track-save-btn.track-save-animate-out .track-save-circle--outline,
-    .track-save-btn.track-save-animate-out .track-save-symbol--plus,
-    .track-save-shockwave,
-    .track-save-confetti {
-        animation: none !important;
-    }
 }
 
 /* stylelint-disable no-descending-specificity -- save controls keep their interaction states colocated */
@@ -4140,6 +3985,133 @@ body.multi-select-mode .track-item:hover {
     100% {
         opacity: 1;
         transform: scale(1) rotate(0);
+    }
+}
+
+/* Queue Add Animation — Spotify mobile style: track slides right revealing theme-colored bg with queue→check morph, then slides back */
+.track-item.queue-animating {
+    --queue-reveal: 72px;
+
+    position: relative !important;
+    overflow: hidden !important;
+    display: block !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    background: transparent !important;
+    border-color: transparent !important;
+    transform: none !important;
+}
+
+@media (max-width: 768px) {
+    .track-item.queue-animating {
+        --queue-reveal: 64px;
+    }
+}
+
+@media (max-width: 480px) {
+    .track-item.queue-animating {
+        --queue-reveal: 58px;
+    }
+}
+
+.track-item.queue-animating:hover {
+    background-color: transparent !important;
+    transform: none !important;
+}
+
+.track-queue-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding-left: calc((var(--queue-reveal) - 36px) / 2);
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background: var(--highlight);
+    color: var(--primary-foreground);
+}
+
+.track-queue-bg__icon-wrap {
+    position: relative;
+    display: flex;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+}
+
+.track-queue-bg__icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    will-change: transform, opacity;
+    transition:
+        opacity 300ms cubic-bezier(0.22, 1, 0.36, 1),
+        transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.track-queue-bg__icon svg {
+    width: 22px;
+    height: 22px;
+}
+
+.track-queue-bg__icon--queue {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+}
+
+.track-queue-bg__icon--check {
+    opacity: 0;
+    transform: scale(0.42) rotate(-28deg);
+    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.12));
+}
+
+.track-item.queue-animating.is-morphed .track-queue-bg__icon--queue {
+    opacity: 0;
+    transform: scale(0.42) rotate(28deg);
+}
+
+.track-item.queue-animating.is-morphed .track-queue-bg__icon--check {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+}
+
+.track-queue-foreground {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    width: 100%;
+    box-sizing: border-box;
+    align-items: center;
+    padding: var(--spacing-sm) var(--spacing-md);
+    gap: var(--spacing-md);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: var(--background);
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.track-item.queue-animating.playing .track-queue-foreground {
+    border-left: 3px solid var(--highlight);
+    padding-left: calc(var(--spacing-sm) - 3px);
+    background-color: rgb(var(--highlight-rgb), 0.15);
+}
+
+.track-item.queue-animating.is-slid .track-queue-foreground {
+    transform: translate3d(var(--queue-reveal), 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .track-queue-foreground,
+    .track-queue-bg__icon {
+        transition: none !important;
     }
 }
 
@@ -8291,117 +8263,6 @@ input:checked + .slider::before {
     background-color: rgb(var(--highlight-rgb), 0.15);
     border-left: 3px solid var(--highlight);
     padding-left: calc(var(--spacing-sm) - 3px);
-}
-
-/* Queue hierarchy: give the live track a home of its own, then let the
-   remaining queue read as a quieter, draggable list. */
-.queue-content-shell {
-    display: grid;
-    gap: 1.4rem;
-    padding: 0.8rem 0.5rem 1.2rem;
-}
-
-.queue-now-playing,
-.queue-up-next {
-    display: grid;
-    gap: 0.55rem;
-}
-
-.queue-section-heading {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    padding: 0 0.2rem;
-}
-
-.queue-section-heading h3 {
-    margin: 0;
-    color: var(--foreground);
-    font-size: 0.68rem;
-    font-weight: 750;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.queue-section-heading span {
-    color: var(--muted-foreground);
-    font-size: 0.7rem;
-}
-
-.queue-now-playing {
-    padding-bottom: 1.1rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-}
-
-.queue-track-item-featured {
-    grid-template-columns: 32px minmax(0, 1fr) auto auto auto;
-    min-height: 74px;
-    padding: 0.6rem;
-    border: 1px solid color-mix(in srgb, var(--foreground) 16%, var(--border));
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--card) 72%, var(--highlight) 8%);
-    box-shadow: 0 12px 28px rgb(0 0 0 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.06);
-    cursor: pointer;
-    animation: queue-featured-arrive 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.queue-track-item-featured .track-item-cover {
-    width: 56px;
-    height: 56px;
-    border-radius: 8px;
-}
-
-.queue-track-item-featured .track-item-info {
-    gap: 0.7rem;
-}
-
-.queue-track-item-featured .track-item-details .title {
-    font-size: 0.94rem;
-    font-weight: 720;
-}
-
-.queue-track-item-featured .track-item-details .artist {
-    margin-top: 0.25rem;
-}
-
-.queue-track-item-featured .drag-handle {
-    color: var(--highlight);
-}
-
-.queue-track-item-featured:hover,
-.queue-track-item-featured:focus-within {
-    background: color-mix(in srgb, var(--card) 64%, var(--highlight) 12%);
-    transform: translateY(-1px);
-}
-
-.queue-track-item-featured .queue-remove-btn,
-.queue-track-item-featured .queue-like-btn {
-    opacity: 0.75;
-}
-
-.queue-empty-state {
-    margin: 0;
-    padding: 0.8rem 0.2rem;
-    color: var(--muted-foreground);
-    font-size: 0.82rem;
-}
-
-@keyframes queue-featured-arrive {
-    from {
-        opacity: 0;
-        transform: translateY(8px) scale(0.985);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .queue-track-item-featured {
-        animation: none;
-    }
 }
 
 .queue-track-item .drag-handle {

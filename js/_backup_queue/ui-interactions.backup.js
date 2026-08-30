@@ -245,7 +245,7 @@ export function initializeUIInteractions(player, api, ui) {
         }
     };
 
-    const renderQueueItemHTML = (track, index, { featured = false } = {}) => {
+    const renderQueueItemHTML = (track, index) => {
         const isPlaying = index === player.currentQueueIndex;
         const isBlocked = contentBlockingSettings?.shouldHideTrack(track);
         const trackTitle = getTrackTitle(track);
@@ -260,7 +260,7 @@ export function initializeUIInteractions(player, api, ui) {
             isVideo && track.imageId ? api.getVideoCoverUrl(track.imageId) : api.getCoverUrl(track.album?.cover);
 
         return `
-        <div class="queue-track-item ${isPlaying ? 'playing' : ''} ${featured ? 'queue-track-item-featured' : ''} ${isBlocked ? 'blocked' : ''}" data-queue-index="${index}" data-track-id="${track.id}" draggable="${isBlocked ? 'false' : 'true'}" ${blockedTitle}>
+        <div class="queue-track-item ${isPlaying ? 'playing' : ''} ${isBlocked ? 'blocked' : ''}" data-queue-index="${index}" data-track-id="${track.id}" draggable="${isBlocked ? 'false' : 'true'}" ${blockedTitle}>
             <div class="drag-handle">
                 ${SVG_EQUAL(16)}
             </div>
@@ -446,21 +446,7 @@ export function initializeUIInteractions(player, api, ui) {
             topObserver.observe(container.querySelector('#queue-top-sentinel'));
             bottomObserver.observe(container.querySelector('#queue-bottom-sentinel'));
         } else {
-            const currentIndex = player.currentQueueIndex;
-            const currentTrack = currentQueue[currentIndex];
-            const queuedTracks = currentQueue
-                .map((track, index) => ({ track, index }))
-                .filter(({ index }) => index !== currentIndex);
-            container.innerHTML = `<div class="queue-content-shell">
-                ${currentTrack ? `<section class="queue-now-playing" aria-labelledby="queue-now-playing-title">
-                    <div class="queue-section-heading"><h3 id="queue-now-playing-title">Now playing</h3><span>Live</span></div>
-                    ${renderQueueItemHTML(currentTrack, currentIndex, { featured: true })}
-                </section>` : ''}
-                <section class="queue-up-next" aria-labelledby="queue-up-next-title">
-                    <div class="queue-section-heading"><h3 id="queue-up-next-title">Up next</h3><span>${queuedTracks.length}</span></div>
-                    <div class="queue-items-wrapper">${queuedTracks.length ? queuedTracks.map(({ track, index }) => renderQueueItemHTML(track, index)).join('') : '<p class="queue-empty-state">Nothing queued yet.</p>'}</div>
-                </section>
-            </div>`;
+            container.innerHTML = `<div style="padding: 0.5rem">${currentQueue.map((track, index) => renderQueueItemHTML(track, index)).join('')}</div>`;
             if (topObserver) topObserver.disconnect();
             if (bottomObserver) bottomObserver.disconnect();
         }
@@ -483,6 +469,10 @@ export function initializeUIInteractions(player, api, ui) {
     };
 
     const openQueuePanel = () => {
+        if (window.nowPlayingPanel?.openQueue) {
+            window.nowPlayingPanel.openQueue();
+            return;
+        }
         sidePanelManager.open('queue', 'Queue', renderQueueControls, renderQueueContent);
 
         setTimeout(() => {

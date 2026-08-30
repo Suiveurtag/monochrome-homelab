@@ -24,7 +24,8 @@ describe('track save button', () => {
 
         expect(button.classList.contains('active')).toBe(false);
         expect(button.getAttribute('aria-pressed')).toBe('false');
-        expect(button.innerHTML).toContain('M11.75 8');
+        expect(button.innerHTML).toContain('track-save-symbol--plus');
+        expect(button.innerHTML).toContain('track-save-circle--outline');
         expect(button.title).toContain('Add to Liked Songs');
     });
 
@@ -38,7 +39,8 @@ describe('track save button', () => {
         expect(button.classList.contains('active')).toBe(true);
         expect(button.dataset.playlistCount).toBe('1');
         expect(button.getAttribute('aria-pressed')).toBe('false');
-        expect(button.innerHTML).toContain('m11.748-1.97');
+        expect(button.innerHTML).toContain('track-save-symbol--check');
+        expect(button.innerHTML).toContain('track-save-circle--filled');
         expect(button.title).toContain('Saved in a playlist');
     });
 
