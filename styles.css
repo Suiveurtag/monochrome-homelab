@@ -3868,8 +3868,8 @@ body.multi-select-mode .track-item:hover {
 }
 
 .track-save-btn .track-save-icon {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     overflow: visible;
     color: inherit;
     display: block;
@@ -3929,7 +3929,7 @@ body.multi-select-mode .track-item:hover {
 .track-save-btn.track-save-animate-in .track-save-symbol--check {
     stroke-dasharray: 1;
     stroke-dashoffset: 1;
-    animation: track-save-check-draw 380ms cubic-bezier(0.22, 1, 0.36, 1) 85ms both;
+    animation: track-save-check-draw 380ms cubic-bezier(0.22, 1, 0.36, 1) 150ms both;
 }
 
 .track-save-btn.track-save-animate-out .track-save-circle--outline {
@@ -4012,28 +4012,31 @@ body.multi-select-mode .track-item:hover {
     }
 }
 
-/* ---- Shockwave ring (theme colour, minimalist) ---- */
+/* ---- Shockwave hollow ring (theme colour, minimalist) ---- */
 .track-save-shockwave {
     position: fixed;
     border-radius: 50%;
-    border: 1.5px solid var(--highlight);
+    border: 1.2px solid rgb(var(--highlight-rgb) / 0.92);
+    background: transparent;
     pointer-events: none;
     opacity: 0;
     will-change: transform, opacity;
-    animation: track-save-shockwave 540ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: track-save-shockwave 640ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes track-save-shockwave {
     0% {
-        transform: scale(0.38);
-        opacity: 0.5;
-        box-shadow: 0 0 10px rgb(var(--highlight-rgb) / 0.22);
+        transform: scale(0.32);
+        opacity: 0.62;
+    }
+
+    35% {
+        opacity: 0.38;
     }
 
     100% {
         transform: scale(1);
         opacity: 0;
-        box-shadow: 0 0 0 rgb(var(--highlight-rgb) / 0);
     }
 }
 
