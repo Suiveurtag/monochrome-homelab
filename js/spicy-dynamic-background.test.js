@@ -95,6 +95,20 @@ describe('Spicy dynamic background', () => {
         expect(kawarpInstances[0].start).toHaveBeenCalledTimes(2);
     });
 
+    test('renders a newly loaded frame while the panel is collapsed', async () => {
+        const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const controller = mountSpicyDynamicBackground(host);
+        controller.setActive(false);
+
+        await controller.setSource('/covers/collapsed-track.jpg');
+
+        expect(kawarpInstances[0].renderFrame).toHaveBeenCalledOnce();
+        expect(controller.root.classList.contains('has-kawarp-background')).toBe(true);
+        controller.dispose();
+    });
+
     test('redraws a paused Kawarp frame after its panel is resized', async () => {
         const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
         const host = document.createElement('div');

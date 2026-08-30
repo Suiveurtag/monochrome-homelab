@@ -56,6 +56,7 @@ import { authManager } from './accounts/auth.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { containerFormats, customFormats } from './ffmpegFormats.ts';
 import { BulkDownloadMethod, modernSettings } from './ModernSettings.js';
+import { canvasSettings } from './canvas-settings.js';
 
 async function getButterchurnPresets(...args) {
     const butterchurnModule = await import('./visualizers/butterchurn.js');
@@ -94,6 +95,13 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         playerMagicRingsToggle.checked = playerBarEffectsSettings.areMagicRingsEnabled();
         playerMagicRingsToggle.addEventListener('change', (event) => {
             playerBarEffectsSettings.setMagicRingsEnabled(event.target.checked);
+        });
+    }
+    const canvasCoverOverlayToggle = document.getElementById('canvas-cover-overlay-toggle');
+    if (canvasCoverOverlayToggle) {
+        canvasCoverOverlayToggle.checked = canvasSettings.isCoverOverlayEnabled();
+        canvasCoverOverlayToggle.addEventListener('change', (event) => {
+            canvasSettings.setCoverOverlayEnabled(event.target.checked);
         });
     }
     initializePlayerLayoutEditor();

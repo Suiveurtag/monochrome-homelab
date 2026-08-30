@@ -25,6 +25,7 @@ import ICON_CLOSE from '!lucide/x.svg?svg&icon';
 const DESKTOP_PANEL_QUERY = '(min-width: 769px)';
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 const CANVAS_LOAD_TIMEOUT = 20000;
+const CANVAS_LOAD_RETRY_LIMIT = 2;
 const CANVAS_RETRY_DELAY = 240;
 const TRACK_FADE_OUT_DURATION = 180;
 const MISSING_BIOGRAPHY = 'No biography is available for this artist yet.';
@@ -67,7 +68,10 @@ export class NowPlayingPanel {
         this.content = this.root?.querySelector('.now-playing-panel-scroll');
         this.reopenButton = document.getElementById('now-playing-panel-reopen');
         this.resizer = this.root?.querySelector('.now-playing-panel-resizer');
+        this.scrollbar = this.root?.querySelector('.now-playing-panel-scrollbar');
+        this.scrollbarThumb = this.root?.querySelector('.now-playing-panel-scrollbar-thumb');
         this.sourceContext = normalizeSourceContext(player?.sourceContext);
+        this.queueRenderSignature = this.getQueueRenderSignature();
         this.currentTrack = player?.currentTrack || null;
         this.model = null;
         this.renderController = null;
@@ -75,6 +79,7 @@ export class NowPlayingPanel {
         this.collapsedLyrics = false;
         this.canvasExpanded = false;
         this.canvasEnabled = canvasSettings.isEnabled();
+        this.canvasCoverOverlayEnabled = canvasSettings.isCoverOverlayEnabled();
         this.scrollByTrack = new Map();
         this.background = this.root
             ? mountSpicyDynamicBackground(this.root, { className: 'now-playing-panel-spicy-bg' })
@@ -89,17 +94,32 @@ export class NowPlayingPanel {
         this.canvasStage = null;
         this.canvasVisibilityObserver = null;
         this.canvasLoadTimer = null;
+        this.canvasLoadRetryCount = 0;
         this.canvasRetryTimer = null;
         this.canvasRetryCount = 0;
         this.canvasPlaybackElement = null;
+        this.scrollResizeObserver = null;
         this.reducedMotionMedia = matchMedia(REDUCED_MOTION_QUERY);
         this.background?.connectPlayback?.({
             getElement: () => this.player?.activeElement,
             getAnalyser: () => audioContextManager.getAnalyser(),
         });
         this.boundTrackChanged = (event) => {
-            this.currentTrack = event.detail?.track || null;
+            const nextTrack = event.detail?.track || null;
+            const sameTrack =
+                nextTrack?.id != null &&
+                this.currentTrack?.id != null &&
+                String(nextTrack.id) === String(this.currentTrack.id);
+            this.currentTrack = nextTrack;
+            if (sameTrack) {
+                this.syncPlaybackElement();
+                this.syncCanvasPlayback();
+                return;
+            }
+            this.queueRenderSignature = this.getQueueRenderSignature();
             this.canvasExpanded = false;
+            const coverId = getTrackPlayerArtwork(nextTrack);
+            if (coverId) this.background?.setFallbackSource?.(this.api.getCoverUrl(coverId));
             void this.render();
         };
         this.boundCanvasChanged = (event) => {
@@ -108,7 +128,13 @@ export class NowPlayingPanel {
             void this.render({ preserveScroll: true });
         };
         this.boundQueueChanged = (event) => {
-            this.sourceContext = normalizeSourceContext(event.detail?.sourceContext || this.player?.sourceContext);
+            const nextSourceContext = normalizeSourceContext(
+                event.detail?.sourceContext || this.player?.sourceContext
+            );
+            const nextSignature = this.getQueueRenderSignature(event.detail, nextSourceContext);
+            if (nextSignature === this.queueRenderSignature) return;
+            this.queueRenderSignature = nextSignature;
+            this.sourceContext = nextSourceContext;
             void this.render({ preserveScroll: true });
         };
         this.boundMetadataChanged = (event) => {
@@ -137,6 +163,7 @@ export class NowPlayingPanel {
             if (this.currentTrack?.id != null)
                 this.scrollByTrack.set(String(this.currentTrack.id), this.content.scrollTop);
             this.root.classList.toggle('is-scrolled', this.content.scrollTop > 8);
+            this.updateScrollbar();
         };
         this.boundVisibilityChanged = () => this.syncPanelActivity();
         this.boundReducedMotionChanged = () => void this.render({ preserveScroll: true });
@@ -162,6 +189,10 @@ export class NowPlayingPanel {
             this.canvasExpanded = false;
             void this.render({ preserveScroll: true });
         };
+        this.boundCanvasCoverOverlayPreferenceChanged = (event) => {
+            this.canvasCoverOverlayEnabled = event.detail?.enabled ?? canvasSettings.isCoverOverlayEnabled();
+            void this.render({ preserveScroll: true });
+        };
         this.init();
     }
 
@@ -174,6 +205,10 @@ export class NowPlayingPanel {
         this.root.addEventListener('keydown', (event) => this.handleKeydown(event));
         this.reopenButton?.addEventListener('click', () => this.setOpen(true));
         this.content.addEventListener('scroll', this.boundPanelScroll, { passive: true });
+        if (typeof ResizeObserver !== 'undefined') {
+            this.scrollResizeObserver = new ResizeObserver(() => this.updateScrollbar());
+            this.scrollResizeObserver.observe(this.content);
+        }
         this.setupResize();
         this.setupFullscreenVisibility();
         this.desktopMedia.addEventListener?.('change', this.boundDesktopViewportChanged);
@@ -182,6 +217,7 @@ export class NowPlayingPanel {
         window.addEventListener('player-track-changed', this.boundTrackChanged);
         window.addEventListener('player-canvas-changed', this.boundCanvasChanged);
         window.addEventListener('canvas-playback-preference-changed', this.boundCanvasPreferenceChanged);
+        window.addEventListener('canvas-cover-overlay-preference-changed', this.boundCanvasCoverOverlayPreferenceChanged);
         window.addEventListener('player-queue-changed', this.boundQueueChanged);
         window.addEventListener('track-metadata-updated', this.boundMetadataChanged);
         window.addEventListener('artist-metadata-updated', this.boundMetadataChanged);
@@ -293,6 +329,32 @@ export class NowPlayingPanel {
         });
     }
 
+    getQueueRenderSignature(detail = {}, sourceContext = this.sourceContext) {
+        const queue = detail.queue || this.player?.getCurrentQueue?.() || [];
+        const currentIndex = Number(detail.currentIndex ?? this.player?.currentQueueIndex ?? -1);
+        const nextTrack = queue[currentIndex + 1] || null;
+        return JSON.stringify({
+            currentIndex,
+            nextTrackId: nextTrack?.id == null ? null : String(nextTrack.id),
+            sourceLabel: sourceContext?.label || '',
+            sourceHref: sourceContext?.href || '',
+        });
+    }
+
+    updateScrollbar() {
+        if (!this.scrollbar || !this.scrollbarThumb || !this.content) return;
+        const trackHeight = this.scrollbar.clientHeight;
+        const maxScroll = Math.max(0, this.content.scrollHeight - this.content.clientHeight);
+        const hasOverflow = maxScroll > 1 && trackHeight > 0;
+        this.scrollbar.classList.toggle('has-overflow', hasOverflow);
+        if (!hasOverflow) return;
+        const thumbHeight = Math.max(34, (this.content.clientHeight / this.content.scrollHeight) * trackHeight);
+        const travel = Math.max(0, trackHeight - thumbHeight);
+        const top = maxScroll > 0 ? (this.content.scrollTop / maxScroll) * travel : 0;
+        this.scrollbarThumb.style.height = `${thumbHeight}px`;
+        this.scrollbarThumb.style.transform = `translateY(${top}px)`;
+    }
+
     async render({ preserveScroll = false } = {}) {
         if (!this.root || !this.content) return;
         this.renderController?.abort();
@@ -327,6 +389,7 @@ export class NowPlayingPanel {
             clearLyricsContainerSync(this.content);
             this.content.innerHTML = this.renderMarkup(model);
             this.content.scrollTop = previousScroll;
+            this.updateScrollbar();
             await this.mountMedia(model, controller.signal);
             await this.mountLyrics(model, controller.signal);
             this.applyLyricsMode();
@@ -367,7 +430,7 @@ export class NowPlayingPanel {
                     <button type="button" class="now-playing-panel-icon now-playing-panel-fullscreen" aria-label="Open fullscreen player">${icon('maximize-2')}</button>
                 </div>
             </header>
-            <div class="now-playing-panel-body${canvasLayout ? ' has-video-artwork' : ''}${this.canvasExpanded ? ' is-canvas-expanded' : ''}${model.empty ? ' is-empty' : ''}">
+            <div class="now-playing-panel-body${canvasLayout ? ' has-video-artwork' : ''}${canvasLayout && !this.canvasCoverOverlayEnabled ? ' is-canvas-cover-overlay-disabled' : ''}${this.canvasExpanded ? ' is-canvas-expanded' : ''}${model.empty ? ' is-empty' : ''}">
                 <div class="now-playing-panel-media-row">
                     <${canvasLayout ? `button type="button" data-canvas-toggle aria-expanded="${String(this.canvasExpanded)}"` : 'div'} class="now-playing-panel-media" aria-label="${escapeHtml(canvasLayout ? `${this.canvasExpanded ? 'Collapse' : 'Expand'} ${model.title} Canvas artwork` : `${model.title} artwork`)}">
                         <img class="now-playing-panel-poster" src="${escapeHtml(model.artwork.staticSrc)}" alt="" fetchpriority="high" />
@@ -547,6 +610,7 @@ export class NowPlayingPanel {
                     return;
                 window.clearTimeout(this.canvasLoadTimer);
                 this.canvasLoadTimer = null;
+                this.canvasLoadRetryCount = 0;
                 video.dataset.canvasReady = 'true';
                 this.syncCanvasPlayback();
             });
@@ -575,7 +639,7 @@ export class NowPlayingPanel {
             this.canvasVisibilityObserver.observe(stage);
         }
 
-        this.canvasLoadTimer = window.setTimeout(fail, CANVAS_LOAD_TIMEOUT);
+        this.armCanvasLoadTimeout(video);
         if (isHls && this.ui?.setupHlsVideo) {
             await this.ui.setupHlsVideo(video, { hlsUrl: model.artwork.animatedSrc }, poster);
         } else if (isVideoArtwork(model.artwork.animatedSrc)) {
@@ -584,11 +648,26 @@ export class NowPlayingPanel {
         this.syncCanvasPlayback();
     }
 
+    armCanvasLoadTimeout(video) {
+        window.clearTimeout(this.canvasLoadTimer);
+        this.canvasLoadTimer = window.setTimeout(() => {
+            if (video !== this.canvasMedia || video.dataset.canvasReady === 'true') return;
+            if (this.canvasLoadRetryCount < CANVAS_LOAD_RETRY_LIMIT) {
+                this.canvasLoadRetryCount += 1;
+                video.load?.();
+                this.armCanvasLoadTimeout(video);
+                return;
+            }
+            this.failCanvasMedia(video);
+        }, CANVAS_LOAD_TIMEOUT);
+    }
+
     failCanvasMedia(video = this.canvasMedia) {
         if (!video || video !== this.canvasMedia) return;
         const failedStage = this.canvasStage;
         window.clearTimeout(this.canvasLoadTimer);
         this.canvasLoadTimer = null;
+        this.canvasLoadRetryCount = 0;
         window.clearTimeout(this.canvasRetryTimer);
         this.canvasRetryTimer = null;
         this.canvasRetryCount = 0;
@@ -641,6 +720,7 @@ export class NowPlayingPanel {
     cleanupMedia() {
         window.clearTimeout(this.canvasLoadTimer);
         this.canvasLoadTimer = null;
+        this.canvasLoadRetryCount = 0;
         window.clearTimeout(this.canvasRetryTimer);
         this.canvasRetryTimer = null;
         this.canvasVisibilityObserver?.disconnect();
@@ -844,12 +924,15 @@ export class NowPlayingPanel {
         this.canvasPlaybackElement?.removeEventListener('pause', this.boundPlaybackChanged);
         this.canvasPlaybackElement = null;
         this.content?.removeEventListener('scroll', this.boundPanelScroll);
+        this.scrollResizeObserver?.disconnect();
+        this.scrollResizeObserver = null;
         this.desktopMedia.removeEventListener?.('change', this.boundDesktopViewportChanged);
         this.reducedMotionMedia.removeEventListener?.('change', this.boundReducedMotionChanged);
         document.removeEventListener('visibilitychange', this.boundVisibilityChanged);
         window.removeEventListener('player-track-changed', this.boundTrackChanged);
         window.removeEventListener('player-canvas-changed', this.boundCanvasChanged);
         window.removeEventListener('canvas-playback-preference-changed', this.boundCanvasPreferenceChanged);
+        window.removeEventListener('canvas-cover-overlay-preference-changed', this.boundCanvasCoverOverlayPreferenceChanged);
         window.removeEventListener('player-queue-changed', this.boundQueueChanged);
         window.removeEventListener('track-metadata-updated', this.boundMetadataChanged);
         window.removeEventListener('artist-metadata-updated', this.boundMetadataChanged);

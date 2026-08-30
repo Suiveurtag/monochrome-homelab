@@ -225,6 +225,7 @@ export class SpicyDynamicBackground {
                     await this.kawarp.loadImage(nextSource);
                     if (this.disposed || generation !== this.generation) return false;
                     if (this.active) this.kawarp.start();
+                    else this.kawarp.renderFrame?.();
                     this.syncMotion(true);
                     this.root.classList.add('has-kawarp-background');
                     window.clearTimeout(this.transitionTimer);

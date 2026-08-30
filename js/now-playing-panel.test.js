@@ -49,6 +49,7 @@ function shell() {
         <div id="fullscreen-cover-overlay" style="display: none"></div>
         <aside id="now-playing-panel" class="now-playing-panel" data-spicy-background-host>
             <div class="now-playing-panel-resizer"></div><div class="now-playing-panel-scroll"></div>
+            <div class="now-playing-panel-scrollbar"><span class="now-playing-panel-scrollbar-thumb"></span></div>
         </aside>
         <button id="now-playing-panel-reopen"></button><button id="queue-btn"></button>`;
 }
@@ -286,7 +287,11 @@ describe('Now Playing panel interactions', () => {
 
         const play = vi.spyOn(canvas, 'play').mockResolvedValue();
         const replacementAudio = document.createElement('audio');
-        Object.defineProperty(replacementAudio, 'paused', { configurable: true, get: () => false });
+        let replacementAudioPaused = false;
+        Object.defineProperty(replacementAudio, 'paused', {
+            configurable: true,
+            get: () => replacementAudioPaused,
+        });
         deps.player.activeElement = replacementAudio;
         intersectionObservers.at(-1).callback([{ isIntersecting: false }]);
         expect(panel.canvasPlaybackElement).toBe(replacementAudio);
@@ -307,13 +312,82 @@ describe('Now Playing panel interactions', () => {
         expect(stage.closest('.now-playing-panel-body').classList.contains('is-canvas-expanded')).toBe(true);
 
         const render = vi.spyOn(panel, 'render');
-        audioPaused = true;
-        audio.dispatchEvent(new Event('pause'));
+        const pause = vi.spyOn(canvas, 'pause');
+        replacementAudioPaused = true;
+        replacementAudio.dispatchEvent(new Event('pause'));
         expect(stage.classList.contains('is-canvas-ready')).toBe(true);
+        expect(pause).toHaveBeenCalled();
         expect(render).not.toHaveBeenCalled();
 
         panel.reducedMotionMedia.matches = true;
         expect(panel.renderMarkup(model)).not.toContain('has-video-artwork');
+        panel.destroy();
+    });
+
+    test('does not rebuild the panel for duplicate same-track playback events', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const deps = dependencies();
+        deps.player.currentTrack = { id: 'track', title: 'Track' };
+        const panel = new NowPlayingPanel(deps);
+        await waitForPanel(panel);
+        const body = panel.content.querySelector('.now-playing-panel-body');
+
+        window.dispatchEvent(
+            new CustomEvent('player-track-changed', {
+                detail: { track: { ...deps.player.currentTrack } },
+            })
+        );
+        await Promise.resolve();
+
+        expect(panel.content.querySelector('.now-playing-panel-body')).toBe(body);
+        expect(panel.root.classList.contains('is-track-transitioning')).toBe(false);
+        panel.destroy();
+    });
+
+    test('does not rebuild the panel when pause saves an unchanged queue', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const deps = dependencies();
+        const current = { id: 'current', title: 'Current' };
+        const next = { id: 'next', title: 'Next' };
+        deps.player.currentTrack = current;
+        deps.player.currentQueueIndex = 0;
+        deps.player.getCurrentQueue = () => [current, next];
+        const panel = new NowPlayingPanel(deps);
+        await waitForPanel(panel);
+        const body = panel.content.querySelector('.now-playing-panel-body');
+
+        window.dispatchEvent(
+            new CustomEvent('player-queue-changed', {
+                detail: {
+                    queue: [current, next],
+                    currentIndex: 0,
+                    sourceContext: deps.player.sourceContext,
+                },
+            })
+        );
+        await Promise.resolve();
+
+        expect(panel.content.querySelector('.now-playing-panel-body')).toBe(body);
+        expect(panel.root.classList.contains('is-track-transitioning')).toBe(false);
+        panel.destroy();
+    });
+
+    test('positions the visual scrollbar over the panel without a native gutter', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const panel = new NowPlayingPanel(dependencies());
+        await waitForPanel(panel);
+        Object.defineProperties(panel.content, {
+            clientHeight: { configurable: true, value: 400 },
+            scrollHeight: { configurable: true, value: 1000 },
+            scrollTop: { configurable: true, value: 300, writable: true },
+        });
+        Object.defineProperty(panel.scrollbar, 'clientHeight', { configurable: true, value: 400 });
+
+        panel.updateScrollbar();
+
+        expect(panel.scrollbar.classList.contains('has-overflow')).toBe(true);
+        expect(panel.scrollbarThumb.style.height).toBe('160px');
+        expect(panel.scrollbarThumb.style.transform).toBe('translateY(120px)');
         panel.destroy();
     });
 

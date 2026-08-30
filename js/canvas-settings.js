@@ -1,4 +1,5 @@
 const CANVAS_ENABLED_KEY = 'now-playing-canvas-enabled';
+const CANVAS_COVER_OVERLAY_KEY = 'now-playing-canvas-cover-overlay-enabled';
 
 export const canvasSettings = {
     isEnabled() {
@@ -18,6 +19,26 @@ export const canvasSettings = {
         }
         window.dispatchEvent(
             new CustomEvent('canvas-playback-preference-changed', { detail: { enabled: nextEnabled } })
+        );
+    },
+
+    isCoverOverlayEnabled() {
+        try {
+            return localStorage.getItem(CANVAS_COVER_OVERLAY_KEY) !== 'false';
+        } catch {
+            return true;
+        }
+    },
+
+    setCoverOverlayEnabled(enabled) {
+        const nextEnabled = Boolean(enabled);
+        try {
+            localStorage.setItem(CANVAS_COVER_OVERLAY_KEY, String(nextEnabled));
+        } catch {
+            // The preference remains session-only when storage is unavailable.
+        }
+        window.dispatchEvent(
+            new CustomEvent('canvas-cover-overlay-preference-changed', { detail: { enabled: nextEnabled } })
         );
     },
 };
