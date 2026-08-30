@@ -417,7 +417,7 @@
     opacity: 0.95;
 }
 
-.now-playing-panel-media.is-canvas-ready .now-playing-panel-poster {
+.now-playing-panel-body.has-video-artwork .now-playing-panel-media.is-canvas-ready .now-playing-panel-poster {
     opacity: 0;
 }
 
