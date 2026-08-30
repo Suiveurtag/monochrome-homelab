@@ -191,9 +191,7 @@ export function animateSingleTrackEl(trackEl) {
     // Haptic tick on morph for mobile
     setTimeout(() => {
         try {
-            import('./haptics.js')
-                .then(({ hapticLight }) => hapticLight?.())
-                .catch(() => {});
+            import('./haptics.js').then(({ hapticLight }) => hapticLight?.()).catch(() => {});
         } catch {}
     }, MORPH_DELAY_MS + 40);
 }

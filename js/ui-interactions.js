@@ -452,10 +452,14 @@ export function initializeUIInteractions(player, api, ui) {
                 .map((track, index) => ({ track, index }))
                 .filter(({ index }) => index !== currentIndex);
             container.innerHTML = `<div class="queue-content-shell">
-                ${currentTrack ? `<section class="queue-now-playing" aria-labelledby="queue-now-playing-title">
+                ${
+                    currentTrack
+                        ? `<section class="queue-now-playing" aria-labelledby="queue-now-playing-title">
                     <div class="queue-section-heading"><h3 id="queue-now-playing-title">Now playing</h3><span>Live</span></div>
                     ${renderQueueItemHTML(currentTrack, currentIndex, { featured: true })}
-                </section>` : ''}
+                </section>`
+                        : ''
+                }
                 <section class="queue-up-next" aria-labelledby="queue-up-next-title">
                     <div class="queue-section-heading"><h3 id="queue-up-next-title">Up next</h3><span>${queuedTracks.length}</span></div>
                     <div class="queue-items-wrapper">${queuedTracks.length ? queuedTracks.map(({ track, index }) => renderQueueItemHTML(track, index)).join('') : '<p class="queue-empty-state">Nothing queued yet.</p>'}</div>

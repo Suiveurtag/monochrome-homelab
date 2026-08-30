@@ -60,7 +60,7 @@ function spawnParticle(el, color, seed, spreading) {
 }
 
 function spawnRing(el, color, seed, spreading) {
-    const size = pseudoRandom(seed * 2.1) % 10 | 0;
+    const size = (pseudoRandom(seed * 2.1) % 10) | 0;
     const node = document.createElementNS(NS, 'rect');
     node.setAttribute('class', 'like-ring');
     node.setAttribute('fill', 'none');
@@ -91,12 +91,12 @@ function fireFlip(el, fromLike, toLike) {
     currentFlip = el;
     el.setAttribute('data-flip-firing', String(Date.now()));
 
-    void (Promise.resolve().then(() => {
+    void Promise.resolve().then(() => {
         if (!currentFlip) return;
         const anim = goingToLike ? 'like-flip-to-like' : 'like-flip-to-add';
         el.classList.add(`like-flip-${anim}`);
         raf(() => el.classList.remove(`like-flip-${anim}`));
-    }));
+    });
 }
 
 function burst(el, toLike, seed) {
@@ -107,7 +107,7 @@ function burst(el, toLike, seed) {
         spawnRing(el, color, seed * 1000 + 2, 1.2);
     } else {
         for (let i = 0; i < 9; i++) {
-            spawnParticle(el, color, seed * 1000 + i, 0.14 + (i * 0.04));
+            spawnParticle(el, color, seed * 1000 + i, 0.14 + i * 0.04);
         }
     }
 
@@ -126,10 +126,4 @@ function fireRemove(el, seed) {
     }
 }
 
-export {
-    burst,
-    spawnParticle,
-    spawnRing,
-    fireAdd,
-    fireRemove,
-};
+export { burst, spawnParticle, spawnRing, fireAdd, fireRemove };
