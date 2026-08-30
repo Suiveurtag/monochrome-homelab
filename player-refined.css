@@ -118,13 +118,7 @@
     left: 4%;
     height: 32%;
     border-radius: 50%;
-    background: linear-gradient(
-        to bottom,
-        transparent,
-        rgb(0 0 0 / 0.24) 42%,
-        rgb(0 0 0 / 0.58) 68%,
-        transparent
-    );
+    background: linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.24) 42%, rgb(0 0 0 / 0.58) 68%, transparent);
     content: '';
     filter: blur(2px);
     pointer-events: none;
