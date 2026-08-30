@@ -17,7 +17,10 @@ export function normalizeSourceContext(value) {
 
 function resolveArtwork(track, api) {
     const albumArtwork = getTrackDisplayAlbum(track) || {};
-    const explicitAnimated = getTrackPlayerCanvas(track) || (track?.useOriginalTrackAssets === false ? null : albumArtwork.videoCoverUrl) || null;
+    const explicitAnimated =
+        getTrackPlayerCanvas(track) ||
+        (track?.useOriginalTrackAssets === false ? null : albumArtwork.videoCoverUrl) ||
+        null;
     const coverId = getTrackPlayerArtwork(track);
     const sources = getArtworkSources({
         cover: coverId,

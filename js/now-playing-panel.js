@@ -128,9 +128,7 @@ export class NowPlayingPanel {
             void this.render({ preserveScroll: true });
         };
         this.boundQueueChanged = (event) => {
-            const nextSourceContext = normalizeSourceContext(
-                event.detail?.sourceContext || this.player?.sourceContext
-            );
+            const nextSourceContext = normalizeSourceContext(event.detail?.sourceContext || this.player?.sourceContext);
             const nextSignature = this.getQueueRenderSignature(event.detail, nextSourceContext);
             if (nextSignature === this.queueRenderSignature) return;
             this.queueRenderSignature = nextSignature;
@@ -217,7 +215,10 @@ export class NowPlayingPanel {
         window.addEventListener('player-track-changed', this.boundTrackChanged);
         window.addEventListener('player-canvas-changed', this.boundCanvasChanged);
         window.addEventListener('canvas-playback-preference-changed', this.boundCanvasPreferenceChanged);
-        window.addEventListener('canvas-cover-overlay-preference-changed', this.boundCanvasCoverOverlayPreferenceChanged);
+        window.addEventListener(
+            'canvas-cover-overlay-preference-changed',
+            this.boundCanvasCoverOverlayPreferenceChanged
+        );
         window.addEventListener('player-queue-changed', this.boundQueueChanged);
         window.addEventListener('track-metadata-updated', this.boundMetadataChanged);
         window.addEventListener('artist-metadata-updated', this.boundMetadataChanged);
@@ -932,7 +933,10 @@ export class NowPlayingPanel {
         window.removeEventListener('player-track-changed', this.boundTrackChanged);
         window.removeEventListener('player-canvas-changed', this.boundCanvasChanged);
         window.removeEventListener('canvas-playback-preference-changed', this.boundCanvasPreferenceChanged);
-        window.removeEventListener('canvas-cover-overlay-preference-changed', this.boundCanvasCoverOverlayPreferenceChanged);
+        window.removeEventListener(
+            'canvas-cover-overlay-preference-changed',
+            this.boundCanvasCoverOverlayPreferenceChanged
+        );
         window.removeEventListener('player-queue-changed', this.boundQueueChanged);
         window.removeEventListener('track-metadata-updated', this.boundMetadataChanged);
         window.removeEventListener('artist-metadata-updated', this.boundMetadataChanged);

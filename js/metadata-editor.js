@@ -397,7 +397,8 @@ async function saveTrack(track, form, availableTracks = []) {
         videoUrl: track.type === 'video' ? track.videoUrl || null : null,
         videoCoverUrl:
             removeCanvas || form.get('useOriginalTrackAssets') !== 'on'
-                ? canvasData || (form.get('useOriginalTrackAssets') !== 'on' ? track.videoCoverUrl || track.videoUrl || null : null)
+                ? canvasData ||
+                  (form.get('useOriginalTrackAssets') !== 'on' ? track.videoCoverUrl || track.videoUrl || null : null)
                 : canvasData || track.videoCoverUrl || track.videoUrl || null,
         themeColor: normalizeTrackThemeColor(value(form, 'themeColor')),
         lyrics: String(form.get('lyrics') || ''),
