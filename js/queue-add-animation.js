@@ -13,10 +13,6 @@ function isReducedMotion() {
     return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
 
-function isTransparentColor(c) {
-    return !c || c === 'rgba(0, 0, 0, 0)' || c === 'transparent';
-}
-
 function flashFallback(el) {
     const prevBg = el.style.backgroundColor;
     const prevTransition = el.style.transition;
@@ -51,17 +47,7 @@ export function animateSingleTrackEl(trackEl) {
     const gridCols = computed.gridTemplateColumns;
     const gap = computed.gap;
     const padding = computed.padding;
-    const originalBg = computed.backgroundColor;
     const originalBorderRadius = computed.borderRadius;
-
-    let parentBg = '';
-    if (trackEl.parentElement) {
-        try {
-            parentBg = getComputedStyle(trackEl.parentElement).backgroundColor;
-        } catch {
-            parentBg = '';
-        }
-    }
 
     const bg = document.createElement('div');
     bg.className = 'track-queue-bg';
@@ -100,22 +86,7 @@ export function animateSingleTrackEl(trackEl) {
     fg.style.gap = gap;
     fg.style.padding = padding;
     fg.style.borderRadius = originalBorderRadius || 'var(--radius-sm)';
-
-    // Background for foreground to fully cover highlight behind when at 0
-    // Prefer originalBg if opaque and not playing (playing handled by CSS), otherwise parentBg, otherwise var(--background)
-    let fgBg = '';
-    if (!isTransparentColor(originalBg) && !trackEl.classList.contains('playing')) {
-        // originalBg may be rgb(...) opaque; use it
-        fgBg = originalBg;
-    } else if (!isTransparentColor(parentBg) && !trackEl.classList.contains('playing')) {
-        fgBg = parentBg;
-    } else if (trackEl.classList.contains('playing')) {
-        // Let CSS .playing rule paint foreground; keep inline empty so CSS wins
-        fgBg = '';
-    } else {
-        fgBg = 'var(--background)';
-    }
-    if (fgBg) fg.style.background = fgBg;
+    // Foreground stays transparent (CSS) so highlight only shows in gap; playing state keeps its blue bg via CSS
     // Ensure foreground covers full width
     fg.style.width = '100%';
     fg.style.boxSizing = 'border-box';

@@ -24,6 +24,7 @@ import { LyricsManager, openLyricsPanel, clearLyricsPanelSync } from './lyrics.j
 import { createRouter, updateTabTitle, navigate } from './router.js';
 import { initializePlayerEvents, initializeTrackInteractions, handleTrackAction } from './events.js';
 import { initializeUIInteractions } from './ui-interactions.js';
+import './queue-add-animation.js';
 import { debounce, sanitizeForFilename } from './utils.js';
 import { copyShareLink } from './share.js';
 import { sidePanelManager } from './side-panel.js';

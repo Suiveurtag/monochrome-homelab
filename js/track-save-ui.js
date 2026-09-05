@@ -12,22 +12,22 @@ function spawnShockwave(button) {
     ring.setAttribute('aria-hidden', 'true');
     ring.style.left = `${cx}px`;
     ring.style.top = `${cy}px`;
-    // Hollow expanding ring – a bit larger and thinner for a minimalist hollow feel
+    // Hollow expanding ring – subtle, not too big
     const base = Math.max(rect.width, rect.height);
-    const size = base * 2.45;
+    const size = base * 1.75;
     ring.style.width = `${size}px`;
     ring.style.height = `${size}px`;
     ring.style.marginLeft = `${-size / 2}px`;
     ring.style.marginTop = `${-size / 2}px`;
     document.body.appendChild(ring);
     ring.addEventListener('animationend', () => ring.remove(), { once: true });
-    window.setTimeout(() => ring.remove(), 900);
+    window.setTimeout(() => ring.remove(), 700);
 }
 
 function spawnConfetti(button) {
     if (!button || !button.isConnected || isReducedMotion()) return;
     const rect = button.getBoundingClientRect();
-    // Anchor at centre – particles fan out around the top half of the circle
+    // Anchor at centre – particles bloom around the top half like a halo
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
     const layer = document.createElement('span');
@@ -36,21 +36,25 @@ function spawnConfetti(button) {
     layer.style.left = `${cx}px`;
     layer.style.top = `${cy}px`;
     const count = 7;
+    const spread = 150; // degrees, top arc only
+    const baseRadius = Math.max(rect.width, rect.height) * 0.46;
     for (let i = 0; i < count; i++) {
         const dot = document.createElement('span');
         dot.className = 'track-save-confetti';
-        // Top half only: -90° ±75° → -165° to -15° (covers top arc around the circle)
-        const angle = -90 + (Math.random() * 150 - 75);
+        // Evenly spaced around top half for a clean halo, with tiny jitter
+        const t = count === 1 ? 0.5 : i / (count - 1);
+        const baseAngle = -90 - spread / 2 + spread * t; // -165 to -15
+        const jitter = (Math.random() - 0.5) * 10;
+        const angle = baseAngle + jitter;
         const rad = (angle * Math.PI) / 180;
-        // Start just outside the circle radius, then float a bit further
-        const baseRadius = Math.max(rect.width, rect.height) * 0.42;
-        const dist = baseRadius + 8 + Math.random() * 16; // 8-24px beyond radius
+        // Start just outside the circle, end a bit further out
+        const dist = baseRadius + 7 + Math.random() * 13; // 7-20px beyond radius
         const tx = Math.cos(rad) * dist;
         const ty = Math.sin(rad) * dist;
-        const size = 2.6 + Math.random() * 2.6;
+        const size = 3.0 + Math.random() * 2.2; // 3-5.2px – a touch bigger
         const rot = Math.round(Math.random() * 360);
-        const delay = i * 32;
-        const duration = 580 + Math.random() * 140;
+        const delay = i * 28;
+        const duration = 620 + Math.random() * 110;
         dot.style.setProperty('--tx', `${tx.toFixed(1)}px`);
         dot.style.setProperty('--ty', `${ty.toFixed(1)}px`);
         dot.style.setProperty('--rot', `${rot}deg`);
@@ -65,7 +69,7 @@ function spawnConfetti(button) {
     const cleanup = () => layer.remove();
     layer.addEventListener('animationend', cleanup, { once: true });
     // Fallback timer
-    window.setTimeout(cleanup, 1200);
+    window.setTimeout(cleanup, 1300);
 }
 
 export function buildTrackSaveStateSnapshot(likedTracks = [], likedVideos = [], playlists = []) {

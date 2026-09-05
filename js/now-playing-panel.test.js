@@ -242,6 +242,77 @@ describe('Now Playing panel interactions', () => {
         panel.destroy();
     });
 
+    test('keeps the full-screen queue open and interactive when the viewport becomes mobile', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const panel = new NowPlayingPanel(dependencies());
+        await waitForPanel(panel);
+
+        panel.openQueue();
+        panel.boundDesktopViewportChanged({ matches: false });
+
+        expect(panel.isOpen).toBe(true);
+        expect(panel.root.classList.contains('is-closed')).toBe(false);
+        expect(panel.content.inert).toBe(false);
+        expect(panel.root.getAttribute('role')).toBe('dialog');
+        expect(panel.root.getAttribute('aria-modal')).toBe('true');
+        panel.destroy();
+    });
+
+    test('lets the queue cover the fullscreen player instead of becoming inert', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const panel = new NowPlayingPanel(dependencies());
+        await waitForPanel(panel);
+        document.getElementById('fullscreen-cover-overlay').style.display = 'flex';
+
+        panel.openQueue();
+        panel.syncFullscreenVisibility();
+
+        expect(panel.root.classList.contains('is-fullscreen-hidden')).toBe(false);
+        expect(panel.root.getAttribute('aria-hidden')).toBe('false');
+        expect(panel.content.inert).toBe(false);
+        panel.destroy();
+    });
+
+    test('keeps Endless playback as an honest preview-only interaction', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const panel = new NowPlayingPanel(dependencies());
+        await waitForPanel(panel);
+        panel.activeView = 'queue';
+        panel.content.innerHTML = panel.renderQueue();
+
+        const endless = panel.root.querySelector('[data-endless-preview]');
+        endless.click();
+
+        await vi.waitFor(() => expect(endless.getAttribute('aria-pressed')).toBe('true'));
+        expect(endless.textContent).toContain('queue still stops at the end');
+        panel.destroy();
+    });
+
+    test('labels a manually inserted album track and keeps its grip on the right', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const deps = dependencies();
+        const current = { id: 'album-1', title: 'First', artist: { name: 'Artist' }, duration: 120 };
+        const inserted = { id: 'manual', title: 'Inserted', artist: { name: 'Guest' }, duration: 180 };
+        const albumNext = { id: 'album-2', title: 'Second', artist: { name: 'Artist' }, duration: 150 };
+        deps.player.currentTrack = current;
+        deps.player.currentQueueIndex = 0;
+        deps.player.sourceContext = { kind: 'album', id: 'album', label: 'The Album' };
+        deps.player.getCurrentQueue = () => [current, inserted, albumNext];
+        const panel = new NowPlayingPanel(deps);
+        await waitForPanel(panel);
+        panel.currentTrack = current;
+        panel.sourceContext = deps.player.sourceContext;
+        panel.boundQueueTracksAdded({ detail: { mode: 'next', tracks: [inserted] } });
+        panel.content.innerHTML = panel.renderQueue();
+
+        const firstRow = panel.root.querySelector('.queue-track-row');
+        expect(panel.root.querySelector('.queue-source-context').textContent).toContain('Continuing The Album');
+        expect(firstRow.classList.contains('is-pinned-next')).toBe(true);
+        expect(firstRow.textContent).toContain('Pinned next');
+        expect(firstRow.lastElementChild.classList.contains('queue-drag-handle')).toBe(true);
+        panel.destroy();
+    });
+
     test('keeps the static poster mounted beneath a deferred Canvas video', async () => {
         const { NowPlayingPanel } = await import('./now-playing-panel.js');
         const deps = dependencies();

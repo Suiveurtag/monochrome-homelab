@@ -4012,26 +4012,23 @@ body.multi-select-mode .track-item:hover {
     }
 }
 
-/* ---- Shockwave hollow ring (theme colour, minimalist) ---- */
+/* ---- Shockwave hollow ring (theme colour, minimalist - subtle) ---- */
 .track-save-shockwave {
     position: fixed;
     border-radius: 50%;
-    border: 1.2px solid rgb(var(--highlight-rgb) / 0.92);
+    border: 1px solid rgb(var(--highlight-rgb) / 0.38);
     background: transparent;
     pointer-events: none;
     opacity: 0;
     will-change: transform, opacity;
-    animation: track-save-shockwave 640ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    z-index: 9998;
+    animation: track-save-shockwave 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes track-save-shockwave {
     0% {
-        transform: scale(0.32);
-        opacity: 0.62;
-    }
-
-    35% {
-        opacity: 0.38;
+        transform: scale(0.35);
+        opacity: 0.32;
     }
 
     100% {
@@ -4145,6 +4142,137 @@ body.multi-select-mode .track-item:hover {
     100% {
         opacity: 1;
         transform: scale(1) rotate(0);
+    }
+}
+
+/* Queue Add Animation — Spotify mobile style: track slides right revealing theme-colored bg with queue icon morphing into checkmark, then slides back */
+.track-item.queue-animating {
+    --queue-reveal: 72px;
+
+    position: relative !important;
+    overflow: hidden !important;
+    display: block !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    background: transparent !important;
+    border-color: transparent !important;
+    transform: none !important;
+}
+
+@media (max-width: 768px) {
+    .track-item.queue-animating {
+        --queue-reveal: 64px;
+    }
+}
+
+@media (max-width: 480px) {
+    .track-item.queue-animating {
+        --queue-reveal: 58px;
+    }
+}
+
+.track-item.queue-animating:hover {
+    background-color: transparent !important;
+    transform: none !important;
+}
+
+.track-queue-bg {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--queue-reveal);
+    z-index: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding-left: calc((var(--queue-reveal) - 36px) / 2);
+    overflow: hidden;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    background: var(--highlight);
+    color: var(--primary-foreground);
+}
+
+.track-queue-bg__icon-wrap {
+    position: relative;
+    display: flex;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+}
+
+.track-queue-bg__icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    will-change: transform, opacity;
+    transition:
+        opacity 300ms cubic-bezier(0.22, 1, 0.36, 1),
+        transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.track-queue-bg__icon svg {
+    width: 22px;
+    height: 22px;
+}
+
+.track-queue-bg__icon--queue {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+}
+
+.track-queue-bg__icon--check {
+    opacity: 0;
+    transform: scale(0.42) rotate(-28deg);
+    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.12));
+}
+
+.track-item.queue-animating.is-morphed .track-queue-bg__icon--queue {
+    opacity: 0;
+    transform: scale(0.42) rotate(28deg);
+}
+
+.track-item.queue-animating.is-morphed .track-queue-bg__icon--check {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+}
+
+.track-queue-foreground {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    width: 100%;
+    box-sizing: border-box;
+    align-items: center;
+    padding: var(--spacing-sm) var(--spacing-md);
+    gap: var(--spacing-md);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.track-item.queue-animating.playing .track-queue-foreground {
+    border-left: 3px solid var(--highlight);
+    padding-left: calc(var(--spacing-sm) - 3px);
+    background-color: rgb(var(--highlight-rgb), 0.15);
+}
+
+.track-item.queue-animating.is-slid .track-queue-foreground {
+    transform: translate3d(var(--queue-reveal), 0, 0);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .track-queue-foreground,
+    .track-queue-bg__icon {
+        transition: none !important;
     }
 }
 

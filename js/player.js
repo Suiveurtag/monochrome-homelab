@@ -2496,6 +2496,15 @@ export class Player {
             this.originalQueueBeforeShuffle.push(...tracks);
         }
 
+        // Spotify-style queue add animation: dispatch before async state save so UI can animate immediately
+        try {
+            window.dispatchEvent(
+                new CustomEvent('queue-tracks-added', {
+                    detail: { tracks, ids: tracks.map((t) => t?.id).filter((v) => v != null), mode: 'queue' },
+                })
+            );
+        } catch {}
+
         if (!this.currentTrack || this.currentQueueIndex === -1) {
             this.currentQueueIndex = this.getCurrentQueue().length - tracks.length;
             await this.playTrackFromQueue(0, 0);
@@ -2516,6 +2525,14 @@ export class Player {
         if (this.shuffleActive) {
             this.originalQueueBeforeShuffle.push(...tracks); // Sync original queue
         }
+
+        try {
+            window.dispatchEvent(
+                new CustomEvent('queue-tracks-added', {
+                    detail: { tracks, ids: tracks.map((t) => t?.id).filter((v) => v != null), mode: 'next' },
+                })
+            );
+        } catch {}
 
         await this.saveQueueState();
         this.preloadNextTracks(); // Update preload since next track changed
