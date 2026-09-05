@@ -513,10 +513,12 @@ export class NowPlayingPanel {
         const controller = new AbortController();
         this.renderController = controller;
         const hadRenderedNowPlaying = Boolean(this.content.querySelector('.now-playing-panel-body'));
-        const hadRenderedContent = hadRenderedNowPlaying || Boolean(this.content.querySelector('.now-playing-panel-queue-view'));
-        const fadeOut = hadRenderedNowPlaying && this.activeView !== 'queue'
-            ? new Promise((resolve) => window.setTimeout(resolve, TRACK_FADE_OUT_DURATION))
-            : Promise.resolve();
+        const hadRenderedContent =
+            hadRenderedNowPlaying || Boolean(this.content.querySelector('.now-playing-panel-queue-view'));
+        const fadeOut =
+            hadRenderedNowPlaying && this.activeView !== 'queue'
+                ? new Promise((resolve) => window.setTimeout(resolve, TRACK_FADE_OUT_DURATION))
+                : Promise.resolve();
         const previousScroll =
             this.activeView === 'queue'
                 ? preserveScroll
@@ -709,7 +711,8 @@ export class NowPlayingPanel {
         const fallbackNext = model.nextTrack && !queue.length ? [model.nextTrack] : [];
         const upNext = (queue.length ? queue.slice(Math.max(0, currentIndex + 1)) : fallbackNext).filter(Boolean);
         const queueDuration = upNext.reduce((total, track) => total + (Number(track.duration) || 0), 0);
-        const durationLabel = queueDuration > 0 ? this.formatQueueTime(queueDuration) : upNext.length ? 'duration unavailable' : '0 min';
+        const durationLabel =
+            queueDuration > 0 ? this.formatQueueTime(queueDuration) : upNext.length ? 'duration unavailable' : '0 min';
         const isLooping = this.player?.repeatMode === QUEUE_REPEAT_ALL;
         const transitionMode = this.getTransitionMode();
         const media = this.player?.activeElement;
@@ -728,14 +731,16 @@ export class NowPlayingPanel {
         const titleFor = (track) => getTrackTitle(track, { fallback: 'Unknown title' });
         const artistFor = (track) => getTrackArtists(track, { fallback: 'Unknown artist' });
         const durationFor = (track) => this.formatTrackTime(track?.duration);
-        const sourceLabel = this.sourceContext?.label && this.sourceContext.label !== 'Now playing'
-            ? this.sourceContext.label
-            : 'current queue';
-        const sourceContext = this.sourceContext?.kind === 'album'
-            ? `Continuing ${sourceLabel}`
-            : this.sourceContext?.kind === 'playlist'
-              ? `From ${sourceLabel}`
-              : sourceLabel;
+        const sourceLabel =
+            this.sourceContext?.label && this.sourceContext.label !== 'Now playing'
+                ? this.sourceContext.label
+                : 'current queue';
+        const sourceContext =
+            this.sourceContext?.kind === 'album'
+                ? `Continuing ${sourceLabel}`
+                : this.sourceContext?.kind === 'playlist'
+                  ? `From ${sourceLabel}`
+                  : sourceLabel;
         const emptyQueueCopy = isLooping
             ? `Loop queue will restart ${sourceLabel}.`
             : this.sourceContext?.kind === 'album'
@@ -769,7 +774,8 @@ export class NowPlayingPanel {
             ? [...this.queueHistory]
                   .reverse()
                   .map(
-                      (track, offset) => `<div class="queue-track-row queue-history-row" style="--queue-order:${offset};--queue-delay:${Math.min(offset, 12) * 34}ms"><span class="queue-track-position">${icon('play', 12)}</span><div class="queue-track-main queue-history-main"><img src="${escapeHtml(imageFor(track))}" alt="" loading="lazy" /><span><strong>${escapeHtml(titleFor(track))}</strong><small>${escapeHtml(artistFor(track))}</small></span></div><time>${escapeHtml(durationFor(track))}</time></div>`
+                      (track, offset) =>
+                          `<div class="queue-track-row queue-history-row" style="--queue-order:${offset};--queue-delay:${Math.min(offset, 12) * 34}ms"><span class="queue-track-position">${icon('play', 12)}</span><div class="queue-track-main queue-history-main"><img src="${escapeHtml(imageFor(track))}" alt="" loading="lazy" /><span><strong>${escapeHtml(titleFor(track))}</strong><small>${escapeHtml(artistFor(track))}</small></span></div><time>${escapeHtml(durationFor(track))}</time></div>`
                   )
                   .join('')
             : `<div class="queue-list-empty"><span>${icon('history', 18)}</span><strong>No history yet</strong><p>Only tracks played in this queue appear here.</p></div>`;
@@ -815,7 +821,8 @@ export class NowPlayingPanel {
     }
 
     renderTransitionMenu(selectedMode) {
-        const option = (mode, label, detail) => `<button type="button" class="queue-transition-option${selectedMode === mode ? ' is-selected' : ''}" data-transition-mode="${mode}" aria-pressed="${String(selectedMode === mode)}"><span>${label}</span><small>${detail}</small>${selectedMode === mode ? '<span class="queue-option-check" aria-hidden="true"></span>' : ''}</button>`;
+        const option = (mode, label, detail) =>
+            `<button type="button" class="queue-transition-option${selectedMode === mode ? ' is-selected' : ''}" data-transition-mode="${mode}" aria-pressed="${String(selectedMode === mode)}"><span>${label}</span><small>${detail}</small>${selectedMode === mode ? '<span class="queue-option-check" aria-hidden="true"></span>' : ''}</button>`;
         return `<div id="queue-transition-menu" class="queue-transition-menu"${this.transitionMenuOpen ? '' : ' hidden'}><div class="queue-transition-options">${option('gapless', 'Gapless', 'No space between tracks')}${option('standard', 'Standard', 'A short second of delay')}${option('crossfade', 'Crossfade', `${crossfadeSettings.getDuration()} second blend`)}</div>${selectedMode === 'crossfade' ? `<label class="queue-crossfade-control"><span>Crossfade length</span><output id="queue-crossfade-value" for="queue-crossfade-duration">${crossfadeSettings.getDuration()} s</output><input id="queue-crossfade-duration" type="range" min="1" max="12" step="1" value="${crossfadeSettings.getDuration()}" aria-label="Crossfade length" /></label>` : ''}</div>`;
     }
 
@@ -826,7 +833,9 @@ export class NowPlayingPanel {
         if (!context) return;
         const analyser = audioContextManager.getAnalyser();
         const frequencyData = analyser?.frequencyBinCount ? new Uint8Array(analyser.frequencyBinCount) : null;
-        const seed = String(this.currentTrack?.id || 'queue').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+        const seed = String(this.currentTrack?.id || 'queue')
+            .split('')
+            .reduce((sum, char) => sum + char.charCodeAt(0), 0);
         const draw = () => {
             if (this.activeView !== 'queue' || !canvas.isConnected) return;
             const width = Math.max(1, canvas.clientWidth);
@@ -846,7 +855,9 @@ export class NowPlayingPanel {
                 hasLiveSignal = frequencyData.some((value) => value > 4);
             }
             const media = this.player?.activeElement;
-            const duration = Number.isFinite(media?.duration) ? media.duration : Number(this.currentTrack?.duration) || 0;
+            const duration = Number.isFinite(media?.duration)
+                ? media.duration
+                : Number(this.currentTrack?.duration) || 0;
             const currentTime = Number.isFinite(media?.currentTime) ? media.currentTime : 0;
             const progress = duration > 0 ? Math.max(0, Math.min(1, currentTime / duration)) : 0;
             const barCount = Math.max(32, Math.floor(width / 4.6));

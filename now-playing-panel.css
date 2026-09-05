@@ -2290,7 +2290,9 @@ body.queue-panel-open {
         opacity 180ms ease;
 }
 
-.now-playing-panel.is-queue-view :is(.queue-motion-open, .queue-motion-advance, .queue-motion-insert, .queue-motion-reorder, .queue-motion-view) .queue-track-row {
+.now-playing-panel.is-queue-view
+    :is(.queue-motion-open, .queue-motion-advance, .queue-motion-insert, .queue-motion-reorder, .queue-motion-view)
+    .queue-track-row {
     animation: queue-row-spring 620ms cubic-bezier(0.16, 1.28, 0.3, 1) both;
     animation-delay: calc(90ms + var(--queue-delay));
 }
