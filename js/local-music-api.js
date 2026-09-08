@@ -1,4 +1,5 @@
 // js/local-music-api.js
+import { offlineCache } from './offline-cache.js';
 import { db } from './db.js';
 import { getSelfHostedStream, listSelfHostedTracks } from './selfhost-server-api.js';
 import { isVideoArtwork } from './animated-artwork.js';
@@ -92,10 +93,6 @@ export function mergeServerTrackWithLocalMetadata(track, local) {
               }
             : null,
     };
-}
-
-function shuffle(items) {
-    return [...items].sort(() => Math.random() - 0.5);
 }
 
 export class LocalMusicAPI {
@@ -206,12 +203,13 @@ export class LocalMusicAPI {
 
     async getTracks() {
         await this.ensureLocalCache();
-        const [serverTracks, uploadedTracks] = await Promise.all([
-            listSelfHostedTracks().catch((error) => {
+        const [serverTracks, uploadedTracks, offlineTracks] = await Promise.all([
+            (navigator.onLine ? listSelfHostedTracks() : Promise.resolve([])).catch((error) => {
                 console.warn('[SelfHost] Could not load server library:', error);
                 return [];
             }),
             db.getUploadedTracks().catch(() => []),
+            offlineCache.tracks().catch(() => []),
         ]);
         const localFiles = Array.isArray(window.localFilesCache) ? window.localFilesCache : [];
         const uploadedById = new Map(uploadedTracks.map((track) => [String(track.id), track]));
@@ -221,7 +219,7 @@ export class LocalMusicAPI {
         });
         return hydrateTrackVersionDisplayMetadata(
             uniqueBy(
-                mergeById(serverWithLocalMetadata, mergeById(uploadedTracks, localFiles))
+                mergeById(serverWithLocalMetadata, mergeById(uploadedTracks, mergeById(localFiles, offlineTracks)))
                     .map((track) => this.normalizeTrack(track))
                     .filter(Boolean),
                 (track) => track.id || getLocalTrackKey(track)
@@ -449,13 +447,18 @@ export class LocalMusicAPI {
 
     async getTrackRecommendations(id) {
         const tracks = await this.getTracks();
-        return shuffle(tracks.filter((track) => String(track.id) !== String(id))).slice(0, 20);
+        const { recommendationService } = await import('./recommendation-service.js');
+        return recommendationService.rank(tracks, {
+            seeds: tracks.filter((track) => String(track.id) === String(id)),
+            excludeIds: [id], limit: 20,
+        });
     }
 
     async getRecommendedTracksForPlaylist(tracks = [], limit = 20, options = {}) {
         const known = new Set([...(options.knownTrackIds || []), ...tracks.map((track) => track.id)]);
         const allTracks = await this.getTracks();
-        return shuffle(allTracks.filter((track) => !known.has(track.id))).slice(0, limit);
+        const { recommendationService } = await import('./recommendation-service.js');
+        return recommendationService.rank(allTracks, { seeds: tracks, excludeIds: [...known], limit });
     }
 
     async getStreamUrl(id) {

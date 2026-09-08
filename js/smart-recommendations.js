@@ -1,5 +1,6 @@
 import { listeningTracker } from './listening-tracker.js';
 import { db } from './db.js';
+import { realRandom } from './recommendation-engine.js';
 
 class SmartRecommendations {
     async getSmartSeeds(count = 50) {
@@ -47,7 +48,7 @@ class SmartRecommendations {
             .slice(0, count)
             .map((s) => s.track);
 
-        const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+        const shuffle = (arr) => realRandom(arr);
         return shuffle(filteredSeeds);
     }
 

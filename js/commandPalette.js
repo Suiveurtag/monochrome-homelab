@@ -3,6 +3,8 @@ import { db } from './db.js';
 import Fuse from 'fuse.js';
 import { navigate } from './router.js';
 import { getTrackDisplayAlbum, getTrackPlayerArtwork } from './track-versions.js';
+import { keyboardShortcuts, formatShortcut } from './keyboard-shortcuts.js';
+import { listeningTracker } from './listening-tracker.js';
 import {
     SVG_SEARCH,
     SVG_HOUSE,
@@ -47,6 +49,13 @@ import { Player } from './player.js';
 import { UIRenderer } from './ui.js';
 
 const ICON_SIZE = 16;
+const SHORTCUT_ACTIONS = {
+    'nav-home': 'home', 'nav-library': 'library', 'nav-settings': 'settings',
+    'play-pause': 'playPause', 'play-next': 'nextTrack', 'play-prev': 'previousTrack',
+    'play-shuffle': 'shuffle', 'play-repeat': 'repeat', 'play-mute': 'mute',
+    'play-vol-up': 'volumeUp', 'play-vol-down': 'volumeDown', 'like-current': 'like',
+    'queue-open': 'queue', 'lyrics-toggle': 'lyrics', 'fullscreen-open': 'fullscreen',
+};
 
 const ICONS = {
     search: SVG_SEARCH,
@@ -675,11 +684,10 @@ class CommandPalette {
     }
 
     init() {
-        document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                e.preventDefault();
-                this.toggle();
-            }
+        window.addEventListener('command-palette-toggle', () => this.toggle());
+        window.addEventListener('command-palette-close', () => this.close());
+        window.addEventListener('keyboard-shortcuts-changed', () => {
+            if (this.isOpen) this.handleInput();
         });
 
         this.input.addEventListener('input', () => this.handleInput());
@@ -743,6 +751,7 @@ class CommandPalette {
     }
 
     handleKeydown(e) {
+        if (e.isComposing || e.defaultPrevented) return;
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             this.selectedIndex = Math.min(this.selectedIndex + 1, this.flatItems.length - 1);
@@ -826,6 +835,7 @@ class CommandPalette {
             const artists = results.artists || { items: [] };
 
             if (controller.signal.aborted || !this.isOpen) return;
+            listeningTracker.recordSearch(query, results);
 
             const musicGroups = {};
 
@@ -841,7 +851,7 @@ class CommandPalette {
                         label: track.title,
                         description: `${track.artist?.name || 'Unknown'} \u2022 ${album?.title || ''}`,
                         action: async () => {
-                            Player.instance.setQueue([track], 0);
+                            await Player.instance.setQueue([track], 0);
                             await Player.instance.playTrackFromQueue();
                         },
                     };
@@ -1002,8 +1012,12 @@ class CommandPalette {
         }
 
         let shortcutHtml = '';
-        if (item.shortcut) {
-            const keys = item.shortcut.split('+');
+        const binding = SHORTCUT_ACTIONS[item.id]
+            ? keyboardShortcuts.getShortcutForAction(SHORTCUT_ACTIONS[item.id]) : null;
+        const shortcut = SHORTCUT_ACTIONS[item.id]
+            ? binding?.key ? formatShortcut(binding) : '' : item.shortcut;
+        if (shortcut) {
+            const keys = shortcut.split('+').map((key) => key.trim());
             shortcutHtml = `<div class="cmdk-item-shortcut">${keys.map((k) => `<kbd>${escapeHtml(k)}</kbd>`).join('')}</div>`;
         }
 

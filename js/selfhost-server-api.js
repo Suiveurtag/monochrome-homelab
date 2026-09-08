@@ -88,6 +88,7 @@ export function mapPocketBaseTrack(record, client = pb) {
         isrc: record.isrc || null,
         audioQuality,
         fileName: audioFileName,
+        audioSize: Number(record.audio_size) > 0 ? Number(record.audio_size) : null,
         artist,
         artists: [artist],
         album: albumTitle

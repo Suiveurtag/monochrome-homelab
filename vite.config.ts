@@ -77,7 +77,7 @@ export default defineConfig((_options) => {
                     target: process.env.VITE_POCKETBASE_PROXY_TARGET || 'http://127.0.0.1:8090',
                     changeOrigin: true,
                 },
-                '/_': {
+                '^/_($|/)': {
                     target: process.env.VITE_POCKETBASE_PROXY_TARGET || 'http://127.0.0.1:8090',
                     changeOrigin: true,
                 },

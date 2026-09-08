@@ -4,6 +4,7 @@ const SELECTOR = {
     arrival: '.album-cover-inspector-arrival',
     card: '.album-cover-inspector-card',
     mediaHost: '.album-cover-inspector-media-host',
+    glare: '.album-cover-inspector-light',
     close: '.album-cover-inspector-close',
     download: '.album-cover-inspector-download',
     title: '#album-cover-inspector-title',
@@ -35,8 +36,9 @@ export class AlbumCoverInspector {
         this.stage = this.overlay?.querySelector(SELECTOR.stage);
         this.arrival = this.overlay?.querySelector(SELECTOR.arrival);
         this.card = this.overlay?.querySelector(SELECTOR.card);
-        this.interactionSurface = this.arrival || this.card;
+        this.interactionSurface = this.card;
         this.mediaHost = this.overlay?.querySelector(SELECTOR.mediaHost);
+        this.glare = this.overlay?.querySelector(SELECTOR.glare);
         this.closeButton = this.overlay?.querySelector(SELECTOR.close);
         this.downloadButton = this.overlay?.querySelector(SELECTOR.download);
         this.title = this.overlay?.querySelector(SELECTOR.title);
@@ -46,31 +48,29 @@ export class AlbumCoverInspector {
         this.sourceNextSibling = null;
         this.trigger = null;
         this.previousBodyOverflow = '';
-        this.pointerFrame = null;
+        this.springFrame = null;
+        this.springLastTime = 0;
+        this.springState = { rotateX: 0, rotateY: 0, glareX: 50, glareY: 50, opacity: 0 };
+        this.springVelocity = { rotateX: 0, rotateY: 0, glareX: 0, glareY: 0, opacity: 0 };
+        this.springTarget = { rotateX: 0, rotateY: 0, glareX: 50, glareY: 50, opacity: 0 };
         this.resetTimer = null;
         this.downloadResetTimer = null;
         this.downloadSource = null;
         this.downloadTitle = 'album';
-        this.isDragging = false;
 
         if (!this.overlay || !this.stage || !this.card || !this.mediaHost || !this.closeButton) return;
 
         this.onKeydown = (event) => this.handleKeydown(event);
-        this.onPointerMove = (event) => this.handlePointerMove(event);
-        this.onPointerLeave = (event) => this.handlePointerLeave(event);
-        this.onPointerDown = (event) => this.handlePointerDown(event);
-        this.onPointerUp = (event) => this.handlePointerUp(event);
+        this.onMouseMove = (event) => this.updateTilt(event);
+        this.onMouseLeave = () => this.resetTilt();
 
         this.closeButton.addEventListener('click', () => void this.close());
         this.downloadButton?.addEventListener('click', () => void this.download());
         this.overlay.addEventListener('click', (event) => {
             if (event.target === this.overlay || event.target === this.stage) void this.close();
         });
-        this.interactionSurface.addEventListener('pointermove', this.onPointerMove);
-        this.interactionSurface.addEventListener('pointerleave', this.onPointerLeave);
-        this.interactionSurface.addEventListener('pointerdown', this.onPointerDown);
-        this.interactionSurface.addEventListener('pointerup', this.onPointerUp);
-        this.interactionSurface.addEventListener('pointercancel', this.onPointerUp);
+        this.interactionSurface.addEventListener('mousemove', this.onMouseMove);
+        this.interactionSurface.addEventListener('mouseleave', this.onMouseLeave);
     }
 
     get isOpen() {
@@ -139,7 +139,6 @@ export class AlbumCoverInspector {
     async close() {
         if (!this.isOpen) return false;
 
-        this.card.classList.remove('is-interacting');
         this.resetTilt(false);
         const triggerRect = this.trigger?.isConnected ? this.trigger.getBoundingClientRect() : null;
 
@@ -260,76 +259,81 @@ export class AlbumCoverInspector {
         this.downloadButton.title = 'Download cover';
     }
 
-    handlePointerDown(event) {
-        if (event.pointerType === 'mouse' && event.button !== 0) return;
-        this.isDragging = true;
-        this.card.classList.add('is-interacting');
-        this.interactionSurface.setPointerCapture?.(event.pointerId);
-        this.updateTilt(event);
-    }
-
-    handlePointerMove(event) {
-        if (event.pointerType !== 'mouse' && !this.isDragging) return;
-        this.updateTilt(event);
-    }
-
-    handlePointerUp(event) {
-        this.isDragging = false;
-        this.card.classList.remove('is-interacting');
-        if (this.interactionSurface.hasPointerCapture?.(event.pointerId)) {
-            this.interactionSurface.releasePointerCapture(event.pointerId);
-        }
-        this.resetTilt();
-    }
-
-    handlePointerLeave(event) {
-        if (event.pointerType === 'mouse' && !this.isDragging) this.resetTilt();
-    }
-
     updateTilt(event) {
         if (reduceMotion()) return;
         window.clearTimeout(this.resetTimer);
-        this.card.classList.remove('is-resetting');
-        this.card.classList.add('is-tilting');
         const rect = this.interactionSurface.getBoundingClientRect();
         const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
         const y = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
-        const rotateY = (x - 0.5) * 28;
-        const rotateX = (0.5 - y) * 28;
-        const frontlightX = 50 + (x - 0.5) * 16;
-        const frontlightY = 36 + (y - 0.5) * 12;
-        const frontlightAngle = 132 + (x - 0.5) * 16 - (y - 0.5) * 10;
-        const depthX = (0.5 - x) * 24;
-        const depthY = (0.5 - y) * 24;
+        const edgeDistance = Math.min(x, 1 - x, y, 1 - y);
+        const edgeFactor = Math.min(1, Math.max(0, edgeDistance / 0.15));
 
-        cancelAnimationFrame(this.pointerFrame);
-        this.pointerFrame = requestAnimationFrame(() => {
-            this.card.style.setProperty('--cover-rotate-x', `${rotateX.toFixed(2)}deg`);
-            this.card.style.setProperty('--cover-rotate-y', `${rotateY.toFixed(2)}deg`);
-            this.card.style.setProperty('--cover-light-x', `${frontlightX.toFixed(1)}%`);
-            this.card.style.setProperty('--cover-light-y', `${frontlightY.toFixed(1)}%`);
-            this.card.style.setProperty('--cover-light-angle', `${frontlightAngle.toFixed(1)}deg`);
-            this.card.style.setProperty('--cover-depth-x', `${depthX.toFixed(1)}px`);
-            this.card.style.setProperty('--cover-depth-y', `${depthY.toFixed(1)}px`);
-            this.card.style.setProperty('--cover-shadow-x', `${((0.5 - x) * 32).toFixed(1)}px`);
-            this.card.style.setProperty('--cover-shadow-y', `${((0.5 - y) * 24 + 30).toFixed(1)}px`);
-        });
+        this.springTarget.rotateX = (0.5 - y) * 12 * 2 * edgeFactor;
+        this.springTarget.rotateY = (x - 0.5) * 12 * 2 * edgeFactor;
+        this.springTarget.glareX = (1 - x) * 100;
+        this.springTarget.glareY = (1 - y) * 100;
+        this.springTarget.opacity = edgeFactor;
+        this.startSpring();
+    }
+
+    startSpring() {
+        if (this.springFrame !== null) return;
+        const step = (timestamp = performance.now()) => {
+            const { springState: state, springTarget: target, springVelocity: velocity } = this;
+            const dt = this.springLastTime ? Math.min(0.032, Math.max(0.001, (timestamp - this.springLastTime) / 1000)) : 1 / 60;
+            this.springLastTime = timestamp;
+            Object.keys(state).forEach((key) => {
+                velocity[key] += (200 * (target[key] - state[key])) * dt;
+                velocity[key] *= Math.exp(-30 * dt);
+                state[key] += velocity[key] * dt;
+            });
+            this.applyTilt(state);
+
+            const settled = Object.keys(state).every((key) =>
+                Math.abs(target[key] - state[key]) < 0.01 && Math.abs(velocity[key]) < 0.01
+            );
+            if (settled) {
+                Object.assign(state, target);
+                Object.keys(velocity).forEach((key) => { velocity[key] = 0; });
+                this.applyTilt(state);
+                this.springFrame = null;
+                this.springLastTime = 0;
+                return;
+            }
+            this.springFrame = -1;
+            const frame = requestAnimationFrame(step);
+            if (this.springFrame === -1) this.springFrame = frame;
+        };
+        this.springFrame = -1;
+        const frame = requestAnimationFrame(step);
+        if (this.springFrame === -1) this.springFrame = frame;
+    }
+
+    applyTilt(state) {
+        this.card.style.transform =
+            `perspective(1000px) rotateX(${state.rotateX.toFixed(3)}deg) rotateY(${state.rotateY.toFixed(3)}deg)`;
+        if (this.glare) {
+            this.glare.style.background =
+                `radial-gradient(circle at ${state.glareX.toFixed(2)}% ${state.glareY.toFixed(2)}%, ` +
+                'rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.12) 10%, ' +
+                'rgba(255, 255, 255, 0.08) 20%, rgba(255, 255, 255, 0.04) 35%, ' +
+                'rgba(255, 255, 255, 0.02) 50%, rgba(255, 255, 255, 0.005) 65%, transparent 80%)';
+            this.glare.style.opacity = state.opacity.toFixed(4);
+        }
     }
 
     resetTilt(animate = true) {
-        cancelAnimationFrame(this.pointerFrame);
+        cancelAnimationFrame(this.springFrame);
+        this.springFrame = null;
+        this.springLastTime = 0;
+        this.springState = { rotateX: 0, rotateY: 0, glareX: 50, glareY: 50, opacity: 0 };
+        this.springVelocity = { rotateX: 0, rotateY: 0, glareX: 0, glareY: 0, opacity: 0 };
+        this.springTarget = { rotateX: 0, rotateY: 0, glareX: 50, glareY: 50, opacity: 0 };
         window.clearTimeout(this.resetTimer);
-        this.card?.classList.remove('is-tilting');
-        this.card?.classList.toggle('is-resetting', animate && !reduceMotion());
-        this.card?.style.setProperty('--cover-rotate-x', '0deg');
-        this.card?.style.setProperty('--cover-rotate-y', '0deg');
-        this.card?.style.setProperty('--cover-light-x', '50%');
-        this.card?.style.setProperty('--cover-light-y', '36%');
-        this.card?.style.setProperty('--cover-light-angle', '132deg');
-        this.card?.style.setProperty('--cover-depth-x', '0px');
-        this.card?.style.setProperty('--cover-depth-y', '0px');
-        this.card?.style.setProperty('--cover-shadow-x', '0px');
-        this.card?.style.setProperty('--cover-shadow-y', '30px');
-        this.resetTimer = window.setTimeout(() => this.card?.classList.remove('is-resetting'), 420);
+        if (this.card) this.applyTilt(this.springState);
+        if (animate && !reduceMotion()) {
+            this.card?.classList.add('is-resetting');
+            this.resetTimer = window.setTimeout(() => this.card?.classList.remove('is-resetting'), 420);
+        }
     }
 }

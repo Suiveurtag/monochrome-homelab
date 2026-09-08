@@ -40,6 +40,7 @@ import { db } from './db.js';
 import { getVibrantColorFromImage } from './vibrant-color.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { authManager } from './accounts/auth.js';
+import { pb } from './accounts/config.js';
 import { partyManager } from './listening-party.js';
 import { Visualizer } from './visualizer.js';
 import { audioContextManager } from './audio-context.js';
@@ -52,6 +53,9 @@ import { isVideoArtwork, setArtworkBackground } from './animated-artwork.js';
 import { getArtworkSources } from './artwork-media.js';
 import { getTrackThemeColor } from './track-theme-color.js';
 import { listeningTracker } from './listening-tracker.js';
+import { bindPlaylistReordering } from './playlist-reordering.js';
+import { shuffleTracks } from './recommendation-settings.js';
+import { realRandom } from './recommendation-engine.js';
 import { AlbumCoverInspector } from './album-cover-inspector.js';
 import { getTrackDisplayAlbum } from './track-versions.js';
 import {
@@ -964,6 +968,20 @@ export class UIRenderer {
         const isCompact = cardSettings.isCompactAlbum();
         const subtitle =
             customSubtitle || `${playlist.tracks ? playlist.tracks.length : playlist.numberOfTracks || 0} tracks`;
+        const isSharedCollaborator = Boolean(
+            playlist.collaboration && playlist.collaboration.owner !== pb.authStore.record?.id
+        );
+        const playlistActions = isSharedCollaborator
+            ? `<span class="playlist-collaboration-badge" title="Shared playlist">Shared</span>`
+            : `<button class="edit-playlist-btn" data-action="edit-playlist" title="Edit Playlist">
+                    ${SVG_SQUARE_PEN(20)}
+                </button>
+                <button class="export-playlist-btn" data-action="export-playlist" title="Export Playlist">
+                    ${SVG_UPLOAD(20)}
+                </button>
+                <button class="delete-playlist-btn" data-action="delete-playlist" title="Delete Playlist">
+                    ${SVG_BIN(20)}
+                </button>`;
 
         return this.createBaseCardHTML({
             type: 'user-playlist', // Note: data-type logic in base might need adjustment if it uses this for buttons.
@@ -973,17 +991,7 @@ export class UIRenderer {
             title: escapeHtml(playlist.name),
             subtitle,
             imageHTML: imageHTML,
-            actionButtonsHTML: `
-                <button class="edit-playlist-btn" data-action="edit-playlist" title="Edit Playlist">
-                    ${SVG_SQUARE_PEN(20)}
-                </button>
-                <button class="export-playlist-btn" data-action="export-playlist" title="Export Playlist">
-                    ${SVG_UPLOAD(20)}
-                </button>
-                <button class="delete-playlist-btn" data-action="delete-playlist" title="Delete Playlist">
-                    ${SVG_BIN(20)}
-                </button>
-            `,
+            actionButtonsHTML: playlistActions,
             isCompact,
             extraAttributes: 'draggable="true"',
             extraClasses: 'user-playlist',
@@ -3467,7 +3475,7 @@ export class UIRenderer {
             .getTracks()
             .catch(() => []);
 
-        const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+        const shuffle = (arr) => realRandom(arr);
 
         const combined = [
             ...shuffle(playlistTracks).slice(0, 20),
@@ -3646,14 +3654,14 @@ export class UIRenderer {
                     localAPI.getArtists(),
                     localAPI.getUserPlaylists(),
                 ]);
-                const items = [
+                let items = [
                     ...albums.slice(0, 8).map((album) => ({ type: 'album', data: album })),
                     ...artists.slice(0, 8).map((artist) => ({ type: 'artist', data: artist })),
                     ...playlists.slice(0, 8).map((playlist) => ({ type: 'user-playlist', data: playlist })),
                 ];
 
                 if (homePageSettings.shouldShuffleEditorsPicks()) {
-                    items.sort(() => Math.random() - 0.5);
+                    items = realRandom(items);
                 }
 
                 const cardsHTML = [];
@@ -3766,7 +3774,7 @@ export class UIRenderer {
                 items.push(...recents.playlists.slice(0, 4).map((i) => ({ ...i, _kind: 'playlist' })));
             if (recents.mixes) items.push(...recents.mixes.slice(0, 4).map((i) => ({ ...i, _kind: 'mix' })));
 
-            items.sort(() => Math.random() - 0.5);
+            items.splice(0, items.length, ...realRandom(items));
             const displayItems = items.slice(0, 6);
 
             if (displayItems.length > 0) {
@@ -3990,6 +3998,7 @@ export class UIRenderer {
         try {
             const provider = this.api.getCurrentProvider();
             const results = await this.api.search(query, { signal, provider });
+            listeningTracker.recordSearch(query, results);
 
             let finalTracks = (results.tracks && results.tracks.items) || [];
             let finalVideos = (results.videos && results.videos.items) || [];
@@ -4486,7 +4495,8 @@ export class UIRenderer {
                                                 tracklistContainer,
                                                 updatedPlaylist.tracks,
                                                 playlistId,
-                                                syncManager
+                                                syncManager,
+                                                updatedPlaylist.collaboration?.revision
                                             );
 
                                             // Update the playlist metadata
@@ -4567,6 +4577,10 @@ export class UIRenderer {
 
             if (source === 'user' || (!source && isUUID)) {
                 ownedPlaylist = await db.getPlaylist(playlistId);
+                if (ownedPlaylist?.collaboration) {
+                    const { playlistCollaboration } = await import('./playlist-collaboration.js');
+                    ownedPlaylist = await playlistCollaboration.refresh(ownedPlaylist);
+                }
                 playlistData = ownedPlaylist;
             }
 
@@ -4641,7 +4655,11 @@ export class UIRenderer {
 
                         // Only enable drag-and-drop reordering in custom sort mode
                         if (currentSort === 'custom') {
-                            this.enableTrackReordering(container, currentTracks, playlistId, syncManager);
+                            this.enableTrackReordering(container, currentTracks, playlistId, syncManager,
+                                playlistData.collaboration?.revision, (saved) => {
+                                    originalTracks.splice(0, originalTracks.length, ...saved.tracks);
+                                    playlistData.collaboration = saved.collaboration;
+                                });
                         }
                     }
                 };
@@ -5855,28 +5873,37 @@ export class UIRenderer {
             'share-playlist-btn',
             'sort-playlist-btn',
             'export-playlist-btn',
+            'collaborate-playlist-btn',
         ].forEach((id) => {
             const btn = actionsDiv.querySelector(`#${id}`);
             if (btn) btn.remove();
         });
 
         const fragment = document.createDocumentFragment();
+        let ownerOnly = isOwned;
+
+        if (isOwned) {
+            const { appendCollaborationButton, watchCollaborativePlaylist, isPlaylistOwner } = await import('./playlist-collaboration-ui.js');
+            ownerOnly = isPlaylistOwner(playlist);
+            appendCollaborationButton(actionsDiv, playlist);
+            watchCollaborativePlaylist(this, playlist.id || playlist.uuid);
+        }
 
         // Shuffle
         const shuffleBtn = document.createElement('button');
         shuffleBtn.id = 'shuffle-playlist-btn';
         shuffleBtn.className = 'btn-primary';
         shuffleBtn.innerHTML = `${SVG_SHUFFLE(20)}<span>Shuffle</span>`;
-        shuffleBtn.onclick = () => {
-            const shuffledTracks = [...tracks].sort(() => Math.random() - 0.5);
+        shuffleBtn.onclick = async () => {
+            const shuffledTracks = shuffleTracks(tracks);
             const playlistId = playlist.id || playlist.uuid;
-            this.player.setQueue(shuffledTracks, 0, false, {
+            await this.player.setQueue(shuffledTracks, 0, false, {
                 kind: 'playlist',
                 id: playlistId == null ? null : String(playlistId),
                 label: playlist.name || playlist.title || 'Playlist',
                 href: playlistId == null ? null : `/playlist/${playlistId}`,
             });
-            this.player.playTrackFromQueue();
+            await this.player.playTrackFromQueue();
         };
 
         // Sort button (always available if onSort is provided)
@@ -5927,8 +5954,9 @@ export class UIRenderer {
             };
         }
 
-        // Playlist management (Owned Only)
-        if (isOwned) {
+        // Playlist management is reserved for the owner. Collaborators can still
+        // edit tracks and leave through the Collaborators dialog.
+        if (ownerOnly) {
             const exportBtn = document.createElement('button');
             exportBtn.id = 'export-playlist-btn';
             exportBtn.className = 'btn-secondary';
@@ -5945,7 +5973,7 @@ export class UIRenderer {
         }
 
         // Share (User Playlists Only)
-        if (showShare || (isOwned && playlist.isPublic)) {
+        if (showShare || (ownerOnly && playlist.isPublic)) {
             const shareBtn = document.createElement('button');
             shareBtn.id = 'share-playlist-btn';
             shareBtn.className = 'btn-secondary';
@@ -6007,117 +6035,32 @@ export class UIRenderer {
         }
     }
 
-    enableTrackReordering(container, tracks, playlistId, syncManager) {
-        // Clone to remove old listeners
+    enableTrackReordering(container, tracks, playlistId, syncManager, revision, onSaved = () => {}) {
         const newContainer = container.cloneNode(true);
-        if (container.parentNode) {
-            container.parentNode.replaceChild(newContainer, container);
+        container.replaceWith(newContainer);
+        for (const [index, row] of [...newContainer.querySelectorAll('.track-item')].entries()) {
+            if (tracks[index]) trackDataStore.set(row, tracks[index]);
         }
-        container = newContainer;
-
-        let draggedElement = null;
-        let draggedIndex = -1;
-        let trackItems = Array.from(container.querySelectorAll('.track-item'));
-
-        trackItems.forEach((item, index) => {
-            // Re-bind data to cloned elements
-            if (tracks[index]) {
-                trackDataStore.set(item, tracks[index]);
-            }
-            item.draggable = true;
-            item.dataset.index = index;
-        });
-
-        const dragStart = (e) => {
-            draggedElement = e.target.closest('.track-item');
-            if (!draggedElement) return;
-
-            draggedIndex = parseInt(draggedElement.dataset.index);
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', draggedIndex);
-            draggedElement.classList.add('dragging');
-        };
-
-        const dragEnd = () => {
-            if (draggedElement) {
-                draggedElement.classList.remove('dragging');
-                draggedElement = null;
-            }
-        };
-
-        const dragOver = (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-
-            if (!draggedElement) return;
-
-            const afterElement = getDragAfterElement(container, e.clientY);
-            if (afterElement === draggedElement) return;
-
-            if (afterElement) {
-                container.insertBefore(draggedElement, afterElement);
-            } else {
-                container.appendChild(draggedElement);
-            }
-        };
-
-        const drop = async (e) => {
-            e.preventDefault();
-
-            if (!draggedElement) return;
-
-            try {
-                // Get new order from DOM
-                const newTrackItems = Array.from(container.querySelectorAll('.track-item'));
-                const newTracks = newTrackItems.map((item) => {
-                    const originalIndex = parseInt(item.dataset.index);
-                    return tracks[originalIndex];
-                });
-
-                newTrackItems.forEach((item, index) => {
-                    item.dataset.index = index;
-                });
-
-                tracks.splice(0, tracks.length, ...newTracks);
-
-                // Save to DB
-                const updatedPlaylist = await db.updatePlaylistTracks(playlistId, newTracks);
-                syncManager.syncUserPlaylist(updatedPlaylist, 'update');
-
-                draggedElement = null;
-                draggedIndex = -1;
-            } catch (error) {
-                console.error('Error updating playlist tracks:', error);
-                if (draggedElement) {
-                    draggedElement.classList.remove('dragging');
-                    draggedElement = null;
+        bindPlaylistReordering(newContainer, {
+            tracks,
+            revision,
+            save: (order, expectedRevision) => db.updatePlaylistTracks(playlistId, order, expectedRevision),
+            onSaved: async (playlist) => {
+                onSaved(playlist);
+                if (!playlist?.collaboration) {
+                    try { await syncManager.syncUserPlaylist(playlist, 'update'); }
+                    catch { showNotification('Order saved on this device. Cloud sync will retry later.'); }
                 }
-                draggedIndex = -1;
-            }
-        };
-
-        container.addEventListener('dragstart', dragStart);
-        container.addEventListener('dragend', dragEnd);
-        container.addEventListener('dragover', dragOver);
-        container.addEventListener('drop', drop);
-
-        // Cache function to avoid recreating
-        function getDragAfterElement(container, y) {
-            const draggableElements = [...container.querySelectorAll('.track-item:not(.dragging)')];
-
-            return draggableElements.reduce(
-                (closest, child) => {
-                    const box = child.getBoundingClientRect();
-                    const offset = y - box.top - box.height / 2;
-                    if (offset < 0 && offset > closest.offset) {
-                        return { offset: offset, element: child };
-                    } else {
-                        return closest;
-                    }
-                },
-                { offset: Number.NEGATIVE_INFINITY }
-            ).element;
-        }
+                showNotification('Playlist order saved');
+            },
+            onError: async (error) => {
+                showNotification(error.message || 'Could not save the playlist order. Try again.');
+                if (document.getElementById('page-playlist')?.classList.contains('active') &&
+                    decodeURIComponent(window.location.pathname.split('/').pop()) === String(playlistId)) {
+                    await this.renderPlaylistPage(playlistId, 'user');
+                }
+            },
+        });
     }
 
     getDragAfterElement(container, y) {

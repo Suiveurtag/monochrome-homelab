@@ -1,0 +1,132 @@
+[data-keyboard-row]:focus-visible .track-item-actions,
+[data-keyboard-row]:focus-within .track-item-actions {
+    opacity: 1;
+}
+
+#customize-shortcuts-modal .shortcut-hint {
+    line-height: 1.5;
+}
+
+#customize-shortcuts-modal .shortcut-key {
+    flex-shrink: 0;
+    gap: 6px;
+}
+
+#customize-shortcuts-modal .shortcut-description {
+    line-height: 1.4;
+}
+
+.shortcut-record-button,
+.shortcut-clear-button,
+.shortcut-reset-button {
+    min-height: 36px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--background);
+    color: var(--foreground);
+    font: inherit;
+    cursor: pointer;
+    padding: 6px 10px;
+}
+
+.shortcut-record-button {
+    min-width: 94px;
+}
+
+.shortcut-record-button kbd {
+    border: 0 !important;
+    background: none !important;
+    padding: 0 !important;
+    cursor: inherit !important;
+}
+
+.shortcut-record-button[aria-pressed='true'] {
+    outline: 2px solid var(--foreground);
+    outline-offset: 2px;
+}
+
+.shortcut-clear-button,
+.shortcut-reset-button {
+    color: var(--muted-foreground);
+    font-size: 12px;
+}
+
+.shortcut-clear-button:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+[data-keyboard-row]:focus-visible,
+.track-checkbox:focus-visible,
+.shortcut-record-button:focus-visible,
+.shortcut-clear-button:focus-visible,
+.shortcut-reset-button:focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: -2px;
+}
+
+.shortcut-conflict {
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    line-height: 1.5;
+}
+
+.shortcut-conflict[hidden] {
+    display: none;
+}
+
+.shortcut-conflict p {
+    margin: 0 0 8px;
+}
+
+.shortcut-conflict-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.shortcut-status {
+    min-height: 1.4em;
+    margin: 8px 0;
+    color: var(--muted-foreground);
+    font-size: 13px;
+}
+
+.shortcut-group-title {
+    margin: 18px 0 4px;
+    color: var(--muted-foreground);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.keyboard-shortcuts-reference {
+    max-height: 65vh;
+    overflow: auto;
+}
+
+.keyboard-shortcuts-reference .shortcut-item {
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.keyboard-shortcuts-reference kbd {
+    flex-shrink: 0;
+}
+
+@media (width <= 560px) {
+    #customize-shortcuts-modal .customize-shortcut-item {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    #customize-shortcuts-modal .shortcut-key {
+        width: 100%;
+    }
+
+    .shortcut-record-button {
+        flex: 1;
+    }
+}

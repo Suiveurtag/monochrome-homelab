@@ -62,6 +62,13 @@ function dependencies() {
             sourceContext: null,
             getCurrentQueue: () => [],
             playAtIndex: vi.fn(async () => {}),
+            autoplayEnabled: false,
+            radioEnabled: false,
+            repeatMode: 0,
+            enableAutoplay: vi.fn(function () { this.autoplayEnabled = true; }),
+            disableAutoplay: vi.fn(function () { this.autoplayEnabled = false; }),
+            disableRadio: vi.fn(function () { this.radioEnabled = false; }),
+            fetchAutoplayRecommendations: vi.fn(async () => {}),
         },
         api: { getCoverUrl: (value) => value },
         ui: {
@@ -273,18 +280,45 @@ describe('Now Playing panel interactions', () => {
         panel.destroy();
     });
 
-    test('keeps Endless playback as an honest preview-only interaction', async () => {
+    test('Endless toggles the real player preference and requests songs for a short queue', async () => {
         const { NowPlayingPanel } = await import('./now-playing-panel.js');
-        const panel = new NowPlayingPanel(dependencies());
+        const deps = dependencies();
+        deps.player.getCurrentQueue = () => [{ id: 'seed', title: 'Seed' }];
+        deps.player.currentQueueIndex = 0;
+        const panel = new NowPlayingPanel(deps);
         await waitForPanel(panel);
         panel.activeView = 'queue';
         panel.content.innerHTML = panel.renderQueue();
 
-        const endless = panel.root.querySelector('[data-endless-preview]');
+        const endless = panel.root.querySelector('[data-endless-toggle]');
         endless.click();
 
-        await vi.waitFor(() => expect(endless.getAttribute('aria-pressed')).toBe('true'));
-        expect(endless.textContent).toContain('queue still stops at the end');
+        await vi.waitFor(() => expect(panel.root.querySelector('[data-endless-toggle]').getAttribute('aria-pressed')).toBe('true'));
+        expect(deps.player.enableAutoplay).toHaveBeenCalledOnce();
+        expect(deps.player.fetchAutoplayRecommendations).toHaveBeenCalledOnce();
+        panel.root.querySelector('[data-endless-toggle]').click();
+        await vi.waitFor(() => expect(deps.player.disableAutoplay).toHaveBeenCalledOnce());
+        expect(deps.player.autoplayEnabled).toBe(false);
+        panel.destroy();
+    });
+
+    test('Endless pauses under either repeat mode without clearing the saved preference', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const deps = dependencies();
+        deps.player.autoplayEnabled = true;
+        const panel = new NowPlayingPanel(deps);
+        await waitForPanel(panel);
+        panel.activeView = 'queue';
+        for (const mode of [1, 2]) {
+            deps.player.repeatMode = mode;
+            panel.content.innerHTML = panel.renderQueue();
+            const button = panel.root.querySelector('[data-endless-toggle]');
+            expect(button.getAttribute('aria-pressed')).toBe('false');
+            expect(button.textContent).toContain('Paused while repeat is on');
+            button.click();
+        }
+        expect(deps.player.autoplayEnabled).toBe(true);
+        expect(deps.player.disableAutoplay).not.toHaveBeenCalled();
         panel.destroy();
     });
 
@@ -369,6 +403,8 @@ describe('Now Playing panel interactions', () => {
         expect(play).toHaveBeenCalled();
         play.mockClear();
 
+        // A mocked play() does not emit the browser event that resets retry backoff.
+        canvas.dispatchEvent(new Event('play'));
         const schedule = vi.spyOn(window, 'setTimeout');
         canvas.dispatchEvent(new Event('pause'));
         const retry = schedule.mock.calls.find(([, delay]) => delay === 240);

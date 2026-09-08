@@ -2,6 +2,7 @@
 import { db } from '../db.js';
 import { authManager } from './auth.js';
 import { pb } from './config.js';
+import { activateAccountLibrary, replaceAccountLibrary } from '../account-library.js';
 
 const PUBLIC_COLLECTION = 'public_playlists';
 
@@ -103,7 +104,9 @@ const syncManager = {
     },
 
     async _updateUserJSON(uid, field, data) {
+        if (this.pb.authStore.record?.id !== uid) return;
         const record = await this._getUserRecord(uid);
+        if (this.pb.authStore.record?.id !== uid) return;
         if (!record) {
             console.error('Cannot update: no user record found');
             return;
@@ -318,6 +321,8 @@ const syncManager = {
     },
 
     async syncUserPlaylist(playlist, action) {
+        // Shared playlists are authoritative server records, never whole-user JSON snapshots.
+        if (playlist?.collaboration) return;
         const user = authManager.user;
         if (!user) return;
 
@@ -564,15 +569,25 @@ const syncManager = {
     },
 
     async onAuthStateChanged(user) {
-        if (user) {
-            if (this._isSyncing) return;
-
-            this._isSyncing = true;
-
-            try {
-                const cloudData = await this.getUserData();
-
-                if (cloudData) {
+        const uid = user?.$id || user?.id || null;
+        const scope = `${this.pb.baseURL}|${uid || 'guest'}`;
+        const generation = (this._syncGeneration || 0) + 1;
+        this._syncGeneration = generation;
+        const current = () => this._syncGeneration === generation && (this.pb.authStore.record?.id || null) === uid;
+        this._isSyncing = true;
+        this._userRecordCache = null;
+        this._getUserRecordPromise = null;
+        window.dispatchEvent(new CustomEvent('account-library-changing', { detail: { scope } }));
+        try {
+            if (!await activateAccountLibrary(db, scope, current) || !current()) return;
+            window.dispatchEvent(new CustomEvent('account-library-ready', { detail: { scope } }));
+            const { playlistCollaboration } = await import('../playlist-collaboration.js');
+            if (!current()) return;
+            void playlistCollaboration.start(user).catch((error) => console.warn('[Playlists] Sync unavailable:', error));
+            if (!user) return;
+            const cloudData = await this.getUserData();
+            if (!current()) return;
+            if (cloudData) {
                     let database = db;
 
                     const localData = {
@@ -586,6 +601,7 @@ const syncManager = {
                         userFolders: (await database.getAll('user_folders')) || [],
                     };
 
+                    if (!current()) return;
                     let { library, history, userPlaylists, userFolders } = cloudData;
                     let needsUpdate = false;
 
@@ -614,6 +630,7 @@ const syncManager = {
                     localData.mixes.forEach((item) => mergeItem(library.mixes, item, 'mix'));
 
                     localData.userPlaylists.forEach((playlist) => {
+                        if (playlist.collaboration) return;
                         if (!userPlaylists[playlist.id]) {
                             userPlaylists[playlist.id] = {
                                 id: playlist.id,
@@ -680,7 +697,10 @@ const syncManager = {
                         favorites_playlists: Object.values(library.playlists).filter((p) => p && typeof p === 'object'),
                         favorites_mixes: Object.values(library.mixes).filter((m) => m && typeof m === 'object'),
                         history_tracks: history,
-                        user_playlists: Object.values(userPlaylists).filter((p) => p && typeof p === 'object'),
+                        user_playlists: [
+                            ...Object.values(userPlaylists).filter((p) => p && typeof p === 'object' && !p.collaboration && !localData.userPlaylists.some((local) => local.id === p.id && local.collaboration)),
+                            ...localData.userPlaylists.filter((p) => p.collaboration && (p.collaboration.owner === user.$id || p.collaboration.members?.includes(user.$id))),
+                        ],
                         user_folders: Object.values(userFolders).filter((f) => f && typeof f === 'object'),
                     };
 
@@ -711,30 +731,28 @@ const syncManager = {
                             '[PocketBase] Sync aborted: local data exists but merged result is empty. Preserving local data to prevent accidental wipe.'
                         );
                     } else {
-                        await database.importData(convertedData, true);
+                        if (!await replaceAccountLibrary(database, scope, convertedData, current)) return;
                     }
-                    await new Promise((resolve) => setTimeout(resolve, 300));
-
-                    window.dispatchEvent(new CustomEvent('library-changed'));
+                    if (!current()) return;
+                    window.dispatchEvent(new CustomEvent('library-changed', { detail: { scope } }));
                     window.dispatchEvent(new CustomEvent('history-changed'));
                     window.dispatchEvent(new HashChangeEvent('hashchange'));
 
                     console.log('[PocketBase] ✓ Sync completed');
                 }
-            } catch (error) {
-                console.error('[PocketBase] Sync error:', error);
-            } finally {
-                this._isSyncing = false;
-            }
-        } else {
-            this._userRecordCache = null;
-            this._isSyncing = false;
+        } catch (error) {
+            console.error('[PocketBase] Sync error:', error);
+        } finally {
+            if (current()) this._isSyncing = false;
         }
     },
 };
 
 if (pb) {
     authManager.onAuthStateChanged(syncManager.onAuthStateChanged.bind(syncManager));
+    void authManager.ready.then(() => {
+        if (!syncManager._syncGeneration) return syncManager.onAuthStateChanged(authManager.user);
+    });
 }
 
 export { pb, syncManager };

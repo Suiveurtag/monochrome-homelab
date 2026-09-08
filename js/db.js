@@ -257,13 +257,13 @@ export class MusicDatabase {
 
         if (exists) {
             await this.performTransaction(storeName, 'readwrite', (store) => store.delete(key));
-            window.dispatchEvent(new CustomEvent('favorites-changed'));
+            window.dispatchEvent(new CustomEvent('favorites-changed', { detail: { type, item, added: false } }));
             return false; // Removed
         } else {
             const minified = this._minifyItem(type, item);
             const entry = { ...minified, addedAt: Date.now() };
             await this.performTransaction(storeName, 'readwrite', (store) => store.put(entry));
-            window.dispatchEvent(new CustomEvent('favorites-changed'));
+            window.dispatchEvent(new CustomEvent('favorites-changed', { detail: { type, item, added: true } }));
             return true; // Added
         }
     }
@@ -275,7 +275,7 @@ export class MusicDatabase {
         if (!key) throw new Error('Favorite item is missing an id');
         const minified = this._minifyItem(type, item);
         await this.performTransaction(storeName, 'readwrite', (store) => store.put({ ...minified, addedAt }));
-        window.dispatchEvent(new CustomEvent('favorites-changed'));
+        window.dispatchEvent(new CustomEvent('favorites-changed', { detail: { type, item, added: true } }));
         return true;
     }
 
@@ -730,7 +730,7 @@ export class MusicDatabase {
 
         // TRIGGER SYNC
         this._dispatchPlaylistSync('create', playlist);
-        window.dispatchEvent(new CustomEvent('playlist-tracks-changed'));
+        window.dispatchEvent(new CustomEvent('playlist-tracks-changed', { detail: { playlistId: id, addedTracks: tracks } }));
 
         return playlist;
     }
@@ -738,6 +738,10 @@ export class MusicDatabase {
     async addTrackToPlaylist(playlistId, track) {
         const playlist = await this.performTransaction('user_playlists', 'readonly', (store) => store.get(playlistId));
         if (!playlist) throw new Error('Playlist not found');
+        if (playlist.collaboration) {
+            const { playlistCollaboration } = await import('./playlist-collaboration.js');
+            return playlistCollaboration.mutate(playlist, { type: 'add', tracks: [this._minifyItem(track.type || 'track', track)] });
+        }
         playlist.tracks = playlist.tracks || [];
         const trackWithDate = { ...track, addedAt: Date.now() };
         const minifiedTrack = this._minifyItem(track.type || 'track', trackWithDate);
@@ -748,7 +752,7 @@ export class MusicDatabase {
         await this.performTransaction('user_playlists', 'readwrite', (store) => store.put(playlist));
 
         this._dispatchPlaylistSync('update', playlist);
-        window.dispatchEvent(new CustomEvent('playlist-tracks-changed'));
+        window.dispatchEvent(new CustomEvent('playlist-tracks-changed', { detail: { playlistId, addedTracks: [track] } }));
 
         return playlist;
     }
@@ -756,14 +760,20 @@ export class MusicDatabase {
     async addTracksToPlaylist(playlistId, tracks) {
         const playlist = await this.performTransaction('user_playlists', 'readonly', (store) => store.get(playlistId));
         if (!playlist) throw new Error('Playlist not found');
+        if (playlist.collaboration) {
+            const { playlistCollaboration } = await import('./playlist-collaboration.js');
+            return playlistCollaboration.mutate(playlist, { type: 'add', tracks: tracks.map((track) => this._minifyItem(track.type || 'track', track)) });
+        }
         playlist.tracks = playlist.tracks || [];
 
         let addedCount = 0;
+        const addedTracks = [];
         for (const track of tracks) {
             if (!playlist.tracks.some((t) => t.id === track.id)) {
                 const trackWithDate = { ...track, addedAt: Date.now() };
                 playlist.tracks.push(this._minifyItem(track.type || 'track', trackWithDate));
                 addedCount++;
+                addedTracks.push(track);
             }
         }
 
@@ -772,7 +782,7 @@ export class MusicDatabase {
             this._updatePlaylistMetadata(playlist);
             await this.performTransaction('user_playlists', 'readwrite', (store) => store.put(playlist));
             this._dispatchPlaylistSync('update', playlist);
-            window.dispatchEvent(new CustomEvent('playlist-tracks-changed'));
+            window.dispatchEvent(new CustomEvent('playlist-tracks-changed', { detail: { playlistId, addedTracks } }));
         }
 
         return playlist;
@@ -781,6 +791,10 @@ export class MusicDatabase {
     async removeTrackFromPlaylist(playlistId, trackId, trackType = null) {
         const playlist = await this.performTransaction('user_playlists', 'readonly', (store) => store.get(playlistId));
         if (!playlist) throw new Error('Playlist not found');
+        if (playlist.collaboration) {
+            const { playlistCollaboration } = await import('./playlist-collaboration.js');
+            return playlistCollaboration.mutate(playlist, { type: 'remove', trackId, trackType });
+        }
         playlist.tracks = playlist.tracks || [];
         playlist.tracks = playlist.tracks.filter((t) => {
             if (trackType) {
@@ -799,6 +813,11 @@ export class MusicDatabase {
     }
 
     async deletePlaylist(playlistId) {
+        const playlist = await this.performTransaction('user_playlists', 'readonly', (store) => store.get(playlistId));
+        if (playlist?.collaboration) {
+            const { playlistCollaboration, isPlaylistOwner } = await import('./playlist-collaboration.js');
+            return playlistCollaboration.mutate(playlist, { type: isPlaylistOwner(playlist) ? 'delete' : 'leave' });
+        }
         await this.performTransaction('user_playlists', 'readwrite', (store) => store.delete(playlistId));
 
         // TRIGGER SYNC (but for deleting)
@@ -811,6 +830,10 @@ export class MusicDatabase {
     }
 
     async updatePlaylist(playlist) {
+        if (playlist.collaboration) {
+            const { playlistCollaboration } = await import('./playlist-collaboration.js');
+            return playlistCollaboration.mutate(playlist, { type: 'metadata', name: playlist.name, description: playlist.description, cover: playlist.cover, isPublic: playlist.isPublic });
+        }
         playlist.updatedAt = Date.now();
         this._updatePlaylistMetadata(playlist);
         await this.performTransaction('user_playlists', 'readwrite', (store) => store.put(playlist));
@@ -934,6 +957,10 @@ export class MusicDatabase {
     async updatePlaylistName(playlistId, newName) {
         const playlist = await this.performTransaction('user_playlists', 'readonly', (store) => store.get(playlistId));
         if (!playlist) throw new Error('Playlist not found');
+        if (playlist.collaboration) {
+            const { playlistCollaboration } = await import('./playlist-collaboration.js');
+            return playlistCollaboration.mutate(playlist, { type: 'metadata', name: newName });
+        }
         playlist.name = newName;
         playlist.updatedAt = Date.now();
         await this.performTransaction('user_playlists', 'readwrite', (store) => store.put(playlist));
@@ -943,6 +970,10 @@ export class MusicDatabase {
     async updatePlaylistDescription(playlistId, newDescription) {
         const playlist = await this.performTransaction('user_playlists', 'readonly', (store) => store.get(playlistId));
         if (!playlist) throw new Error('Playlist not found');
+        if (playlist.collaboration) {
+            const { playlistCollaboration } = await import('./playlist-collaboration.js');
+            return playlistCollaboration.mutate(playlist, { type: 'metadata', description: newDescription });
+        }
         playlist.description = newDescription;
         playlist.updatedAt = Date.now();
         await this.performTransaction('user_playlists', 'readwrite', (store) => store.put(playlist));
@@ -952,7 +983,12 @@ export class MusicDatabase {
         return playlist;
     }
 
-    async updatePlaylistTracks(playlistId, tracks) {
+    async updatePlaylistTracks(playlistId, tracks, expectedRevision) {
+        const current = await this.performTransaction('user_playlists', 'readonly', (store) => store.get(playlistId));
+        if (current?.collaboration) {
+            const { playlistCollaboration, sharedPlaylistTrackKey } = await import('./playlist-collaboration.js');
+            return playlistCollaboration.mutate(current, { type: 'reorder', order: tracks.map(sharedPlaylistTrackKey) }, { expectedRevision });
+        }
         const db = await this.open();
         return new Promise((resolve, reject) => {
             const transaction = db.transaction('user_playlists', 'readwrite');

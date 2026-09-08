@@ -12,6 +12,7 @@ const markup = `
             <div class="album-cover-inspector-arrival">
                 <div class="album-cover-inspector-card">
                     <div class="album-cover-inspector-media-host"></div>
+                    <div class="album-cover-inspector-light"></div>
                 </div>
             </div>
             <h2 id="album-cover-inspector-title"></h2>
@@ -64,29 +65,28 @@ describe('AlbumCoverInspector', () => {
         expect(document.activeElement).toBe(trigger);
     });
 
-    test('tilts the artwork toward the pointed corner while keeping the frontlight near center', () => {
+    test('maps pointer position to the TIDAL tilt and glare range', () => {
         window.matchMedia = vi.fn(() => ({ matches: false }));
         const inspector = new AlbumCoverInspector();
         inspector.interactionSurface.getBoundingClientRect = () => ({ left: 0, top: 0, width: 200, height: 200 });
 
-        const corners = [
-            { x: 0, y: 0, rotateX: '14.00deg', rotateY: '-14.00deg', depthX: '12.0px', depthY: '12.0px' },
-            { x: 200, y: 0, rotateX: '14.00deg', rotateY: '14.00deg', depthX: '-12.0px', depthY: '12.0px' },
-            { x: 0, y: 200, rotateX: '-14.00deg', rotateY: '-14.00deg', depthX: '12.0px', depthY: '-12.0px' },
-            { x: 200, y: 200, rotateX: '-14.00deg', rotateY: '14.00deg', depthX: '-12.0px', depthY: '-12.0px' },
+        const positions = [
+            { x: 50, y: 50, rotateX: 6, rotateY: -6 },
+            { x: 150, y: 50, rotateX: 6, rotateY: 6 },
+            { x: 50, y: 150, rotateX: -6, rotateY: -6 },
+            { x: 150, y: 150, rotateX: -6, rotateY: 6 },
         ];
 
-        corners.forEach(({ x, y, rotateX, rotateY, depthX, depthY }) => {
+        positions.forEach(({ x, y, rotateX, rotateY }) => {
             inspector.updateTilt({ clientX: x, clientY: y });
-            expect(inspector.card.style.getPropertyValue('--cover-rotate-x')).toBe(rotateX);
-            expect(inspector.card.style.getPropertyValue('--cover-rotate-y')).toBe(rotateY);
-            expect(inspector.card.style.getPropertyValue('--cover-depth-x')).toBe(depthX);
-            expect(inspector.card.style.getPropertyValue('--cover-depth-y')).toBe(depthY);
+            expect(inspector.springTarget.rotateX).toBe(rotateX);
+            expect(inspector.springTarget.rotateY).toBe(rotateY);
         });
 
         inspector.updateTilt({ clientX: 200, clientY: 0 });
-        expect(inspector.card.style.getPropertyValue('--cover-light-x')).toBe('58.0%');
-        expect(inspector.card.style.getPropertyValue('--cover-light-y')).toBe('30.0%');
+        expect(inspector.springTarget.glareX).toBe(100);
+        expect(inspector.springTarget.glareY).toBe(100);
+        expect(inspector.springTarget.opacity).toBe(0);
     });
 
     test('downloads the cover blob with an album-based filename', async () => {

@@ -29,7 +29,12 @@ const account = {
         try {
             const refreshed = await pb.collection('users').authRefresh();
             return normalizeUser(refreshed.record || pb.authStore.model);
-        } catch {
+        } catch (error) {
+            // A disconnected device may play its own saved library with a still-valid session.
+            // Authentication failures (401/403) continue to clear the session.
+            if (error.status === 0 && pb.authStore.isValid) {
+                return normalizeUser(pb.authStore.record || pb.authStore.model);
+            }
             pb.authStore.clear();
             throw new Error('Not signed in');
         }

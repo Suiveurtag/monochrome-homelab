@@ -15,7 +15,6 @@ import {
     sidebarSettings,
     pwaUpdateSettings,
     modalSettings,
-    keyboardShortcuts,
 } from './storage.js';
 import { UIRenderer } from './ui.js';
 import { Player } from './player.js';
@@ -48,6 +47,9 @@ import {
     uploadSelfHostedTrack,
     updateSelfHostedTrack,
 } from './selfhost-server-api.js';
+import { initializeOfflineUI } from './offline-ui.js';
+import { initializeRecommendationSignals, shuffleTracks } from './recommendation-settings.js';
+import { createUploadStorage } from './upload-storage.js';
 import { groupTracksByUploadDay, patchTrackMetadata, uploadDayLabel } from './upload-gallery.js';
 import { spotifyImportManager } from './spotify-import-manager.js';
 import { spotifyLikesImporter } from './spotify-likes-importer.js';
@@ -57,6 +59,8 @@ import { openEditProfile } from './profile.js';
 import { ThemeStore } from './themeStore.js';
 import { socialManager } from './social.js';
 import './commandPalette.js';
+import { initializeKeyboardNavigation, installKeyboardShortcuts, focusRegion } from './keyboard-navigation.js';
+import { showKeyboardShortcuts, showCustomizeShortcutsModal } from './keyboard-settings.js';
 import {
     parseCSV,
     parseJSPF,
@@ -81,7 +85,6 @@ import {
     SVG_ANIMATE_SPIN,
     SVG_PLAY,
     SVG_CLOSE,
-    SVG_RESET,
 } from './icons.js';
 
 // Capture real iOS state before spoofing (needed for background audio)
@@ -198,7 +201,10 @@ async function initializeSelfHostedUploads() {
 
     const selectedTracks = () => allTracks.filter((track) => selectedIds.has(String(track.id)));
 
+    const uploadStorage = createUploadStorage({ anchor: stats, getTracks: () => allTracks, getSelection: selectedTracks });
+
     const updateSelectionUI = () => {
+        uploadStorage.update();
         document.body.classList.toggle('upload-is-selecting', selecting);
         list.querySelectorAll('.upload-gallery-card').forEach((card) => {
             const checked = selectedIds.has(card.dataset.trackId);
@@ -230,6 +236,7 @@ async function initializeSelfHostedUploads() {
             stats.title = 'Sign in to contribute music to this server.';
         }
         stats.textContent = `${allTracks.length} server track${allTracks.length === 1 ? '' : 's'}`;
+        uploadStorage.update();
         if (!allTracks.length) {
             list.innerHTML =
                 '<div class="upload-gallery-empty"><strong>Your shared gallery is ready.</strong><span>Upload the first FLAC to start the timeline.</span></div>';
@@ -841,34 +848,21 @@ function initializeKeyboardShortcuts(player, _audioPlayer) {
         },
     };
 
-    document.addEventListener('keydown', (e) => {
-        if (e.target.matches('input, textarea, [contenteditable="true"]')) return;
-
-        const shortcuts = keyboardShortcuts.getShortcuts();
-        const pressedKey = e.key.toLowerCase();
-        const hasShift = e.shiftKey;
-        const hasCtrl = e.ctrlKey || e.metaKey;
-        const hasAlt = e.altKey;
-
-        for (const [action, shortcut] of Object.entries(shortcuts)) {
-            if (!shortcut?.key) continue;
-            const shortcutKey = shortcut.key.toLowerCase();
-            const matches =
-                pressedKey === shortcutKey &&
-                shortcut.shift === hasShift &&
-                shortcut.ctrl === hasCtrl &&
-                shortcut.alt === hasAlt;
-
-            if (matches) {
-                e.preventDefault();
-                const actionFn = keyActionMap[action];
-                if (actionFn) {
-                    actionFn();
-                }
-                return;
-            }
-        }
+    Object.assign(keyActionMap, {
+        commandPalette: () => window.dispatchEvent(new CustomEvent('command-palette-toggle')),
+        home: () => navigate('/'),
+        library: () => navigate('/library'),
+        uploads: () => navigate('/upload'),
+        settings: () => navigate('/settings'),
+        focusNavigation: () => focusRegion('.sidebar-nav'),
+        focusContent: () => focusRegion('.main-content'),
+        focusPlayer: () => focusRegion('.now-playing-bar'),
+        fullscreen: () => UIRenderer.instance?.openCurrentTrackFullscreen(),
+        like: () => document.getElementById('now-playing-like-btn')?.click(),
+        shortcuts: showKeyboardShortcuts,
     });
+    initializeKeyboardNavigation();
+    installKeyboardShortcuts(keyActionMap);
 }
 
 async function closeFullscreenOverlay() {
@@ -1191,6 +1185,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         lyricsManager,
     });
     initializeKeyboardShortcuts(Player.instance, audioPlayer);
+    initializeRecommendationSignals();
+    initializeOfflineUI({ api: MusicAPI.instance, player: Player.instance, ui: UIRenderer.instance });
     await initializeSelfHostedUploads();
 
     // Restore UI state for the current track (like button, theme)
@@ -1626,8 +1622,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const { album, tracks } = await MusicAPI.instance.getAlbum(albumId);
                 if (tracks && tracks.length > 0) {
-                    const shuffledTracks = [...tracks].sort(() => Math.random() - 0.5);
-                    Player.instance.setQueue(shuffledTracks, 0, false, {
+                    const shuffledTracks = shuffleTracks(tracks);
+                    await Player.instance.setQueue(shuffledTracks, 0, false, {
                         kind: 'album',
                         id: String(albumId),
                         label: album?.title || 'Album',
@@ -1700,8 +1696,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     throw new Error('No tracks found for this artist');
                 }
 
-                const shuffledTracks = [...allTracks].sort(() => Math.random() - 0.5);
-                Player.instance.setQueue(shuffledTracks, 0, false, {
+                const shuffledTracks = shuffleTracks(allTracks);
+                await Player.instance.setQueue(shuffledTracks, 0, false, {
                     kind: 'artist',
                     id: String(artistId),
                     label: artist.name || 'Artist',
@@ -2734,12 +2730,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const artist = await MusicAPI.instance.getArtist(artistId);
 
                 const allReleases = [...(artist.albums || []), ...(artist.eps || [])];
-                if (allReleases.length === 0) {
-                    throw new Error('No albums or EPs found for this artist');
-                }
-
-                const trackSet = new Set();
-                const allTracks = [];
+                const allTracks = [...(artist.tracks || [])];
+                const trackSet = new Set(allTracks.map((track) => track.id));
 
                 const chunks = [];
                 const chunkSize = 3;
@@ -2768,18 +2760,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 if (allTracks.length > 0) {
-                    for (let i = allTracks.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [allTracks[i], allTracks[j]] = [allTracks[j], allTracks[i]];
-                    }
-
-                    Player.instance.setQueue(allTracks, 0, true, {
+                    await Player.instance.enableRadio(shuffleTracks(allTracks), {
                         kind: 'radio',
                         id: String(artistId),
                         label: `${artist.name || 'Artist'} Radio`,
                         href: `/artist/${artistId}`,
                     });
-                    await Player.instance.playTrackFromQueue();
                 } else {
                     throw new Error('No tracks found across all albums');
                 }
@@ -2801,12 +2787,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const likedTracks = await db.getFavorites('track');
                 if (likedTracks.length > 0) {
-                    // Shuffle array
-                    for (let i = likedTracks.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [likedTracks[i], likedTracks[j]] = [likedTracks[j], likedTracks[i]];
-                    }
-                    Player.instance.setQueue(likedTracks, 0, false, {
+                    await Player.instance.setQueue(shuffleTracks(likedTracks), 0, false, {
                         kind: 'liked',
                         id: null,
                         label: 'Liked Songs',
@@ -3608,180 +3589,5 @@ function showDiscographyDownloadModal(artist, api, quality, lyricsManager, trigg
         }
     };
 
-    modal.classList.add('active');
-}
-
-function showKeyboardShortcuts() {
-    const modal = document.getElementById('shortcuts-modal');
-
-    const closeModal = () => {
-        modal.classList.remove('active');
-
-        modal.removeEventListener('click', handleClose);
-    };
-
-    const handleClose = (e) => {
-        if (
-            e.target === modal ||
-            e.target.classList.contains('close-shortcuts') ||
-            e.target.classList.contains('modal-overlay')
-        ) {
-            closeModal();
-        }
-    };
-
-    modal.addEventListener('click', handleClose);
-    modal.classList.add('active');
-}
-
-function showCustomizeShortcutsModal() {
-    const modal = document.getElementById('customize-shortcuts-modal');
-    const shortcutsList = document.getElementById('shortcuts-list');
-    let recordingAction = null;
-    let recordingTimeout = null;
-
-    const formatKey = (key) => {
-        if (!key) return 'none';
-        const keyMap = {
-            ' ': 'Space',
-            arrowup: '↑',
-            arrowdown: '↓',
-            arrowleft: '←',
-            arrowright: '→',
-            escape: 'Esc',
-            backspace: 'Backspace',
-            delete: 'Delete',
-            insert: 'Insert',
-            home: 'Home',
-            end: 'End',
-            pageup: 'Page Up',
-            pagedown: 'Page Down',
-            '[': '[',
-            ']': ']',
-            '\\': '\\',
-            tab: 'Tab',
-            enter: 'Enter',
-            capslock: 'Caps Lock',
-            shift: 'Shift',
-            control: 'Ctrl',
-            alt: 'Alt',
-            meta: 'Meta',
-            contextmenu: 'Context Menu',
-        };
-        return keyMap[key.toLowerCase()] || key.toUpperCase();
-    };
-
-    const renderShortcuts = () => {
-        shortcutsList.innerHTML = '';
-        const currentShortcuts = keyboardShortcuts.getShortcuts();
-
-        for (const [action, shortcut] of Object.entries(currentShortcuts || {})) {
-            const item = document.createElement('div');
-            item.className = 'customize-shortcut-item';
-            item.dataset.action = action;
-
-            const modifiers = [];
-            if (shortcut?.shift) modifiers.push('Shift');
-            if (shortcut?.ctrl) modifiers.push('Ctrl');
-            if (shortcut?.alt) modifiers.push('Alt');
-
-            const keyDisplay = [...modifiers, formatKey(shortcut?.key)].join(' + ');
-
-            item.innerHTML = `
-                <span class="shortcut-description">${shortcut?.description || 'Unknown'}</span>
-                <div class="shortcut-key">
-                    <kbd class="${recordingAction === action ? 'recording' : ''}">${keyDisplay}</kbd>
-                    <button class="shortcut-btn" title="Reset to default">
-                        ${SVG_RESET(16)}
-                    </button>
-                </div>
-            `;
-
-            const kbd = item.querySelector('kbd');
-            kbd.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (recordingAction === action) {
-                    recordingAction = null;
-                    clearTimeout(recordingTimeout);
-                } else {
-                    recordingAction = action;
-                    recordingTimeout = setTimeout(() => {
-                        keyboardShortcuts.setShortcut(action, {
-                            key: null,
-                            shift: false,
-                            ctrl: false,
-                            alt: false,
-                            description: shortcut?.description || 'Unknown',
-                        });
-                        recordingAction = null;
-                        renderShortcuts();
-                    }, 3000);
-                }
-                renderShortcuts();
-            });
-
-            const resetBtn = item.querySelector('.shortcut-btn');
-            resetBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const defaults = keyboardShortcuts.getDefaultShortcuts();
-                keyboardShortcuts.setShortcut(action, defaults[action]);
-                renderShortcuts();
-            });
-
-            shortcutsList.appendChild(item);
-        }
-    };
-
-    const handleKeyDown = (e) => {
-        if (!recordingAction) return;
-
-        e.preventDefault();
-        e.stopPropagation();
-
-        const key = e.key === ' ' ? ' ' : e.key;
-
-        if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) {
-            return;
-        }
-
-        keyboardShortcuts.setShortcut(recordingAction, {
-            key: key,
-            shift: e.shiftKey,
-            ctrl: e.ctrlKey || e.metaKey,
-            alt: e.altKey,
-        });
-
-        clearTimeout(recordingTimeout);
-        recordingAction = null;
-        renderShortcuts();
-    };
-
-    const closeModal = () => {
-        modal.classList.remove('active');
-        recordingAction = null;
-        clearTimeout(recordingTimeout);
-        document.removeEventListener('keydown', handleKeyDown);
-        modal.removeEventListener('click', handleClose);
-    };
-
-    const handleClose = (e) => {
-        if (
-            e.target === modal ||
-            e.target.classList.contains('close-customize-shortcuts') ||
-            e.target.id === 'close-customize-shortcuts-btn' ||
-            e.target.classList.contains('modal-overlay')
-        ) {
-            closeModal();
-        }
-    };
-
-    document.getElementById('reset-shortcuts-btn')?.addEventListener('click', () => {
-        keyboardShortcuts.resetShortcuts();
-        renderShortcuts();
-    });
-
-    document.addEventListener('keydown', handleKeyDown);
-    modal.addEventListener('click', handleClose);
-    renderShortcuts();
     modal.classList.add('active');
 }

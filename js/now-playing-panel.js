@@ -14,6 +14,7 @@ import { listeningTracker } from './listening-tracker.js';
 import { canvasSettings } from './canvas-settings.js';
 import { getTrackDisplayAlbum, getTrackPlayerArtwork } from './track-versions.js';
 import { crossfadeSettings, gaplessPlaybackSettings } from './storage.js';
+import { keyboardShortcuts, matchesShortcut } from './keyboard-shortcuts.js';
 import ICON_CHEVRON_RIGHT from '!lucide/chevron-right.svg?svg&icon';
 import ICON_CHEVRON_UP from '!lucide/chevron-up.svg?svg&icon';
 import ICON_ELLIPSIS from '!lucide/ellipsis.svg?svg&icon';
@@ -112,7 +113,6 @@ export class NowPlayingPanel {
         this.queueHistory = [];
         this.queueSessionKey = this.getQueueSessionKey();
         this.transitionMenuOpen = false;
-        this.endlessPreviewEnabled = false;
         this.manuallyQueuedTracks = new Map();
         this.queueMotionReason = null;
         this.queueDragIndex = null;
@@ -314,6 +314,8 @@ export class NowPlayingPanel {
             this.boundCanvasCoverOverlayPreferenceChanged
         );
         window.addEventListener('player-queue-changed', this.boundQueueChanged);
+        window.addEventListener('autoplay-state-changed', this.boundTransitionChanged);
+        window.addEventListener('radio-state-changed', this.boundTransitionChanged);
         window.addEventListener('queue-tracks-added', this.boundQueueTracksAdded);
         window.addEventListener('track-metadata-updated', this.boundMetadataChanged);
         window.addEventListener('artist-metadata-updated', this.boundMetadataChanged);
@@ -437,6 +439,8 @@ export class NowPlayingPanel {
         const nextTrack = queue[currentIndex + 1] || null;
         return JSON.stringify({
             currentIndex,
+            repeatMode: this.player?.repeatMode ?? 0,
+            endless: !!(this.player?.autoplayEnabled || this.player?.radioEnabled),
             queueIds: queue.map((track) => String(track?.id ?? '')).join(','),
             nextTrackId: nextTrack?.id == null ? null : String(nextTrack.id),
             sourceLabel: sourceContext?.label || '',
@@ -741,7 +745,9 @@ export class NowPlayingPanel {
                 : this.sourceContext?.kind === 'playlist'
                   ? `From ${sourceLabel}`
                   : sourceLabel;
-        const emptyQueueCopy = isLooping
+        const emptyQueueCopy = (this.player?.repeatMode ?? 0) === 0 && (this.player?.autoplayEnabled || this.player?.radioEnabled)
+            ? 'Related songs will be added when available.'
+            : isLooping
             ? `Loop queue will restart ${sourceLabel}.`
             : this.sourceContext?.kind === 'album'
               ? `End of ${sourceLabel}. Playback stops here.`
@@ -766,7 +772,7 @@ export class NowPlayingPanel {
                           : isManualQueue
                             ? '<span class="queue-track-badge">Added to queue</span>'
                             : '';
-                      return `<div class="${rowClass}" style="--queue-order:${offset};--queue-delay:${Math.min(offset, 12) * 34}ms" data-queue-index="${index}" data-draggable="${String(Boolean(queue.length))}" draggable="${String(Boolean(queue.length))}"><span class="queue-track-position">${index - currentIndex}</span><button type="button" class="queue-track-main" data-queue-index="${index}" ${queue.length ? '' : 'data-play-next'} aria-label="Play ${escapeHtml(titleFor(track))}"><img src="${escapeHtml(imageFor(track))}" alt="" loading="lazy" /><span class="queue-track-copy">${badge}<strong>${escapeHtml(titleFor(track))}</strong><small>${escapeHtml(artistFor(track))}</small></span></button><time>${escapeHtml(durationFor(track))}</time><button type="button" class="queue-track-remove" data-remove-queue-index="${index}" aria-label="Remove ${escapeHtml(titleFor(track))} from queue">${icon('trash', 15)}</button><span class="queue-drag-handle" aria-label="Drag ${escapeHtml(titleFor(track))} to reorder" title="Drag to reorder">${icon('grip', 17)}</span></div>`;
+                      return `<div class="${rowClass}" style="--queue-order:${offset};--queue-delay:${Math.min(offset, 12) * 34}ms" data-track-id="${escapeHtml(String(track.id))}" data-queue-index="${index}" data-draggable="${String(Boolean(queue.length))}" draggable="${String(Boolean(queue.length))}"><span class="queue-track-position">${index - currentIndex}</span><button type="button" class="queue-track-main" data-queue-index="${index}" ${queue.length ? '' : 'data-play-next'} aria-label="Play ${escapeHtml(titleFor(track))}"><img src="${escapeHtml(imageFor(track))}" alt="" loading="lazy" /><span class="queue-track-copy">${badge}<strong>${escapeHtml(titleFor(track))}</strong><small>${escapeHtml(artistFor(track))}</small></span></button><time>${escapeHtml(durationFor(track))}</time><button type="button" class="queue-track-remove" data-remove-queue-index="${index}" aria-label="Remove ${escapeHtml(titleFor(track))} from queue">${icon('trash', 15)}</button><span class="queue-drag-handle" aria-label="Drag ${escapeHtml(titleFor(track))} to reorder" title="Drag to reorder">${icon('grip', 17)}</span></div>`;
                   })
                   .join('')
             : `<div class="queue-list-empty"><span>${icon('list-music', 18)}</span><strong>Nothing else is lined up</strong><p>${escapeHtml(emptyQueueCopy)}</p></div>`;
@@ -783,12 +789,12 @@ export class NowPlayingPanel {
             this.queueView === 'history'
                 ? `<section class="queue-list-section" aria-labelledby="queue-history-title"><div class="queue-list-heading"><div><h3 id="queue-history-title">History</h3><p>${this.queueHistory.length} ${this.queueHistory.length === 1 ? 'track' : 'tracks'} · this queue only</p></div><button type="button" class="queue-history-toggle queue-inline-toggle">${icon('list-music', 14)}<span>Up next</span></button></div><div class="queue-track-list queue-history-list">${historyRows}</div></section>`
                 : `<section class="queue-list-section" aria-labelledby="queue-up-next-title"><div class="queue-list-heading"><div class="queue-up-next-heading"><span class="queue-list-icon">${icon('list-music', 17)}</span><div><h3 id="queue-up-next-title">Up next</h3><p>${upNext.length} ${upNext.length === 1 ? 'track' : 'tracks'} <span aria-hidden="true">·</span> ${escapeHtml(durationLabel)} <span class="queue-source-context">· ${escapeHtml(sourceContext)}</span></p></div></div><button type="button" class="queue-loop-button${isLooping ? ' is-active' : ''}" aria-pressed="${String(isLooping)}">${icon('repeat', 14)}<span>${isLooping ? 'Looping' : 'Loop queue'}</span></button></div><div class="queue-track-list">${rows}</div></section>`;
-        const endlessUnavailable = isLooping;
-        const endlessPressed = this.endlessPreviewEnabled && !endlessUnavailable;
+        const endlessUnavailable = (this.player?.repeatMode ?? 0) !== 0;
+        const endlessPressed = !!(this.player?.autoplayEnabled || this.player?.radioEnabled) && !endlessUnavailable;
         const playerDock = currentTrack
             ? `<footer class="queue-player-dock"><img src="${escapeHtml(imageFor(currentTrack))}" alt="" /><div><strong>${escapeHtml(titleFor(currentTrack))}</strong><small>${escapeHtml(artistFor(currentTrack))}</small></div><div class="queue-player-controls"><button type="button" data-queue-player-previous aria-label="Previous track">${icon('skip-back', 16)}</button><button type="button" class="queue-player-play" data-queue-playback-toggle aria-label="${isPaused ? 'Play' : 'Pause'}" aria-pressed="${String(!isPaused)}">${icon(isPaused ? 'play' : 'pause', 17)}</button><button type="button" data-queue-player-next aria-label="Next track">${icon('skip-forward', 16)}</button></div></footer>`
             : '';
-        return `<div class="now-playing-panel-queue-view queue-motion-${motionReason}" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><button type="button" class="queue-back-button" aria-label="Back to Now Playing">${icon('chevron-right', 20)}</button><h1 id="queue-panel-title">Queue</h1><button type="button" class="queue-history-toggle queue-header-history" aria-pressed="${String(this.queueView === 'history')}" aria-label="${this.queueView === 'history' ? 'Show up next' : 'Show queue history'}">${icon('history', 17)}<span>${this.queueView === 'history' ? 'Up next' : 'History'}</span></button></header><main class="queue-panel-body">${currentMarkup}<div class="queue-control-grid"><button type="button" class="queue-setting-card queue-endless-card${endlessPressed ? ' is-preview-enabled' : ''}${endlessUnavailable ? ' is-unavailable' : ''}" data-endless-preview aria-pressed="${String(endlessPressed)}"><span class="queue-setting-icon">${icon('infinity', 18)}</span><span class="queue-setting-copy"><strong>Endless playback</strong><small>${isLooping ? 'Unavailable while Loop queue is on' : endlessPressed ? 'Preview on · queue still stops at the end' : 'Preview only · coming later'}</small></span><span class="queue-disabled-switch" aria-hidden="true"><span></span></span></button><div class="queue-setting-card queue-transition-card${this.transitionMenuOpen ? ' is-open' : ''}"><button type="button" class="queue-transition-trigger" aria-expanded="${String(this.transitionMenuOpen)}" aria-controls="queue-transition-menu"><span class="queue-setting-icon">${icon('sliders', 17)}</span><span class="queue-setting-copy"><strong>Transition</strong><small>${this.getTransitionSummary(transitionMode)}</small></span><span class="queue-transition-chevron">${icon('chevron-right', 16)}</span></button>${this.renderTransitionMenu(transitionMode)}</div></div>${listMarkup}</main>${playerDock}</div>`;
+        return `<div class="now-playing-panel-queue-view queue-motion-${motionReason}" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><button type="button" class="queue-back-button" aria-label="Back to Now Playing">${icon('chevron-right', 20)}</button><h1 id="queue-panel-title">Queue</h1><button type="button" class="queue-history-toggle queue-header-history" aria-pressed="${String(this.queueView === 'history')}" aria-label="${this.queueView === 'history' ? 'Show up next' : 'Show queue history'}">${icon('history', 17)}<span>${this.queueView === 'history' ? 'Up next' : 'History'}</span></button></header><main class="queue-panel-body">${currentMarkup}<div class="queue-control-grid"><button type="button" class="queue-setting-card queue-endless-card${endlessPressed ? ' is-enabled' : ''}${endlessUnavailable ? ' is-unavailable' : ''}" data-endless-toggle aria-pressed="${String(endlessPressed)}"><span class="queue-setting-icon">${icon('infinity', 18)}</span><span class="queue-setting-copy"><strong>Endless playback</strong><small>${endlessUnavailable ? 'Paused while repeat is on' : endlessPressed ? 'Adds related songs as the queue ends' : 'Continue with related songs'}</small></span><span class="queue-disabled-switch" aria-hidden="true"><span></span></span></button><div class="queue-setting-card queue-transition-card${this.transitionMenuOpen ? ' is-open' : ''}"><button type="button" class="queue-transition-trigger" aria-expanded="${String(this.transitionMenuOpen)}" aria-controls="queue-transition-menu"><span class="queue-setting-icon">${icon('sliders', 17)}</span><span class="queue-setting-copy"><strong>Transition</strong><small>${this.getTransitionSummary(transitionMode)}</small></span><span class="queue-transition-chevron">${icon('chevron-right', 16)}</span></button>${this.renderTransitionMenu(transitionMode)}</div></div>${listMarkup}</main>${playerDock}</div>`;
     }
 
     renderQueueView(model = {}) {
@@ -1245,21 +1251,23 @@ export class NowPlayingPanel {
             else await this.player?.playNext?.();
             return;
         }
-        if (button.matches('[data-endless-preview]')) {
-            if (this.isQueueLooping()) {
-                showNotification('Endless playback is unavailable while Loop queue is on');
+        if (button.matches('[data-endless-toggle]')) {
+            if ((this.player?.repeatMode ?? 0) !== 0) {
+                showNotification('Turn repeat off to use Endless playback');
                 return;
             }
-            this.endlessPreviewEnabled = !this.endlessPreviewEnabled;
-            button.classList.toggle('is-preview-enabled', this.endlessPreviewEnabled);
-            button.setAttribute('aria-pressed', String(this.endlessPreviewEnabled));
-            const detail = button.querySelector('small');
-            if (detail) {
-                detail.textContent = this.endlessPreviewEnabled
-                    ? 'Preview on · queue still stops at the end'
-                    : 'Preview only · coming later';
+            if (this.player.autoplayEnabled || this.player.radioEnabled) {
+                this.player.disableRadio();
+                this.player.disableAutoplay();
+            } else {
+                this.player.enableAutoplay();
+                const queue = this.player.getCurrentQueue();
+                if (this.player.currentQueueIndex >= queue.length - 3 && queue.length) {
+                    void this.player.fetchAutoplayRecommendations();
+                }
             }
-            showNotification('Endless playback is a preview only · the queue still stops at the end');
+            await this.render({ preserveScroll: true });
+            this.root.querySelector('[data-endless-toggle]')?.focus({ preventScroll: true });
             return;
         }
         if (button.matches('.queue-transition-trigger')) {
@@ -1354,7 +1362,6 @@ export class NowPlayingPanel {
             }
         }
         const looping = this.isQueueLooping();
-        if (looping) this.endlessPreviewEnabled = false;
         this.syncQueueLoopButton();
         showNotification(looping ? 'Loop queue enabled · Endless playback paused' : 'Loop queue disabled');
         await this.render({ preserveScroll: true });
@@ -1376,6 +1383,25 @@ export class NowPlayingPanel {
     }
 
     handleKeydown(event) {
+        if (event.defaultPrevented || event.isComposing) return;
+        const row = event.target.closest('.queue-track-row[data-queue-index]');
+        if (row && !event.target.closest('input, textarea, select, [contenteditable="true"]')) {
+            const direction = matchesShortcut(event, keyboardShortcuts.getShortcutForAction('moveTrackUp')) ? -1
+                : matchesShortcut(event, keyboardShortcuts.getShortcutForAction('moveTrackDown')) ? 1 : 0;
+            if (direction) {
+                event.preventDefault();
+                event.stopPropagation();
+                const from = Number(row.dataset.queueIndex);
+                const to = from + direction;
+                if (event.repeat || to <= this.player.currentQueueIndex || to >= this.player.getCurrentQueue().length) return;
+                void (async () => {
+                    await this.player.moveInQueue(from, to);
+                    await this.render({ preserveScroll: true });
+                    this.root.querySelector(`.queue-track-main[data-queue-index="${to}"]`)?.focus({ preventScroll: true });
+                })().catch(() => showNotification('Could not reorder the queue. Try again.'));
+                return;
+            }
+        }
         if (event.key === 'Escape') {
             event.preventDefault();
             if (this.activeView === 'queue') {
@@ -1417,6 +1443,8 @@ export class NowPlayingPanel {
             this.boundCanvasCoverOverlayPreferenceChanged
         );
         window.removeEventListener('player-queue-changed', this.boundQueueChanged);
+        window.removeEventListener('autoplay-state-changed', this.boundTransitionChanged);
+        window.removeEventListener('radio-state-changed', this.boundTransitionChanged);
         window.removeEventListener('queue-tracks-added', this.boundQueueTracksAdded);
         window.removeEventListener('track-metadata-updated', this.boundMetadataChanged);
         window.removeEventListener('artist-metadata-updated', this.boundMetadataChanged);

@@ -29,6 +29,8 @@ import { getProxyUrl } from './proxy-utils.js';
 import { isVideoArtwork } from './animated-artwork.js';
 import { hydrateQueuedTracks } from './queue-track-hydration.js';
 import { getTrackDisplayAlbum, getTrackPlayerArtwork, getTrackPlayerCanvas } from './track-versions.js';
+import { realRandom } from './recommendation-engine.js';
+import { shuffleTracks } from './recommendation-settings.js';
 import {
     getApiQuality,
     getAvailableQualityOptions,
@@ -840,6 +842,10 @@ export class Player {
     }
 
     async checkPreloadConditions() {
+        if (this.activeElement && !this.activeElement.paused && this.currentQueueIndex >= this.getCurrentQueue().length - 3) {
+            if (this.radioEnabled) void this.fetchRadioRecommendations();
+            else if (this.autoplayEnabled) void this.fetchAutoplayRecommendations();
+        }
         if (!this._pendingPreload || !this.activeElement || this.activeElement.paused) return;
 
         const currentTime = this.activeElement.currentTime || 0;
@@ -1516,7 +1522,34 @@ export class Player {
 
             const isPodcast = track.isPodcast || (track.id && String(track.id).startsWith('podcast_'));
 
-            if (isPodcast) {
+            const { offlineCache } = await import('./offline-cache.js');
+            const offlineBlob = !isVideoTrack && !isPodcast
+                ? await offlineCache.playbackBlob(track.id).catch(() => null) : null;
+            if (this.playbackSequence !== currentSequence) return;
+            if (!offlineBlob) offlineCache.activeId = null;
+            // Keep URLs attached to their audio deck: a fading-out deck can still be playing.
+            if (activeElement._offlineObjectUrl) {
+                URL.revokeObjectURL(activeElement._offlineObjectUrl);
+                activeElement._offlineObjectUrl = null;
+            }
+            if (offlineBlob) {
+                streamUrl = URL.createObjectURL(offlineBlob);
+                activeElement._offlineObjectUrl = streamUrl;
+                activeElement.src = streamUrl;
+                this.currentRgValues = null;
+                this.applyReplayGain();
+                this.applyAudioEffects();
+                const canPlay = await this.waitForCanPlayOrTimeout(activeElement);
+                if (!canPlay || this.playbackSequence !== currentSequence) return;
+                if (startTime > 0) activeElement.currentTime = startTime;
+                if (!(await this.safePlay(activeElement))) return;
+            } else if (!navigator.onLine && !track.file) {
+                offlineCache.activeId = null;
+                const { showNotification } = await import('./downloads.js');
+                showNotification('This song is not saved offline. Choose a downloaded song or reconnect.');
+                activeElement.pause();
+                return;
+            } else if (isPodcast) {
                 streamUrl = track.enclosureUrl;
                 if (!streamUrl) {
                     console.warn(`Podcast episode ${trackTitle} audio URL is missing. Skipping.`);
@@ -1793,28 +1826,30 @@ export class Player {
         }
     }
 
+    async continueRecommendedPlayback(mode, options) {
+        const generation = this._queueGeneration;
+        const sequence = this.playbackSequence;
+        const index = this.currentQueueIndex;
+        await this.extendRecommendationQueue(mode);
+        if (generation !== this._queueGeneration || sequence !== this.playbackSequence ||
+            index !== this.currentQueueIndex || this.repeatMode !== REPEAT_MODE.OFF ||
+            !(mode === 'radio' ? this.radioEnabled : this.autoplayEnabled)) return;
+        if (index < this.getCurrentQueue().length - 1) await this.playNext(0, options);
+        else this.activeElement.pause();
+    }
+
     async playNext(recursiveCount = 0, options = {}) {
         try {
             const currentQueue = this.getCurrentQueue();
             const isLastTrack = this.currentQueueIndex >= currentQueue.length - 1;
 
             if (recursiveCount > currentQueue.length) {
-                if (this.radioEnabled && isLastTrack) {
-                    this.fetchRadioRecommendations().then(async () => {
-                        const updatedQueue = this.getCurrentQueue();
-                        if (this.currentQueueIndex < updatedQueue.length - 1) {
-                            await this.playNext(0, options);
-                        }
-                    });
+                if (this.radioEnabled && isLastTrack && this.repeatMode === REPEAT_MODE.OFF) {
+                    await this.continueRecommendedPlayback('radio', options);
                     return;
                 }
-                if (this.autoplayEnabled && isLastTrack) {
-                    this.fetchAutoplayRecommendations().then(async () => {
-                        const updatedQueue = this.getCurrentQueue();
-                        if (this.currentQueueIndex < updatedQueue.length - 1) {
-                            await this.playNext(0, options);
-                        }
-                    });
+                if (this.autoplayEnabled && isLastTrack && this.repeatMode === REPEAT_MODE.OFF) {
+                    await this.continueRecommendedPlayback('autoplay', options);
                     return;
                 }
                 if (this.artistPopularTracksState.artistId && this.artistPopularTracksState.hasMore) {
@@ -1846,21 +1881,11 @@ export class Player {
                 if (track?.isUnavailable || contentBlockingSettings.shouldHideTrack(track)) {
                     return this.playNext(recursiveCount + 1, options);
                 }
-            } else if (this.radioEnabled) {
-                this.fetchRadioRecommendations().then(async () => {
-                    const updatedQueue = this.getCurrentQueue();
-                    if (this.currentQueueIndex < updatedQueue.length - 1) {
-                        await this.playNext(0, options);
-                    }
-                });
+            } else if (this.radioEnabled && this.repeatMode === REPEAT_MODE.OFF) {
+                await this.continueRecommendedPlayback('radio', options);
                 return;
-            } else if (this.autoplayEnabled) {
-                this.fetchAutoplayRecommendations().then(async () => {
-                    const updatedQueue = this.getCurrentQueue();
-                    if (this.currentQueueIndex < updatedQueue.length - 1) {
-                        await this.playNext(0, options);
-                    }
-                });
+            } else if (this.autoplayEnabled && this.repeatMode === REPEAT_MODE.OFF) {
+                await this.continueRecommendedPlayback('autoplay', options);
                 return;
             } else if (this.artistPopularTracksState.artistId && this.artistPopularTracksState.hasMore) {
                 const newTracks = await this.fetchMoreArtistPopularTracks();
@@ -1953,7 +1978,7 @@ export class Player {
         return this._crossfadeOutgoingTrackId !== null && this._crossfadeOutgoingTrackId === trackId;
     }
 
-    async enableRadio(seeds = []) {
+    async enableRadio(seeds = [], sourceContext = null) {
         this.radioEnabled = true;
         radioSettings.setEnabled(true);
 
@@ -1962,15 +1987,15 @@ export class Player {
             const pickedSeeds = await this.pickRadioSeeds();
             if (pickedSeeds.length > 0) {
                 this.radioSeeds = pickedSeeds;
-                const initialQueue = [...pickedSeeds].sort(() => 0.5 - Math.random()).slice(0, 5);
-                await this.setQueue(initialQueue, 0, true);
+                const initialQueue = realRandom(pickedSeeds).slice(0, 5);
+                await this.setQueue(initialQueue, 0, true, sourceContext);
                 await this.playAtIndex(0);
             }
         } else {
             this.radioSeeds = Array.isArray(seeds) ? seeds : [seeds];
             await this.wipeQueue();
             const initialQueue = Array.isArray(seeds) ? seeds.slice(0, 5) : [seeds];
-            await this.setQueue(initialQueue, 0, true);
+            await this.setQueue(initialQueue, 0, true, sourceContext);
             await this.playAtIndex(0);
         }
 
@@ -1990,71 +2015,52 @@ export class Player {
     }
 
     fetchRadioRecommendations() {
-        if (this.isFetchingRadio) return this.radioFetchPromise || Promise.resolve();
-        this.isFetchingRadio = true;
+        return this.extendRecommendationQueue('radio');
+    }
 
+    extendRecommendationQueue(mode) {
+        if (this._recommendationPromise) return this._recommendationPromise;
+        if (!navigator.onLine || this.repeatMode !== REPEAT_MODE.OFF) return Promise.resolve();
+        if (Date.now() < (this._recommendationRetryAt || 0)) return Promise.resolve();
+        const generation = this._queueGeneration;
+        const enabled = () => mode === 'radio' ? this.radioEnabled : this.autoplayEnabled;
+        if (!enabled()) return Promise.resolve();
         this.showRadioLoading(true);
-
-        this.radioFetchPromise = (async () => {
+        this._recommendationPromise = (async () => {
             try {
-                if (this.radioSeeds.length === 0) {
-                    this.radioSeeds = await this.pickRadioSeeds();
-                }
-
-                const shuffledSeeds = [...this.radioSeeds].sort(() => 0.5 - Math.random());
-                const seeds =
-                    shuffledSeeds.length > 0 ? shuffledSeeds.slice(0, 5) : this.currentTrack ? [this.currentTrack] : [];
-
-                if (seeds.length === 0) {
-                    return;
-                }
-
-                const [favorites, userPlaylists, history] = await Promise.all([
-                    db.getFavorites('track'),
-                    db.getAll('user_playlists'),
-                    db.getHistory(),
-                ]);
-
-                const knownTrackIds = new Set([
-                    ...favorites.map((t) => t.id),
-                    ...userPlaylists.flatMap((p) => (p.tracks || []).map((t) => t.id)),
-                    ...history.map((t) => t.id),
-                    ...this._recentlyPlayedIds,
-                ]);
-
-                let recommendations = await this.api.getRecommendedTracksForPlaylist(seeds, 20, {
-                    knownTrackIds: knownTrackIds,
+                const { recommendationService } = await import('./recommendation-service.js');
+                const queue = this.getCurrentQueue();
+                const seeds = mode === 'radio' && this.radioSeeds.length
+                    ? this.radioSeeds.slice(0, 16)
+                    : queue.slice(Math.max(0, this.currentQueueIndex - 4), this.currentQueueIndex + 1);
+                const catalog = this.api.localAPI || this.api;
+                if (typeof catalog.getTracks !== 'function') return;
+                const candidates = await catalog.getTracks();
+                const upcoming = queue.slice(Math.max(0, this.currentQueueIndex));
+                const protectedIds = new Set(upcoming.map((track) => String(track.id)));
+                const recent = this._recentlyPlayedIds.slice(-20).map(String);
+                let tracks = await recommendationService.rank(candidates, {
+                    seeds, excludeIds: [...protectedIds, ...recent], limit: 5,
                 });
-
-                const { autoplaySettings: _autoplaySettings } = await import('./storage.js');
-                if (_autoplaySettings.isSmartRecsEnabled()) {
-                    const { smartRecommendations } = await import('./smart-recommendations.js');
-                    recommendations = smartRecommendations.filterRecommendations(recommendations);
-                    recommendations = smartRecommendations.rankRecommendations(recommendations);
-                }
-
-                if (recommendations && recommendations.length > 0) {
-                    const currentQueueIds = new Set(this.getCurrentQueue().map((t) => t.id));
-
-                    let newTracks = recommendations.filter((t) => {
-                        return !currentQueueIds.has(t.id);
-                    });
-
-                    if (newTracks.length > 0) {
-                        const tracksToAdd = newTracks.sort(() => 0.5 - Math.random()).slice(0, 5);
-                        await this.addToQueue(tracksToAdd);
-                    }
-                }
+                // A finite catalogue may eventually be exhausted. Allow older songs again,
+                // keeping the current song and every upcoming queue item protected.
+                if (!tracks.length) tracks = await recommendationService.rank(candidates, {
+                    seeds, excludeIds: [...protectedIds], limit: 5,
+                });
+                if (generation !== this._queueGeneration || !enabled() || this.repeatMode !== REPEAT_MODE.OFF) return;
+                const nowQueued = new Set(this.getCurrentQueue().slice(Math.max(0, this.currentQueueIndex)).map((track) => String(track.id)));
+                tracks = tracks.filter((track) => !nowQueued.has(String(track.id)));
+                if (tracks.length) await this.addToQueue(tracks);
+                else this._recommendationRetryAt = Date.now() + 30000;
             } catch (error) {
-                console.error('Failed to fetch radio recommendations:', error);
+                if (generation === this._queueGeneration) this._recommendationRetryAt = Date.now() + 30000;
+                console.warn('Could not extend the queue:', error);
             } finally {
-                this.isFetchingRadio = false;
-                this.radioFetchPromise = null;
-                setTimeout(() => this.showRadioLoading(false), 500);
+                this._recommendationPromise = null;
+                this.showRadioLoading(false);
             }
         })();
-
-        return this.radioFetchPromise;
+        return this._recommendationPromise;
     }
 
     async pickRadioSeeds() {
@@ -2095,7 +2101,7 @@ export class Player {
             if (userPlaylists && userPlaylists.length > 0) {
                 userPlaylists.forEach((p) => {
                     if (p.tracks && p.tracks.length > 0) {
-                        const randomTracks = p.tracks.sort(() => 0.5 - Math.random()).slice(0, 5);
+                        const randomTracks = realRandom(p.tracks).slice(0, 5);
                         potentialSeeds.push(...randomTracks);
                     }
                 });
@@ -2107,7 +2113,7 @@ export class Player {
                 potentialSeeds.find((s) => s.id === id)
             );
 
-            return uniqueSeeds.sort(() => 0.5 - Math.random()).slice(0, 50);
+            return realRandom(uniqueSeeds).slice(0, 50);
         } catch (error) {
             console.error('Failed to pick radio seeds:', error);
             return this.currentTrack ? [this.currentTrack] : [];
@@ -2124,11 +2130,13 @@ export class Player {
     enableAutoplay() {
         this.autoplayEnabled = true;
         autoplaySettings.setEnabled(true);
+        window.dispatchEvent(new CustomEvent('autoplay-state-changed'));
     }
 
     disableAutoplay() {
         this.autoplayEnabled = false;
         autoplaySettings.setEnabled(false);
+        window.dispatchEvent(new CustomEvent('autoplay-state-changed'));
     }
 
     addToRecentlyPlayed(trackId) {
@@ -2141,75 +2149,7 @@ export class Player {
     }
 
     fetchAutoplayRecommendations() {
-        if (this.isFetchingAutoplay) return this.autoplayFetchPromise || Promise.resolve();
-        this.isFetchingAutoplay = true;
-
-        this.showRadioLoading(true);
-
-        this.autoplayFetchPromise = (async () => {
-            try {
-                const { smartRecommendations } = await import('./smart-recommendations.js');
-                const { autoplaySettings: _autoplaySettings } = await import('./storage.js');
-
-                const currentQueue = this.getCurrentQueue();
-                const recentQueueTracks = currentQueue.slice(
-                    Math.max(0, this.currentQueueIndex - 10),
-                    this.currentQueueIndex + 1
-                );
-
-                const seeds = await smartRecommendations.getAdaptiveQueueSeeds(
-                    recentQueueTracks,
-                    this._recentlyPlayedIds,
-                    5
-                );
-
-                if (seeds.length === 0) {
-                    if (this.currentTrack) seeds.push(this.currentTrack);
-                    else return;
-                }
-
-                const [favorites, userPlaylists, history] = await Promise.all([
-                    db.getFavorites('track'),
-                    db.getAll('user_playlists'),
-                    db.getHistory(),
-                ]);
-
-                const knownTrackIds = new Set([
-                    ...favorites.map((t) => t.id),
-                    ...userPlaylists.flatMap((p) => (p.tracks || []).map((t) => t.id)),
-                    ...history.map((t) => t.id),
-                    ...this._recentlyPlayedIds,
-                    ...currentQueue.map((t) => t.id),
-                ]);
-
-                let recommendations = await this.api.getRecommendedTracksForPlaylist(seeds, 20, {
-                    knownTrackIds: knownTrackIds,
-                });
-
-                if (_autoplaySettings.isSmartRecsEnabled()) {
-                    recommendations = smartRecommendations.filterRecommendations(recommendations);
-                    recommendations = smartRecommendations.rankRecommendations(recommendations);
-                }
-
-                if (recommendations && recommendations.length > 0) {
-                    const currentQueueIds = new Set(currentQueue.map((t) => t.id));
-                    let newTracks = recommendations.filter((t) => !currentQueueIds.has(t.id));
-
-                    if (newTracks.length > 0) {
-                        const tracksToAdd = newTracks.slice(0, 5);
-                        await this.addToQueue(tracksToAdd);
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to fetch autoplay recommendations:', error);
-            } finally {
-                this.isFetchingAutoplay = false;
-                this.autoplayFetchPromise = null;
-                setTimeout(() => this.showRadioLoading(false), 500);
-            }
-        })();
-
-        return this.autoplayFetchPromise;
+        return this.extendRecommendationQueue('autoplay');
     }
 
     playPrev(recursiveCount = 0) {
@@ -2357,15 +2297,12 @@ export class Player {
             this.originalQueueBeforeShuffle = [...this.queue];
             const currentTrack = this.queue[this.currentQueueIndex];
 
-            const tracksToShuffle = [...this.queue];
+            let tracksToShuffle = [...this.queue];
             if (currentTrack && this.currentQueueIndex >= 0) {
                 tracksToShuffle.splice(this.currentQueueIndex, 1);
             }
 
-            for (let i = tracksToShuffle.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [tracksToShuffle[i], tracksToShuffle[j]] = [tracksToShuffle[j], tracksToShuffle[i]];
-            }
+            tracksToShuffle = shuffleTracks(tracksToShuffle, currentTrack);
 
             if (currentTrack) {
                 this.shuffledQueue = [currentTrack, ...tracksToShuffle];
@@ -2392,6 +2329,8 @@ export class Player {
     }
 
     async setQueue(tracks, startIndex = 0, isRadio = false, sourceContext = null) {
+        this._queueGeneration = (this._queueGeneration || 0) + 1;
+        this._recommendationRetryAt = 0;
         if (!isRadio) {
             this.disableRadio();
         }
@@ -2567,6 +2506,8 @@ export class Player {
     }
 
     async clearQueue() {
+        this._queueGeneration = (this._queueGeneration || 0) + 1;
+        this._recommendationRetryAt = 0;
         if (this.currentTrack) {
             this.queue = [this.currentTrack];
 
@@ -2590,6 +2531,8 @@ export class Player {
     }
 
     async wipeQueue() {
+        this._queueGeneration = (this._queueGeneration || 0) + 1;
+        this._recommendationRetryAt = 0;
         const el = this.activeElement;
         el.pause();
         el.src = '';

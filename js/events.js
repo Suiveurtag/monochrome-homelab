@@ -1,4 +1,5 @@
 //js/events.js
+import { selectionModifierMatches } from './keyboard-shortcuts.js';
 import {
     REPEAT_MODE,
     trackDataStore,
@@ -105,45 +106,11 @@ function handleTrackTouchEnd(_e) {
 }
 
 function isMultiSelectToggle(e) {
-    const shortcut = keyboardShortcuts.getShortcutForAction('multiSelectToggle');
-    if (!shortcut) return e.ctrlKey || e.metaKey;
-    const key = e.key?.toLowerCase();
-    const shortcutKey = shortcut.key?.toLowerCase();
-
-    if (['control', 'shift', 'alt', 'meta'].includes(shortcutKey)) {
-        if (shortcut.ctrl && !(e.ctrlKey || e.metaKey)) return false;
-        if (shortcut.shift && !e.shiftKey) return false;
-        if (shortcut.alt && !e.altKey) return false;
-        return true;
-    }
-
-    return (
-        (shortcut.ctrl ? e.ctrlKey || e.metaKey : !e.ctrlKey && !e.metaKey) &&
-        (shortcut.shift ? e.shiftKey : !e.shiftKey) &&
-        (shortcut.alt ? e.altKey : !e.altKey) &&
-        key === shortcutKey
-    );
+    return selectionModifierMatches(e, keyboardShortcuts.getShortcutForAction('multiSelectToggle'));
 }
 
 function isMultiSelectRange(e) {
-    const shortcut = keyboardShortcuts.getShortcutForAction('multiSelectRange');
-    if (!shortcut) return e.shiftKey;
-    const key = e.key?.toLowerCase();
-    const shortcutKey = shortcut.key?.toLowerCase();
-
-    if (['control', 'shift', 'alt', 'meta'].includes(shortcutKey)) {
-        if (shortcut.ctrl && !(e.ctrlKey || e.metaKey)) return false;
-        if (shortcut.shift && !e.shiftKey) return false;
-        if (shortcut.alt && !e.altKey) return false;
-        return true;
-    }
-
-    return (
-        (shortcut.ctrl ? e.ctrlKey || e.metaKey : !e.ctrlKey && !e.metaKey) &&
-        (shortcut.shift ? e.shiftKey : !e.shiftKey) &&
-        (shortcut.alt ? e.altKey : !e.altKey) &&
-        key === shortcutKey
-    );
+    return selectionModifierMatches(e, keyboardShortcuts.getShortcutForAction('multiSelectRange'));
 }
 
 function getSelectedTracks() {
@@ -1126,7 +1093,6 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
     const { listeningTracker } = await import('./listening-tracker.js');
 
     let _previousTrackId = null;
-    let _trackPlayStartTime = null;
 
     const setupMediaListeners = (element) => {
         let bufferingFallbackTimer = 0;
@@ -1151,42 +1117,30 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
 
         element.addEventListener('play', async () => {
             if (player.activeElement !== element) return;
+            const sequence = player.playbackSequence;
 
             if (!audioContextManager.isReady()) {
                 audioContextManager.init(element);
             }
             await audioContextManager.resume();
+            if (player.activeElement !== element || player.playbackSequence !== sequence || element.paused) return;
             audioContextManager.fadePlaybackIn(230);
 
             if (player.currentTrack) {
-                const currentId = player.currentTrack.id;
-                if (currentId !== _previousTrackId) {
+                const currentId = String(player.currentTrack.id);
+                if (currentId !== _previousTrackId || listeningTracker.getSessionSignals().currentTrackId !== currentId) {
                     if (_previousTrackId !== null) {
-                        const prevSignal = listeningTracker.getSessionSignals();
-                        const prevPlayTime = prevSignal.accumulatedPlayTime || 0;
-                        const prevDuration = prevSignal.trackDuration || 0;
                         const completedByCrossfade = player.isCrossfadeTransitionFrom(_previousTrackId);
                         if (completedByCrossfade) {
                             listeningTracker.onTrackEnd();
                         } else {
                             listeningTracker.onSkip();
                         }
-                        const prevTrack =
-                            player.getCurrentQueue()[player.currentQueueIndex - 1] ||
-                            player.getCurrentQueue().find((t) => t.id === _previousTrackId);
-                        if (prevTrack && prevPlayTime > 0) {
-                            listeningTracker.updateArtistAffinity(
-                                prevTrack,
-                                prevPlayTime,
-                                prevDuration,
-                                !completedByCrossfade
-                            );
-                        }
                         listeningTracker.forceFlush();
                     }
                     _previousTrackId = currentId;
                     listeningTracker.onTrackStart(player.currentTrack);
-                    _trackPlayStartTime = Date.now();
+                    listeningTracker.onSeek(element.currentTime);
                 }
 
                 if (scrobbler.isAuthenticated()) {
@@ -1222,18 +1176,15 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
 
         element.addEventListener('ended', () => {
             if (player.activeElement !== element) return;
-            const elapsedPlayTime = listeningTracker.getSessionSignals().accumulatedPlayTime || 0;
-            const trackDur = listeningTracker.getSessionSignals().trackDuration || 0;
             listeningTracker.onTrackEnd();
-            if (player.currentTrack) {
-                const effectivePlayTime = elapsedPlayTime || (Date.now() - _trackPlayStartTime) / 1000;
-                listeningTracker.updateArtistAffinity(player.currentTrack, effectivePlayTime, trackDur, false);
-            }
             listeningTracker.forceFlush();
             _previousTrackId = null;
             void player.playNext(0, { preserveGestureToken: true });
         });
 
+        element.addEventListener('seeking', () => {
+            if (player.activeElement === element) listeningTracker.onSeek(element.currentTime);
+        });
         element.addEventListener('timeupdate', async () => {
             if (player.activeElement !== element) return;
 
@@ -1248,7 +1199,7 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
                 progressBar?.setAttribute('aria-valuenow', String(Math.round(currentTime)));
                 progressBar?.setAttribute('aria-valuetext', `${formatTime(currentTime)} of ${formatTime(duration)}`);
 
-                listeningTracker.onTimeUpdate(currentTime, duration);
+                listeningTracker.onTimeUpdate(currentTime, duration, { playbackRate: element.playbackRate });
                 void player.startCrossfadeIfNeeded(element);
 
                 if (currentTime >= 10 && player.currentTrack && player.currentTrack.id !== historyLoggedTrackId) {
@@ -2557,6 +2508,9 @@ export async function handleTrackAction(
         } else if (type === 'album') {
             const data = await api.getAlbum(item.id);
             tracks = data.tracks;
+        } else if (type === 'artist') {
+            const artist = await api.getArtist(item.id);
+            tracks = artist.tracks || [];
         } else if (type === 'playlist') {
             const data = await api.getPlaylist(item.uuid);
             tracks = data.tracks;
@@ -2566,9 +2520,7 @@ export async function handleTrackAction(
         }
 
         if (tracks.length > 0) {
-            player.setQueue(tracks, 0, true, playbackSourceContext('radio', item, `${item.title || item.name} Radio`));
-            player.playAtIndex(0);
-            player.enableRadio(tracks);
+            await player.enableRadio(tracks, playbackSourceContext('radio', item, `${item.title || item.name} Radio`));
             showNotification(`Started radio based on ${type}: ${item.title || item.name}`);
         } else {
             showNotification('Could not start infinite radio: No tracks found');
@@ -2679,18 +2631,15 @@ export async function handleTrackAction(
 
             // play-card and shuffle-play-card
             if (action === 'shuffle-play-card') {
-                player.shuffleActive = true;
-                const tracksToShuffle = [...tracks];
-                tracksToShuffle.sort(() => Math.random() - 0.5);
-                player.setQueue(tracksToShuffle, 0, false, playbackSourceContext(type, collectionItem));
-                const shuffleBtn = document.getElementById('shuffle-btn');
-                if (shuffleBtn) shuffleBtn.classList.add('active');
+                const { shuffleTracks } = await import('./recommendation-settings.js');
+                await player.setQueue(shuffleTracks(tracks), 0, false, playbackSourceContext(type, collectionItem));
+                document.getElementById('shuffle-btn')?.classList.remove('active');
             } else {
-                player.setQueue(tracks, 0, false, playbackSourceContext(type, collectionItem));
+                await player.setQueue(tracks, 0, false, playbackSourceContext(type, collectionItem));
                 const shuffleBtn = document.getElementById('shuffle-btn');
                 if (shuffleBtn) shuffleBtn.classList.remove('active');
             }
-            player.playAtIndex(0);
+            await player.playAtIndex(0);
             const name = type === 'user-playlist' ? collectionItem.name : collectionItem.title;
             showNotification(`Playing ${type.replace('user-', '')}: ${name}`);
         } catch (error) {
@@ -3450,6 +3399,11 @@ function playbackSourceForTrackList(ui, trackItem) {
 }
 
 export function initializeTrackInteractions(player, api, mainContent, contextMenu, lyricsManager, ui, scrobbler) {
+    document.addEventListener('keyboard-track-selection', (event) => {
+        const { row, range } = event.detail || {};
+        if (!row?.matches('.track-item[data-track-id]') || row.matches('.unavailable, .blocked')) return;
+        toggleTrackSelection(row, !range, !!range);
+    });
     let contextTrack = null;
 
     setupTrackSaveFloatingPanel(player, api, ui);
