@@ -579,167 +579,179 @@ const syncManager = {
         this._getUserRecordPromise = null;
         window.dispatchEvent(new CustomEvent('account-library-changing', { detail: { scope } }));
         try {
-            if (!await activateAccountLibrary(db, scope, current) || !current()) return;
+            if (!(await activateAccountLibrary(db, scope, current)) || !current()) return;
             window.dispatchEvent(new CustomEvent('account-library-ready', { detail: { scope } }));
             const { playlistCollaboration } = await import('../playlist-collaboration.js');
             if (!current()) return;
-            void playlistCollaboration.start(user).catch((error) => console.warn('[Playlists] Sync unavailable:', error));
+            void playlistCollaboration
+                .start(user)
+                .catch((error) => console.warn('[Playlists] Sync unavailable:', error));
             if (!user) return;
             const cloudData = await this.getUserData();
             if (!current()) return;
             if (cloudData) {
-                    let database = db;
+                let database = db;
 
-                    const localData = {
-                        tracks: (await database.getAll('favorites_tracks')) || [],
-                        albums: (await database.getAll('favorites_albums')) || [],
-                        artists: (await database.getAll('favorites_artists')) || [],
-                        playlists: (await database.getAll('favorites_playlists')) || [],
-                        mixes: (await database.getAll('favorites_mixes')) || [],
-                        history: (await database.getAll('history_tracks')) || [],
-                        userPlaylists: (await database.getAll('user_playlists')) || [],
-                        userFolders: (await database.getAll('user_folders')) || [],
-                    };
+                const localData = {
+                    tracks: (await database.getAll('favorites_tracks')) || [],
+                    albums: (await database.getAll('favorites_albums')) || [],
+                    artists: (await database.getAll('favorites_artists')) || [],
+                    playlists: (await database.getAll('favorites_playlists')) || [],
+                    mixes: (await database.getAll('favorites_mixes')) || [],
+                    history: (await database.getAll('history_tracks')) || [],
+                    userPlaylists: (await database.getAll('user_playlists')) || [],
+                    userFolders: (await database.getAll('user_folders')) || [],
+                };
 
-                    if (!current()) return;
-                    let { library, history, userPlaylists, userFolders } = cloudData;
-                    let needsUpdate = false;
+                if (!current()) return;
+                let { library, history, userPlaylists, userFolders } = cloudData;
+                let needsUpdate = false;
 
-                    if (!library) library = {};
-                    if (!library.tracks) library.tracks = {};
-                    if (!library.albums) library.albums = {};
-                    if (!library.artists) library.artists = {};
-                    if (!library.playlists) library.playlists = {};
-                    if (!library.mixes) library.mixes = {};
-                    if (!userPlaylists) userPlaylists = {};
-                    if (!userFolders) userFolders = {};
-                    if (!history) history = [];
+                if (!library) library = {};
+                if (!library.tracks) library.tracks = {};
+                if (!library.albums) library.albums = {};
+                if (!library.artists) library.artists = {};
+                if (!library.playlists) library.playlists = {};
+                if (!library.mixes) library.mixes = {};
+                if (!userPlaylists) userPlaylists = {};
+                if (!userFolders) userFolders = {};
+                if (!history) history = [];
 
-                    const mergeItem = (collection, item, type) => {
-                        const id = type === 'playlist' ? item.uuid || item.id : item.id;
-                        if (!collection[id]) {
-                            collection[id] = this._minifyItem(type, item);
-                            needsUpdate = true;
-                        }
-                    };
-
-                    localData.tracks.forEach((item) => mergeItem(library.tracks, item, 'track'));
-                    localData.albums.forEach((item) => mergeItem(library.albums, item, 'album'));
-                    localData.artists.forEach((item) => mergeItem(library.artists, item, 'artist'));
-                    localData.playlists.forEach((item) => mergeItem(library.playlists, item, 'playlist'));
-                    localData.mixes.forEach((item) => mergeItem(library.mixes, item, 'mix'));
-
-                    localData.userPlaylists.forEach((playlist) => {
-                        if (playlist.collaboration) return;
-                        if (!userPlaylists[playlist.id]) {
-                            userPlaylists[playlist.id] = {
-                                id: playlist.id,
-                                name: playlist.name,
-                                cover: playlist.cover || null,
-                                tracks: playlist.tracks
-                                    ? playlist.tracks.map((t) => this._minifyItem(t.type || 'track', t))
-                                    : [],
-                                createdAt: playlist.createdAt || Date.now(),
-                                updatedAt: playlist.updatedAt || Date.now(),
-                                numberOfTracks: playlist.tracks ? playlist.tracks.length : 0,
-                                images: playlist.images || [],
-                                isPublic: playlist.isPublic || false,
-                            };
-                            needsUpdate = true;
-                        }
-                    });
-
-                    localData.userFolders.forEach((folder) => {
-                        if (!userFolders[folder.id]) {
-                            userFolders[folder.id] = {
-                                id: folder.id,
-                                name: folder.name,
-                                cover: folder.cover || null,
-                                playlists: folder.playlists || [],
-                                createdAt: folder.createdAt || Date.now(),
-                                updatedAt: folder.updatedAt || Date.now(),
-                            };
-                            needsUpdate = true;
-                        }
-                    });
-
-                    const combinedHistory = [...history, ...localData.history];
-                    combinedHistory.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-
-                    const uniqueHistory = [];
-                    const seenTimestamps = new Set();
-
-                    for (const item of combinedHistory) {
-                        if (!item.timestamp) continue;
-                        if (!seenTimestamps.has(item.timestamp)) {
-                            seenTimestamps.add(item.timestamp);
-                            uniqueHistory.push(item);
-                        }
-                        if (uniqueHistory.length >= 100) break;
-                    }
-
-                    if (JSON.stringify(history) !== JSON.stringify(uniqueHistory)) {
-                        history = uniqueHistory;
+                const mergeItem = (collection, item, type) => {
+                    const id = type === 'playlist' ? item.uuid || item.id : item.id;
+                    if (!collection[id]) {
+                        collection[id] = this._minifyItem(type, item);
                         needsUpdate = true;
                     }
+                };
 
-                    if (needsUpdate) {
-                        await this._updateUserJSON(user.$id, 'library', library);
-                        await this._updateUserJSON(user.$id, 'user_playlists', userPlaylists);
-                        await this._updateUserJSON(user.$id, 'user_folders', userFolders);
-                        await this._updateUserJSON(user.$id, 'history', history);
+                localData.tracks.forEach((item) => mergeItem(library.tracks, item, 'track'));
+                localData.albums.forEach((item) => mergeItem(library.albums, item, 'album'));
+                localData.artists.forEach((item) => mergeItem(library.artists, item, 'artist'));
+                localData.playlists.forEach((item) => mergeItem(library.playlists, item, 'playlist'));
+                localData.mixes.forEach((item) => mergeItem(library.mixes, item, 'mix'));
+
+                localData.userPlaylists.forEach((playlist) => {
+                    if (playlist.collaboration) return;
+                    if (!userPlaylists[playlist.id]) {
+                        userPlaylists[playlist.id] = {
+                            id: playlist.id,
+                            name: playlist.name,
+                            cover: playlist.cover || null,
+                            tracks: playlist.tracks
+                                ? playlist.tracks.map((t) => this._minifyItem(t.type || 'track', t))
+                                : [],
+                            createdAt: playlist.createdAt || Date.now(),
+                            updatedAt: playlist.updatedAt || Date.now(),
+                            numberOfTracks: playlist.tracks ? playlist.tracks.length : 0,
+                            images: playlist.images || [],
+                            isPublic: playlist.isPublic || false,
+                        };
+                        needsUpdate = true;
                     }
+                });
 
-                    const convertedData = {
-                        favorites_tracks: Object.values(library.tracks).filter((t) => t && typeof t === 'object'),
-                        favorites_albums: Object.values(library.albums).filter((a) => a && typeof a === 'object'),
-                        favorites_artists: Object.values(library.artists).filter((a) => a && typeof a === 'object'),
-                        favorites_playlists: Object.values(library.playlists).filter((p) => p && typeof p === 'object'),
-                        favorites_mixes: Object.values(library.mixes).filter((m) => m && typeof m === 'object'),
-                        history_tracks: history,
-                        user_playlists: [
-                            ...Object.values(userPlaylists).filter((p) => p && typeof p === 'object' && !p.collaboration && !localData.userPlaylists.some((local) => local.id === p.id && local.collaboration)),
-                            ...localData.userPlaylists.filter((p) => p.collaboration && (p.collaboration.owner === user.$id || p.collaboration.members?.includes(user.$id))),
-                        ],
-                        user_folders: Object.values(userFolders).filter((f) => f && typeof f === 'object'),
-                    };
-
-                    // Safety check: if we had local data but merged result is completely empty, something went wrong.
-                    // Do NOT call importData as it would wipe the user's local stores.
-                    const hadLocalData =
-                        localData.tracks.length > 0 ||
-                        localData.albums.length > 0 ||
-                        localData.artists.length > 0 ||
-                        localData.playlists.length > 0 ||
-                        localData.mixes.length > 0 ||
-                        localData.history.length > 0 ||
-                        localData.userPlaylists.length > 0 ||
-                        localData.userFolders.length > 0;
-
-                    const isConvertedEmpty =
-                        convertedData.favorites_tracks.length === 0 &&
-                        convertedData.favorites_albums.length === 0 &&
-                        convertedData.favorites_artists.length === 0 &&
-                        convertedData.favorites_playlists.length === 0 &&
-                        convertedData.favorites_mixes.length === 0 &&
-                        convertedData.history_tracks.length === 0 &&
-                        convertedData.user_playlists.length === 0 &&
-                        convertedData.user_folders.length === 0;
-
-                    if (hadLocalData && isConvertedEmpty) {
-                        console.warn(
-                            '[PocketBase] Sync aborted: local data exists but merged result is empty. Preserving local data to prevent accidental wipe.'
-                        );
-                    } else {
-                        if (!await replaceAccountLibrary(database, scope, convertedData, current)) return;
+                localData.userFolders.forEach((folder) => {
+                    if (!userFolders[folder.id]) {
+                        userFolders[folder.id] = {
+                            id: folder.id,
+                            name: folder.name,
+                            cover: folder.cover || null,
+                            playlists: folder.playlists || [],
+                            createdAt: folder.createdAt || Date.now(),
+                            updatedAt: folder.updatedAt || Date.now(),
+                        };
+                        needsUpdate = true;
                     }
-                    if (!current()) return;
-                    window.dispatchEvent(new CustomEvent('library-changed', { detail: { scope } }));
-                    window.dispatchEvent(new CustomEvent('history-changed'));
-                    window.dispatchEvent(new HashChangeEvent('hashchange'));
+                });
 
-                    console.log('[PocketBase] ✓ Sync completed');
+                const combinedHistory = [...history, ...localData.history];
+                combinedHistory.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+                const uniqueHistory = [];
+                const seenTimestamps = new Set();
+
+                for (const item of combinedHistory) {
+                    if (!item.timestamp) continue;
+                    if (!seenTimestamps.has(item.timestamp)) {
+                        seenTimestamps.add(item.timestamp);
+                        uniqueHistory.push(item);
+                    }
+                    if (uniqueHistory.length >= 100) break;
                 }
+
+                if (JSON.stringify(history) !== JSON.stringify(uniqueHistory)) {
+                    history = uniqueHistory;
+                    needsUpdate = true;
+                }
+
+                if (needsUpdate) {
+                    await this._updateUserJSON(user.$id, 'library', library);
+                    await this._updateUserJSON(user.$id, 'user_playlists', userPlaylists);
+                    await this._updateUserJSON(user.$id, 'user_folders', userFolders);
+                    await this._updateUserJSON(user.$id, 'history', history);
+                }
+
+                const convertedData = {
+                    favorites_tracks: Object.values(library.tracks).filter((t) => t && typeof t === 'object'),
+                    favorites_albums: Object.values(library.albums).filter((a) => a && typeof a === 'object'),
+                    favorites_artists: Object.values(library.artists).filter((a) => a && typeof a === 'object'),
+                    favorites_playlists: Object.values(library.playlists).filter((p) => p && typeof p === 'object'),
+                    favorites_mixes: Object.values(library.mixes).filter((m) => m && typeof m === 'object'),
+                    history_tracks: history,
+                    user_playlists: [
+                        ...Object.values(userPlaylists).filter(
+                            (p) =>
+                                p &&
+                                typeof p === 'object' &&
+                                !p.collaboration &&
+                                !localData.userPlaylists.some((local) => local.id === p.id && local.collaboration)
+                        ),
+                        ...localData.userPlaylists.filter(
+                            (p) =>
+                                p.collaboration &&
+                                (p.collaboration.owner === user.$id || p.collaboration.members?.includes(user.$id))
+                        ),
+                    ],
+                    user_folders: Object.values(userFolders).filter((f) => f && typeof f === 'object'),
+                };
+
+                // Safety check: if we had local data but merged result is completely empty, something went wrong.
+                // Do NOT call importData as it would wipe the user's local stores.
+                const hadLocalData =
+                    localData.tracks.length > 0 ||
+                    localData.albums.length > 0 ||
+                    localData.artists.length > 0 ||
+                    localData.playlists.length > 0 ||
+                    localData.mixes.length > 0 ||
+                    localData.history.length > 0 ||
+                    localData.userPlaylists.length > 0 ||
+                    localData.userFolders.length > 0;
+
+                const isConvertedEmpty =
+                    convertedData.favorites_tracks.length === 0 &&
+                    convertedData.favorites_albums.length === 0 &&
+                    convertedData.favorites_artists.length === 0 &&
+                    convertedData.favorites_playlists.length === 0 &&
+                    convertedData.favorites_mixes.length === 0 &&
+                    convertedData.history_tracks.length === 0 &&
+                    convertedData.user_playlists.length === 0 &&
+                    convertedData.user_folders.length === 0;
+
+                if (hadLocalData && isConvertedEmpty) {
+                    console.warn(
+                        '[PocketBase] Sync aborted: local data exists but merged result is empty. Preserving local data to prevent accidental wipe.'
+                    );
+                } else {
+                    if (!(await replaceAccountLibrary(database, scope, convertedData, current))) return;
+                }
+                if (!current()) return;
+                window.dispatchEvent(new CustomEvent('library-changed', { detail: { scope } }));
+                window.dispatchEvent(new CustomEvent('history-changed'));
+                window.dispatchEvent(new HashChangeEvent('hashchange'));
+
+                console.log('[PocketBase] ✓ Sync completed');
+            }
         } catch (error) {
             console.error('[PocketBase] Sync error:', error);
         } finally {

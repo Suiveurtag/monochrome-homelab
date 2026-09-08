@@ -13,13 +13,16 @@ export function trackStorageBytes(track) {
 }
 
 export function summarizeStorage(tracks) {
-    return tracks.reduce((result, track) => {
-        const bytes = trackStorageBytes(track);
-        result.count++;
-        if (bytes == null) result.unknown++;
-        else result.bytes += bytes;
-        return result;
-    }, { bytes: 0, count: 0, unknown: 0 });
+    return tracks.reduce(
+        (result, track) => {
+            const bytes = trackStorageBytes(track);
+            result.count++;
+            if (bytes == null) result.unknown++;
+            else result.bytes += bytes;
+            return result;
+        },
+        { bytes: 0, count: 0, unknown: 0 }
+    );
 }
 
 export function storageSummaryLabel(tracks) {

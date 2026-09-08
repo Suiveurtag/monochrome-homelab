@@ -41,7 +41,9 @@ test('late cloud responses cannot replace the newly selected account library', a
     const database = await fixture();
     await activateAccountLibrary(database, 'server|alice');
     await activateAccountLibrary(database, 'server|bob');
-    expect(await replaceAccountLibrary(database, 'server|alice', { favorites_tracks: [{ id: 'private-alice' }] })).toBe(false);
+    expect(await replaceAccountLibrary(database, 'server|alice', { favorites_tracks: [{ id: 'private-alice' }] })).toBe(
+        false
+    );
     expect(await database.getAll('favorites_tracks')).toEqual([]);
     expect(await getActiveLibraryScope(database)).toBe('server|bob');
 });
@@ -51,10 +53,15 @@ test('legacy import preserves the latest shared playlist instead of an older sna
     await activateAccountLibrary(database, 'server|alice');
     const shared = { id: 'shared', collaboration: { revision: 9 }, tracks: [{ id: 'new' }] };
     await database.performTransaction('user_playlists', 'readwrite', (store) => store.put(shared));
-    await replaceAccountLibrary(database, 'server|alice', { user_playlists: [
-        { id: 'shared', tracks: [{ id: 'old' }] }, { id: 'personal', tracks: [] },
-    ] });
-    expect(await database.performTransaction('user_playlists', 'readonly', (store) => store.get('shared'))).toEqual(shared);
+    await replaceAccountLibrary(database, 'server|alice', {
+        user_playlists: [
+            { id: 'shared', tracks: [{ id: 'old' }] },
+            { id: 'personal', tracks: [] },
+        ],
+    });
+    expect(await database.performTransaction('user_playlists', 'readonly', (store) => store.get('shared'))).toEqual(
+        shared
+    );
     expect((await database.getAll('user_playlists')).map((playlist) => playlist.id)).toEqual(['personal', 'shared']);
 });
 

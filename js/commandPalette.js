@@ -50,11 +50,21 @@ import { UIRenderer } from './ui.js';
 
 const ICON_SIZE = 16;
 const SHORTCUT_ACTIONS = {
-    'nav-home': 'home', 'nav-library': 'library', 'nav-settings': 'settings',
-    'play-pause': 'playPause', 'play-next': 'nextTrack', 'play-prev': 'previousTrack',
-    'play-shuffle': 'shuffle', 'play-repeat': 'repeat', 'play-mute': 'mute',
-    'play-vol-up': 'volumeUp', 'play-vol-down': 'volumeDown', 'like-current': 'like',
-    'queue-open': 'queue', 'lyrics-toggle': 'lyrics', 'fullscreen-open': 'fullscreen',
+    'nav-home': 'home',
+    'nav-library': 'library',
+    'nav-settings': 'settings',
+    'play-pause': 'playPause',
+    'play-next': 'nextTrack',
+    'play-prev': 'previousTrack',
+    'play-shuffle': 'shuffle',
+    'play-repeat': 'repeat',
+    'play-mute': 'mute',
+    'play-vol-up': 'volumeUp',
+    'play-vol-down': 'volumeDown',
+    'like-current': 'like',
+    'queue-open': 'queue',
+    'lyrics-toggle': 'lyrics',
+    'fullscreen-open': 'fullscreen',
 };
 
 const ICONS = {
@@ -1013,9 +1023,9 @@ class CommandPalette {
 
         let shortcutHtml = '';
         const binding = SHORTCUT_ACTIONS[item.id]
-            ? keyboardShortcuts.getShortcutForAction(SHORTCUT_ACTIONS[item.id]) : null;
-        const shortcut = SHORTCUT_ACTIONS[item.id]
-            ? binding?.key ? formatShortcut(binding) : '' : item.shortcut;
+            ? keyboardShortcuts.getShortcutForAction(SHORTCUT_ACTIONS[item.id])
+            : null;
+        const shortcut = SHORTCUT_ACTIONS[item.id] ? (binding?.key ? formatShortcut(binding) : '') : item.shortcut;
         if (shortcut) {
             const keys = shortcut.split('+').map((key) => key.trim());
             shortcutHtml = `<div class="cmdk-item-shortcut">${keys.map((k) => `<kbd>${escapeHtml(k)}</kbd>`).join('')}</div>`;

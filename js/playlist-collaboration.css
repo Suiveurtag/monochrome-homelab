@@ -11,23 +11,110 @@
     box-shadow: 0 20px 70px rgb(0 0 0 / 35%);
 }
 
-.playlist-collaboration-dialog::backdrop { background: rgb(0 0 0 / 45%); }
-.playlist-collaboration-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.playlist-collaboration-heading h2 { margin: 0; font-size: 1.25rem; }
-.playlist-collaboration-heading .btn-icon { min-width: 36px; min-height: 36px; font-size: 24px; }
-.playlist-collaboration-description { margin: 4px 0 20px; color: var(--muted-foreground); overflow-wrap: anywhere; }
-.playlist-collaboration-members { margin: 0 0 20px; padding: 0; list-style: none; }
-.playlist-collaboration-members li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
-.playlist-collaboration-members li > span { display: grid; gap: 3px; min-width: 0; overflow-wrap: anywhere; }
-.playlist-collaboration-members strong { font-size: 0.9rem; font-weight: 500; }
-.playlist-collaboration-members small, .playlist-collaboration-add p { color: var(--muted-foreground); font-size: 0.8rem; line-height: 1.5; }
-.playlist-collaboration-add label { display: block; margin-bottom: 8px; font-size: 0.9rem; }
-.playlist-collaboration-add > div { display: flex; gap: 8px; }
-.playlist-collaboration-add input { flex: 1; min-width: 0; width: 100%; padding: 10px 12px; color: var(--foreground); background: var(--secondary); border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 0.9rem; }
-.playlist-collaboration-dialog button { flex-shrink: 0; min-height: 36px; }
-.playlist-collaboration-dialog :focus-visible { outline: 2px solid var(--foreground); outline-offset: 3px; }
-.playlist-collaboration-dialog button:disabled { opacity: 0.55; cursor: wait; }
-.playlist-collaboration-status { min-height: 1.4em; margin: 12px 0 0; font-size: 0.85rem; line-height: 1.45; overflow-wrap: anywhere; }
-.playlist-collaboration-footer:empty { display: none; }
-.playlist-collaboration-footer { margin-top: 16px; }
-.playlist-collaboration-badge { padding: 4px 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted-foreground); font-size: var(--text-xs); letter-spacing: 0.04em; text-transform: uppercase; }
+.playlist-collaboration-dialog::backdrop {
+    background: rgb(0 0 0 / 45%);
+}
+.playlist-collaboration-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+.playlist-collaboration-heading h2 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+.playlist-collaboration-heading .btn-icon {
+    min-width: 36px;
+    min-height: 36px;
+    font-size: 24px;
+}
+.playlist-collaboration-description {
+    margin: 4px 0 20px;
+    color: var(--muted-foreground);
+    overflow-wrap: anywhere;
+}
+.playlist-collaboration-members {
+    margin: 0 0 20px;
+    padding: 0;
+    list-style: none;
+}
+.playlist-collaboration-members li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+.playlist-collaboration-members li > span {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.playlist-collaboration-members strong {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.playlist-collaboration-members small,
+.playlist-collaboration-add p {
+    color: var(--muted-foreground);
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+.playlist-collaboration-add label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+.playlist-collaboration-add > div {
+    display: flex;
+    gap: 8px;
+}
+.playlist-collaboration-add input {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    padding: 10px 12px;
+    color: var(--foreground);
+    background: var(--secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font: inherit;
+    font-size: 0.9rem;
+}
+.playlist-collaboration-dialog button {
+    flex-shrink: 0;
+    min-height: 36px;
+}
+.playlist-collaboration-dialog :focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: 3px;
+}
+.playlist-collaboration-dialog button:disabled {
+    opacity: 0.55;
+    cursor: wait;
+}
+.playlist-collaboration-status {
+    min-height: 1.4em;
+    margin: 12px 0 0;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+.playlist-collaboration-footer:empty {
+    display: none;
+}
+.playlist-collaboration-footer {
+    margin-top: 16px;
+}
+.playlist-collaboration-badge {
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted-foreground);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}

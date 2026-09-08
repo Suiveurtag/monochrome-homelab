@@ -1,22 +1,38 @@
-import { keyboardShortcuts, matchesShortcut, selectionModifierMatches, reservedShortcutReason, SELECTION_ACTIONS } from './keyboard-shortcuts.js';
+import {
+    keyboardShortcuts,
+    matchesShortcut,
+    selectionModifierMatches,
+    reservedShortcutReason,
+    SELECTION_ACTIONS,
+} from './keyboard-shortcuts.js';
 import '../styles/keyboard-navigation.css';
 
-const ROWS = '.track-item[data-track-id], .queue-track-item, .queue-track-row[data-queue-index], .card[data-href], .card[data-track-id], .modal-option, .create-new-playlist';
+const ROWS =
+    '.track-item[data-track-id], .queue-track-item, .queue-track-row[data-queue-index], .card[data-href], .card[data-track-id], .modal-option, .create-new-playlist';
 const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex], [contenteditable="true"], summary';
 const NATIVE = 'a[href], button, input, select, textarea, summary';
-const DIALOGS = '.modal, body > .modal-overlay:has(.modal-content), #command-palette-overlay, [role="dialog"][aria-modal="true"], dialog[open]';
+const DIALOGS =
+    '.modal, body > .modal-overlay:has(.modal-content), #command-palette-overlay, [role="dialog"][aria-modal="true"], dialog[open]';
 
 export function isKeyboardVisible(element) {
-    return !!element?.isConnected && !element.closest('[hidden], [inert], [aria-hidden="true"]') &&
-        getComputedStyle(element).visibility !== 'hidden' && element.getClientRects().length > 0;
+    return (
+        !!element?.isConnected &&
+        !element.closest('[hidden], [inert], [aria-hidden="true"]') &&
+        getComputedStyle(element).visibility !== 'hidden' &&
+        element.getClientRects().length > 0
+    );
 }
 
 export function isEditingTarget(target) {
-    return !!target?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="slider"], audio[controls], video[controls]');
+    return !!target?.closest?.(
+        'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="slider"], audio[controls], video[controls]'
+    );
 }
 
 export function getFocusableElements(container) {
-    return [...container.querySelectorAll(FOCUSABLE)].filter((element) => element.tabIndex >= 0 && !element.disabled && isKeyboardVisible(element));
+    return [...container.querySelectorAll(FOCUSABLE)].filter(
+        (element) => element.tabIndex >= 0 && !element.disabled && isKeyboardVisible(element)
+    );
 }
 
 export function focusRegion(selector) {
@@ -28,7 +44,10 @@ export function focusRegion(selector) {
 }
 
 function rowGroup(row) {
-    return row.closest('.track-list, .queue-track-list, .card-grid, .modal-list, .playlist-body, [data-keyboard-list]') || row.parentElement;
+    return (
+        row.closest('.track-list, .queue-track-list, .card-grid, .modal-list, .playlist-body, [data-keyboard-list]') ||
+        row.parentElement
+    );
 }
 
 function siblingRows(row) {
@@ -60,14 +79,20 @@ export function initializeKeyboardNavigation(root = document) {
             row.dataset.keyboardRow = 'true';
             const hasEntry = rowGroup(row).querySelector('[data-keyboard-row][tabindex="0"]');
             if (!row.hasAttribute('tabindex')) row.tabIndex = hasEntry ? -1 : 0;
-            if (!row.hasAttribute('role')) row.setAttribute('role', row.matches('.modal-option, .create-new-playlist') ? 'button' : 'group');
+            if (!row.hasAttribute('role'))
+                row.setAttribute('role', row.matches('.modal-option, .create-new-playlist') ? 'button' : 'group');
             if (!row.hasAttribute('aria-label')) {
-                const title = row.querySelector('.title, .card-title, .queue-track-title, .queue-track-copy strong')?.textContent.trim();
+                const title = row
+                    .querySelector('.title, .card-title, .queue-track-title, .queue-track-copy strong')
+                    ?.textContent.trim();
                 if (title) row.setAttribute('aria-label', title);
             }
             row.setAttribute('aria-keyshortcuts', 'Enter Shift+F10');
         }
-        const checkboxes = [...(node.matches?.('.track-checkbox') ? [node] : []), ...node.querySelectorAll('.track-checkbox')];
+        const checkboxes = [
+            ...(node.matches?.('.track-checkbox') ? [node] : []),
+            ...node.querySelectorAll('.track-checkbox'),
+        ];
         for (const checkbox of checkboxes) {
             checkbox.setAttribute('role', 'checkbox');
             checkbox.tabIndex = 0;
@@ -76,13 +101,22 @@ export function initializeKeyboardNavigation(root = document) {
         }
     };
     const syncDialogs = () => {
-        const visible = [...root.querySelectorAll(DIALOGS)].filter(isKeyboardVisible)
+        const visible = [...root.querySelectorAll(DIALOGS)]
+            .filter(isKeyboardVisible)
             .filter((dialog, _, all) => !all.some((other) => other !== dialog && other.contains(dialog)));
         // Keep opening order, including a pre-existing modal opened over a newer one.
-        const next = [...openDialogs.filter((dialog) => visible.includes(dialog)), ...visible.filter((dialog) => !openDialogs.includes(dialog))];
+        const next = [
+            ...openDialogs.filter((dialog) => visible.includes(dialog)),
+            ...visible.filter((dialog) => !openDialogs.includes(dialog)),
+        ];
         for (const closed of openDialogs.filter((dialog) => !next.includes(dialog)).reverse()) {
             const target = returnTargets.get(closed);
-            if (target && isKeyboardVisible(target) && (closed.contains(document.activeElement) || document.activeElement === document.body)) target.focus({ preventScroll: true });
+            if (
+                target &&
+                isKeyboardVisible(target) &&
+                (closed.contains(document.activeElement) || document.activeElement === document.body)
+            )
+                target.focus({ preventScroll: true });
         }
         for (const dialog of next.filter((item) => !openDialogs.includes(item))) {
             returnTargets.set(dialog, dialog.contains(lastFocus) ? null : lastFocus);
@@ -117,7 +151,9 @@ export function initializeKeyboardNavigation(root = document) {
             return;
         }
         const overlay = dialog.querySelector(':scope > .modal-overlay');
-        const close = dialog.querySelector('[data-dismiss="modal"], .modal-close, .close-shortcuts, .close-customize-shortcuts, .queue-back-button, button[id$="-cancel"], button[id$="-close"]');
+        const close = dialog.querySelector(
+            '[data-dismiss="modal"], .modal-close, .close-shortcuts, .close-customize-shortcuts, .queue-back-button, button[id$="-cancel"], button[id$="-close"]'
+        );
         if (close) close.click();
         else if (overlay) overlay.click();
         else dialog.click();
@@ -131,7 +167,12 @@ export function initializeKeyboardNavigation(root = document) {
             const items = getFocusableElements(dialog);
             const first = items[0];
             const last = items.at(-1);
-            if (!items.length || !dialog.contains(document.activeElement) || (event.shiftKey && document.activeElement === first) || (!event.shiftKey && document.activeElement === last)) {
+            if (
+                !items.length ||
+                !dialog.contains(document.activeElement) ||
+                (event.shiftKey && document.activeElement === first) ||
+                (!event.shiftKey && document.activeElement === last)
+            ) {
                 event.preventDefault();
                 (event.shiftKey ? last : first)?.focus();
             }
@@ -154,7 +195,12 @@ export function initializeKeyboardNavigation(root = document) {
         if (tabs && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) && !event.ctrlKey && !event.altKey) {
             const items = [...tabs.querySelectorAll('button, [role="tab"]')].filter(isKeyboardVisible);
             const index = items.indexOf(target);
-            const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + items.length) % items.length;
+            const next =
+                event.key === 'Home'
+                    ? 0
+                    : event.key === 'End'
+                      ? items.length - 1
+                      : (index + (event.key === 'ArrowRight' ? 1 : -1) + items.length) % items.length;
             event.preventDefault();
             items[next]?.focus();
             items[next]?.click();
@@ -173,7 +219,9 @@ export function initializeKeyboardNavigation(root = document) {
             const range = selects('multiSelectRange');
             if (range || selects('multiSelectToggle')) {
                 event.preventDefault();
-                root.dispatchEvent(new CustomEvent('keyboard-track-selection', { bubbles: true, detail: { row, range } }));
+                root.dispatchEvent(
+                    new CustomEvent('keyboard-track-selection', { bubbles: true, detail: { row, range } })
+                );
                 return;
             }
         }
@@ -183,7 +231,14 @@ export function initializeKeyboardNavigation(root = document) {
             if (menuButton) menuButton.click();
             else {
                 const rect = row.getBoundingClientRect();
-                row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: rect.left + 32, clientY: rect.top + Math.min(rect.height, 36) }));
+                row.dispatchEvent(
+                    new MouseEvent('contextmenu', {
+                        bubbles: true,
+                        cancelable: true,
+                        clientX: rect.left + 32,
+                        clientY: rect.top + Math.min(rect.height, 36),
+                    })
+                );
             }
             return;
         }
@@ -198,8 +253,10 @@ export function initializeKeyboardNavigation(root = document) {
         const rows = siblingRows(row);
         const index = rows.indexOf(row);
         let next;
-        if (event.key === 'ArrowDown' || (row.matches('.card') && event.key === 'ArrowRight')) next = Math.min(rows.length - 1, index + 1);
-        else if (event.key === 'ArrowUp' || (row.matches('.card') && event.key === 'ArrowLeft')) next = Math.max(0, index - 1);
+        if (event.key === 'ArrowDown' || (row.matches('.card') && event.key === 'ArrowRight'))
+            next = Math.min(rows.length - 1, index + 1);
+        else if (event.key === 'ArrowUp' || (row.matches('.card') && event.key === 'ArrowLeft'))
+            next = Math.max(0, index - 1);
         else if (event.key === 'Home') next = 0;
         else if (event.key === 'End') next = rows.length - 1;
         else if (event.key === 'PageDown') next = Math.min(rows.length - 1, index + 10);
@@ -219,7 +276,12 @@ export function initializeKeyboardNavigation(root = document) {
         }
         syncDialogs();
     });
-    observer.observe(root === document ? document.body : root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'open'] });
+    observer.observe(root === document ? document.body : root, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class', 'style', 'hidden', 'open'],
+    });
     root.addEventListener('focusin', onFocus);
     root.addEventListener('keydown', onDialogKey, true);
     root.addEventListener('keydown', onKey);
@@ -237,9 +299,21 @@ export function installKeyboardShortcuts(actions, { registry = keyboardShortcuts
         const shortcuts = registry.getShortcuts();
         const modal = [...document.querySelectorAll(DIALOGS)].some(isKeyboardVisible);
         for (const [action, shortcut] of Object.entries(shortcuts)) {
-            if (SELECTION_ACTIONS.has(action) || !actions[action] || reservedShortcutReason(shortcut, action) || !matchesShortcut(event, shortcut)) continue;
+            if (
+                SELECTION_ACTIONS.has(action) ||
+                !actions[action] ||
+                reservedShortcutReason(shortcut, action) ||
+                !matchesShortcut(event, shortcut)
+            )
+                continue;
             if (modal && action !== 'escape') return;
-            if (event.target.closest?.(NATIVE) && [' ', 'enter', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'home', 'end'].includes(event.key.toLowerCase())) return;
+            if (
+                event.target.closest?.(NATIVE) &&
+                [' ', 'enter', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'home', 'end'].includes(
+                    event.key.toLowerCase()
+                )
+            )
+                return;
             if (event.repeat && !['seekForward', 'seekBackward', 'volumeUp', 'volumeDown'].includes(action)) return;
             event.preventDefault();
             Promise.resolve(actions[action]()).catch(console.error);

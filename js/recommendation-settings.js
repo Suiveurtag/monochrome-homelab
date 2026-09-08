@@ -15,13 +15,16 @@ export function initializeRecommendationSignals() {
     listeningTracker.setUser(pb.authStore.record?.id);
     const stopAuth = pb.authStore.onChange((_token, record) => listeningTracker.setUser(record?.id));
     const favoritesChanged = ({ detail }) => {
-        if (detail?.item) listeningTracker.recordSignal('like', detail.item, { type: detail.type, added: detail.added });
+        if (detail?.item)
+            listeningTracker.recordSignal('like', detail.item, { type: detail.type, added: detail.added });
     };
     const playlistChanged = ({ detail }) => {
         for (const track of detail?.addedTracks || []) listeningTracker.recordSignal('playlist-add', track);
     };
     const checkpoint = () => listeningTracker.forceFlush();
-    const visibilityChanged = () => { if (document.visibilityState === 'hidden') checkpoint(); };
+    const visibilityChanged = () => {
+        if (document.visibilityState === 'hidden') checkpoint();
+    };
     window.addEventListener('favorites-changed', favoritesChanged);
     window.addEventListener('playlist-tracks-changed', playlistChanged);
     window.addEventListener('pagehide', checkpoint);

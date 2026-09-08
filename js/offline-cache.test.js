@@ -4,7 +4,11 @@ import { OfflineCache, planCacheEviction } from './offline-cache.js';
 const entry = (key, bytes, lastUsed, playlists = []) => ({ key, id: key, bytes, lastUsed, playlists });
 const fixtures = [];
 const fixture = (options = {}) => {
-    const cache = new OfflineCache({ dbName: `offline-test-${crypto.randomUUID()}`, scope: () => 'fixture', ...options });
+    const cache = new OfflineCache({
+        dbName: `offline-test-${crypto.randomUUID()}`,
+        scope: () => 'fixture',
+        ...options,
+    });
     fixtures.push(cache);
     return cache;
 };
@@ -17,7 +21,12 @@ afterEach(async () => {
     }
 });
 test('LRU cleanup protects explicit playlist downloads and the playing track', () => {
-    const plan = planCacheEviction([entry('pin', 10, 0, ['p']), entry('playing', 10, 1), entry('old', 10, 2), entry('new', 10, 3)], 10, 30, ['playing']);
+    const plan = planCacheEviction(
+        [entry('pin', 10, 0, ['p']), entry('playing', 10, 1), entry('old', 10, 2), entry('new', 10, 3)],
+        10,
+        30,
+        ['playing']
+    );
     expect(plan.evict).toEqual(['old', 'new']);
     expect(plan.fits).toBe(true);
     expect(planCacheEviction([entry('pin', 30, 0, ['p'])], 10, 30).fits).toBe(false);
@@ -50,7 +59,11 @@ test('account changes never expose another account audio', async () => {
     indexedDB.deleteDatabase(cache.dbName);
 });
 test('failed downloads never publish incomplete offline availability', async () => {
-    const cache = new OfflineCache({ dbName: `offline-test-${crypto.randomUUID()}`, scope: () => 'fixture', fetch: async () => new Response('partial', { status: 206 }) });
+    const cache = new OfflineCache({
+        dbName: `offline-test-${crypto.randomUUID()}`,
+        scope: () => 'fixture',
+        fetch: async () => new Response('partial', { status: 206 }),
+    });
     await expect(cache.cacheTrack({ id: 'broken', serverAudioUrl: '/audio' })).rejects.toThrow('complete audio');
     expect(await cache.entries()).toEqual([]);
     (await cache.open()).close();
@@ -79,7 +92,9 @@ test('queued cleanup never targets an account that signed in after the request',
     await cache.cacheTrack({ id: 'song', file: new Blob(['other']) });
     scope = 'owner';
     let release;
-    cache.pending = new Promise((resolve) => { release = resolve; });
+    cache.pending = new Promise((resolve) => {
+        release = resolve;
+    });
     const cleanup = cache.cleanup({ allAutomatic: true });
     scope = 'other';
     release();
@@ -89,12 +104,25 @@ test('queued cleanup never targets an account that signed in after the request',
 
 test('removing a playlist while downloading cancels it without leaving orphan pins', async () => {
     let started;
-    const fetching = new Promise((resolve) => { started = resolve; });
-    const cache = fixture({ fetch: (_url, { signal }) => new Promise((_resolve, reject) => {
-        signal.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError')), { once: true });
-        started();
-    }) });
-    const downloading = cache.downloadPlaylist({ id: 'one', tracks: [{ id: 'a', audioUrl: '/audio' }, { id: 'b', audioUrl: '/audio' }] });
+    const fetching = new Promise((resolve) => {
+        started = resolve;
+    });
+    const cache = fixture({
+        fetch: (_url, { signal }) =>
+            new Promise((_resolve, reject) => {
+                signal.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError')), {
+                    once: true,
+                });
+                started();
+            }),
+    });
+    const downloading = cache.downloadPlaylist({
+        id: 'one',
+        tracks: [
+            { id: 'a', audioUrl: '/audio' },
+            { id: 'b', audioUrl: '/audio' },
+        ],
+    });
     await fetching;
     await cache.removePlaylist('one');
     expect(await downloading).toMatchObject({ cancelled: true, downloaded: 0 });
@@ -108,7 +136,11 @@ test('a failed quota transaction retains the audio selected for eviction', async
     const file = new Blob([new Uint8Array(700000)]);
     await cache.cacheTrack({ id: 'old', file });
     const write = cache.write.bind(cache);
-    cache.write = (callback) => write((transaction) => { callback(transaction); transaction.abort(); });
+    cache.write = (callback) =>
+        write((transaction) => {
+            callback(transaction);
+            transaction.abort();
+        });
     await expect(cache.cacheTrack({ id: 'new', file })).rejects.toThrow();
     cache.write = write;
     expect((await cache.entries()).map((item) => item.id)).toEqual(['old']);
@@ -142,9 +174,16 @@ test('favorite scans retain the newest working set without repeatedly evicting i
 });
 
 test('an unavailable favorite does not prevent other favorites from being cached', async () => {
-    const cache = fixture({ fetch: async (url) => url === '/missing'
-        ? new Response(null, { status: 404 }) : new Response('song', { headers: { 'content-type': 'audio/flac' } }) });
-    const result = await cache.cacheFavorites([{ id: 'missing', audioUrl: '/missing' }, { id: 'song', audioUrl: '/song' }]);
+    const cache = fixture({
+        fetch: async (url) =>
+            url === '/missing'
+                ? new Response(null, { status: 404 })
+                : new Response('song', { headers: { 'content-type': 'audio/flac' } }),
+    });
+    const result = await cache.cacheFavorites([
+        { id: 'missing', audioUrl: '/missing' },
+        { id: 'song', audioUrl: '/song' },
+    ]);
     expect(result.cached).toBe(1);
     expect(result.failures).toHaveLength(1);
     expect((await cache.entries()).map((item) => item.id)).toEqual(['song']);
@@ -157,7 +196,13 @@ test('playlist updates release removed pins and saved blobs survive reopening st
     await cache.downloadPlaylist({ id: 'saved', name: 'Saved music', tracks: [a, b] });
     await cache.downloadPlaylist({ id: 'saved', name: 'Renamed music', tracks: [b] });
     expect((await cache.entries()).find((item) => item.id === 'a').playlists).toEqual([]);
-    const restored = new OfflineCache({ dbName: cache.dbName, scope: cache.scope, fetch: () => { throw new Error('Network is offline'); } });
+    const restored = new OfflineCache({
+        dbName: cache.dbName,
+        scope: cache.scope,
+        fetch: () => {
+            throw new Error('Network is offline');
+        },
+    });
     expect(await (await restored.playbackBlob('b')).text()).toBe('audio b');
     expect((await restored.playlists())[0]).toMatchObject({ name: 'Renamed music', tracks: [{ id: 'b' }] });
     await restored.pending;
@@ -169,20 +214,41 @@ test('downloaded WAV audio remains decodable after reopening storage without net
     const frames = 800;
     const buffer = new ArrayBuffer(44 + frames * 2);
     const view = new DataView(buffer);
-    const label = (offset, value) => [...value].forEach((letter, index) => view.setUint8(offset + index, letter.charCodeAt(0)));
-    label(0, 'RIFF'); view.setUint32(4, buffer.byteLength - 8, true); label(8, 'WAVE');
-    label(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
-    view.setUint32(24, 8000, true); view.setUint32(28, 16000, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
-    label(36, 'data'); view.setUint32(40, frames * 2, true);
-    for (let index = 0; index < frames; index++) view.setInt16(44 + index * 2, Math.sin(index * 2 * Math.PI * 440 / 8000) * 4000, true);
+    const label = (offset, value) =>
+        [...value].forEach((letter, index) => view.setUint8(offset + index, letter.charCodeAt(0)));
+    label(0, 'RIFF');
+    view.setUint32(4, buffer.byteLength - 8, true);
+    label(8, 'WAVE');
+    label(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, 8000, true);
+    view.setUint32(28, 16000, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    label(36, 'data');
+    view.setUint32(40, frames * 2, true);
+    for (let index = 0; index < frames; index++)
+        view.setInt16(44 + index * 2, Math.sin((index * 2 * Math.PI * 440) / 8000) * 4000, true);
     const url = URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
     const cache = fixture();
     let restored;
     try {
-        const result = await cache.downloadPlaylist({ id: 'audio-check', name: 'Audio check', tracks: [{ id: 'tone', audioUrl: url }] });
+        const result = await cache.downloadPlaylist({
+            id: 'audio-check',
+            name: 'Audio check',
+            tracks: [{ id: 'tone', audioUrl: url }],
+        });
         expect(result).toMatchObject({ downloaded: 1, total: 1, failures: [] });
         URL.revokeObjectURL(url);
-        restored = new OfflineCache({ dbName: cache.dbName, scope: cache.scope, fetch: () => { throw new Error('Network unavailable'); } });
+        restored = new OfflineCache({
+            dbName: cache.dbName,
+            scope: cache.scope,
+            fetch: () => {
+                throw new Error('Network unavailable');
+            },
+        });
         const saved = await restored.playbackBlob('tone');
         const context = new OfflineAudioContext(1, frames, 8000);
         const decoded = await context.decodeAudioData(await saved.arrayBuffer());
@@ -192,6 +258,9 @@ test('downloaded WAV audio remains decodable after reopening storage without net
         expect((await restored.playlists())[0].tracks[0].id).toBe('tone');
     } finally {
         URL.revokeObjectURL(url);
-        if (restored) { await restored.pending; (await restored.open()).close(); }
+        if (restored) {
+            await restored.pending;
+            (await restored.open()).close();
+        }
     }
 });

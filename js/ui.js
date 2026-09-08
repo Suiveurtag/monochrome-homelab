@@ -4655,11 +4655,17 @@ export class UIRenderer {
 
                         // Only enable drag-and-drop reordering in custom sort mode
                         if (currentSort === 'custom') {
-                            this.enableTrackReordering(container, currentTracks, playlistId, syncManager,
-                                playlistData.collaboration?.revision, (saved) => {
+                            this.enableTrackReordering(
+                                container,
+                                currentTracks,
+                                playlistId,
+                                syncManager,
+                                playlistData.collaboration?.revision,
+                                (saved) => {
                                     originalTracks.splice(0, originalTracks.length, ...saved.tracks);
                                     playlistData.collaboration = saved.collaboration;
-                                });
+                                }
+                            );
                         }
                     }
                 };
@@ -5883,7 +5889,8 @@ export class UIRenderer {
         let ownerOnly = isOwned;
 
         if (isOwned) {
-            const { appendCollaborationButton, watchCollaborativePlaylist, isPlaylistOwner } = await import('./playlist-collaboration-ui.js');
+            const { appendCollaborationButton, watchCollaborativePlaylist, isPlaylistOwner } =
+                await import('./playlist-collaboration-ui.js');
             ownerOnly = isPlaylistOwner(playlist);
             appendCollaborationButton(actionsDiv, playlist);
             watchCollaborativePlaylist(this, playlist.id || playlist.uuid);
@@ -6048,15 +6055,20 @@ export class UIRenderer {
             onSaved: async (playlist) => {
                 onSaved(playlist);
                 if (!playlist?.collaboration) {
-                    try { await syncManager.syncUserPlaylist(playlist, 'update'); }
-                    catch { showNotification('Order saved on this device. Cloud sync will retry later.'); }
+                    try {
+                        await syncManager.syncUserPlaylist(playlist, 'update');
+                    } catch {
+                        showNotification('Order saved on this device. Cloud sync will retry later.');
+                    }
                 }
                 showNotification('Playlist order saved');
             },
             onError: async (error) => {
                 showNotification(error.message || 'Could not save the playlist order. Try again.');
-                if (document.getElementById('page-playlist')?.classList.contains('active') &&
-                    decodeURIComponent(window.location.pathname.split('/').pop()) === String(playlistId)) {
+                if (
+                    document.getElementById('page-playlist')?.classList.contains('active') &&
+                    decodeURIComponent(window.location.pathname.split('/').pop()) === String(playlistId)
+                ) {
                     await this.renderPlaylistPage(playlistId, 'user');
                 }
             },

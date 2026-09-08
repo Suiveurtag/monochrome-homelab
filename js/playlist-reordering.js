@@ -1,9 +1,10 @@
 import { keyboardShortcuts, matchesShortcut, formatShortcut } from './keyboard-shortcuts.js';
 
 /** Persist exactly the order/revision the user saw, with a reversible DOM preview. */
-export function bindPlaylistReordering(container, {
-    tracks, revision, save, onSaved = () => {}, onError = () => {}, registry = keyboardShortcuts,
-}) {
+export function bindPlaylistReordering(
+    container,
+    { tracks, revision, save, onSaved = () => {}, onError = () => {}, registry = keyboardShortcuts }
+) {
     let rows = [...container.querySelectorAll('.track-item')];
     const trackForRow = new Map(rows.map((row, index) => [row, tracks[index]]));
     let dragging = null;
@@ -25,7 +26,10 @@ export function bindPlaylistReordering(container, {
         updateRows();
         let saved;
         try {
-            saved = await save(proposed.map((row) => trackForRow.get(row)), revision);
+            saved = await save(
+                proposed.map((row) => trackForRow.get(row)),
+                revision
+            );
         } catch (error) {
             restore();
             focusedRow?.focus({ preventScroll: true });
@@ -80,11 +84,19 @@ export function bindPlaylistReordering(container, {
         if (!busy) restore();
     };
     const onKey = (event) => {
-        if (event.defaultPrevented || event.isComposing || event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+        if (
+            event.defaultPrevented ||
+            event.isComposing ||
+            event.target.closest('input, textarea, select, [contenteditable="true"]')
+        )
+            return;
         const row = event.target.closest('.track-item');
         if (!trackForRow.has(row)) return;
-        const direction = matchesShortcut(event, registry.getShortcutForAction('moveTrackUp')) ? -1
-            : matchesShortcut(event, registry.getShortcutForAction('moveTrackDown')) ? 1 : 0;
+        const direction = matchesShortcut(event, registry.getShortcutForAction('moveTrackUp'))
+            ? -1
+            : matchesShortcut(event, registry.getShortcutForAction('moveTrackDown'))
+              ? 1
+              : 0;
         if (!direction) return;
         event.preventDefault();
         event.stopPropagation();

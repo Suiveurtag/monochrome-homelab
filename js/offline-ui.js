@@ -29,33 +29,44 @@ export function initializeOfflineUI({ api, player }) {
     button.textContent = 'Keep offline';
     button.title = 'Download this playlist for offline listening';
     document.getElementById('download-playlist-btn')?.insertAdjacentElement('afterend', button);
-    const feedback = (message) => { group.querySelector('[data-offline-feedback]').textContent = message; };
+    const feedback = (message) => {
+        group.querySelector('[data-offline-feedback]').textContent = message;
+    };
     let available = new Set();
     let refreshTimer;
     let refreshSequence = 0;
     let libraryReady = false;
     let favoriteController = null;
     const decorate = () => {
-        document.querySelectorAll('.track-item[data-track-id], .queue-track-item[data-track-id], .queue-track-row[data-track-id], .upload-gallery-card[data-track-id]').forEach((row) => {
-            const has = available.has(String(row.dataset.trackId));
-            let badge = row.querySelector('.offline-track-badge');
-            if (has && !badge) {
-                badge = document.createElement('span');
-                badge.className = 'offline-track-badge';
-                badge.textContent = 'Offline';
-                badge.title = 'Available for offline listening on this device';
-                (row.querySelector('.upload-card-art, .track-title, .track-info') || row).appendChild(badge);
-            } else if (!has && badge) badge.remove();
-        });
+        document
+            .querySelectorAll(
+                '.track-item[data-track-id], .queue-track-item[data-track-id], .queue-track-row[data-track-id], .upload-gallery-card[data-track-id]'
+            )
+            .forEach((row) => {
+                const has = available.has(String(row.dataset.trackId));
+                let badge = row.querySelector('.offline-track-badge');
+                if (has && !badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'offline-track-badge';
+                    badge.textContent = 'Offline';
+                    badge.title = 'Available for offline listening on this device';
+                    (row.querySelector('.upload-card-art, .track-title, .track-info') || row).appendChild(badge);
+                } else if (!has && badge) badge.remove();
+            });
     };
     const refresh = async () => {
         const sequence = ++refreshSequence;
         const scope = offlineCache.scope();
         try {
-            const [status, entries, playlists] = await Promise.all([offlineCache.status(), offlineCache.entries(), offlineCache.playlists()]);
+            const [status, entries, playlists] = await Promise.all([
+                offlineCache.status(),
+                offlineCache.entries(),
+                offlineCache.playlists(),
+            ]);
             if (sequence !== refreshSequence || scope !== offlineCache.scope()) return;
             available = new Set(entries.map((entry) => entry.id));
-            group.querySelector('[data-offline-status]').textContent = `${status.count} songs · ${formatBytes(status.bytes)} of ${formatBytes(status.maxBytes)} · ${formatBytes(status.pinnedBytes)} kept in playlists${status.pinnedBytes > status.maxBytes ? ' — above the new limit' : ''}`;
+            group.querySelector('[data-offline-status]').textContent =
+                `${status.count} songs · ${formatBytes(status.bytes)} of ${formatBytes(status.maxBytes)} · ${formatBytes(status.pinnedBytes)} kept in playlists${status.pinnedBytes > status.maxBytes ? ' — above the new limit' : ''}`;
             group.querySelector('#offline-favorites').checked = status.autoFavorites;
             const limit = group.querySelector('#offline-limit');
             if (document.activeElement !== limit) limit.value = Math.round(status.maxBytes / 1024 ** 2);
@@ -70,13 +81,22 @@ export function initializeOfflineUI({ api, player }) {
                 const name = document.createElement('span');
                 name.textContent = `${playlist.name} · ${count}/${playlist.tracks.length} songs`;
                 row.appendChild(name);
-                for (const [label, action] of [['Play', 'play'], [count === playlist.tracks.length ? 'Update' : 'Resume', 'resume'], ['Remove', 'remove']]) {
+                for (const [label, action] of [
+                    ['Play', 'play'],
+                    [count === playlist.tracks.length ? 'Update' : 'Resume', 'resume'],
+                    ['Remove', 'remove'],
+                ]) {
                     const control = document.createElement('button');
-                    control.type = 'button'; control.className = 'btn-secondary'; control.textContent = label;
+                    control.type = 'button';
+                    control.className = 'btn-secondary';
+                    control.textContent = label;
                     control.dataset.playlistId = playlist.id;
                     control.dataset.action = action;
                     control.setAttribute('aria-label', `${label} ${playlist.name}`);
-                    control.disabled = action === 'play' ? count === 0 : action === 'resume' && (!navigator.onLine || !!offlineCache.controller);
+                    control.disabled =
+                        action === 'play'
+                            ? count === 0
+                            : action === 'resume' && (!navigator.onLine || !!offlineCache.controller);
                     control.onclick = async () => {
                         try {
                             offlineCache.assertScope(scope);
@@ -87,24 +107,33 @@ export function initializeOfflineUI({ api, player }) {
                                 const current = await loadPlaylist(playlist.id, playlist);
                                 offlineCache.assertScope(scope);
                                 await download(current);
-                            }
-                            else {
+                            } else {
                                 const tracks = playlist.tracks.filter((track) => available.has(String(track.id)));
-                                await player.setQueue(tracks, 0, false, { kind: 'playlist', id: playlist.id, label: playlist.name });
+                                await player.setQueue(tracks, 0, false, {
+                                    kind: 'playlist',
+                                    id: playlist.id,
+                                    label: playlist.name,
+                                });
                                 await player.playTrackFromQueue();
                             }
-                        } catch (error) { feedback(error.message); }
+                        } catch (error) {
+                            feedback(error.message);
+                        }
                     };
                     row.appendChild(control);
                 }
                 list.appendChild(row);
             }
             if (focusKey) {
-                [...list.querySelectorAll('button')].find((control) => `${control.dataset.playlistId}:${control.dataset.action}` === focusKey)?.focus();
+                [...list.querySelectorAll('button')]
+                    .find((control) => `${control.dataset.playlistId}:${control.dataset.action}` === focusKey)
+                    ?.focus();
             }
             decorate();
             button.textContent = offlineCache.controller ? 'Cancel download' : 'Keep offline';
-        } catch (error) { if (error.name !== 'AbortError') feedback(`Offline storage is unavailable: ${error.message}`); }
+        } catch (error) {
+            if (error.name !== 'AbortError') feedback(`Offline storage is unavailable: ${error.message}`);
+        }
     };
     const loadPlaylist = async (id, fallback) => {
         const local = await db.getPlaylist(id);
@@ -118,7 +147,10 @@ export function initializeOfflineUI({ api, player }) {
         }
     };
     const download = async (playlist) => {
-        if (!navigator.onLine) { feedback('Connect to the internet to download songs. Saved songs are still available.'); return; }
+        if (!navigator.onLine) {
+            feedback('Connect to the internet to download songs. Saved songs are still available.');
+            return;
+        }
         if (navigator.storage?.persist) await navigator.storage.persist().catch(() => false);
         const scope = offlineCache.scope();
         const result = await offlineCache.downloadPlaylist(playlist, {
@@ -129,13 +161,18 @@ export function initializeOfflineUI({ api, player }) {
             },
         });
         if (scope !== offlineCache.scope()) return;
-        const message = result.cancelled ? `Download paused. ${result.downloaded} songs are saved.`
+        const message = result.cancelled
+            ? `Download paused. ${result.downloaded} songs are saved.`
             : `${result.downloaded}/${result.total} songs available offline.${result.failures.length ? ` ${result.failures[0].message} Resume from Settings → Downloads.` : ''}`;
-        feedback(message); showNotification(message);
+        feedback(message);
+        showNotification(message);
         await refresh();
     };
     button.onclick = async () => {
-        if (offlineCache.controller) { offlineCache.cancel(); return; }
+        if (offlineCache.controller) {
+            offlineCache.cancel();
+            return;
+        }
         try {
             const scope = offlineCache.scope();
             const id = window.location.pathname.match(/^\/(?:userplaylist|playlist)\/(?:t\/)?([^/]+)\/?$/)?.[1];
@@ -143,7 +180,10 @@ export function initializeOfflineUI({ api, player }) {
             const playlist = await loadPlaylist(decodeURIComponent(id));
             offlineCache.assertScope(scope);
             await download(playlist);
-        } catch (error) { showNotification(error.message); feedback(error.message); }
+        } catch (error) {
+            showNotification(error.message);
+            feedback(error.message);
+        }
     };
     let favoriteTask = null;
     let favoritesDirty = false;
@@ -160,33 +200,59 @@ export function initializeOfflineUI({ api, player }) {
                 const favorites = await db.getFavorites('track');
                 if (!libraryReady || signal.aborted || scope !== offlineCache.scope()) continue;
                 const result = await offlineCache.cacheFavorites(favorites, {
-                    resolveTrack: (id) => api.getTrackMetadata(id), signal,
+                    resolveTrack: (id) => api.getTrackMetadata(id),
+                    signal,
                 });
-                if (scope === offlineCache.scope() && result.failures.length) feedback(`Some favorites could not be cached. ${result.failures[0].message}`);
+                if (scope === offlineCache.scope() && result.failures.length)
+                    feedback(`Some favorites could not be cached. ${result.failures[0].message}`);
             }
-        })().catch((error) => { if (error.name !== 'AbortError') feedback(error.message); }).finally(() => { favoriteTask = null; favoriteController = null; });
+        })()
+            .catch((error) => {
+                if (error.name !== 'AbortError') feedback(error.message);
+            })
+            .finally(() => {
+                favoriteTask = null;
+                favoriteController = null;
+            });
         return favoriteTask;
     };
     group.querySelector('#offline-favorites').onchange = async (event) => {
         if (!event.target.checked) favoriteController?.abort();
-        try { await offlineCache.configure({ autoFavorites: event.target.checked }); void syncFavorites(); }
-        catch (error) { feedback(error.message); }
+        try {
+            await offlineCache.configure({ autoFavorites: event.target.checked });
+            void syncFavorites();
+        } catch (error) {
+            feedback(error.message);
+        }
     };
     group.querySelector('[data-offline-apply]').onclick = async () => {
         try {
             await offlineCache.configure({ maxBytes: Number(group.querySelector('#offline-limit').value) * 1024 ** 2 });
             feedback('Cache limit saved. Downloaded playlists are protected.');
             void syncFavorites();
-        } catch (error) { feedback(error.message); }
+        } catch (error) {
+            feedback(error.message);
+        }
     };
     group.querySelector('[data-offline-clear]').onclick = async () => {
-        try { await offlineCache.cleanup({ allAutomatic: true }); feedback('Automatic cache cleared. Downloaded playlists are kept.'); }
-        catch (error) { feedback(error.message); }
+        try {
+            await offlineCache.cleanup({ allAutomatic: true });
+            feedback('Automatic cache cleared. Downloaded playlists are kept.');
+        } catch (error) {
+            feedback(error.message);
+        }
     };
     window.addEventListener('favorites-changed', syncFavorites);
     window.addEventListener('library-changed', syncFavorites);
-    window.addEventListener('online', () => { void syncFavorites(); void refresh(); });
-    window.addEventListener('offline', () => { favoriteController?.abort(); offlineCache.cancel(); void refresh(); });
+    window.addEventListener('online', () => {
+        void syncFavorites();
+        void refresh();
+    });
+    window.addEventListener('offline', () => {
+        favoriteController?.abort();
+        offlineCache.cancel();
+        void refresh();
+    });
     const changingAccount = () => {
         libraryReady = false;
         favoriteController?.abort();
@@ -200,7 +266,10 @@ export function initializeOfflineUI({ api, player }) {
     let lastScope = offlineCache.scope();
     pb.authStore.onChange(() => {
         const scope = offlineCache.scope();
-        if (scope !== lastScope) { changingAccount(); lastScope = scope; }
+        if (scope !== lastScope) {
+            changingAccount();
+            lastScope = scope;
+        }
         void refresh();
     });
     window.addEventListener('account-library-changing', changingAccount);
@@ -210,17 +279,25 @@ export function initializeOfflineUI({ api, player }) {
         void syncFavorites();
         void refresh();
     });
-    window.addEventListener('offline-cache-changed', () => { clearTimeout(refreshTimer); refreshTimer = setTimeout(() => void refresh(), 100); });
+    window.addEventListener('offline-cache-changed', () => {
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(() => void refresh(), 100);
+    });
     let decorateQueued = false;
     new MutationObserver(() => {
         if (decorateQueued) return;
         decorateQueued = true;
-        requestAnimationFrame(() => { decorateQueued = false; decorate(); });
+        requestAnimationFrame(() => {
+            decorateQueued = false;
+            decorate();
+        });
     }).observe(document.querySelector('.main-content') || document.body, { childList: true, subtree: true });
     void (async () => {
         libraryReady = (await getActiveLibraryScope(db)) === offlineCache.scope();
         await offlineCache.cleanup();
         await refresh();
         await syncFavorites();
-    })().catch((error) => { if (error.name !== 'AbortError') feedback(error.message); });
+    })().catch((error) => {
+        if (error.name !== 'AbortError') feedback(error.message);
+    });
 }

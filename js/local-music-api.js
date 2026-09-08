@@ -450,7 +450,8 @@ export class LocalMusicAPI {
         const { recommendationService } = await import('./recommendation-service.js');
         return recommendationService.rank(tracks, {
             seeds: tracks.filter((track) => String(track.id) === String(id)),
-            excludeIds: [id], limit: 20,
+            excludeIds: [id],
+            limit: 20,
         });
     }
 

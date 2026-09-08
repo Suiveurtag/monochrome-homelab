@@ -65,9 +65,15 @@ function dependencies() {
             autoplayEnabled: false,
             radioEnabled: false,
             repeatMode: 0,
-            enableAutoplay: vi.fn(function () { this.autoplayEnabled = true; }),
-            disableAutoplay: vi.fn(function () { this.autoplayEnabled = false; }),
-            disableRadio: vi.fn(function () { this.radioEnabled = false; }),
+            enableAutoplay: vi.fn(function () {
+                this.autoplayEnabled = true;
+            }),
+            disableAutoplay: vi.fn(function () {
+                this.autoplayEnabled = false;
+            }),
+            disableRadio: vi.fn(function () {
+                this.radioEnabled = false;
+            }),
             fetchAutoplayRecommendations: vi.fn(async () => {}),
         },
         api: { getCoverUrl: (value) => value },
@@ -293,7 +299,9 @@ describe('Now Playing panel interactions', () => {
         const endless = panel.root.querySelector('[data-endless-toggle]');
         endless.click();
 
-        await vi.waitFor(() => expect(panel.root.querySelector('[data-endless-toggle]').getAttribute('aria-pressed')).toBe('true'));
+        await vi.waitFor(() =>
+            expect(panel.root.querySelector('[data-endless-toggle]').getAttribute('aria-pressed')).toBe('true')
+        );
         expect(deps.player.enableAutoplay).toHaveBeenCalledOnce();
         expect(deps.player.fetchAutoplayRecommendations).toHaveBeenCalledOnce();
         panel.root.querySelector('[data-endless-toggle]').click();

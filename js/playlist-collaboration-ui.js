@@ -5,7 +5,8 @@ import './playlist-collaboration.css';
 
 export { isPlaylistOwner } from './playlist-collaboration.js';
 
-const PEOPLE_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 5a3 3 0 0 1 0 6M21 21v-3a6 6 0 0 0-3-5"/></svg>';
+const PEOPLE_ICON =
+    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 5a3 3 0 0 1 0 6M21 21v-3a6 6 0 0 0-3-5"/></svg>';
 
 export function appendCollaborationButton(actions, playlist) {
     const button = document.createElement('button');
@@ -37,24 +38,38 @@ export async function openCollaborators(initialPlaylist, trigger) {
         if (busy) return;
         busy = true;
         status.textContent = 'Saving…';
-        dialog.querySelectorAll('form button, .playlist-collaboration-members button, .playlist-collaboration-footer button').forEach((button) => { button.disabled = true; });
+        dialog
+            .querySelectorAll(
+                'form button, .playlist-collaboration-members button, .playlist-collaboration-footer button'
+            )
+            .forEach((button) => {
+                button.disabled = true;
+            });
         try {
             const result = await action();
             if (!dialog.isConnected) return;
-            if (!result) { dialog.close(); return; }
+            if (!result) {
+                dialog.close();
+                return;
+            }
             playlist = result;
             render();
             status.textContent = success;
         } catch (error) {
             if (!dialog.isConnected) return;
             const cached = await db.getPlaylist(playlist.id);
-            if (playlist.collaboration && !cached) { dialog.close(); return; }
+            if (playlist.collaboration && !cached) {
+                dialog.close();
+                return;
+            }
             playlist = cached || playlist;
             render();
             status.textContent = error.response?.message || error.message;
         } finally {
             busy = false;
-            dialog.querySelectorAll('button').forEach((button) => { button.disabled = false; });
+            dialog.querySelectorAll('button').forEach((button) => {
+                button.disabled = false;
+            });
         }
     };
     const render = () => {
@@ -62,7 +77,9 @@ export async function openCollaborators(initialPlaylist, trigger) {
         const owner = isPlaylistOwner(playlist);
         const signedIn = pb.authStore.isValid;
         form.hidden = !owner || !signedIn;
-        const members = playlist.collaboration?.identities || [{ id: pb.authStore.record?.id, name: pb.authStore.record?.name || 'You', role: 'owner' }];
+        const members = playlist.collaboration?.identities || [
+            { id: pb.authStore.record?.id, name: pb.authStore.record?.name || 'You', role: 'owner' },
+        ];
         const list = dialog.querySelector('.playlist-collaboration-members');
         list.replaceChildren();
         for (const member of members) {
@@ -79,7 +96,11 @@ export async function openCollaborators(initialPlaylist, trigger) {
                 remove.className = 'btn-secondary';
                 remove.textContent = 'Remove';
                 remove.setAttribute('aria-label', `Remove ${member.name} from playlist`);
-                remove.onclick = () => void run(() => playlistCollaboration.mutate(playlist, { type: 'remove-member', userId: member.id }), 'Collaborator removed.');
+                remove.onclick = () =>
+                    void run(
+                        () => playlistCollaboration.mutate(playlist, { type: 'remove-member', userId: member.id }),
+                        'Collaborator removed.'
+                    );
                 row.append(remove);
             }
             list.append(row);
@@ -108,52 +129,88 @@ export async function openCollaborators(initialPlaylist, trigger) {
         }, 'Collaborator added.');
     };
     dialog.querySelector('[aria-label="Close collaborators"]').onclick = () => dialog.close();
-    dialog.addEventListener('click', (event) => { if (event.target === dialog) { const rect = dialog.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close(); } });
+    dialog.addEventListener('click', (event) => {
+        if (event.target === dialog) {
+            const rect = dialog.getBoundingClientRect();
+            if (
+                event.clientX < rect.left ||
+                event.clientX > rect.right ||
+                event.clientY < rect.top ||
+                event.clientY > rect.bottom
+            )
+                dialog.close();
+        }
+    });
     const onChanged = async (event) => {
         if (event.detail?.playlistId !== playlist.id || busy) return;
         const current = await db.getPlaylist(playlist.id);
         if (!dialog.isConnected) return;
-        if (!current) { dialog.close(); return; }
+        if (!current) {
+            dialog.close();
+            return;
+        }
         playlist = current;
         render();
     };
     window.addEventListener('collaborative-playlist-changed', onChanged);
     const accountId = pb.authStore.record?.id;
-    const unsubscribeAuth = pb.authStore.onChange(() => { if (pb.authStore.record?.id !== accountId) dialog.close(); });
-    dialog.addEventListener('close', () => {
-        window.removeEventListener('collaborative-playlist-changed', onChanged);
-        unsubscribeAuth();
-        dialog.remove();
-        if (trigger?.isConnected) trigger.focus();
-    }, { once: true });
+    const unsubscribeAuth = pb.authStore.onChange(() => {
+        if (pb.authStore.record?.id !== accountId) dialog.close();
+    });
+    dialog.addEventListener(
+        'close',
+        () => {
+            window.removeEventListener('collaborative-playlist-changed', onChanged);
+            unsubscribeAuth();
+            dialog.remove();
+            if (trigger?.isConnected) trigger.focus();
+        },
+        { once: true }
+    );
     render();
     dialog.showModal();
     if (playlist.collaboration) {
         const current = await playlistCollaboration.refresh(playlist);
-        if (!current) { dialog.close(); return; }
+        if (!current) {
+            dialog.close();
+            return;
+        }
         playlist = current;
         if (dialog.isConnected) render();
     }
 }
 
 export function watchCollaborativePlaylist(ui, playlistId) {
-    if (ui._collaborationListener) window.removeEventListener('collaborative-playlist-changed', ui._collaborationListener);
+    if (ui._collaborationListener)
+        window.removeEventListener('collaborative-playlist-changed', ui._collaborationListener);
     clearTimeout(ui._collaborationRefreshTimer);
     ui._collaborationListener = (event) => {
-        if (event.detail?.playlistId !== playlistId || !document.getElementById('page-playlist')?.classList.contains('active')) return;
+        if (
+            event.detail?.playlistId !== playlistId ||
+            !document.getElementById('page-playlist')?.classList.contains('active')
+        )
+            return;
         clearTimeout(ui._collaborationRefreshTimer);
         ui._collaborationRefreshTimer = setTimeout(async () => {
             if (!document.getElementById('page-playlist')?.classList.contains('active')) return;
-            const routeId = decodeURIComponent(window.location.pathname.match(/^\/(?:userplaylist|playlist)\/([^/]+)\/?$/)?.[1] || '');
+            const routeId = decodeURIComponent(
+                window.location.pathname.match(/^\/(?:userplaylist|playlist)\/([^/]+)\/?$/)?.[1] || ''
+            );
             if (routeId !== playlistId) return;
-            if (document.querySelector('.track-item.dragging')) { ui._collaborationListener(event); return; }
+            if (document.querySelector('.track-item.dragging')) {
+                ui._collaborationListener(event);
+                return;
+            }
             const search = document.getElementById('track-list-search-input')?.value || '';
             const scroller = document.querySelector('.main-content');
             const scrollTop = scroller?.scrollTop || 0;
             const focusedId = document.activeElement?.id;
             await ui.renderPlaylistPage(playlistId, 'user');
             const input = document.getElementById('track-list-search-input');
-            if (input && search) { input.value = search; input.dispatchEvent(new Event('input', { bubbles: true })); }
+            if (input && search) {
+                input.value = search;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
             if (scroller) scroller.scrollTop = scrollTop;
             if (focusedId) document.getElementById(focusedId)?.focus({ preventScroll: true });
         }, 150);

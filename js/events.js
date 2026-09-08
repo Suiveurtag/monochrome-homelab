@@ -1128,7 +1128,10 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
 
             if (player.currentTrack) {
                 const currentId = String(player.currentTrack.id);
-                if (currentId !== _previousTrackId || listeningTracker.getSessionSignals().currentTrackId !== currentId) {
+                if (
+                    currentId !== _previousTrackId ||
+                    listeningTracker.getSessionSignals().currentTrackId !== currentId
+                ) {
                     if (_previousTrackId !== null) {
                         const completedByCrossfade = player.isCrossfadeTransitionFrom(_previousTrackId);
                         if (completedByCrossfade) {

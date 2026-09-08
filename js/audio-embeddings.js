@@ -3,30 +3,55 @@
  * A remote adapter can implement getMany(trackIds) => Map<trackId, Embedding[]>.
  */
 export function validateEmbedding(entry) {
-    if (entry?.trackId == null || !String(entry.trackId).trim() || !String(entry.model || '').trim() || !String(entry.version || '').trim() || !Array.isArray(entry.vector) ||
-        entry.vector.length < 2 || entry.vector.length > 8192 || !entry.vector.every(Number.isFinite) ||
-        !entry.vector.some((value) => value !== 0)) throw new TypeError('Invalid audio embedding');
-    return { trackId: String(entry.trackId), model: String(entry.model), version: String(entry.version),
-        vector: [...entry.vector], updatedAt: Date.now() };
+    if (
+        entry?.trackId == null ||
+        !String(entry.trackId).trim() ||
+        !String(entry.model || '').trim() ||
+        !String(entry.version || '').trim() ||
+        !Array.isArray(entry.vector) ||
+        entry.vector.length < 2 ||
+        entry.vector.length > 8192 ||
+        !entry.vector.every(Number.isFinite) ||
+        !entry.vector.some((value) => value !== 0)
+    )
+        throw new TypeError('Invalid audio embedding');
+    return {
+        trackId: String(entry.trackId),
+        model: String(entry.model),
+        version: String(entry.version),
+        vector: [...entry.vector],
+        updatedAt: Date.now(),
+    };
 }
 
 export class PersistedAudioEmbeddings {
-    constructor(name = 'monochrome-audio-embeddings') { this.name = name; this.database = null; }
+    constructor(name = 'monochrome-audio-embeddings') {
+        this.name = name;
+        this.database = null;
+    }
     async open() {
         if (this.database) return this.database;
         if (typeof indexedDB === 'undefined') return null;
         this.database = new Promise((resolve, reject) => {
             const request = indexedDB.open(this.name, 1);
             request.onupgradeneeded = () => {
-                const store = request.result.createObjectStore('embeddings', { keyPath: ['trackId', 'model', 'version'] });
+                const store = request.result.createObjectStore('embeddings', {
+                    keyPath: ['trackId', 'model', 'version'],
+                });
                 store.createIndex('trackId', 'trackId');
             };
             request.onsuccess = () => {
                 const database = request.result;
-                database.onversionchange = () => { database.close(); this.database = null; };
+                database.onversionchange = () => {
+                    database.close();
+                    this.database = null;
+                };
                 resolve(database);
             };
-            request.onerror = () => { this.database = null; reject(request.error); };
+            request.onerror = () => {
+                this.database = null;
+                reject(request.error);
+            };
         });
         return this.database;
     }
@@ -52,7 +77,9 @@ export class PersistedAudioEmbeddings {
             const index = transaction.objectStore('embeddings').index('trackId');
             for (const id of new Set(ids.map(String))) {
                 const request = index.getAll(id);
-                request.onsuccess = () => { if (request.result.length) result.set(id, request.result); };
+                request.onsuccess = () => {
+                    if (request.result.length) result.set(id, request.result);
+                };
             }
             transaction.oncomplete = resolve;
             transaction.onabort = () => reject(transaction.error);

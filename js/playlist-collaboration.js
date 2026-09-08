@@ -40,7 +40,9 @@ export function canEditPlaylist(playlist) {
 
 function changed(playlist, extra = {}) {
     window.dispatchEvent(new CustomEvent('playlist-tracks-changed', { detail: { playlistId: playlist.id, ...extra } }));
-    window.dispatchEvent(new CustomEvent('collaborative-playlist-changed', { detail: { playlistId: playlist.id, ...extra } }));
+    window.dispatchEvent(
+        new CustomEvent('collaborative-playlist-changed', { detail: { playlistId: playlist.id, ...extra } })
+    );
     window.dispatchEvent(new CustomEvent('library-changed'));
 }
 
@@ -75,7 +77,10 @@ export const playlistCollaboration = {
             request.onsuccess = () => {
                 if (!this.isCurrent(session) || (!authoritative && this.removed.has(record.id))) return;
                 const previous = request.result;
-                if (previous?.collaboration?.recordId === record.id && previous.collaboration.revision >= playlist.collaboration.revision) {
+                if (
+                    previous?.collaboration?.recordId === record.id &&
+                    previous.collaboration.revision >= playlist.collaboration.revision
+                ) {
                     result = previous;
                     return;
                 }
@@ -85,12 +90,16 @@ export const playlistCollaboration = {
                 updated = true;
             };
             transaction.oncomplete = () => {
-                if (!this.isCurrent(session)) { resolve(null); return; }
+                if (!this.isCurrent(session)) {
+                    resolve(null);
+                    return;
+                }
                 if (updated && notify) changed(playlist);
                 resolve(result);
             };
             transaction.onerror = () => reject(transaction.error);
-            transaction.onabort = () => reject(transaction.error || new Error('Playlist cache update was interrupted.'));
+            transaction.onabort = () =>
+                reject(transaction.error || new Error('Playlist cache update was interrupted.'));
         });
     },
 
@@ -106,7 +115,12 @@ export const playlistCollaboration = {
             let deleted = false;
             request.onsuccess = () => {
                 const previous = request.result;
-                if (!this.isCurrent(session) || !previous?.collaboration || (recordId && previous.collaboration.recordId !== recordId)) return;
+                if (
+                    !this.isCurrent(session) ||
+                    !previous?.collaboration ||
+                    (recordId && previous.collaboration.recordId !== recordId)
+                )
+                    return;
                 this.removed.add(previous.collaboration.recordId);
                 store.delete(id);
                 deleted = true;
@@ -116,7 +130,8 @@ export const playlistCollaboration = {
                 resolve();
             };
             transaction.onerror = () => reject(transaction.error);
-            transaction.onabort = () => reject(transaction.error || new Error('Playlist cache update was interrupted.'));
+            transaction.onabort = () =>
+                reject(transaction.error || new Error('Playlist cache update was interrupted.'));
         });
     },
 
@@ -151,7 +166,14 @@ export const playlistCollaboration = {
         }
         const record = await pb.send('/api/monochrome/playlists', {
             method: 'POST',
-            body: { uuid: playlist.id, name: playlist.name, description: playlist.description, cover: playlist.cover, tracks: playlist.tracks, isPublic: playlist.isPublic },
+            body: {
+                uuid: playlist.id,
+                name: playlist.name,
+                description: playlist.description,
+                cover: playlist.cover,
+                tracks: playlist.tracks,
+                isPublic: playlist.isPublic,
+            },
         });
         const saved = await this.cache(record, { session, authoritative: true });
         if (!saved) throw new Error('Your account changed. Reopen the playlist to continue.');
@@ -179,7 +201,12 @@ export const playlistCollaboration = {
                 if (operation.type === 'add') {
                     const prior = new Set((current.tracks || []).map(trackKey));
                     const addedTracks = (saved?.tracks || []).filter((track) => !prior.has(trackKey(track)));
-                    if (addedTracks.length) window.dispatchEvent(new CustomEvent('playlist-tracks-changed', { detail: { playlistId: playlist.id, addedTracks } }));
+                    if (addedTracks.length)
+                        window.dispatchEvent(
+                            new CustomEvent('playlist-tracks-changed', {
+                                detail: { playlistId: playlist.id, addedTracks },
+                            })
+                        );
                 }
                 return saved;
             } catch (error) {
@@ -191,9 +218,13 @@ export const playlistCollaboration = {
                     current = await this.refresh(current, { notify: true, session });
                     // Semantic add/remove operations are safe to retry; never overwrite a newer order or membership edit.
                     if (current && ['add', 'remove'].includes(operation.type) && attempt < 2) continue;
-                    throw new Error('Someone updated this playlist. The latest version is loaded; try your change again.');
+                    throw new Error(
+                        'Someone updated this playlist. The latest version is loaded; try your change again.'
+                    );
                 }
-                throw new Error(error.response?.message || error.message || 'Could not save the playlist. Reconnect and try again.');
+                throw new Error(
+                    error.response?.message || error.message || 'Could not save the playlist. Reconnect and try again.'
+                );
             }
         }
     },
@@ -209,10 +240,13 @@ export const playlistCollaboration = {
             const cached = await db.getAll('user_playlists');
             for (const playlist of cached) {
                 if (!this.isCurrent(session)) return;
-                if (playlist.collaboration && !ids.has(playlist.id)) await this.removeCached(playlist.id, { session, recordId: playlist.collaboration.recordId });
+                if (playlist.collaboration && !ids.has(playlist.id))
+                    await this.removeCached(playlist.id, { session, recordId: playlist.collaboration.recordId });
             }
             for (const record of records) await this.cache(record, { session, authoritative: true });
-        })().finally(() => { if (this.refreshing === pending) this.refreshing = null; });
+        })().finally(() => {
+            if (this.refreshing === pending) this.refreshing = null;
+        });
         this.refreshing = pending;
         return this.refreshing;
     },
@@ -230,32 +264,46 @@ export const playlistCollaboration = {
         const cached = await db.getAll('user_playlists');
         for (const playlist of cached) {
             if (!this.isCurrent(session)) return;
-            if (playlist.collaboration && (!this.userId || !canEditPlaylist(playlist))) await this.removeCached(playlist.id, { session, recordId: playlist.collaboration.recordId });
+            if (playlist.collaboration && (!this.userId || !canEditPlaylist(playlist)))
+                await this.removeCached(playlist.id, { session, recordId: playlist.collaboration.recordId });
         }
         if (!this.userId) {
             return;
         }
-        const refresh = () => this.reconcile().catch((error) => console.warn('[Playlists] Sync unavailable:', error.status || error.message));
+        const refresh = () =>
+            this.reconcile().catch((error) =>
+                console.warn('[Playlists] Sync unavailable:', error.status || error.message)
+            );
         await refresh();
         if (!this.isCurrent(session)) return;
         // Reconcile after reconnect and periodically: revoked memberships stop receiving record events.
-        this.timer = setInterval(() => { if (document.visibilityState !== 'hidden') void refresh(); }, 20000);
+        this.timer = setInterval(() => {
+            if (document.visibilityState !== 'hidden') void refresh();
+        }, 20000);
         if (!this.onReconnect) {
-            this.onReconnect = () => { if (document.visibilityState !== 'hidden') void this.reconcile().catch(() => {}); };
+            this.onReconnect = () => {
+                if (document.visibilityState !== 'hidden') void this.reconcile().catch(() => {});
+            };
             window.addEventListener('online', this.onReconnect);
             document.addEventListener('visibilitychange', this.onReconnect);
         }
         try {
             const unsubscribe = await pb.collection(COLLECTION).subscribe('*', (event) => {
                 if (!this.isCurrent(session)) return;
-                const update = event.action === 'delete'
-                    ? this.removeCached(event.record.uuid, { session, recordId: event.record.id })
-                    : this.cache(event.record, { session });
+                const update =
+                    event.action === 'delete'
+                        ? this.removeCached(event.record.uuid, { session, recordId: event.record.id })
+                        : this.cache(event.record, { session });
                 void update.catch((error) => console.warn('[Playlists] Could not store live update:', error.message));
             });
-            if (!this.isCurrent(session)) { void unsubscribe(); return; }
+            if (!this.isCurrent(session)) {
+                void unsubscribe();
+                return;
+            }
             this.unsubscribe = unsubscribe;
-        } catch (error) { console.warn('[Playlists] Live updates unavailable; periodic sync remains active.', error.status); }
+        } catch (error) {
+            console.warn('[Playlists] Live updates unavailable; periodic sync remains active.', error.status);
+        }
     },
 };
 

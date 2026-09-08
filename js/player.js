@@ -842,7 +842,11 @@ export class Player {
     }
 
     async checkPreloadConditions() {
-        if (this.activeElement && !this.activeElement.paused && this.currentQueueIndex >= this.getCurrentQueue().length - 3) {
+        if (
+            this.activeElement &&
+            !this.activeElement.paused &&
+            this.currentQueueIndex >= this.getCurrentQueue().length - 3
+        ) {
             if (this.radioEnabled) void this.fetchRadioRecommendations();
             else if (this.autoplayEnabled) void this.fetchAutoplayRecommendations();
         }
@@ -1523,8 +1527,8 @@ export class Player {
             const isPodcast = track.isPodcast || (track.id && String(track.id).startsWith('podcast_'));
 
             const { offlineCache } = await import('./offline-cache.js');
-            const offlineBlob = !isVideoTrack && !isPodcast
-                ? await offlineCache.playbackBlob(track.id).catch(() => null) : null;
+            const offlineBlob =
+                !isVideoTrack && !isPodcast ? await offlineCache.playbackBlob(track.id).catch(() => null) : null;
             if (this.playbackSequence !== currentSequence) return;
             if (!offlineBlob) offlineCache.activeId = null;
             // Keep URLs attached to their audio deck: a fading-out deck can still be playing.
@@ -1831,9 +1835,14 @@ export class Player {
         const sequence = this.playbackSequence;
         const index = this.currentQueueIndex;
         await this.extendRecommendationQueue(mode);
-        if (generation !== this._queueGeneration || sequence !== this.playbackSequence ||
-            index !== this.currentQueueIndex || this.repeatMode !== REPEAT_MODE.OFF ||
-            !(mode === 'radio' ? this.radioEnabled : this.autoplayEnabled)) return;
+        if (
+            generation !== this._queueGeneration ||
+            sequence !== this.playbackSequence ||
+            index !== this.currentQueueIndex ||
+            this.repeatMode !== REPEAT_MODE.OFF ||
+            !(mode === 'radio' ? this.radioEnabled : this.autoplayEnabled)
+        )
+            return;
         if (index < this.getCurrentQueue().length - 1) await this.playNext(0, options);
         else this.activeElement.pause();
     }
@@ -2023,16 +2032,17 @@ export class Player {
         if (!navigator.onLine || this.repeatMode !== REPEAT_MODE.OFF) return Promise.resolve();
         if (Date.now() < (this._recommendationRetryAt || 0)) return Promise.resolve();
         const generation = this._queueGeneration;
-        const enabled = () => mode === 'radio' ? this.radioEnabled : this.autoplayEnabled;
+        const enabled = () => (mode === 'radio' ? this.radioEnabled : this.autoplayEnabled);
         if (!enabled()) return Promise.resolve();
         this.showRadioLoading(true);
         this._recommendationPromise = (async () => {
             try {
                 const { recommendationService } = await import('./recommendation-service.js');
                 const queue = this.getCurrentQueue();
-                const seeds = mode === 'radio' && this.radioSeeds.length
-                    ? this.radioSeeds.slice(0, 16)
-                    : queue.slice(Math.max(0, this.currentQueueIndex - 4), this.currentQueueIndex + 1);
+                const seeds =
+                    mode === 'radio' && this.radioSeeds.length
+                        ? this.radioSeeds.slice(0, 16)
+                        : queue.slice(Math.max(0, this.currentQueueIndex - 4), this.currentQueueIndex + 1);
                 const catalog = this.api.localAPI || this.api;
                 if (typeof catalog.getTracks !== 'function') return;
                 const candidates = await catalog.getTracks();
@@ -2040,15 +2050,24 @@ export class Player {
                 const protectedIds = new Set(upcoming.map((track) => String(track.id)));
                 const recent = this._recentlyPlayedIds.slice(-20).map(String);
                 let tracks = await recommendationService.rank(candidates, {
-                    seeds, excludeIds: [...protectedIds, ...recent], limit: 5,
+                    seeds,
+                    excludeIds: [...protectedIds, ...recent],
+                    limit: 5,
                 });
                 // A finite catalogue may eventually be exhausted. Allow older songs again,
                 // keeping the current song and every upcoming queue item protected.
-                if (!tracks.length) tracks = await recommendationService.rank(candidates, {
-                    seeds, excludeIds: [...protectedIds], limit: 5,
-                });
+                if (!tracks.length)
+                    tracks = await recommendationService.rank(candidates, {
+                        seeds,
+                        excludeIds: [...protectedIds],
+                        limit: 5,
+                    });
                 if (generation !== this._queueGeneration || !enabled() || this.repeatMode !== REPEAT_MODE.OFF) return;
-                const nowQueued = new Set(this.getCurrentQueue().slice(Math.max(0, this.currentQueueIndex)).map((track) => String(track.id)));
+                const nowQueued = new Set(
+                    this.getCurrentQueue()
+                        .slice(Math.max(0, this.currentQueueIndex))
+                        .map((track) => String(track.id))
+                );
                 tracks = tracks.filter((track) => !nowQueued.has(String(track.id)));
                 if (tracks.length) await this.addToQueue(tracks);
                 else this._recommendationRetryAt = Date.now() + 30000;

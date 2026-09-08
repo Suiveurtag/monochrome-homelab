@@ -5734,7 +5734,7 @@ body.multi-select-mode .track-item:hover {
     .album-cover-inspect-hint,
     .album-cover-inspector,
     .album-cover-inspector-card,
-        .album-cover-inspector-action {
+    .album-cover-inspector-action {
         transition: none !important;
     }
 

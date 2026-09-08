@@ -9,13 +9,26 @@ afterEach(() => {
     document.body.replaceChildren();
 });
 
-const key = (target, value, extra = {}) => target.dispatchEvent(new KeyboardEvent('keydown', {
-    key: value, bubbles: true, cancelable: true, ...extra,
-}));
+const key = (target, value, extra = {}) =>
+    target.dispatchEvent(
+        new KeyboardEvent('keydown', {
+            key: value,
+            bubbles: true,
+            cancelable: true,
+            ...extra,
+        })
+    );
 
 test('integrated queue rows support arrows and Enter activates their playback button', () => {
-    document.body.innerHTML = '<div class="queue-track-list">' + ['First', 'Second'].map((title, index) =>
-        `<div class="queue-track-row" data-queue-index="${index}"><button class="queue-track-main"><span class="queue-track-copy"><strong>${title}</strong></span></button></div>`).join('') + '</div>';
+    document.body.innerHTML =
+        '<div class="queue-track-list">' +
+        ['First', 'Second']
+            .map(
+                (title, index) =>
+                    `<div class="queue-track-row" data-queue-index="${index}"><button class="queue-track-main"><span class="queue-track-copy"><strong>${title}</strong></span></button></div>`
+            )
+            .join('') +
+        '</div>';
     cleanup = initializeKeyboardNavigation();
     const rows = [...document.querySelectorAll('.queue-track-row')];
     const play = vi.fn();
@@ -29,7 +42,8 @@ test('integrated queue rows support arrows and Enter activates their playback bu
 });
 
 test('native dialogs suppress global playback shortcuts and close on Escape', async () => {
-    document.body.innerHTML = '<button id="trigger">Open</button><dialog><p tabindex="0">Details</p><button>Done</button></dialog>';
+    document.body.innerHTML =
+        '<button id="trigger">Open</button><dialog><p tabindex="0">Details</p><button>Done</button></dialog>';
     const trigger = document.getElementById('trigger');
     trigger.focus();
     cleanup = initializeKeyboardNavigation();
@@ -48,7 +62,8 @@ test('native dialogs suppress global playback shortcuts and close on Escape', as
 });
 
 test('Escape uses the integrated queue close action instead of trapping the user', () => {
-    document.body.innerHTML = '<aside role="dialog" aria-modal="true"><button class="queue-back-button">Back</button></aside>';
+    document.body.innerHTML =
+        '<aside role="dialog" aria-modal="true"><button class="queue-back-button">Back</button></aside>';
     const close = vi.fn();
     const button = document.querySelector('button');
     button.onclick = close;
@@ -60,7 +75,8 @@ test('Escape uses the integrated queue close action instead of trapping the user
 test('new queue rows gain navigation after dynamic rendering', async () => {
     document.body.innerHTML = '<div class="queue-track-list"></div>';
     cleanup = initializeKeyboardNavigation();
-    document.querySelector('div').innerHTML = '<div class="queue-track-row" data-queue-index="1"><button class="queue-track-main">Play</button></div>';
+    document.querySelector('div').innerHTML =
+        '<div class="queue-track-row" data-queue-index="1"><button class="queue-track-main">Play</button></div>';
     const row = document.querySelector('.queue-track-row');
     await vi.waitFor(() => expect(row.tabIndex).toBe(0));
     expect(row.dataset.keyboardRow).toBe('true');

@@ -16,9 +16,11 @@ export function createUploadStorage({ anchor, getTracks, getSelection }) {
         const selection = getSelection();
         const byId = new Map(tracks.map((track) => [String(track.id), track]));
         details.querySelector('[data-storage-total]').textContent = storageSummaryLabel(tracks);
-        details.querySelector('[data-storage-library]').textContent = `${tracks.length} songs · ${storageSummaryLabel(tracks)}`;
+        details.querySelector('[data-storage-library]').textContent =
+            `${tracks.length} songs · ${storageSummaryLabel(tracks)}`;
         details.querySelector('[data-storage-selection]').textContent = selection.length
-            ? `${selection.length} songs · ${storageSummaryLabel(selection)}` : 'No songs selected';
+            ? `${selection.length} songs · ${storageSummaryLabel(selection)}`
+            : 'No songs selected';
         document.querySelectorAll('.upload-gallery-card[data-track-id]').forEach((card) => {
             const track = byId.get(card.dataset.trackId);
             let size = card.querySelector('.upload-card-size');
@@ -31,10 +33,18 @@ export function createUploadStorage({ anchor, getTracks, getSelection }) {
             size.title = 'Original audio file size';
         });
     };
-    details.addEventListener('toggle', () => { if (details.open) update(); });
-    document.addEventListener('pointerdown', (event) => { if (!details.contains(event.target)) details.open = false; });
+    details.addEventListener('toggle', () => {
+        if (details.open) update();
+    });
+    document.addEventListener('pointerdown', (event) => {
+        if (!details.contains(event.target)) details.open = false;
+    });
     details.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') { details.open = false; details.querySelector('summary').focus(); event.stopPropagation(); }
+        if (event.key === 'Escape') {
+            details.open = false;
+            details.querySelector('summary').focus();
+            event.stopPropagation();
+        }
     });
     update();
     return { update };

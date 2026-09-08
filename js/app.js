@@ -78,14 +78,7 @@ import {
     installAnimatedArtworkObserver,
     isSupportedArtworkFile,
 } from './animated-artwork.js';
-import {
-    SVG_OFFLINE,
-    SVG_RIGHT_ARROW,
-    SVG_LEFT_ARROW,
-    SVG_ANIMATE_SPIN,
-    SVG_PLAY,
-    SVG_CLOSE,
-} from './icons.js';
+import { SVG_OFFLINE, SVG_RIGHT_ARROW, SVG_LEFT_ARROW, SVG_ANIMATE_SPIN, SVG_PLAY, SVG_CLOSE } from './icons.js';
 
 // Capture real iOS state before spoofing (needed for background audio)
 installAnimatedArtworkObserver();
@@ -201,7 +194,11 @@ async function initializeSelfHostedUploads() {
 
     const selectedTracks = () => allTracks.filter((track) => selectedIds.has(String(track.id)));
 
-    const uploadStorage = createUploadStorage({ anchor: stats, getTracks: () => allTracks, getSelection: selectedTracks });
+    const uploadStorage = createUploadStorage({
+        anchor: stats,
+        getTracks: () => allTracks,
+        getSelection: selectedTracks,
+    });
 
     const updateSelectionUI = () => {
         uploadStorage.update();

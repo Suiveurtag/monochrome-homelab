@@ -11,7 +11,8 @@ function cacheError(message, code) {
 export function planCacheEviction(entries, requiredBytes, maxBytes, protectedIds = []) {
     let usage = entries.reduce((sum, item) => sum + item.bytes, 0);
     const protectedSet = new Set(protectedIds.map(String));
-    const candidates = entries.filter((entry) => !entry.playlists?.length && !protectedSet.has(String(entry.id)))
+    const candidates = entries
+        .filter((entry) => !entry.playlists?.length && !protectedSet.has(String(entry.id)))
         .sort((a, b) => a.lastUsed - b.lastUsed || a.key.localeCompare(b.key));
     const evict = [];
     for (const entry of candidates) {
@@ -23,15 +24,20 @@ export function planCacheEviction(entries, requiredBytes, maxBytes, protectedIds
 }
 
 function cloneMetadata(track) {
-    return JSON.parse(JSON.stringify(track, (key, value) =>
-        ['file', 'fileHandle', 'handle'].includes(key) || (typeof value === 'string' && value.startsWith('blob:'))
-            ? undefined : value));
+    return JSON.parse(
+        JSON.stringify(track, (key, value) =>
+            ['file', 'fileHandle', 'handle'].includes(key) || (typeof value === 'string' && value.startsWith('blob:'))
+                ? undefined
+                : value
+        )
+    );
 }
 
 export class OfflineCache {
     constructor(options = {}) {
         this.dbName = options.dbName || 'monochrome-offline-v1';
-        this.scope = options.scope || (() => `${pb.baseURL}|${pb.authStore.record?.id || pb.authStore.model?.id || 'guest'}`);
+        this.scope =
+            options.scope || (() => `${pb.baseURL}|${pb.authStore.record?.id || pb.authStore.model?.id || 'guest'}`);
         this.fetch = options.fetch || ((...args) => fetch(...args));
         this.now = options.now || Date.now;
         this.activeId = null;
@@ -49,8 +55,13 @@ export class OfflineCache {
     settingsFor(scope) {
         try {
             const stored = JSON.parse(localStorage.getItem(`${SETTINGS_KEY}:${scope}`) || '{}');
-            return { autoFavorites: stored.autoFavorites !== false, maxBytes: Math.min(1024 ** 4, Math.max(MB, Number(stored.maxBytes) || OFFLINE_DEFAULTS.maxBytes)) };
-        } catch { return { ...OFFLINE_DEFAULTS }; }
+            return {
+                autoFavorites: stored.autoFavorites !== false,
+                maxBytes: Math.min(1024 ** 4, Math.max(MB, Number(stored.maxBytes) || OFFLINE_DEFAULTS.maxBytes)),
+            };
+        } catch {
+            return { ...OFFLINE_DEFAULTS };
+        }
     }
 
     async configure(values) {
@@ -70,21 +81,33 @@ export class OfflineCache {
         }
     }
 
-    changed() { window.dispatchEvent(new CustomEvent('offline-cache-changed')); }
+    changed() {
+        window.dispatchEvent(new CustomEvent('offline-cache-changed'));
+    }
 
     open() {
         if (this.database) return this.database;
         this.database = new Promise((resolve, reject) => {
-            if (!globalThis.indexedDB) { reject(new Error('Offline storage is unavailable in this browser.')); return; }
+            if (!globalThis.indexedDB) {
+                reject(new Error('Offline storage is unavailable in this browser.'));
+                return;
+            }
             const request = indexedDB.open(this.dbName, 1);
             request.onupgradeneeded = () => {
-                for (const name of ['tracks', 'audio', 'playlists']) request.result.createObjectStore(name, { keyPath: 'key' });
+                for (const name of ['tracks', 'audio', 'playlists'])
+                    request.result.createObjectStore(name, { keyPath: 'key' });
             };
             request.onsuccess = () => {
-                request.result.onversionchange = () => { request.result.close(); this.database = null; };
+                request.result.onversionchange = () => {
+                    request.result.close();
+                    this.database = null;
+                };
                 resolve(request.result);
             };
-            request.onerror = () => { this.database = null; reject(request.error); };
+            request.onerror = () => {
+                this.database = null;
+                reject(request.error);
+            };
         });
         return this.database;
     }
@@ -105,18 +128,26 @@ export class OfflineCache {
             transaction.oncomplete = resolve;
             transaction.onerror = () => reject(transaction.error);
             transaction.onabort = () => reject(transaction.error || new Error('Offline storage could not be updated.'));
-            try { callback(transaction); } catch (error) { transaction.abort(); reject(error); }
+            try {
+                callback(transaction);
+            } catch (error) {
+                transaction.abort();
+                reject(error);
+            }
         });
     }
 
     exclusive(callback) {
-        const task = this.pending.catch(() => {}).then(() =>
-            navigator.locks ? navigator.locks.request(`${this.dbName}:write`, callback) : callback());
+        const task = this.pending
+            .catch(() => {})
+            .then(() => (navigator.locks ? navigator.locks.request(`${this.dbName}:write`, callback) : callback()));
         this.pending = task;
         return task;
     }
 
-    key(id, scope = this.scope()) { return `${scope}:${id}`; }
+    key(id, scope = this.scope()) {
+        return `${scope}:${id}`;
+    }
     async entries(scope = this.scope()) {
         const entries = await this.read('tracks');
         this.assertScope(scope);
@@ -127,7 +158,9 @@ export class OfflineCache {
         this.assertScope(scope);
         return playlists.filter((item) => item.scope === scope);
     }
-    async tracks() { return (await this.entries()).map((entry) => ({ ...entry.track, offlineAvailable: true })); }
+    async tracks() {
+        return (await this.entries()).map((entry) => ({ ...entry.track, offlineAvailable: true }));
+    }
     async status() {
         const scope = this.scope();
         const entries = await this.entries(scope);
@@ -142,7 +175,9 @@ export class OfflineCache {
     async cleanup({ allAutomatic = false, scope = this.scope() } = {}) {
         return this.exclusive(async () => {
             const entries = await this.entries(scope);
-            const { evict } = planCacheEviction(entries, 0, allAutomatic ? 0 : this.settingsFor(scope).maxBytes, [this.activeId]);
+            const { evict } = planCacheEviction(entries, 0, allAutomatic ? 0 : this.settingsFor(scope).maxBytes, [
+                this.activeId,
+            ]);
             await this.write((transaction) => {
                 this.assertScope(scope);
                 evict.forEach((key) => {
@@ -173,22 +208,31 @@ export class OfflineCache {
                 return existing;
             }
             let source = track;
-            if (!source.file && !source.serverAudioUrl && !source.audioUrl && resolveTrack) source = await resolveTrack(track.id);
+            if (!source.file && !source.serverAudioUrl && !source.audioUrl && resolveTrack)
+                source = await resolveTrack(track.id);
             this.assertScope(scope, signal);
             if (!source) throw new Error('This song is no longer available.');
             let blob = source.file;
             if (!blob) {
                 const url = source.serverAudioUrl || source.audioUrl || source.remoteUrl;
-                if (!url || /\.(m3u8|mpd)(?:$|[?#])/i.test(url)) throw new Error('This song has no downloadable audio file.');
+                if (!url || /\.(m3u8|mpd)(?:$|[?#])/i.test(url))
+                    throw new Error('This song has no downloadable audio file.');
                 const timeout = AbortSignal.timeout(120000);
-                const response = await this.fetch(url, { signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
-                if (!response.ok || response.status === 206 || response.type === 'opaque') throw new Error('The complete audio file could not be downloaded.');
+                const response = await this.fetch(url, {
+                    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+                });
+                if (!response.ok || response.status === 206 || response.type === 'opaque')
+                    throw new Error('The complete audio file could not be downloaded.');
                 const type = response.headers.get('content-type') || '';
-                if (/text\/|json|mpegurl|dash\+xml/i.test(type)) throw new Error('The server did not return an audio file.');
+                if (/text\/|json|mpegurl|dash\+xml/i.test(type))
+                    throw new Error('The server did not return an audio file.');
                 const maxBytes = this.settingsFor(scope).maxBytes;
                 if (Number(response.headers.get('content-length')) > maxBytes) {
                     await response.body?.cancel();
-                    throw cacheError('This song is larger than the cache limit. Increase the limit in Settings.', 'TRACK_TOO_LARGE');
+                    throw cacheError(
+                        'This song is larger than the cache limit. Increase the limit in Settings.',
+                        'TRACK_TOO_LARGE'
+                    );
                 }
                 if (response.body) {
                     const reader = response.body.getReader();
@@ -202,7 +246,10 @@ export class OfflineCache {
                         }
                         if (part.done) break;
                         size += part.value.byteLength;
-                        if (size > maxBytes) { await reader.cancel(); throw cacheError('This song is larger than the cache limit.', 'TRACK_TOO_LARGE'); }
+                        if (size > maxBytes) {
+                            await reader.cancel();
+                            throw cacheError('This song is larger than the cache limit.', 'TRACK_TOO_LARGE');
+                        }
                         chunks.push(part.value);
                     }
                     blob = new Blob(chunks, { type: type || 'audio/flac' });
@@ -210,12 +257,29 @@ export class OfflineCache {
             }
             if (!blob.size) throw new Error('The audio file is empty.');
             this.assertScope(scope, signal);
-            if (blob.size > this.settingsFor(scope).maxBytes) throw cacheError('This song is larger than the cache limit.', 'TRACK_TOO_LARGE');
+            if (blob.size > this.settingsFor(scope).maxBytes)
+                throw cacheError('This song is larger than the cache limit.', 'TRACK_TOO_LARGE');
             const entries = await this.entries(scope);
-            const plan = planCacheEviction(entries.filter((item) => item.key !== key), blob.size, this.settingsFor(scope).maxBytes, [this.activeId, ...protectedIds]);
-            if (!plan.fits) throw cacheError('The cache is full of songs being kept. Increase the limit or remove a downloaded playlist.', 'CACHE_FULL');
-            const entry = { key, scope, id: String(track.id), track: cloneMetadata({ ...track, ...source }), bytes: blob.size,
-                lastUsed: this.now(), playlists: playlistId ? [playlistId] : [] };
+            const plan = planCacheEviction(
+                entries.filter((item) => item.key !== key),
+                blob.size,
+                this.settingsFor(scope).maxBytes,
+                [this.activeId, ...protectedIds]
+            );
+            if (!plan.fits)
+                throw cacheError(
+                    'The cache is full of songs being kept. Increase the limit or remove a downloaded playlist.',
+                    'CACHE_FULL'
+                );
+            const entry = {
+                key,
+                scope,
+                id: String(track.id),
+                track: cloneMetadata({ ...track, ...source }),
+                bytes: blob.size,
+                lastUsed: this.now(),
+                playlists: playlistId ? [playlistId] : [],
+            };
             // Audio, metadata and eviction commit together. A quota failure preserves existing music.
             await this.write((transaction) => {
                 this.assertScope(scope, signal);
@@ -243,7 +307,10 @@ export class OfflineCache {
             const entry = await this.read('tracks', key);
             if (entry) {
                 entry.lastUsed = this.now();
-                await this.write((tx) => { this.assertScope(scope); tx.objectStore('tracks').put(entry); });
+                await this.write((tx) => {
+                    this.assertScope(scope);
+                    tx.objectStore('tracks').put(entry);
+                });
             }
         }).catch(console.warn);
         return audio.blob;
@@ -256,9 +323,24 @@ export class OfflineCache {
         const scope = this.scope();
         const id = String(playlist.uuid || playlist.id);
         this.download = { scope, id };
-        const tracks = [...new Map((playlist.tracks || []).filter((track) => track?.id).map((track) => [String(track.id), track])).values()];
-        if (!tracks.length) { this.controller = null; this.download = null; throw new Error('This playlist has no songs to download.'); }
-        const snapshot = { key: this.key(id, scope), scope, id, name: playlist.name || playlist.title || 'Playlist', tracks: tracks.map(cloneMetadata), updatedAt: this.now() };
+        const tracks = [
+            ...new Map(
+                (playlist.tracks || []).filter((track) => track?.id).map((track) => [String(track.id), track])
+            ).values(),
+        ];
+        if (!tracks.length) {
+            this.controller = null;
+            this.download = null;
+            throw new Error('This playlist has no songs to download.');
+        }
+        const snapshot = {
+            key: this.key(id, scope),
+            scope,
+            id,
+            name: playlist.name || playlist.title || 'Playlist',
+            tracks: tracks.map(cloneMetadata),
+            updatedAt: this.now(),
+        };
         const failures = [];
         let downloaded = 0;
         try {
@@ -279,17 +361,29 @@ export class OfflineCache {
             });
             for (const track of tracks) {
                 if (signal.aborted || scope !== this.scope()) break;
-                try { await this.cacheTrack(track, { playlistId: id, resolveTrack, signal }); downloaded++; }
-                catch (error) { if (error.name === 'AbortError') break; failures.push({ id: track.id, message: error.message }); }
+                try {
+                    await this.cacheTrack(track, { playlistId: id, resolveTrack, signal });
+                    downloaded++;
+                } catch (error) {
+                    if (error.name === 'AbortError') break;
+                    failures.push({ id: track.id, message: error.message });
+                }
                 this.progress = { downloaded, total: tracks.length, failed: failures.length };
                 onProgress?.(this.progress);
                 this.changed();
             }
             return { downloaded, total: tracks.length, failures, cancelled: signal.aborted || scope !== this.scope() };
-        } finally { this.controller = null; this.download = null; this.progress = null; this.changed(); }
+        } finally {
+            this.controller = null;
+            this.download = null;
+            this.progress = null;
+            this.changed();
+        }
     }
 
-    cancel() { this.controller?.abort(); }
+    cancel() {
+        this.controller?.abort();
+    }
 
     async cacheFavorites(tracks, { resolveTrack, signal } = {}) {
         const scope = this.scope();
@@ -305,15 +399,24 @@ export class OfflineCache {
             }
             if (track?.id == null || track.isVideo || track.isPodcast) continue;
             const id = String(track.id);
-            if (available.has(id)) { protectedIds.add(id); continue; }
+            if (available.has(id)) {
+                protectedIds.add(id);
+                continue;
+            }
             try {
                 await this.cacheTrack(track, { resolveTrack, signal, protectedIds: [...protectedIds] });
                 protectedIds.add(id);
                 available = new Set((await this.entries(scope)).map((entry) => entry.id));
                 result.cached++;
             } catch (error) {
-                if (error.name === 'AbortError') { result.cancelled = true; break; }
-                if (error.code === 'CACHE_FULL') { result.full = true; break; }
+                if (error.name === 'AbortError') {
+                    result.cancelled = true;
+                    break;
+                }
+                if (error.code === 'CACHE_FULL') {
+                    result.full = true;
+                    break;
+                }
                 result.failures.push({ id, message: error.message });
             }
         }

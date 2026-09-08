@@ -4,10 +4,15 @@ import { createUploadStorage } from './upload-storage.js';
 afterEach(() => document.body.replaceChildren());
 
 test('upload storage updates totals, selection and individual song sizes without duplicating badges', () => {
-    document.body.innerHTML = '<p id="stats"></p><button class="upload-gallery-card" data-track-id="a"><span class="upload-card-art"></span></button>';
+    document.body.innerHTML =
+        '<p id="stats"></p><button class="upload-gallery-card" data-track-id="a"><span class="upload-card-art"></span></button>';
     const tracks = [{ id: 'a', audioSize: 2000000 }, { id: 'b', audioSize: 3000000 }, { id: 'c' }];
     let selected = [];
-    const storage = createUploadStorage({ anchor: document.getElementById('stats'), getTracks: () => tracks, getSelection: () => selected });
+    const storage = createUploadStorage({
+        anchor: document.getElementById('stats'),
+        getTracks: () => tracks,
+        getSelection: () => selected,
+    });
     expect(document.querySelector('[data-storage-library]').textContent).toBe('3 songs · 5 MB + 1 unknown');
     expect(document.querySelector('[data-storage-selection]').textContent).toBe('No songs selected');
     expect(document.querySelector('.upload-card-size').textContent).toBe('2 MB');

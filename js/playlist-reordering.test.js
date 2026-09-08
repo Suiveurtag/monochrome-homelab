@@ -2,19 +2,25 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { bindPlaylistReordering } from './playlist-reordering.js';
 import { createKeyboardShortcuts } from './keyboard-shortcuts.js';
 
-afterEach(() => { document.body.replaceChildren(); });
+afterEach(() => {
+    document.body.replaceChildren();
+});
 
 function fixture(options = {}) {
     const container = document.createElement('div');
-    container.innerHTML = '<div class="track-list-header">Title</div>' + ['a', 'b', 'c'].map((id) =>
-        `<div class="track-item" data-track-id="${id}" tabindex="0">${id}</div>`).join('');
+    container.innerHTML =
+        '<div class="track-list-header">Title</div>' +
+        ['a', 'b', 'c'].map((id) => `<div class="track-item" data-track-id="${id}" tabindex="0">${id}</div>`).join('');
     document.body.append(container);
     const tracks = ['a', 'b', 'c'].map((id) => ({ id }));
     const save = vi.fn(async (order, revision) => ({ tracks: order, collaboration: { revision: revision + 1 } }));
     const onError = vi.fn();
     bindPlaylistReordering(container, { tracks, revision: 7, save, onError, ...options });
     return {
-        container, tracks, save, onError,
+        container,
+        tracks,
+        save,
+        onError,
         order: () => [...container.querySelectorAll('.track-item')].map((row) => row.dataset.trackId),
         move: (id, key = 'ArrowUp', modifiers = { altKey: true, shiftKey: true }) => {
             const row = container.querySelector(`[data-track-id="${id}"]`);
@@ -40,7 +46,9 @@ test('keyboard reorder sends the displayed revision, then uses the acknowledged 
 
 test('rejected stale reorder restores the DOM and leaves confirmed data untouched', async () => {
     const conflict = new Error('Someone updated this playlist.');
-    const save = vi.fn(async () => { throw conflict; });
+    const save = vi.fn(async () => {
+        throw conflict;
+    });
     const f = fixture({ save });
     f.move('b');
     await vi.waitFor(() => expect(f.onError).toHaveBeenCalledWith(conflict));
@@ -51,7 +59,12 @@ test('rejected stale reorder restores the DOM and leaves confirmed data untouche
 
 test('pending saves exclude a second move and do not mutate confirmed tracks', async () => {
     let acknowledge;
-    const save = vi.fn(() => new Promise((resolve) => { acknowledge = resolve; }));
+    const save = vi.fn(
+        () =>
+            new Promise((resolve) => {
+                acknowledge = resolve;
+            })
+    );
     const f = fixture({ save });
     f.move('b');
     f.move('c');
@@ -74,7 +87,10 @@ test('canceled drag restores the original order without persisting it', () => {
 
 test('reordering follows customized shortcuts and ignores the replaced binding', async () => {
     const values = new Map();
-    const registry = createKeyboardShortcuts({ getItem: (key) => values.get(key), setItem: (key, value) => values.set(key, value) }, () => {});
+    const registry = createKeyboardShortcuts(
+        { getItem: (key) => values.get(key), setItem: (key, value) => values.set(key, value) },
+        () => {}
+    );
     expect(registry.setShortcut('moveTrackUp', { key: 'u', ctrl: true, shift: true, alt: false }).ok).toBe(true);
     const f = fixture({ registry });
     f.move('b');

@@ -745,13 +745,14 @@ export class NowPlayingPanel {
                 : this.sourceContext?.kind === 'playlist'
                   ? `From ${sourceLabel}`
                   : sourceLabel;
-        const emptyQueueCopy = (this.player?.repeatMode ?? 0) === 0 && (this.player?.autoplayEnabled || this.player?.radioEnabled)
-            ? 'Related songs will be added when available.'
-            : isLooping
-            ? `Loop queue will restart ${sourceLabel}.`
-            : this.sourceContext?.kind === 'album'
-              ? `End of ${sourceLabel}. Playback stops here.`
-              : 'Playback stops when this queue ends.';
+        const emptyQueueCopy =
+            (this.player?.repeatMode ?? 0) === 0 && (this.player?.autoplayEnabled || this.player?.radioEnabled)
+                ? 'Related songs will be added when available.'
+                : isLooping
+                  ? `Loop queue will restart ${sourceLabel}.`
+                  : this.sourceContext?.kind === 'album'
+                    ? `End of ${sourceLabel}. Playback stops here.`
+                    : 'Playback stops when this queue ends.';
         const currentMarkup = currentTrack
             ? `<section class="queue-current-card" aria-labelledby="queue-current-title">
                 <div class="queue-current-artwork"><img src="${escapeHtml(imageFor(currentTrack))}" alt="" loading="eager" /></div>
@@ -1386,18 +1387,24 @@ export class NowPlayingPanel {
         if (event.defaultPrevented || event.isComposing) return;
         const row = event.target.closest('.queue-track-row[data-queue-index]');
         if (row && !event.target.closest('input, textarea, select, [contenteditable="true"]')) {
-            const direction = matchesShortcut(event, keyboardShortcuts.getShortcutForAction('moveTrackUp')) ? -1
-                : matchesShortcut(event, keyboardShortcuts.getShortcutForAction('moveTrackDown')) ? 1 : 0;
+            const direction = matchesShortcut(event, keyboardShortcuts.getShortcutForAction('moveTrackUp'))
+                ? -1
+                : matchesShortcut(event, keyboardShortcuts.getShortcutForAction('moveTrackDown'))
+                  ? 1
+                  : 0;
             if (direction) {
                 event.preventDefault();
                 event.stopPropagation();
                 const from = Number(row.dataset.queueIndex);
                 const to = from + direction;
-                if (event.repeat || to <= this.player.currentQueueIndex || to >= this.player.getCurrentQueue().length) return;
+                if (event.repeat || to <= this.player.currentQueueIndex || to >= this.player.getCurrentQueue().length)
+                    return;
                 void (async () => {
                     await this.player.moveInQueue(from, to);
                     await this.render({ preserveScroll: true });
-                    this.root.querySelector(`.queue-track-main[data-queue-index="${to}"]`)?.focus({ preventScroll: true });
+                    this.root
+                        .querySelector(`.queue-track-main[data-queue-index="${to}"]`)
+                        ?.focus({ preventScroll: true });
                 })().catch(() => showNotification('Could not reorder the queue. Try again.'));
                 return;
             }

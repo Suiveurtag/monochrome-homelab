@@ -280,21 +280,25 @@ export class AlbumCoverInspector {
         if (this.springFrame !== null) return;
         const step = (timestamp = performance.now()) => {
             const { springState: state, springTarget: target, springVelocity: velocity } = this;
-            const dt = this.springLastTime ? Math.min(0.032, Math.max(0.001, (timestamp - this.springLastTime) / 1000)) : 1 / 60;
+            const dt = this.springLastTime
+                ? Math.min(0.032, Math.max(0.001, (timestamp - this.springLastTime) / 1000))
+                : 1 / 60;
             this.springLastTime = timestamp;
             Object.keys(state).forEach((key) => {
-                velocity[key] += (200 * (target[key] - state[key])) * dt;
+                velocity[key] += 200 * (target[key] - state[key]) * dt;
                 velocity[key] *= Math.exp(-30 * dt);
                 state[key] += velocity[key] * dt;
             });
             this.applyTilt(state);
 
-            const settled = Object.keys(state).every((key) =>
-                Math.abs(target[key] - state[key]) < 0.01 && Math.abs(velocity[key]) < 0.01
+            const settled = Object.keys(state).every(
+                (key) => Math.abs(target[key] - state[key]) < 0.01 && Math.abs(velocity[key]) < 0.01
             );
             if (settled) {
                 Object.assign(state, target);
-                Object.keys(velocity).forEach((key) => { velocity[key] = 0; });
+                Object.keys(velocity).forEach((key) => {
+                    velocity[key] = 0;
+                });
                 this.applyTilt(state);
                 this.springFrame = null;
                 this.springLastTime = 0;
@@ -310,8 +314,7 @@ export class AlbumCoverInspector {
     }
 
     applyTilt(state) {
-        this.card.style.transform =
-            `perspective(1000px) rotateX(${state.rotateX.toFixed(3)}deg) rotateY(${state.rotateY.toFixed(3)}deg)`;
+        this.card.style.transform = `perspective(1000px) rotateX(${state.rotateX.toFixed(3)}deg) rotateY(${state.rotateY.toFixed(3)}deg)`;
         if (this.glare) {
             this.glare.style.background =
                 `radial-gradient(circle at ${state.glareX.toFixed(2)}% ${state.glareY.toFixed(2)}%, ` +

@@ -2,9 +2,53 @@ import { keyboardShortcuts, formatShortcut, shortcutFromEvent, SELECTION_ACTIONS
 
 const controllers = new WeakMap();
 const GROUPS = [
-    ['Playback', ['playPause', 'seekForward', 'seekBackward', 'nextTrack', 'previousTrack', 'volumeUp', 'volumeDown', 'mute', 'shuffle', 'repeat', 'like']],
-    ['Navigation', ['search', 'commandPalette', 'home', 'library', 'uploads', 'settings', 'focusNavigation', 'focusContent', 'focusPlayer', 'queue', 'lyrics', 'fullscreen', 'shortcuts', 'escape']],
-    ['Tracks and visualizer', ['multiSelectToggle', 'multiSelectRange', 'moveTrackUp', 'moveTrackDown', 'visualizerNext', 'visualizerPrev', 'visualizerCycle']],
+    [
+        'Playback',
+        [
+            'playPause',
+            'seekForward',
+            'seekBackward',
+            'nextTrack',
+            'previousTrack',
+            'volumeUp',
+            'volumeDown',
+            'mute',
+            'shuffle',
+            'repeat',
+            'like',
+        ],
+    ],
+    [
+        'Navigation',
+        [
+            'search',
+            'commandPalette',
+            'home',
+            'library',
+            'uploads',
+            'settings',
+            'focusNavigation',
+            'focusContent',
+            'focusPlayer',
+            'queue',
+            'lyrics',
+            'fullscreen',
+            'shortcuts',
+            'escape',
+        ],
+    ],
+    [
+        'Tracks and visualizer',
+        [
+            'multiSelectToggle',
+            'multiSelectRange',
+            'moveTrackUp',
+            'moveTrackDown',
+            'visualizerNext',
+            'visualizerPrev',
+            'visualizerCycle',
+        ],
+    ],
 ];
 
 function element(tag, text, className) {
@@ -25,13 +69,22 @@ export function showKeyboardShortcuts() {
     const content = modal.querySelector('.shortcuts-content');
     content.replaceChildren();
     content.classList.add('keyboard-shortcuts-reference');
-    content.append(element('p', 'Tab moves between controls. Use arrow keys and Home / End in track lists and settings tabs. Enter opens or plays the focused item. Shift + F10 opens its menu. Escape closes dialogs.', 'shortcut-hint'));
+    content.append(
+        element(
+            'p',
+            'Tab moves between controls. Use arrow keys and Home / End in track lists and settings tabs. Enter opens or plays the focused item. Shift + F10 opens its menu. Escape closes dialogs.',
+            'shortcut-hint'
+        )
+    );
     const shortcuts = keyboardShortcuts.getShortcuts();
     for (const [title, actions] of GROUPS) {
         content.append(element('h4', title, 'shortcut-group-title'));
         for (const action of actions) {
             const row = element('div', null, 'shortcut-item');
-            row.append(element('span', shortcuts[action].description), element('kbd', formatShortcut(shortcuts[action])));
+            row.append(
+                element('span', shortcuts[action].description),
+                element('kbd', formatShortcut(shortcuts[action]))
+            );
             content.append(row);
         }
     }
@@ -44,10 +97,21 @@ export function showKeyboardShortcuts() {
         if (opener?.isConnected) opener.focus({ preventScroll: true });
     };
     modal.querySelector('.close-shortcuts')?.setAttribute('aria-label', 'Close keyboard shortcuts');
-    modal.addEventListener('click', (event) => {
-        if (event.target === modal || event.target.closest('.close-shortcuts, .modal-overlay')) close();
-    }, { signal });
-    customize.addEventListener('click', () => { close(); showCustomizeShortcutsModal(); }, { signal });
+    modal.addEventListener(
+        'click',
+        (event) => {
+            if (event.target === modal || event.target.closest('.close-shortcuts, .modal-overlay')) close();
+        },
+        { signal }
+    );
+    customize.addEventListener(
+        'click',
+        () => {
+            close();
+            showCustomizeShortcutsModal();
+        },
+        { signal }
+    );
     modal.classList.add('active');
     modal.querySelector('button')?.focus();
 }
@@ -62,7 +126,8 @@ export function showCustomizeShortcutsModal() {
     const opener = document.activeElement;
     const list = document.getElementById('shortcuts-list');
     const content = modal.querySelector('.customize-shortcuts-content');
-    modal.querySelector('.shortcut-hint').textContent = 'Choose a shortcut, then press a key combination. Escape cancels recording. Clear disables a shortcut. Selection modifiers also work with Space on a focused track.';
+    modal.querySelector('.shortcut-hint').textContent =
+        'Choose a shortcut, then press a key combination. Escape cancels recording. Clear disables a shortcut. Selection modifiers also work with Space on a focused track.';
     modal.querySelector('.close-customize-shortcuts').setAttribute('aria-label', 'Close shortcut settings');
     content.querySelector('.shortcut-status')?.remove();
     content.querySelector('.shortcut-conflict')?.remove();
@@ -77,8 +142,11 @@ export function showCustomizeShortcutsModal() {
     let recording = null;
     let modifierCandidate = null;
     let pendingConflict = null;
-    const setStatus = (message) => { status.textContent = message; };
-    const focusAction = (action) => list.querySelector(`[data-action="${action}"] .shortcut-record-button`)?.focus({ preventScroll: true });
+    const setStatus = (message) => {
+        status.textContent = message;
+    };
+    const focusAction = (action) =>
+        list.querySelector(`[data-action="${action}"] .shortcut-record-button`)?.focus({ preventScroll: true });
     const stopRecording = () => {
         recording = null;
         modifierCandidate = null;
@@ -120,7 +188,9 @@ export function showCustomizeShortcutsModal() {
         if (result.ok) {
             conflict.hidden = true;
             pendingConflict = null;
-            setStatus(`${keyboardShortcuts.DEFAULT_SHORTCUTS[action].description}: ${formatShortcut(shortcut)}. Saved.`);
+            setStatus(
+                `${keyboardShortcuts.DEFAULT_SHORTCUTS[action].description}: ${formatShortcut(shortcut)}. Saved.`
+            );
             render(action);
         } else if (result.reason) {
             conflict.hidden = true;
@@ -130,7 +200,12 @@ export function showCustomizeShortcutsModal() {
         } else {
             pendingConflict = { action, shortcut };
             const names = result.conflicts.map((id) => keyboardShortcuts.DEFAULT_SHORTCUTS[id].description).join(', ');
-            conflict.replaceChildren(element('p', `${formatShortcut(shortcut)} is already assigned to ${names}. Reassigning will clear those shortcuts.`));
+            conflict.replaceChildren(
+                element(
+                    'p',
+                    `${formatShortcut(shortcut)} is already assigned to ${names}. Reassigning will clear those shortcuts.`
+                )
+            );
             const actions = element('div', null, 'shortcut-conflict-actions');
             const replace = element('button', 'Reassign shortcut', 'btn-secondary');
             replace.dataset.conflictAction = 'replace';
@@ -144,81 +219,115 @@ export function showCustomizeShortcutsModal() {
             cancel.focus();
         }
     };
-    list.addEventListener('click', (event) => {
-        const row = event.target.closest('[data-action]');
-        if (!row) return;
-        const action = row.dataset.action;
-        if (event.target.closest('.shortcut-record-button')) {
-            const wasRecording = recording === action;
-            stopRecording();
-            conflict.hidden = true;
-            pendingConflict = null;
-            if (!wasRecording) {
-                recording = action;
-                modal.dataset.shortcutRecording = 'true';
-                setStatus(`Recording ${keyboardShortcuts.DEFAULT_SHORTCUTS[action].description}. Press Escape to cancel.`);
-            } else setStatus('Recording cancelled.');
-            render(action);
-        } else if (event.target.closest('.shortcut-clear-button')) save(action, { key: null });
-        else if (event.target.closest('.shortcut-reset-button')) save(action, keyboardShortcuts.DEFAULT_SHORTCUTS[action]);
-    }, { signal });
-    conflict.addEventListener('click', (event) => {
-        const choice = event.target.closest('[data-conflict-action]')?.dataset.conflictAction;
-        if (!choice || !pendingConflict) return;
-        const { action, shortcut } = pendingConflict;
-        if (choice === 'replace') save(action, shortcut, true);
-        else {
-            pendingConflict = null;
-            conflict.hidden = true;
-            setStatus('Existing shortcuts kept.');
-            focusAction(action);
-        }
-    }, { signal });
-    document.addEventListener('keydown', (event) => {
-        if (!recording || event.isComposing) return;
-        event.stopImmediatePropagation();
-        if (event.key === 'Tab' || event.key === 'Escape') {
-            if (event.key === 'Escape') event.preventDefault();
-            const action = recording;
-            stopRecording();
-            setStatus('Recording cancelled.');
-            render(action);
-            return;
-        }
-        event.preventDefault();
-        if (event.repeat || event.key === 'Dead' || event.getModifierState?.('AltGraph')) return;
-        if (['Control', 'Shift', 'Alt', 'Meta'].includes(event.key)) {
-            if (SELECTION_ACTIONS.has(recording)) modifierCandidate = shortcutFromEvent(event);
-            return;
-        }
-        save(recording, shortcutFromEvent(event));
-    }, { signal, capture: true });
-    document.addEventListener('keyup', (event) => {
-        if (!recording || !modifierCandidate || !['Control', 'Shift', 'Alt', 'Meta'].includes(event.key)) return;
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        save(recording, modifierCandidate);
-    }, { signal, capture: true });
+    list.addEventListener(
+        'click',
+        (event) => {
+            const row = event.target.closest('[data-action]');
+            if (!row) return;
+            const action = row.dataset.action;
+            if (event.target.closest('.shortcut-record-button')) {
+                const wasRecording = recording === action;
+                stopRecording();
+                conflict.hidden = true;
+                pendingConflict = null;
+                if (!wasRecording) {
+                    recording = action;
+                    modal.dataset.shortcutRecording = 'true';
+                    setStatus(
+                        `Recording ${keyboardShortcuts.DEFAULT_SHORTCUTS[action].description}. Press Escape to cancel.`
+                    );
+                } else setStatus('Recording cancelled.');
+                render(action);
+            } else if (event.target.closest('.shortcut-clear-button')) save(action, { key: null });
+            else if (event.target.closest('.shortcut-reset-button'))
+                save(action, keyboardShortcuts.DEFAULT_SHORTCUTS[action]);
+        },
+        { signal }
+    );
+    conflict.addEventListener(
+        'click',
+        (event) => {
+            const choice = event.target.closest('[data-conflict-action]')?.dataset.conflictAction;
+            if (!choice || !pendingConflict) return;
+            const { action, shortcut } = pendingConflict;
+            if (choice === 'replace') save(action, shortcut, true);
+            else {
+                pendingConflict = null;
+                conflict.hidden = true;
+                setStatus('Existing shortcuts kept.');
+                focusAction(action);
+            }
+        },
+        { signal }
+    );
+    document.addEventListener(
+        'keydown',
+        (event) => {
+            if (!recording || event.isComposing) return;
+            event.stopImmediatePropagation();
+            if (event.key === 'Tab' || event.key === 'Escape') {
+                if (event.key === 'Escape') event.preventDefault();
+                const action = recording;
+                stopRecording();
+                setStatus('Recording cancelled.');
+                render(action);
+                return;
+            }
+            event.preventDefault();
+            if (event.repeat || event.key === 'Dead' || event.getModifierState?.('AltGraph')) return;
+            if (['Control', 'Shift', 'Alt', 'Meta'].includes(event.key)) {
+                if (SELECTION_ACTIONS.has(recording)) modifierCandidate = shortcutFromEvent(event);
+                return;
+            }
+            save(recording, shortcutFromEvent(event));
+        },
+        { signal, capture: true }
+    );
+    document.addEventListener(
+        'keyup',
+        (event) => {
+            if (!recording || !modifierCandidate || !['Control', 'Shift', 'Alt', 'Meta'].includes(event.key)) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            save(recording, modifierCandidate);
+        },
+        { signal, capture: true }
+    );
     const close = () => {
         stopRecording();
         modal.classList.remove('active');
         controller.abort();
         if (opener?.isConnected) opener.focus({ preventScroll: true });
     };
-    modal.addEventListener('click', (event) => {
-        if (event.target === modal || event.target.closest('.close-customize-shortcuts, #close-customize-shortcuts-btn, .modal-overlay')) close();
-    }, { signal });
-    document.getElementById('reset-shortcuts-btn').addEventListener('click', () => {
-        const result = keyboardShortcuts.resetShortcuts();
-        stopRecording();
-        pendingConflict = null;
-        conflict.hidden = true;
-        setStatus(result.ok ? 'Default shortcuts restored.' : result.reason);
-        render();
-    }, { signal });
+    modal.addEventListener(
+        'click',
+        (event) => {
+            if (
+                event.target === modal ||
+                event.target.closest('.close-customize-shortcuts, #close-customize-shortcuts-btn, .modal-overlay')
+            )
+                close();
+        },
+        { signal }
+    );
+    document.getElementById('reset-shortcuts-btn').addEventListener(
+        'click',
+        () => {
+            const result = keyboardShortcuts.resetShortcuts();
+            stopRecording();
+            pendingConflict = null;
+            conflict.hidden = true;
+            setStatus(result.ok ? 'Default shortcuts restored.' : result.reason);
+            render();
+        },
+        { signal }
+    );
     render();
-    const savedConflicts = Object.keys(keyboardShortcuts.getShortcuts()).filter((action) => !keyboardShortcuts.validateShortcut(action, keyboardShortcuts.getShortcutForAction(action)).ok);
-    if (savedConflicts.length) setStatus('Some saved shortcuts conflict or use reserved keys. Edit them below or restore defaults.');
+    const savedConflicts = Object.keys(keyboardShortcuts.getShortcuts()).filter(
+        (action) => !keyboardShortcuts.validateShortcut(action, keyboardShortcuts.getShortcutForAction(action)).ok
+    );
+    if (savedConflicts.length)
+        setStatus('Some saved shortcuts conflict or use reserved keys. Edit them below or restore defaults.');
     modal.classList.add('active');
     modal.querySelector('button')?.focus();
 }

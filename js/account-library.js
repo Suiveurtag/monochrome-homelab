@@ -1,8 +1,15 @@
 // Keep device uploads/settings in place while switching the user's private library.
 export const ACCOUNT_LIBRARY_STORES = [
-    'favorites_tracks', 'favorites_videos', 'favorites_albums', 'favorites_artists',
-    'favorites_playlists', 'favorites_mixes', 'history_tracks', 'user_playlists',
-    'user_folders', 'pinned_items',
+    'favorites_tracks',
+    'favorites_videos',
+    'favorites_albums',
+    'favorites_artists',
+    'favorites_playlists',
+    'favorites_mixes',
+    'history_tracks',
+    'user_playlists',
+    'user_folders',
+    'pinned_items',
 ];
 const ACTIVE = 'account-library-active';
 const snapshotKey = (scope) => `account-library-snapshot:${scope}`;
@@ -47,10 +54,16 @@ export async function activateAccountLibrary(database, scope, isCurrent = () => 
             };
             for (const name of ACCOUNT_LIBRARY_STORES) {
                 const request = tx.objectStore(name).getAll();
-                request.onsuccess = () => { snapshot[name] = request.result; ready(); };
+                request.onsuccess = () => {
+                    snapshot[name] = request.result;
+                    ready();
+                };
             }
             const restore = settings.get(snapshotKey(scope));
-            restore.onsuccess = () => { restored = restore.result; ready(); };
+            restore.onsuccess = () => {
+                restored = restore.result;
+                ready();
+            };
         };
     });
 }

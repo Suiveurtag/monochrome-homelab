@@ -50,8 +50,14 @@ describe('ListeningTracker play counts', () => {
         }
     }
 
-    const track = { id: 'song', duration: 100, title: 'Song', artists: [{ id: 'artist', name: 'Artist' }],
-        genres: ['Ambient'], album: { id: 'album', title: 'Album' } };
+    const track = {
+        id: 'song',
+        duration: 100,
+        title: 'Song',
+        artists: [{ id: 'artist', name: 'Artist' }],
+        genres: ['Ambient'],
+        album: { id: 'album', title: 'Album' },
+    };
 
     test('records completion, replay, album listening, and one finalization per session', () => {
         const tracker = new ListeningTracker();
@@ -61,7 +67,13 @@ describe('ListeningTracker play counts', () => {
             tracker.onTrackEnd();
             tracker.onSkip();
         }
-        expect(tracker.getTrackSignal('song')).toMatchObject({ playCount: 2, completionCount: 2, replayCount: 1, skipCount: 0, totalPlayTime: 200 });
+        expect(tracker.getTrackSignal('song')).toMatchObject({
+            playCount: 2,
+            completionCount: 2,
+            replayCount: 1,
+            skipCount: 0,
+            totalPlayTime: 200,
+        });
         const profile = tracker.getTasteProfile();
         expect(profile.albums.album).toBeGreaterThan(0);
         expect(profile.artists.artist).toBeGreaterThan(0);
@@ -80,7 +92,12 @@ describe('ListeningTracker play counts', () => {
         tracker.onTrackStart({ ...track, id: 'short', duration: 20 });
         listen(tracker, 15, 20);
         tracker.onSkip();
-        expect(tracker.getTrackSignal('song')).toMatchObject({ earlySkipCount: 1, lateSkipCount: 1, skipCount: 2, completionCount: 0 });
+        expect(tracker.getTrackSignal('song')).toMatchObject({
+            earlySkipCount: 1,
+            lateSkipCount: 1,
+            skipCount: 2,
+            completionCount: 0,
+        });
         expect(tracker.getTrackSignal('short')).toMatchObject({ earlySkipCount: 0, lateSkipCount: 1 });
     });
 
@@ -156,12 +173,26 @@ describe('ListeningTracker play counts', () => {
     });
 
     test('retains old skip history and recovers invalid stored collection shapes', () => {
-        localStorage.setItem('monochrome-listening-data', JSON.stringify({ tracks: { song: { playCount: 2, skipCount: 2, totalPlayTime: 8, avgCompletionRatio: 0.04 } }, artists: null, albums: [], genres: null, recent: null }));
+        localStorage.setItem(
+            'monochrome-listening-data',
+            JSON.stringify({
+                tracks: { song: { playCount: 2, skipCount: 2, totalPlayTime: 8, avgCompletionRatio: 0.04 } },
+                artists: null,
+                albums: [],
+                genres: null,
+                recent: null,
+            })
+        );
         const tracker = new ListeningTracker();
         tracker.onTrackStart(track);
         listen(tracker, 100, 100);
         tracker.onTrackEnd();
-        expect(tracker.getTrackSignal('song')).toMatchObject({ playCount: 3, skipCount: 2, earlySkipCount: 2, completionCount: 1 });
+        expect(tracker.getTrackSignal('song')).toMatchObject({
+            playCount: 3,
+            skipCount: 2,
+            earlySkipCount: 2,
+            completionCount: 1,
+        });
         expect(tracker.getTasteProfile().recent).toHaveLength(1);
     });
 });

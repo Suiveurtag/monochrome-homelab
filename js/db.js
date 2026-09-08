@@ -730,7 +730,9 @@ export class MusicDatabase {
 
         // TRIGGER SYNC
         this._dispatchPlaylistSync('create', playlist);
-        window.dispatchEvent(new CustomEvent('playlist-tracks-changed', { detail: { playlistId: id, addedTracks: tracks } }));
+        window.dispatchEvent(
+            new CustomEvent('playlist-tracks-changed', { detail: { playlistId: id, addedTracks: tracks } })
+        );
 
         return playlist;
     }
@@ -740,7 +742,10 @@ export class MusicDatabase {
         if (!playlist) throw new Error('Playlist not found');
         if (playlist.collaboration) {
             const { playlistCollaboration } = await import('./playlist-collaboration.js');
-            return playlistCollaboration.mutate(playlist, { type: 'add', tracks: [this._minifyItem(track.type || 'track', track)] });
+            return playlistCollaboration.mutate(playlist, {
+                type: 'add',
+                tracks: [this._minifyItem(track.type || 'track', track)],
+            });
         }
         playlist.tracks = playlist.tracks || [];
         const trackWithDate = { ...track, addedAt: Date.now() };
@@ -752,7 +757,9 @@ export class MusicDatabase {
         await this.performTransaction('user_playlists', 'readwrite', (store) => store.put(playlist));
 
         this._dispatchPlaylistSync('update', playlist);
-        window.dispatchEvent(new CustomEvent('playlist-tracks-changed', { detail: { playlistId, addedTracks: [track] } }));
+        window.dispatchEvent(
+            new CustomEvent('playlist-tracks-changed', { detail: { playlistId, addedTracks: [track] } })
+        );
 
         return playlist;
     }
@@ -762,7 +769,10 @@ export class MusicDatabase {
         if (!playlist) throw new Error('Playlist not found');
         if (playlist.collaboration) {
             const { playlistCollaboration } = await import('./playlist-collaboration.js');
-            return playlistCollaboration.mutate(playlist, { type: 'add', tracks: tracks.map((track) => this._minifyItem(track.type || 'track', track)) });
+            return playlistCollaboration.mutate(playlist, {
+                type: 'add',
+                tracks: tracks.map((track) => this._minifyItem(track.type || 'track', track)),
+            });
         }
         playlist.tracks = playlist.tracks || [];
 
@@ -832,7 +842,13 @@ export class MusicDatabase {
     async updatePlaylist(playlist) {
         if (playlist.collaboration) {
             const { playlistCollaboration } = await import('./playlist-collaboration.js');
-            return playlistCollaboration.mutate(playlist, { type: 'metadata', name: playlist.name, description: playlist.description, cover: playlist.cover, isPublic: playlist.isPublic });
+            return playlistCollaboration.mutate(playlist, {
+                type: 'metadata',
+                name: playlist.name,
+                description: playlist.description,
+                cover: playlist.cover,
+                isPublic: playlist.isPublic,
+            });
         }
         playlist.updatedAt = Date.now();
         this._updatePlaylistMetadata(playlist);
@@ -987,7 +1003,11 @@ export class MusicDatabase {
         const current = await this.performTransaction('user_playlists', 'readonly', (store) => store.get(playlistId));
         if (current?.collaboration) {
             const { playlistCollaboration, sharedPlaylistTrackKey } = await import('./playlist-collaboration.js');
-            return playlistCollaboration.mutate(current, { type: 'reorder', order: tracks.map(sharedPlaylistTrackKey) }, { expectedRevision });
+            return playlistCollaboration.mutate(
+                current,
+                { type: 'reorder', order: tracks.map(sharedPlaylistTrackKey) },
+                { expectedRevision }
+            );
         }
         const db = await this.open();
         return new Promise((resolve, reject) => {
