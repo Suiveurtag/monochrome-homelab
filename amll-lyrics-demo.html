@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>AMLL Lyrics — Breathe Deeper</title>
+        <link rel="stylesheet" href="/styles/amll-lyrics-demo.css" />
+    </head>
+    <body>
+        <main class="demo-shell">
+            <div class="backdrop" aria-hidden="true"></div>
+            <div class="backdrop-shade" aria-hidden="true"></div>
+
+            <header class="demo-header">
+                <div>
+                    <p class="eyebrow">Monochrome / AMLL Lyrics</p>
+                    <h1>Breathe Deeper</h1>
+                    <p class="artist">Tame Impala · The Slow Rush</p>
+                </div>
+                <p class="status" id="status" role="status">Charge tes fichiers pour lancer la démo.</p>
+            </header>
+
+            <section class="lyrics-stage" id="lyric-player" aria-label="Paroles synchronisées"></section>
+
+            <section class="controls" aria-label="Fichiers de la démo">
+                <label class="file-picker">
+                    <span>Audio FLAC</span>
+                    <input id="audio-file" type="file" accept="audio/flac,audio/*,.flac" />
+                </label>
+                <label class="file-picker">
+                    <span>Paroles TTML</span>
+                    <input id="lyrics-file" type="file" accept="application/xml,text/xml,.ttml,.xml" />
+                </label>
+                <label class="file-picker">
+                    <span>Artwork</span>
+                    <input id="cover-file" type="file" accept="image/*,.jpg,.jpeg,.png,.webp" />
+                </label>
+                <audio id="audio" controls preload="metadata"></audio>
+            </section>
+        </main>
+        <script type="module" src="/js/amll-lyrics-demo.js"></script>
+    </body>
+</html>

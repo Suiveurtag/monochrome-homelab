@@ -1245,7 +1245,35 @@ export async function renderLyricsInContainer(track, audioPlayer, lyricsManager,
     return renderLyricsComponent(container, track, audioPlayer, lyricsManager, options);
 }
 
-export const renderLyricsInFullscreen = renderLyricsInContainer;
+export async function renderLyricsInFullscreen(track, audioPlayer, lyricsManager, container, { signal } = {}) {
+    if (signal?.aborted) return null;
+    container.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
+
+    try {
+        lyricsManager.currentTrackId = track.id;
+        const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
+        if (signal?.aborted) return null;
+        const sourceLyrics = track.lyrics || fetchedLyrics?.ttml || fetchedLyrics?.subtitles || '';
+        const localTtml = lyricsToTtml(sourceLyrics, track.duration);
+        if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
+
+        const { mountAmllFullscreen } = await import('./amll-fullscreen-renderer.js');
+        if (signal?.aborted) return null;
+        return await mountAmllFullscreen({
+            container,
+            track,
+            audioPlayer,
+            lyricsManager,
+            ttml: localTtml,
+            signal,
+        });
+    } catch (error) {
+        if (signal?.aborted || error?.name === 'AbortError') return null;
+        console.error('Failed to load AMLL fullscreen lyrics:', error);
+        container.innerHTML = '<div class="lyrics-error">Failed to load lyrics</div>';
+        return null;
+    }
+}
 
 export function clearFullscreenLyricsSync(container) {
     if (container && container.lyricsCleanup) {

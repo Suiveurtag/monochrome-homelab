@@ -1,0 +1,165 @@
+:root {
+    color-scheme: dark;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    background: #0d0807;
+    color: #fff;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-width: 320px;
+    background: #0d0807;
+}
+
+.demo-shell {
+    --cover-url: none;
+
+    position: relative;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    min-height: 100dvh;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.backdrop,
+.backdrop-shade {
+    position: absolute;
+    inset: -6%;
+    pointer-events: none;
+}
+
+.backdrop {
+    z-index: -2;
+    background: var(--cover-url) center / cover no-repeat;
+    filter: saturate(1.35) brightness(0.55) blur(18px);
+    transform: scale(1.08);
+}
+
+.backdrop-shade {
+    z-index: -1;
+    background: linear-gradient(180deg, rgb(21 8 6 / 0.34), rgb(12 8 8 / 0.48) 48%, rgb(8 6 7 / 0.9));
+}
+
+.demo-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 2rem;
+    padding: clamp(1.5rem, 4vw, 3.5rem);
+}
+
+.eyebrow,
+.artist,
+.status {
+    margin: 0;
+    color: rgb(255 255 255 / 0.68);
+}
+
+.eyebrow {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+h1 {
+    margin: 0.55rem 0 0.25rem;
+    font-size: clamp(2.5rem, 6vw, 5.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.065em;
+}
+
+.artist {
+    font-size: 0.9rem;
+}
+
+.status {
+    align-self: end;
+    max-width: 23rem;
+    font-size: 0.78rem;
+    text-align: right;
+}
+
+.lyrics-stage {
+    min-height: 0;
+    height: min(66dvh, 720px);
+    margin: 0 auto;
+    width: min(100%, 1000px);
+}
+
+.lyrics-stage > div {
+    height: 100%;
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 1rem clamp(1rem, 4vw, 3.5rem) 1.4rem;
+    background: rgb(9 6 7 / 0.72);
+    border-top: 1px solid rgb(255 255 255 / 0.14);
+    backdrop-filter: blur(18px);
+}
+
+.file-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-height: 2.25rem;
+    padding: 0 0.8rem;
+    border: 1px solid rgb(255 255 255 / 0.2);
+    border-radius: 999px;
+    color: rgb(255 255 255 / 0.78);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition:
+        border-color 160ms ease-out,
+        background-color 160ms ease-out;
+}
+
+.file-picker:hover {
+    background: rgb(255 255 255 / 0.1);
+    border-color: rgb(255 255 255 / 0.5);
+}
+
+.file-picker input {
+    width: 0;
+    height: 0;
+    opacity: 0;
+    position: absolute;
+}
+
+audio {
+    flex: 1 1 18rem;
+    min-width: 17rem;
+    height: 2.25rem;
+}
+
+@media (max-width: 650px) {
+    .demo-header {
+        display: block;
+        padding-bottom: 1rem;
+    }
+
+    .status {
+        margin-top: 1rem;
+        text-align: left;
+    }
+
+    .lyrics-stage {
+        height: 62dvh;
+    }
+
+    .controls {
+        padding-top: 0.8rem;
+    }
+
+    audio {
+        flex-basis: 100%;
+    }
+}
