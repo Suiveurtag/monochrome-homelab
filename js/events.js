@@ -683,6 +683,23 @@ function setupQualityPopover(player) {
             }
         }
     });
+    const moveQualitySelection = (direction) => {
+        if (qualityChangeInFlight) return;
+        const inputs = [...panel.querySelectorAll('input[name="playback-quality"]:not(:disabled)')];
+        if (!inputs.length) return;
+        const currentIndex = inputs.findIndex((input) => input.checked);
+        const nextIndex = Math.min(
+            inputs.length - 1,
+            Math.max(0, (currentIndex === -1 ? 0 : currentIndex) + direction)
+        );
+        const nextInput = inputs[nextIndex];
+        if (!nextInput || nextInput.checked) {
+            nextInput?.focus({ preventScroll: true });
+            return;
+        }
+        nextInput.focus({ preventScroll: true });
+        nextInput.click();
+    };
     document.addEventListener('pointerdown', (event) => {
         if (panel.hidden || panel.contains(event.target) || getCurrentTrigger()?.contains(event.target)) return;
         close();
@@ -691,6 +708,16 @@ function setupQualityPopover(player) {
         if (panel.hidden) return;
         if (event.key === 'Escape') {
             close({ restoreFocus: true });
+            return;
+        }
+        if (event.key === 'ArrowDown' || event.key.toLowerCase() === 's') {
+            event.preventDefault();
+            moveQualitySelection(1);
+            return;
+        }
+        if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'z') {
+            event.preventDefault();
+            moveQualitySelection(-1);
             return;
         }
         if (event.key === 'Tab') {
