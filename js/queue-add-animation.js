@@ -86,8 +86,7 @@ export function animateSingleTrackEl(trackEl) {
     fg.style.gap = gap;
     fg.style.padding = padding;
     fg.style.borderRadius = originalBorderRadius || 'var(--radius-sm)';
-    // Foreground stays transparent (CSS) so highlight only shows in gap; playing state keeps its blue bg via CSS
-    // Ensure foreground covers full width
+    // The opaque surface covers the revealed queue layer again when it returns.
     fg.style.width = '100%';
     fg.style.boxSizing = 'border-box';
 
