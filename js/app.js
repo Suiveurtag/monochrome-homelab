@@ -1208,7 +1208,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 sidePanelManager.close();
                 clearLyricsPanelSync(Player.instance.activeElement, sidePanelManager.panel);
             } else {
-                openLyricsPanel(Player.instance.currentTrack, Player.instance.activeElement, lyricsManager);
+                openLyricsPanel(
+                    Player.instance.currentTrack,
+                    Player.instance.activeElement,
+                    lyricsManager,
+                    false,
+                    'now-panel'
+                );
             }
         } else if (mode === 'cover') {
             const overlay = document.getElementById('fullscreen-cover-overlay');
@@ -1498,7 +1504,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             sidePanelManager.close();
             clearLyricsPanelSync(Player.instance.activeElement, sidePanelManager.panel);
         } else {
-            openLyricsPanel(Player.instance.currentTrack, Player.instance.activeElement, lyricsManager);
+            openLyricsPanel(
+                Player.instance.currentTrack,
+                Player.instance.activeElement,
+                lyricsManager,
+                false,
+                'player-button'
+            );
         }
     });
 
@@ -1534,7 +1546,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Update lyrics panel if it's open
         if (sidePanelManager.isActive('lyrics')) {
             // Re-open forces update/refresh of content and sync
-            openLyricsPanel(Player.instance.currentTrack, Player.instance.activeElement, lyricsManager, true);
+            openLyricsPanel(
+                Player.instance.currentTrack,
+                Player.instance.activeElement,
+                lyricsManager,
+                true,
+                sidePanelManager.panel?.dataset.lyricsOpenOrigin || 'player-button'
+            );
         }
 
         // Update Fullscreen if it's open

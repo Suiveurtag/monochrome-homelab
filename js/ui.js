@@ -111,6 +111,10 @@ import {
     SVG_RIGHT_ARROW,
     SVG_CLOCK,
     SVG_CHECKBOX,
+    SVG_PALETTE,
+    SVG_SUN,
+    SVG_SPARKLES,
+    SVG_WAVES,
 } from './icons.js';
 
 const setFullscreenUIToggleIcon = (button, visualizerOnlyMode) => {
@@ -119,6 +123,22 @@ const setFullscreenUIToggleIcon = (button, visualizerOnlyMode) => {
 };
 
 const isMobileFullscreenViewport = () => window.matchMedia('(max-width: 768px)').matches;
+
+const FULLSCREEN_BACKGROUND_MODES = [
+    { key: 'solid', label: 'Couleur unie', icon: SVG_PALETTE },
+    { key: 'light', label: 'Light', icon: SVG_SUN },
+    { key: 'spicy', label: 'Spicy', icon: SVG_SPARKLES },
+    { key: 'fluid', label: 'Fluid', icon: SVG_WAVES },
+];
+
+const getFullscreenBackgroundMode = (mode) =>
+    FULLSCREEN_BACKGROUND_MODES.some((item) => item.key === mode) ? mode : 'fluid';
+
+const getNextFullscreenBackgroundMode = (mode) => {
+    const currentIndex = FULLSCREEN_BACKGROUND_MODES.findIndex((item) => item.key === mode);
+    return FULLSCREEN_BACKGROUND_MODES[(currentIndex + 1) % FULLSCREEN_BACKGROUND_MODES.length];
+};
+
 function sortTracks(tracks, sortType) {
     if (sortType === 'custom') return [...tracks];
     const sorted = [...tracks];
@@ -252,6 +272,11 @@ export class UIRenderer {
         this.fullscreenDismissHandleCleanup = null;
         this.fullscreenLyricsToggleCleanup = null;
         this.fullscreenOpenGeneration = 0;
+        this.fullscreenBackgroundMode = visualizerSettings.getBackgroundMode();
+        this.fullscreenBackgroundCoverUrl = '';
+        this.fullscreenSpicyBackground = null;
+        this.fullscreenSpicyBackgroundPromise = null;
+        this.fullscreenBackgroundRequestId = 0;
         this.trackSaveStateSnapshot = null;
         this.trackSaveStatePromise = null;
         this.albumCoverInspector = new AlbumCoverInspector();
@@ -1489,7 +1514,10 @@ export class UIRenderer {
 
         const isRealVideo = track.type === 'video';
         const visualizerContainer = document.getElementById('visualizer-container');
+        const backgroundButton = document.getElementById('fs-background-btn');
         overlay.classList.toggle('is-video-mode', isRealVideo);
+
+        if (backgroundButton) backgroundButton.style.display = isRealVideo ? 'none' : 'flex';
 
         const toggleUiBtn = document.getElementById('toggle-ui-btn');
         if (toggleUiBtn) {
@@ -1548,6 +1576,10 @@ export class UIRenderer {
             const coverUrl = /^(?:data:|blob:|https?:|\/)/i.test(String(staticCover))
                 ? staticCover
                 : this.api.getCoverUrl(staticCover, '1280');
+            this.fullscreenBackgroundCoverUrl = coverUrl;
+            if (this.fullscreenSpicyBackground) {
+                void this.fullscreenSpicyBackground.setSource(coverUrl);
+            }
 
             const fsLikeBtn = document.getElementById('fs-like-btn');
             if (fsLikeBtn) {
@@ -1610,6 +1642,102 @@ export class UIRenderer {
         } else {
             nextTrackEl.style.display = 'none';
         }
+    }
+
+    updateFullscreenBackgroundButton(mode = this.fullscreenBackgroundMode, isVideoTrack = false) {
+        const button = document.getElementById('fs-background-btn');
+        if (!button) return;
+
+        const current = FULLSCREEN_BACKGROUND_MODES.find((item) => item.key === getFullscreenBackgroundMode(mode));
+        const next = getNextFullscreenBackgroundMode(current.key);
+        button.style.display = isVideoTrack ? 'none' : 'flex';
+        button.innerHTML = current.icon(20);
+        button.title = `Background: ${current.label} · Suivant : ${next.label}`;
+        button.setAttribute('aria-label', `Changer le background du fullscreen. Actuel : ${current.label}`);
+        button.dataset.backgroundMode = current.key;
+    }
+
+    async ensureFullscreenSpicyBackground(overlay) {
+        if (this.fullscreenSpicyBackground) return this.fullscreenSpicyBackground;
+        if (!this.fullscreenSpicyBackgroundPromise) {
+            this.fullscreenSpicyBackgroundPromise = import('./spicy-dynamic-background.js')
+                .then(({ mountSpicyDynamicBackground }) => {
+                    const controller = mountSpicyDynamicBackground(overlay, {
+                        className: 'spicy-lyrics-fullscreen-bg',
+                    });
+                    this.fullscreenSpicyBackground = controller;
+                    return controller;
+                })
+                .finally(() => {
+                    this.fullscreenSpicyBackgroundPromise = null;
+                });
+        }
+        return this.fullscreenSpicyBackgroundPromise;
+    }
+
+    async applyFullscreenBackgroundMode(mode = this.fullscreenBackgroundMode, { persist = true } = {}) {
+        const overlay = document.getElementById('fullscreen-cover-overlay');
+        if (!overlay) return false;
+
+        const nextMode = getFullscreenBackgroundMode(mode);
+        const requestId = ++this.fullscreenBackgroundRequestId;
+        const isVideoTrack = this.player?.currentTrack?.type === 'video';
+
+        const commitMode = () => {
+            this.fullscreenBackgroundMode = nextMode;
+            if (persist) visualizerSettings.setBackgroundMode(nextMode);
+            overlay.dataset.backgroundMode = nextMode;
+            overlay.classList.toggle('visualizer-active', nextMode === 'light');
+            this.updateFullscreenBackgroundButton(nextMode);
+        };
+
+        if (isVideoTrack) {
+            this.visualizer?.stop();
+            overlay.dataset.backgroundMode = 'solid';
+            overlay.classList.remove('visualizer-active');
+            this.updateFullscreenBackgroundButton('solid', true);
+            return true;
+        }
+
+        if (nextMode === 'light') {
+            const allowed = await this.ensureVisualizerPermission(this.player?.activeElement, overlay);
+            if (requestId !== this.fullscreenBackgroundRequestId) {
+                if (allowed === true) this.visualizer?.stop();
+                return false;
+            }
+            if (allowed !== true) {
+                if (allowed === null) this.fullscreenVisualizerSuppressed = true;
+                this.updateFullscreenBackgroundButton(this.fullscreenBackgroundMode);
+                return false;
+            }
+        } else {
+            this.visualizer?.stop();
+        }
+
+        if (nextMode === 'spicy') {
+            try {
+                const background = await this.ensureFullscreenSpicyBackground(overlay);
+                if (requestId !== this.fullscreenBackgroundRequestId) {
+                    background.setActive?.(false);
+                    return false;
+                }
+                commitMode();
+                await background.setSource(this.fullscreenBackgroundCoverUrl);
+                if (requestId !== this.fullscreenBackgroundRequestId) {
+                    background.setActive?.(false);
+                    return false;
+                }
+                background.setActive?.(true);
+            } catch (error) {
+                console.warn('Failed to initialize fullscreen Spicy background:', error);
+            }
+        } else {
+            this.fullscreenSpicyBackground?.setActive?.(false);
+            commitMode();
+        }
+
+        if (requestId !== this.fullscreenBackgroundRequestId) return false;
+        return true;
     }
 
     isFullscreenCoverOpen(overlay = document.getElementById('fullscreen-cover-overlay')) {
@@ -1774,9 +1902,9 @@ export class UIRenderer {
             }
 
             try {
-                await this.refreshFullscreenVisualizerState(fullscreenAudioElement);
+                await this.applyFullscreenBackgroundMode(this.fullscreenBackgroundMode, { persist: false });
             } catch (error) {
-                console.warn('Failed to initialize fullscreen visualizer:', error);
+                console.warn('Failed to initialize fullscreen background:', error);
             }
             return true;
         } catch (error) {
@@ -1979,6 +2107,11 @@ export class UIRenderer {
         if (this.visualizer) {
             this.visualizer.stop();
         }
+        this.fullscreenSpicyBackground?.dispose?.();
+        this.fullscreenSpicyBackground = null;
+        this.fullscreenSpicyBackgroundPromise = null;
+        this.fullscreenBackgroundCoverUrl = '';
+        this.fullscreenBackgroundRequestId += 1;
         this.fullscreenVisualizerSuppressed = false;
 
         // Clear UI toggle button timers
@@ -2074,49 +2207,8 @@ export class UIRenderer {
         });
     }
 
-    async refreshFullscreenVisualizerState(activeElement, { closeOnCancel = false } = {}) {
-        const overlay = document.getElementById('fullscreen-cover-overlay');
-        const visualizerBtn = document.getElementById('fs-visualizer-btn');
-        const toggleBtn = document.getElementById('toggle-ui-btn');
-        const isVideoTrack = this.player?.currentTrack?.type === 'video';
-        const enabled = !isVideoTrack && visualizerSettings.isEnabled() && !this.fullscreenVisualizerSuppressed;
-
-        if (!overlay) return;
-
-        if (visualizerBtn) {
-            visualizerBtn.style.display = isVideoTrack ? 'none' : 'flex';
-            visualizerBtn.classList.toggle('active', enabled);
-            visualizerBtn.title = enabled ? 'Disable Visualizer' : 'Use Visualizer';
-        }
-
-        if (!enabled) {
-            overlay.classList.remove('visualizer-active');
-            overlay.classList.remove('ui-hidden');
-            if (this.visualizer) {
-                this.visualizer.stop();
-            }
-            if (toggleBtn) {
-                toggleBtn.classList.remove('active', 'visible');
-                toggleBtn.title = 'Hide UI';
-                setFullscreenUIToggleIcon(toggleBtn, false);
-            }
-            return;
-        }
-
-        const allowed = await this.ensureVisualizerPermission(activeElement, overlay, { closeOnCancel });
-        if (allowed !== true) {
-            if (allowed === null) {
-                this.fullscreenVisualizerSuppressed = true;
-            }
-            overlay.classList.remove('visualizer-active');
-            if (this.visualizer) {
-                this.visualizer.stop();
-            }
-            if (visualizerBtn) {
-                visualizerBtn.classList.remove('active');
-                visualizerBtn.title = 'Use Visualizer';
-            }
-        }
+    async refreshFullscreenVisualizerState(_activeElement, options = {}) {
+        return this.applyFullscreenBackgroundMode(this.fullscreenBackgroundMode, options);
     }
 
     setupUIToggleButton(overlay) {
@@ -2151,33 +2243,8 @@ export class UIRenderer {
             showButton();
         }
 
-        const toggleUI = async (e) => {
+        const toggleUI = (e) => {
             if (e) e.stopPropagation();
-            if (!overlay.classList.contains('visualizer-active')) {
-                const isVideoTrack = this.player?.currentTrack?.type === 'video';
-                if (isVideoTrack) {
-                    overlay.classList.remove('ui-hidden');
-                    isUIHidden = false;
-                    toggleBtn.classList.remove('active');
-                    toggleBtn.title = 'Hide UI';
-                    updateToggleButtonIcon();
-                    showButton();
-                    return;
-                }
-
-                this.fullscreenVisualizerSuppressed = false;
-                await this.refreshFullscreenVisualizerState(this.player?.activeElement);
-
-                if (!overlay.classList.contains('visualizer-active')) {
-                    overlay.classList.remove('ui-hidden');
-                    isUIHidden = false;
-                    toggleBtn.classList.remove('active');
-                    toggleBtn.title = 'Hide UI';
-                    updateToggleButtonIcon();
-                    showButton();
-                    return;
-                }
-            }
             isUIHidden = !isUIHidden;
             overlay.classList.toggle('ui-hidden', isUIHidden);
             toggleBtn.classList.toggle('active', isUIHidden);
@@ -2382,7 +2449,7 @@ export class UIRenderer {
         const nextBtn = document.getElementById('fs-next-btn');
         const shuffleBtn = document.getElementById('fs-shuffle-btn');
         const repeatBtn = document.getElementById('fs-repeat-btn');
-        const visualizerBtn = document.getElementById('fs-visualizer-btn');
+        const backgroundButton = document.getElementById('fs-background-btn');
         const progressBar = document.getElementById('fs-progress-bar');
         const progressFill = document.getElementById('fs-progress-fill');
         const currentTimeEl = document.getElementById('fs-current-time');
@@ -2442,11 +2509,16 @@ export class UIRenderer {
             }
         };
 
-        if (visualizerBtn) {
-            visualizerBtn.onclick = async () => {
-                this.fullscreenVisualizerSuppressed = !this.fullscreenVisualizerSuppressed;
-                await this.refreshFullscreenVisualizerState(this.player.activeElement);
+        if (backgroundButton) {
+            backgroundButton.onclick = async () => {
+                const currentMode = getFullscreenBackgroundMode(this.fullscreenBackgroundMode);
+                const nextMode = getNextFullscreenBackgroundMode(currentMode);
+                await this.applyFullscreenBackgroundMode(nextMode.key);
             };
+            this.updateFullscreenBackgroundButton(
+                this.fullscreenBackgroundMode,
+                this.player?.currentTrack?.type === 'video'
+            );
         }
 
         // Progress bar with drag support

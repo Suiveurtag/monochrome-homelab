@@ -81,6 +81,7 @@ export { default as SVG_USER } from '!lucide/user.svg?svg&icon';
 export { default as SVG_VIDEO } from '!lucide/video.svg?svg&icon';
 export { default as SVG_VOLUME } from '!lucide/volume-2.svg?svg&icon';
 export { default as SVG_VOLUME_1 } from '!lucide/volume-1.svg?svg&icon';
+export { default as SVG_WAVES } from '!lucide/waves.svg?svg&icon';
 export { default as SVG_YOUTUBE } from '../images/youtube.svg?svg&icon';
 export { default as SVG_QUALITY_LOSSLESS } from '../images/quality/lossless-sparkle.svg?svg&icon';
 export { default as SVG_QUALITY_WAVE_SAW } from '../images/quality/wave-saw.svg?svg&icon';

@@ -670,6 +670,55 @@
     background: transparent;
 }
 
+.now-playing-panel.lyrics-expanded .now-playing-panel-lyrics-host {
+    position: relative;
+}
+
+.now-playing-panel.lyrics-expanded .amll-now-panel-player {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.now-playing-panel.lyrics-expanded .amll-now-panel-background-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.now-playing-panel.lyrics-expanded .amll-now-panel-background {
+    width: 100%;
+    height: 100%;
+    filter: brightness(0.6) saturate(2.65);
+}
+
+.now-playing-panel.lyrics-expanded .amll-now-panel-shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgb(6 8 12 / 0.12), rgb(6 8 12 / 0.58));
+}
+
+.now-playing-panel.lyrics-expanded .amll-now-panel-lyrics {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    --amll-lp-font-size: clamp(1.75rem, 5cqw, 2.8rem);
+    --amll-lp-color: #fff;
+    color: #fff;
+    font-family: 'Google Sans Flex', var(--font-family);
+    font-weight: 600;
+}
+
+.now-playing-panel.lyrics-expanded .amll-now-panel-lyrics .FmKaba_lyricBgLine {
+    font-weight: 400;
+}
+
 .now-playing-panel-lyrics-empty {
     padding: 34px 16px;
     margin: 0;

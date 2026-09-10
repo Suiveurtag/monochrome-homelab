@@ -955,6 +955,22 @@ export const visualizerSettings = {
     BUTTERCHURN_CYCLE_KEY: 'butterchurn-cycle-duration',
     DIM_AMOUNT_KEY: 'visualizer-dim-amount',
     CD_ALBUM_COVER_KEY: 'cd-album-cover-enabled',
+    BACKGROUND_MODE_KEY: 'fullscreen-background-mode',
+
+    getBackgroundMode() {
+        try {
+            const mode = localStorage.getItem(this.BACKGROUND_MODE_KEY);
+            return ['solid', 'light', 'spicy', 'fluid'].includes(mode) ? mode : 'fluid';
+        } catch {
+            return 'fluid';
+        }
+    },
+
+    setBackgroundMode(mode) {
+        if (['solid', 'light', 'spicy', 'fluid'].includes(mode)) {
+            localStorage.setItem(this.BACKGROUND_MODE_KEY, mode);
+        }
+    },
 
     getPreset() {
         try {

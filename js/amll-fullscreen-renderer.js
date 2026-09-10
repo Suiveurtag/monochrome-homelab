@@ -16,24 +16,32 @@ function resolveCoverUrl(track, api) {
     return api?.getCoverUrl?.(cover, '1280') || cover;
 }
 
-export async function mountAmllFullscreen({ container, track, audioPlayer, lyricsManager, ttml, signal }) {
+export async function mountAmllLyrics({
+    container,
+    track,
+    audioPlayer,
+    lyricsManager,
+    ttml,
+    signal,
+    mode = 'fullscreen',
+}) {
     const currentTime = () => Math.max(0, audioPlayer.currentTime * 1000 - (lyricsManager?.timingOffset || 0));
     const lines = parseTTML(prepareTtmlForAmll(ttml)).lines;
     if (!lines.length) throw new Error('AMLL could not parse any synchronized lyric lines');
 
     const host = document.createElement('div');
-    host.className = 'amll-fullscreen-player';
+    host.className = `amll-lyrics-player amll-${mode}-player`;
     const backgroundLayer = document.createElement('div');
-    backgroundLayer.className = 'amll-fullscreen-background-layer';
+    backgroundLayer.className = `amll-${mode}-background-layer`;
     const shade = document.createElement('div');
-    shade.className = 'amll-fullscreen-shade';
+    shade.className = `amll-${mode}-shade`;
 
     const background = BackgroundRender.new(MeshGradientRenderer);
     const lyricPlayer = new DomLyricPlayer();
     const backgroundElement = background.getElement();
     const lyricElement = lyricPlayer.getElement();
-    backgroundElement.classList.add('amll-fullscreen-background');
-    lyricElement.classList.add('amll-fullscreen-lyrics');
+    backgroundElement.classList.add('amll-lyrics-background', `amll-${mode}-background`);
+    lyricElement.classList.add('amll-lyrics-content', `amll-${mode}-lyrics`);
     backgroundLayer.append(backgroundElement, shade);
     host.append(lyricElement);
     container.replaceChildren(host);
@@ -117,4 +125,12 @@ export async function mountAmllFullscreen({ container, track, audioPlayer, lyric
     signal?.addEventListener('abort', cleanup, { once: true });
     container.lyricsCleanup = cleanup;
     return lyricElement;
+}
+
+export function mountAmllFullscreen(options) {
+    return mountAmllLyrics({ ...options, mode: 'fullscreen' });
+}
+
+export function mountAmllSidePanel(options) {
+    return mountAmllLyrics({ ...options, mode: 'side-panel' });
 }

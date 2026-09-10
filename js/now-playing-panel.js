@@ -1,6 +1,6 @@
 import { mountSpicyDynamicBackground } from './spicy-dynamic-background.js';
 import { buildNowPlayingPanelModel, normalizeSourceContext } from './now-playing-panel-model.js';
-import { clearLyricsContainerSync, renderLyricsInContainer } from './lyrics.js';
+import { clearLyricsContainerSync, renderLyricsInContainer, renderLyricsInNowPanel } from './lyrics.js';
 import { createTrackSaveIconHTML } from './track-save-ui.js';
 import { escapeHtml, getTrackArtists, getTrackTitle } from './utils.js';
 import { copyShareLink } from './share.js';
@@ -1106,15 +1106,10 @@ export class NowPlayingPanel {
     async mountLyrics(model, signal) {
         const host = this.content.querySelector('.now-playing-panel-lyrics-host');
         if (!host || model.empty) return;
-        const element = await renderLyricsInContainer(
-            this.currentTrack,
-            this.player.activeElement,
-            this.lyricsManager,
-            host,
-            {
-                signal,
-            }
-        );
+        const renderLyrics = this.expandedLyrics ? renderLyricsInNowPanel : renderLyricsInContainer;
+        const element = await renderLyrics(this.currentTrack, this.player.activeElement, this.lyricsManager, host, {
+            signal,
+        });
         if (!element && !signal.aborted)
             host.innerHTML = '<p class="now-playing-panel-lyrics-empty">Lyrics are not available.</p>';
     }
@@ -1226,14 +1221,22 @@ export class NowPlayingPanel {
         if (button.matches('.now-playing-panel-lyrics-expand')) {
             this.expandedLyrics = true;
             this.collapsedLyrics = false;
-            this.applyLyricsMode();
-            this.root.querySelector('.now-playing-panel-lyrics-collapse')?.focus();
+            void this.render({ preserveScroll: true }).then(() => {
+                this.root.querySelector('.now-playing-panel-lyrics-collapse')?.focus();
+            });
             return;
         }
         if (button.matches('.now-playing-panel-lyrics-collapse')) {
-            if (this.expandedLyrics) this.expandedLyrics = false;
-            else this.collapsedLyrics = !this.collapsedLyrics;
-            this.applyLyricsMode();
+            if (this.expandedLyrics) {
+                this.expandedLyrics = false;
+                this.collapsedLyrics = false;
+                void this.render({ preserveScroll: true }).then(() => {
+                    this.root.querySelector('.now-playing-panel-lyrics-expand')?.focus();
+                });
+            } else {
+                this.collapsedLyrics = !this.collapsedLyrics;
+                this.applyLyricsMode();
+            }
             return;
         }
         if (button.matches('.queue-back-button')) return this.closeQueue();
@@ -1425,7 +1428,8 @@ export class NowPlayingPanel {
                 this.closeQueue();
             } else if (this.expandedLyrics) {
                 this.expandedLyrics = false;
-                this.applyLyricsMode();
+                this.collapsedLyrics = false;
+                void this.render({ preserveScroll: true });
             } else {
                 this.setOpen(false);
             }

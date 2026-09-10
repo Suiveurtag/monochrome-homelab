@@ -827,8 +827,9 @@ export class LyricsManager {
     }
 }
 
-export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = false) {
+export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = false, openOrigin = 'player-button') {
     const manager = lyricsManager || new LyricsManager();
+    sidePanelManager.panel.dataset.lyricsOpenOrigin = openOrigin;
 
     // Load Kuroshiro in background only if track has Asian text and Romaji mode is enabled
     const isRomajiMode = manager.getRomajiMode();
@@ -913,7 +914,7 @@ export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = f
             updateRomajiBtn();
 
             romajiBtn.addEventListener('click', async () => {
-                const amLyrics = sidePanelManager.panel.querySelector('spicy-lyrics');
+                const amLyrics = sidePanelManager.panel.querySelector('.amll-side-panel-lyrics');
                 if (amLyrics) {
                     await manager.toggleRomajiMode(amLyrics);
                     updateRomajiBtn();
@@ -937,7 +938,7 @@ export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = f
                         geniusBtn.style.opacity = '0.5';
                         await manager.geniusManager.getDataForTrack(track);
                         manager.currentGeniusData = manager.geniusManager.cache.get(track.id);
-                        const amLyrics = sidePanelManager.panel.querySelector('spicy-lyrics');
+                        const amLyrics = sidePanelManager.panel.querySelector('.amll-side-panel-lyrics');
                         if (amLyrics)
                             manager.applyGeniusAnnotations(
                                 amLyrics,
@@ -952,7 +953,7 @@ export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = f
                         geniusBtn.style.opacity = '1';
                     }
                 } else {
-                    const amLyrics = sidePanelManager.panel.querySelector('spicy-lyrics');
+                    const amLyrics = sidePanelManager.panel.querySelector('.amll-side-panel-lyrics');
                     if (amLyrics) {
                         const root = amLyrics.shadowRoot || amLyrics;
                         const lineElements = Array.from(root.querySelectorAll('.genius-annotated'));
@@ -975,7 +976,7 @@ export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = f
 
     const renderContent = async (container, renderContext = {}) => {
         clearLyricsPanelSync(audioPlayer, sidePanelManager.panel);
-        await renderLyricsComponent(container, track, audioPlayer, manager, renderContext);
+        await renderLyricsInSidePanel(track, audioPlayer, manager, container, renderContext);
         if (renderContext.signal?.aborted || (renderContext.isCurrent && !renderContext.isCurrent())) return;
         if (container.lyricsCleanup) {
             sidePanelManager.panel.lyricsCleanup = container.lyricsCleanup;
@@ -1270,6 +1271,67 @@ export async function renderLyricsInFullscreen(track, audioPlayer, lyricsManager
     } catch (error) {
         if (signal?.aborted || error?.name === 'AbortError') return null;
         console.error('Failed to load AMLL fullscreen lyrics:', error);
+        container.innerHTML = '<div class="lyrics-error">Failed to load lyrics</div>';
+        return null;
+    }
+}
+
+export async function renderLyricsInSidePanel(track, audioPlayer, lyricsManager, container, { signal } = {}) {
+    if (signal?.aborted) return null;
+    container.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
+
+    try {
+        lyricsManager.currentTrackId = track.id;
+        const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
+        if (signal?.aborted) return null;
+        const sourceLyrics = track.lyrics || fetchedLyrics?.ttml || fetchedLyrics?.subtitles || '';
+        const localTtml = lyricsToTtml(sourceLyrics, track.duration);
+        if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
+
+        const { mountAmllSidePanel } = await import('./amll-fullscreen-renderer.js');
+        if (signal?.aborted) return null;
+        return await mountAmllSidePanel({
+            container,
+            track,
+            audioPlayer,
+            lyricsManager,
+            ttml: localTtml,
+            signal,
+        });
+    } catch (error) {
+        if (signal?.aborted || error?.name === 'AbortError') return null;
+        console.error('Failed to load AMLL side-panel lyrics:', error);
+        container.innerHTML = '<div class="lyrics-error">Failed to load lyrics</div>';
+        return null;
+    }
+}
+
+export async function renderLyricsInNowPanel(track, audioPlayer, lyricsManager, container, { signal } = {}) {
+    if (signal?.aborted) return null;
+    container.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
+
+    try {
+        lyricsManager.currentTrackId = track.id;
+        const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
+        if (signal?.aborted) return null;
+        const sourceLyrics = track.lyrics || fetchedLyrics?.ttml || fetchedLyrics?.subtitles || '';
+        const localTtml = lyricsToTtml(sourceLyrics, track.duration);
+        if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
+
+        const { mountAmllLyrics } = await import('./amll-fullscreen-renderer.js');
+        if (signal?.aborted) return null;
+        return await mountAmllLyrics({
+            container,
+            track,
+            audioPlayer,
+            lyricsManager,
+            ttml: localTtml,
+            signal,
+            mode: 'now-panel',
+        });
+    } catch (error) {
+        if (signal?.aborted || error?.name === 'AbortError') return null;
+        console.error('Failed to load AMLL Now Playing lyrics:', error);
         container.innerHTML = '<div class="lyrics-error">Failed to load lyrics</div>';
         return null;
     }
