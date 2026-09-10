@@ -1,3 +1,35 @@
+@font-face {
+    font-family: 'Switzer';
+    src: url('/fonts/switzer/switzer-400.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Switzer';
+    src: url('/fonts/switzer/switzer-500.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Switzer';
+    src: url('/fonts/switzer/switzer-600.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Switzer';
+    src: url('/fonts/switzer/switzer-700.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
 :root {
     color-scheme: light dark;
 
@@ -8,6 +40,7 @@
         'Noto Sans Sinhala', 'Noto Sans Khmer', 'Noto Sans Lao', 'Noto Sans Myanmar', 'Noto Sans Georgian',
         'Noto Sans Armenian', 'Noto Sans Ethiopic', system-ui, -apple-system, blinkmacsystemfont, 'Segoe UI', roboto,
         sans-serif;
+    --font-family-key: 'Switzer', var(--font-family);
     --font-family-ja:
         'Inter', 'Noto Sans', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', meiryo, 'Noto Sans JP',
         'Noto Sans KR', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans HK', 'Noto Sans Hebrew', 'Noto Sans Arabic',
@@ -4913,6 +4946,42 @@ body.multi-select-mode .track-item:hover {
     }
 }
 /* stylelint-enable no-descending-specificity */
+
+/* Switzer pilot: reserve the new face for the app's primary reading surfaces. */
+.sidebar,
+.sidebar *,
+.sidebar .nav-item a,
+.sidebar-logo,
+.sidebar-logo span,
+.main-header,
+.main-header *,
+.main-header input,
+.main-header button,
+.section-title,
+.track-item .title,
+.track-item .artist,
+.card .title,
+.card .artist,
+.now-playing-bar,
+.now-playing-bar *,
+.now-playing-bar .title,
+.now-playing-bar .artist,
+.now-playing-bar button,
+#fullscreen-cover-overlay .fullscreen-track-info,
+#fullscreen-cover-overlay .fullscreen-track-info *,
+#fullscreen-cover-overlay .fullscreen-track-info button,
+.now-playing-panel,
+.now-playing-panel *,
+.track-save-floating-panel,
+.track-save-floating-panel *,
+.modal-content h1,
+.modal-content h2,
+.modal-content h3,
+.modal-content button,
+.btn-primary,
+.btn-secondary {
+    font-family: var(--font-family-key) !important;
+}
 
 .track-item-duration {
     color: var(--muted-foreground);
