@@ -40,6 +40,13 @@ export async function mountAmllFullscreen({ container, track, audioPlayer, lyric
     const overlay = container.closest('#fullscreen-cover-overlay');
     (overlay || host).prepend(backgroundLayer);
 
+    if (document.fonts?.load) {
+        try {
+            await document.fonts.load('600 1em "Google Sans Flex"');
+        } catch {
+            // AMLL can fall back to Monochrome's font if the web font is unavailable.
+        }
+    }
     lyricPlayer.setLyricLines(lines, Math.round(currentTime()));
     lyricPlayer.setCurrentTime(Math.round(currentTime()), true);
     lyricPlayer.update(0);

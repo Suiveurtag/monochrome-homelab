@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400..700&display=swap');
+
 @font-face {
     font-family: 'Switzer';
     src: url('/fonts/switzer/switzer-400.woff2') format('woff2');
@@ -17171,7 +17173,8 @@ body:has(#side-panel.active) #close-fullscreen-cover-btn {
     --amll-lp-color: #f6f4ef;
 
     color: #f6f4ef;
-    font-family: 'SF Pro Display', var(--font-family);
+    font-family: 'Google Sans Flex', var(--font-family);
+    font-weight: 600;
 }
 
 #fullscreen-cover-overlay .fullscreen-lyrics-empty,
