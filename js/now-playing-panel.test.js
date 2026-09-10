@@ -394,9 +394,12 @@ describe('Now Playing panel interactions', () => {
         const canvas = stage.querySelector('video.now-playing-panel-canvas');
         expect(canvas).toBeTruthy();
         expect(stage.querySelectorAll('img, video')).toHaveLength(2);
+        let canvasPaused = true;
+        Object.defineProperty(canvas, 'paused', { configurable: true, get: () => canvasPaused });
 
         canvas.dispatchEvent(new Event('loadeddata'));
         await vi.waitFor(() => expect(stage.classList.contains('is-canvas-ready')).toBe(true));
+        expect(stage.classList.contains('is-canvas-playing')).toBe(false);
 
         const play = vi.spyOn(canvas, 'play').mockResolvedValue();
         const replacementAudio = document.createElement('audio');
@@ -412,7 +415,9 @@ describe('Now Playing panel interactions', () => {
         play.mockClear();
 
         // A mocked play() does not emit the browser event that resets retry backoff.
+        canvasPaused = false;
         canvas.dispatchEvent(new Event('play'));
+        expect(stage.classList.contains('is-canvas-playing')).toBe(true);
         const schedule = vi.spyOn(window, 'setTimeout');
         canvas.dispatchEvent(new Event('pause'));
         const retry = schedule.mock.calls.find(([, delay]) => delay === 240);
@@ -429,8 +434,10 @@ describe('Now Playing panel interactions', () => {
         const render = vi.spyOn(panel, 'render');
         const pause = vi.spyOn(canvas, 'pause');
         replacementAudioPaused = true;
+        canvasPaused = true;
         replacementAudio.dispatchEvent(new Event('pause'));
         expect(stage.classList.contains('is-canvas-ready')).toBe(true);
+        expect(stage.classList.contains('is-canvas-playing')).toBe(false);
         expect(pause).toHaveBeenCalled();
         expect(render).not.toHaveBeenCalled();
 

@@ -1056,10 +1056,20 @@ export class NowPlayingPanel {
             'is-canvas-ready',
             this.canvasEnabled && video.dataset.canvasReady === 'true' && !reducedMotion
         );
+        stage.classList.toggle(
+            'is-canvas-playing',
+            this.canvasEnabled && video.dataset.canvasReady === 'true' && !reducedMotion && !video.paused
+        );
         if (shouldPlay) {
-            void video.play().catch(() => this.boundCanvasPlaybackInterrupted());
+            void video
+                .play()
+                .then(() => {
+                    if (video === this.canvasMedia && video.isConnected) stage.classList.add('is-canvas-playing');
+                })
+                .catch(() => this.boundCanvasPlaybackInterrupted());
         } else {
             video.pause();
+            stage.classList.remove('is-canvas-playing');
         }
     }
 
