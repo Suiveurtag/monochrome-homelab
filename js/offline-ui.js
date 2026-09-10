@@ -37,23 +37,6 @@ export function initializeOfflineUI({ api, player }) {
     let refreshSequence = 0;
     let libraryReady = false;
     let favoriteController = null;
-    const decorate = () => {
-        document
-            .querySelectorAll(
-                '.track-item[data-track-id], .queue-track-item[data-track-id], .queue-track-row[data-track-id], .upload-gallery-card[data-track-id]'
-            )
-            .forEach((row) => {
-                const has = available.has(String(row.dataset.trackId));
-                let badge = row.querySelector('.offline-track-badge');
-                if (has && !badge) {
-                    badge = document.createElement('span');
-                    badge.className = 'offline-track-badge';
-                    badge.textContent = 'Offline';
-                    badge.title = 'Available for offline listening on this device';
-                    (row.querySelector('.upload-card-art, .track-title, .track-info') || row).appendChild(badge);
-                } else if (!has && badge) badge.remove();
-            });
-    };
     const refresh = async () => {
         const sequence = ++refreshSequence;
         const scope = offlineCache.scope();
@@ -129,7 +112,6 @@ export function initializeOfflineUI({ api, player }) {
                     .find((control) => `${control.dataset.playlistId}:${control.dataset.action}` === focusKey)
                     ?.focus();
             }
-            decorate();
             button.textContent = offlineCache.controller ? 'Cancel download' : 'Keep offline';
         } catch (error) {
             if (error.name !== 'AbortError') feedback(`Offline storage is unavailable: ${error.message}`);
@@ -260,7 +242,6 @@ export function initializeOfflineUI({ api, player }) {
         offlineCache.activeId = null;
         available.clear();
         ++refreshSequence;
-        decorate();
         feedback('');
     };
     let lastScope = offlineCache.scope();
@@ -283,15 +264,6 @@ export function initializeOfflineUI({ api, player }) {
         clearTimeout(refreshTimer);
         refreshTimer = setTimeout(() => void refresh(), 100);
     });
-    let decorateQueued = false;
-    new MutationObserver(() => {
-        if (decorateQueued) return;
-        decorateQueued = true;
-        requestAnimationFrame(() => {
-            decorateQueued = false;
-            decorate();
-        });
-    }).observe(document.querySelector('.main-content') || document.body, { childList: true, subtree: true });
     void (async () => {
         libraryReady = (await getActiveLibraryScope(db)) === offlineCache.scope();
         await offlineCache.cleanup();
