@@ -16948,6 +16948,8 @@ body:has(#side-panel.active) #close-fullscreen-cover-btn {
 
 #fullscreen-cover-overlay .fullscreen-top-actions #fs-background-btn {
     order: 3;
+    position: relative;
+    isolation: isolate;
 }
 
 #fullscreen-cover-overlay .fullscreen-top-actions #toggle-fullscreen-lyrics-btn,
@@ -16960,6 +16962,10 @@ body:has(#side-panel.active) #close-fullscreen-cover-btn {
     bottom: auto;
     margin: 0;
     opacity: 1;
+}
+
+#fullscreen-cover-overlay .fullscreen-top-actions #fs-background-btn {
+    position: relative;
 }
 
 #fullscreen-cover-overlay .fullscreen-top-actions #toggle-fullscreen-lyrics-btn {
@@ -16984,6 +16990,38 @@ body:has(#side-panel.active) #close-fullscreen-cover-btn {
 #fullscreen-cover-overlay .fullscreen-top-actions #fs-background-btn:focus-visible {
     outline: 2px solid rgb(255 255 255 / 0.82);
     outline-offset: 3px;
+}
+
+#fullscreen-cover-overlay .fullscreen-top-actions #fs-background-btn::after {
+    content: attr(data-background-label);
+    position: absolute;
+    top: calc(100% + 0.45rem);
+    left: 50%;
+    z-index: 20;
+    padding: 0.24rem 0.48rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    border-radius: 0.42rem;
+    background: rgb(38 32 28 / 0.92);
+    box-shadow: 0 5px 14px rgb(0 0 0 / 0.24);
+    color: rgb(255 255 255 / 0.84);
+    font-size: 0.68rem;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -2px) scale(0.97);
+    transition:
+        opacity 160ms var(--ease-out),
+        transform 160ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    #fullscreen-cover-overlay .fullscreen-top-actions #fs-background-btn:hover::after,
+    #fullscreen-cover-overlay .fullscreen-top-actions #fs-background-btn:focus-visible::after {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
 }
 
 #fullscreen-cover-overlay .fullscreen-top-actions #close-fullscreen-cover-btn {
@@ -17264,7 +17302,7 @@ body:has(#side-panel.active) #close-fullscreen-cover-btn {
 }
 
 #fullscreen-cover-overlay[data-background-mode='solid'] {
-    background-color: var(--primary);
+    background-color: color-mix(in srgb, var(--primary) 70%, #000);
 }
 
 #fullscreen-cover-overlay[data-background-mode='solid']::before,
@@ -17355,6 +17393,11 @@ body:has(#side-panel.active) #close-fullscreen-cover-btn {
     #fullscreen-cover-overlay #visualizer-container,
     #fullscreen-cover-overlay .fullscreen-top-actions #fs-background-btn {
         transition: none !important;
+    }
+
+    #fullscreen-cover-overlay .fullscreen-top-actions #fs-background-btn::after {
+        transform: translate(-50%, 0);
+        transition: opacity 120ms ease;
     }
 
     #fullscreen-cover-overlay .fullscreen-top-actions #fs-background-btn:active {

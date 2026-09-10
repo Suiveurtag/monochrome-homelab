@@ -111,10 +111,10 @@ import {
     SVG_RIGHT_ARROW,
     SVG_CLOCK,
     SVG_CHECKBOX,
+    SVG_FLUID,
     SVG_PALETTE,
     SVG_SUN,
-    SVG_SPARKLES,
-    SVG_WAVES,
+    SVG_SPICY,
 } from './icons.js';
 
 const setFullscreenUIToggleIcon = (button, visualizerOnlyMode) => {
@@ -127,8 +127,8 @@ const isMobileFullscreenViewport = () => window.matchMedia('(max-width: 768px)')
 const FULLSCREEN_BACKGROUND_MODES = [
     { key: 'solid', label: 'Couleur unie', icon: SVG_PALETTE },
     { key: 'light', label: 'Light', icon: SVG_SUN },
-    { key: 'spicy', label: 'Spicy', icon: SVG_SPARKLES },
-    { key: 'fluid', label: 'Fluid', icon: SVG_WAVES },
+    { key: 'spicy', label: 'Spicy', icon: SVG_SPICY },
+    { key: 'fluid', label: 'Fluid', icon: SVG_FLUID },
 ];
 
 const getFullscreenBackgroundMode = (mode) =>
@@ -1655,6 +1655,7 @@ export class UIRenderer {
         button.title = `Background: ${current.label} · Suivant : ${next.label}`;
         button.setAttribute('aria-label', `Changer le background du fullscreen. Actuel : ${current.label}`);
         button.dataset.backgroundMode = current.key;
+        button.dataset.backgroundLabel = current.label;
     }
 
     async ensureFullscreenSpicyBackground(overlay) {
