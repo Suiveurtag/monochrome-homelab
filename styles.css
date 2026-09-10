@@ -17177,6 +17177,10 @@ body:has(#side-panel.active) #close-fullscreen-cover-btn {
     font-weight: 600;
 }
 
+#fullscreen-cover-overlay .amll-fullscreen-lyrics .FmKaba_lyricBgLine {
+    font-weight: 400;
+}
+
 #fullscreen-cover-overlay .fullscreen-lyrics-empty,
 #fullscreen-cover-overlay .fullscreen-lyrics-content .lyrics-loading,
 #fullscreen-cover-overlay .fullscreen-lyrics-content .lyrics-error {
