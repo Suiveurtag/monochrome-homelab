@@ -326,17 +326,22 @@ export class AlbumCoverInspector {
     }
 
     resetTilt(animate = true) {
-        cancelAnimationFrame(this.springFrame);
-        this.springFrame = null;
-        this.springLastTime = 0;
-        this.springState = { rotateX: 0, rotateY: 0, glareX: 50, glareY: 50, opacity: 0 };
-        this.springVelocity = { rotateX: 0, rotateY: 0, glareX: 0, glareY: 0, opacity: 0 };
-        this.springTarget = { rotateX: 0, rotateY: 0, glareX: 50, glareY: 50, opacity: 0 };
+        const flatState = { rotateX: 0, rotateY: 0, glareX: 50, glareY: 50, opacity: 0 };
         window.clearTimeout(this.resetTimer);
-        if (this.card) this.applyTilt(this.springState);
-        if (animate && !reduceMotion()) {
-            this.card?.classList.add('is-resetting');
-            this.resetTimer = window.setTimeout(() => this.card?.classList.remove('is-resetting'), 420);
+
+        if (!animate || reduceMotion()) {
+            cancelAnimationFrame(this.springFrame);
+            this.springFrame = null;
+            this.springLastTime = 0;
+            this.springState = { ...flatState };
+            this.springVelocity = { rotateX: 0, rotateY: 0, glareX: 0, glareY: 0, opacity: 0 };
+            this.springTarget = { ...flatState };
+            if (this.card) this.applyTilt(this.springState);
+            return;
         }
+
+        // Keep the current pose and let the same TIDAL spring bring it back flat.
+        Object.assign(this.springTarget, flatState);
+        this.startSpring();
     }
 }
