@@ -1122,9 +1122,17 @@ export class NowPlayingPanel {
         if (lyricsHost) lyricsHost.inert = this.collapsedLyrics;
         const expand = this.root.querySelector('.now-playing-panel-lyrics-expand');
         expand?.setAttribute('aria-expanded', String(this.expandedLyrics));
+        expand?.setAttribute('aria-label', this.expandedLyrics ? 'Collapse lyrics panel' : 'Expand lyrics in panel');
         const collapse = this.root.querySelector('.now-playing-panel-lyrics-collapse');
         collapse?.setAttribute('aria-expanded', String(!this.collapsedLyrics));
-        collapse?.setAttribute('aria-label', this.collapsedLyrics ? 'Show lyrics preview' : 'Hide lyrics preview');
+        collapse?.setAttribute(
+            'aria-label',
+            this.expandedLyrics
+                ? 'Return to lyrics preview'
+                : this.collapsedLyrics
+                  ? 'Show lyrics preview'
+                  : 'Hide lyrics preview'
+        );
         this.applyCanvasMode();
         this.syncCanvasPlayback();
     }

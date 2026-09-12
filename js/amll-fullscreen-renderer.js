@@ -31,22 +31,25 @@ export async function mountAmllLyrics({
 
     const host = document.createElement('div');
     host.className = `amll-lyrics-player amll-${mode}-player`;
-    const backgroundLayer = document.createElement('div');
-    backgroundLayer.className = `amll-${mode}-background-layer`;
-    const shade = document.createElement('div');
-    shade.className = `amll-${mode}-shade`;
+    const usesSharedNowPanelBackground = mode === 'now-panel';
+    const backgroundLayer = usesSharedNowPanelBackground ? null : document.createElement('div');
+    if (backgroundLayer) backgroundLayer.className = `amll-${mode}-background-layer`;
+    const shade = backgroundLayer ? document.createElement('div') : null;
+    if (shade) shade.className = `amll-${mode}-shade`;
 
-    const background = BackgroundRender.new(MeshGradientRenderer);
+    const background = usesSharedNowPanelBackground ? null : BackgroundRender.new(MeshGradientRenderer);
     const lyricPlayer = new DomLyricPlayer();
-    const backgroundElement = background.getElement();
     const lyricElement = lyricPlayer.getElement();
-    backgroundElement.classList.add('amll-lyrics-background', `amll-${mode}-background`);
     lyricElement.classList.add('amll-lyrics-content', `amll-${mode}-lyrics`);
-    backgroundLayer.append(backgroundElement, shade);
     host.append(lyricElement);
     container.replaceChildren(host);
-    const overlay = container.closest('#fullscreen-cover-overlay');
-    (overlay || host).prepend(backgroundLayer);
+    if (backgroundLayer) {
+        const backgroundElement = background.getElement();
+        backgroundElement.classList.add('amll-lyrics-background', `amll-${mode}-background`);
+        backgroundLayer.append(backgroundElement, shade);
+        const overlay = container.closest('#fullscreen-cover-overlay');
+        (overlay || host).prepend(backgroundLayer);
+    }
 
     if (document.fonts?.load) {
         try {
@@ -58,10 +61,10 @@ export async function mountAmllLyrics({
     lyricPlayer.setLyricLines(lines, Math.round(currentTime()));
     lyricPlayer.setCurrentTime(Math.round(currentTime()), true);
     lyricPlayer.update(0);
-    background.setHasLyric(true);
+    background?.setHasLyric(true);
 
     const coverUrl = resolveCoverUrl(track, lyricsManager?.api);
-    if (coverUrl) await background.setAlbum(coverUrl);
+    if (coverUrl) await background?.setAlbum(coverUrl);
 
     let frameId = 0;
     let lastFrameTime = -1;
@@ -77,11 +80,11 @@ export async function mountAmllLyrics({
     };
     const onPlay = () => {
         lyricPlayer.resume();
-        background.resume();
+        background?.resume();
     };
     const onPause = () => {
         lyricPlayer.pause();
-        background.pause();
+        background?.pause();
     };
     const onSeeked = () => lyricPlayer.setCurrentTime(Math.round(currentTime()), true);
     const onLineClick = async (event) => {
@@ -117,8 +120,8 @@ export async function mountAmllLyrics({
         lyricPlayer.removeEventListener('line-click', onLineClick);
         signal?.removeEventListener('abort', cleanup);
         lyricPlayer.dispose();
-        background.dispose();
-        backgroundLayer.remove();
+        background?.dispose();
+        backgroundLayer?.remove();
         host.remove();
     };
 

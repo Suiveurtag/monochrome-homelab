@@ -12,6 +12,7 @@ vi.mock('./spicy-dynamic-background.js', () => ({
 vi.mock('./lyrics.js', () => ({
     clearLyricsContainerSync: vi.fn(),
     renderLyricsInContainer: vi.fn(async () => null),
+    renderLyricsInNowPanel: vi.fn(async () => null),
 }));
 vi.mock('./db.js', () => ({
     db: { isFavorite: vi.fn(async () => false), toggleFavorite: vi.fn(async () => true) },
