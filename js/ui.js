@@ -1650,8 +1650,9 @@ export class UIRenderer {
 
         const current = FULLSCREEN_BACKGROUND_MODES.find((item) => item.key === getFullscreenBackgroundMode(mode));
         const next = getNextFullscreenBackgroundMode(current.key);
+        const iconSize = current.key === 'spicy' ? 25 : current.key === 'fluid' ? 22 : 20;
         button.style.display = isVideoTrack ? 'none' : 'flex';
-        button.innerHTML = current.icon(20);
+        button.innerHTML = current.icon(iconSize);
         button.title = `Background: ${current.label} · Suivant : ${next.label}`;
         button.setAttribute('aria-label', `Changer le background du fullscreen. Actuel : ${current.label}`);
         button.dataset.backgroundMode = current.key;
