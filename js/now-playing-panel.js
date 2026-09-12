@@ -109,6 +109,7 @@ export class NowPlayingPanel {
         this.renderController = null;
         this.expandedLyrics = false;
         this.collapsedLyrics = false;
+        this.lyricsTransitionToken = 0;
         this.canvasExpanded = false;
         this.canvasEnabled = canvasSettings.isEnabled();
         this.canvasCoverOverlayEnabled = canvasSettings.isCoverOverlayEnabled();
@@ -1142,6 +1143,26 @@ export class NowPlayingPanel {
         this.syncCanvasPlayback();
     }
 
+    beginLyricsTransition(direction) {
+        const token = ++this.lyricsTransitionToken;
+        this.root.classList.remove('lyrics-expanding', 'lyrics-collapsing');
+        this.root.classList.add(
+            'lyrics-transitioning',
+            direction === 'expand' ? 'lyrics-expanding' : 'lyrics-collapsing'
+        );
+        return token;
+    }
+
+    finishLyricsTransition(token) {
+        if (token !== this.lyricsTransitionToken) return;
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                if (token !== this.lyricsTransitionToken) return;
+                this.root.classList.remove('lyrics-transitioning', 'lyrics-expanding', 'lyrics-collapsing');
+            });
+        });
+    }
+
     applyCanvasMode() {
         const body = this.root.querySelector('.now-playing-panel-body');
         const toggle = this.root.querySelector('[data-canvas-toggle]');
@@ -1234,7 +1255,9 @@ export class NowPlayingPanel {
         if (button.matches('.now-playing-panel-lyrics-expand')) {
             this.expandedLyrics = true;
             this.collapsedLyrics = false;
+            const transitionToken = this.beginLyricsTransition('expand');
             void this.render({ preserveScroll: true }).then(() => {
+                this.finishLyricsTransition(transitionToken);
                 this.root.querySelector('.now-playing-panel-lyrics-collapse')?.focus();
             });
             return;
@@ -1243,7 +1266,9 @@ export class NowPlayingPanel {
             if (this.expandedLyrics) {
                 this.expandedLyrics = false;
                 this.collapsedLyrics = false;
+                const transitionToken = this.beginLyricsTransition('collapse');
                 void this.render({ preserveScroll: true }).then(() => {
+                    this.finishLyricsTransition(transitionToken);
                     this.root.querySelector('.now-playing-panel-lyrics-expand')?.focus();
                 });
             } else {
@@ -1442,7 +1467,8 @@ export class NowPlayingPanel {
             } else if (this.expandedLyrics) {
                 this.expandedLyrics = false;
                 this.collapsedLyrics = false;
-                void this.render({ preserveScroll: true });
+                const transitionToken = this.beginLyricsTransition('collapse');
+                void this.render({ preserveScroll: true }).then(() => this.finishLyricsTransition(transitionToken));
             } else {
                 this.setOpen(false);
             }

@@ -1085,6 +1085,42 @@ body.now-playing-panel-resizing {
     user-select: none;
 }
 
+.now-playing-panel.lyrics-transitioning .now-playing-panel-body > :not(.now-playing-panel-lyrics) {
+    opacity: 0;
+    transform: translateY(7px) scale(0.985);
+    transition:
+        opacity 180ms ease,
+        transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.now-playing-panel.lyrics-transitioning .now-playing-panel-lyrics {
+    opacity: 1;
+    transform: scale(1);
+    transition:
+        opacity 180ms ease,
+        transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+        height 280ms cubic-bezier(0.22, 1, 0.36, 1),
+        min-height 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.now-playing-panel.lyrics-transitioning.lyrics-expanding .now-playing-panel-lyrics {
+    transform: scale(1.012);
+}
+
+.now-playing-panel.lyrics-transitioning.lyrics-collapsing .now-playing-panel-lyrics,
+.now-playing-panel.lyrics-transitioning.lyrics-expanded .now-playing-panel-lyrics {
+    opacity: 0;
+    transform: scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .now-playing-panel.lyrics-transitioning .now-playing-panel-body > :not(.now-playing-panel-lyrics),
+    .now-playing-panel.lyrics-transitioning .now-playing-panel-lyrics {
+        transition-duration: 0.01ms;
+        transform: none;
+    }
+}
+
 .now-playing-panel.lyrics-expanded .now-playing-panel-scroll {
     overflow: hidden;
     padding: 0;
