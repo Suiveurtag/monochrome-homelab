@@ -90,12 +90,24 @@ export function getTrackQualityAvailability(track, variants = []) {
                 Number(variant.audioBandwidth || variant.bandwidth || 0) > 1_200_000
         );
 
-    return { lossless, hiRes };
+    const codec = String(track?.audioCodec || '').toUpperCase();
+    const isLossyFile = codec === 'MP3' || /\.(?:mp3|m4a|mp4|aac|ogg|oga|opus)(?:$|[?#])/i.test(track?.fileName || '');
+    const bitrate = Number(track?.audioBitrate || track?.bitrate || 0);
+    const maxLossyQuality = isLossyFile && bitrate > 0
+        ? bitrate >= 320 ? 'HIGH' : bitrate >= 160 ? 'NORMAL' : bitrate >= 96 ? 'LOW' : 'LOWEST'
+        : null;
+
+    return { lossless: lossless && !isLossyFile, hiRes: hiRes && !isLossyFile, maxLossyQuality };
 }
 
 export function getAvailableQualityOptions(track, variants = []) {
     const availability = getTrackQualityAvailability(track, variants);
+    const maxLossyIndex = availability.maxLossyQuality
+        ? PLAYBACK_QUALITY_OPTIONS.findIndex((option) => option.id === availability.maxLossyQuality)
+        : -1;
     return PLAYBACK_QUALITY_OPTIONS.filter((option) => {
+        if (maxLossyIndex >= 0 && PLAYBACK_QUALITY_OPTIONS.findIndex((candidate) => candidate.id === option.id) > maxLossyIndex)
+            return false;
         if (option.id === 'HI_RES_LOSSLESS') return availability.hiRes;
         if (option.id === 'LOSSLESS') return availability.lossless;
         return true;

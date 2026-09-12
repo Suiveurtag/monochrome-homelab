@@ -1012,6 +1012,15 @@
     cursor: wait;
 }
 
+.quality-radio-option.is-unavailable {
+    cursor: not-allowed;
+    opacity: 0.42;
+}
+
+.quality-radio-option.is-unavailable:hover {
+    background: transparent;
+}
+
 .quality-radio-option input {
     position: absolute;
     width: 1px;

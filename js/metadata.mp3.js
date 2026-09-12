@@ -159,6 +159,12 @@ export async function addMp3Metadata(mp3Blob, track, api, coverBlob = null) {
 export async function readMp3Metadata(file, metadata) {
     let buffer = await file.slice(0, 10).arrayBuffer();
     let view = new DataView(buffer);
+    metadata.audioCodec = 'MP3';
+    const tagOffset = view.getUint8(0) === 0x49 && view.getUint8(1) === 0x44 && view.getUint8(2) === 0x33
+        ? readSynchsafeInteger32(view, 6) + 10
+        : 0;
+    const frameQuality = await readMp3FrameQuality(file, tagOffset);
+    if (frameQuality) metadata.audioBitrate = frameQuality.bitrate;
 
     if (view.getUint8(0) === 0x49 && view.getUint8(1) === 0x44 && view.getUint8(2) === 0x33) {
         const majorVer = view.getUint8(3);
@@ -274,6 +280,32 @@ export async function readMp3Metadata(file, metadata) {
             if (album) metadata.album.title = album;
         }
     }
+
+    // Prefer the measured average bitrate when duration is available. This handles
+    // VBR files without mistaking a single low/high bitrate frame for the source quality.
+    if (metadata.duration > 0) {
+        const measuredBitrate = Math.round(((file.size - tagOffset) * 8) / metadata.duration / 1000);
+        if (measuredBitrate > 0) metadata.audioBitrate = measuredBitrate;
+    }
+}
+
+export async function readMp3FrameQuality(file, startOffset = 0) {
+    const buffer = await file.slice(startOffset, startOffset + 32768).arrayBuffer();
+    const view = new DataView(buffer);
+    const sampleRates = [[11025, 12000, 8000], null, [22050, 24000, 16000], [44100, 48000, 32000]];
+    const mpeg1Bitrates = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0];
+    const mpeg2Bitrates = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0];
+    for (let offset = 0; offset < view.byteLength - 4; offset += 1) {
+        if (view.getUint8(offset) !== 0xff || (view.getUint8(offset + 1) & 0xe0) !== 0xe0) continue;
+        const header = view.getUint32(offset, false);
+        const version = (header >> 19) & 3;
+        const bitrateIndex = (header >> 12) & 15;
+        const sampleRateIndex = (header >> 10) & 3;
+        if (version === 1 || bitrateIndex === 0 || bitrateIndex === 15 || sampleRateIndex === 3) continue;
+        const bitrates = version === 3 ? mpeg1Bitrates : mpeg2Bitrates;
+        return { bitrate: bitrates[bitrateIndex], sampleRate: sampleRates[version][sampleRateIndex] };
+    }
+    return null;
 }
 
 // since mp3 file don't have metadata about duration, estimating it

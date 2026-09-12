@@ -87,6 +87,8 @@ export function mapPocketBaseTrack(record, client = pb) {
         spotifyUrl: record.spotify_url || null,
         isrc: record.isrc || null,
         audioQuality,
+        audioCodec: record.audio_codec || (isFlac ? 'FLAC' : null),
+        audioBitrate: Number(record.audio_bitrate) > 0 ? Number(record.audio_bitrate) : null,
         fileName: audioFileName,
         audioSize: Number(record.audio_size) > 0 ? Number(record.audio_size) : null,
         artist,
@@ -187,6 +189,8 @@ export function createTrackFormData(track, file, ownerId, coverFile = null) {
     formData.set('hide_from_artist_page', String(Boolean(track?.hideFromArtistPage)));
     formData.set('use_original_track_assets', String(track?.useOriginalTrackAssets !== false));
     formData.set('lyrics', track?.lyrics || '');
+    formData.set('audio_codec', track?.audioCodec || file.name?.match(/\.([^.]+)$/)?.[1]?.toUpperCase() || '');
+    if (track?.audioBitrate) formData.set('audio_bitrate', String(track.audioBitrate));
     formData.set('audio', file);
     if (coverFile) formData.set('cover', coverFile);
     return formData;

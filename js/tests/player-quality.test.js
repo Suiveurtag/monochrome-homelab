@@ -11,6 +11,10 @@ const cdTrack = { audioQuality: 'LOSSLESS', mediaMetadata: { tags: ['LOSSLESS'] 
 const hiResTrack = { audioQuality: 'HI_RES_LOSSLESS', mediaMetadata: { tags: ['HI_RES_LOSSLESS'] } };
 
 describe('player quality profiles', () => {
+    it('caps known MP3 quality at the source bitrate', () => {
+        const options = getAvailableQualityOptions({ audioCodec: 'MP3', audioBitrate: 128, fileName: 'song.mp3' });
+        expect(options.map((option) => option.id)).toEqual(['LOWEST', 'LOW']);
+    });
     it('does not offer lossless choices when the track metadata is lossy', () => {
         expect(getAvailableQualityOptions(lossyTrack).map((option) => option.id)).toEqual([
             'LOWEST',

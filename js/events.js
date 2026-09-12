@@ -58,6 +58,7 @@ import { socialManager } from './social.js';
 import { canvasSettings } from './canvas-settings.js';
 import { setupTrackVersionPicker } from './track-version-picker.js';
 import { getTrackDisplayAlbum } from './track-versions.js';
+import { PLAYBACK_QUALITY_OPTIONS } from './player-quality.js';
 
 let currentTrackIdForWaveform = null;
 
@@ -352,6 +353,12 @@ function setupQualityPopover(player) {
         if (state.fallbackReason) {
             return `${escapeHtml(state.fallbackReason)}. Playing at ${escapeHtml(effectiveLabel)} for now.`;
         }
+        if (state.availability?.maxLossyQuality) {
+            const sourceLimit = state.options.find((option) => option.id === state.availability.maxLossyQuality)?.label || effectiveLabel;
+            return state.requested === 'auto'
+                ? `Auto is using ${escapeHtml(effectiveLabel)}; this lossy file is limited to ${escapeHtml(sourceLimit)}.`
+                : `This file is lossy, so playback is limited to ${escapeHtml(sourceLimit)} to avoid claiming lossless quality.`;
+        }
         if (state.requested === 'auto') {
             return `Auto is using ${escapeHtml(effectiveLabel)} for this track and connection.`;
         }
@@ -538,6 +545,9 @@ function setupQualityPopover(player) {
     };
     const render = () => {
         const state = player.getQualityState();
+        const selectedProfile = state.options.some((option) => option.id === state.requested)
+            ? state.requested
+            : state.effective;
         const choices = [
             {
                 id: 'auto',
@@ -545,7 +555,7 @@ function setupQualityPopover(player) {
                 description: 'Adjusts to the track and your connection',
                 detail: 'Recommended',
             },
-            ...state.options,
+            ...(state.allOptions || PLAYBACK_QUALITY_OPTIONS),
         ];
         panel.innerHTML = `
             <div class="player-popover-header">
@@ -555,10 +565,11 @@ function setupQualityPopover(player) {
                 <span class="quality-selection-indicator" aria-hidden="true"></span>
                 ${choices
                     .map((option) => {
-                        const isSelected = option.id === state.requested;
+                        const isAvailable = option.id === 'auto' || state.options.some((available) => available.id === option.id);
+                        const isSelected = option.id === selectedProfile;
                         const visual = qualityVisuals[option.id] || qualityVisuals.auto;
                         return `
-                            <label class="quality-radio-option ${isSelected ? 'is-selected' : ''} ${
+                            <label class="quality-radio-option ${isSelected ? 'is-selected' : ''} ${!isAvailable ? 'is-unavailable' : ''} ${
                                 option.id.endsWith('LOSSLESS') ? 'is-lossless' : ''
                             }"
                                 data-quality-profile="${option.id}"
@@ -566,7 +577,7 @@ function setupQualityPopover(player) {
                                 style="--quality-tier-rgb: ${visual.rgb}">
                                 <input type="radio" name="playback-quality" value="${option.id}" ${
                                     isSelected ? 'checked' : ''
-                                } />
+                                } ${!isAvailable ? `disabled aria-label="${escapeHtml(option.label)} unavailable for this source"` : ''} />
                                 <span class="quality-tier-icon" aria-hidden="true">${visual.icon}</span>
                                 <span class="quality-radio-copy">
                                     <strong>${option.label}</strong>

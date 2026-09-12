@@ -8,18 +8,29 @@ function normalizedStem(filename) {
         .toLowerCase();
 }
 
-function isFlac(file) {
-    return file?.type === 'audio/flac' || file?.name?.toLowerCase().endsWith('.flac');
+const AUDIO_EXTENSIONS = new Set(['flac', 'mp3', 'm4a', 'mp4', 'aac', 'ogg', 'oga', 'opus', 'wav', 'wave']);
+const LYRIC_EXTENSIONS = new Set(['lrc', 'irc', 'ttml', 'txt']);
+
+function extension(file) {
+    return String(file?.name || '').split('.').pop()?.toLowerCase() || '';
 }
 
-function isTtml(file) {
-    return file?.name?.toLowerCase().endsWith('.ttml');
+function isAudio(file) {
+    return Boolean(file && (String(file.type || '').toLowerCase().startsWith('audio/') || AUDIO_EXTENSIONS.has(extension(file))));
+}
+
+function isLyrics(file) {
+    return Boolean(file && LYRIC_EXTENSIONS.has(extension(file)));
+}
+
+export function isSupportedSelfHostedUploadFile(file) {
+    return isAudio(file) || isLyrics(file);
 }
 
 export function pairSelfHostedUploadFiles(files) {
     const selectedFiles = Array.isArray(files) ? files : [];
-    const lyricsByStem = new Map(selectedFiles.filter(isTtml).map((file) => [normalizedStem(file.name), file]));
-    return selectedFiles.filter(isFlac).map((audio) => ({
+    const lyricsByStem = new Map(selectedFiles.filter(isLyrics).map((file) => [normalizedStem(file.name), file]));
+    return selectedFiles.filter(isAudio).map((audio) => ({
         audio,
         lyrics: lyricsByStem.get(normalizedStem(audio.name)) || null,
     }));
@@ -36,7 +47,7 @@ export async function uploadSelfHostedFilesBatch(
     }
 
     if (uploadPairs.length === 0) {
-        notify('Choose at least one FLAC file. TTML files are attached to matching FLACs.');
+        notify('Choose at least one supported music file. LRC, IRC, TTML and TXT files attach by matching name.');
         return { attemptedCount: 0, successCount: 0, failureCount: 0, authRequired: false, finalMessage: null };
     }
 
@@ -61,6 +72,10 @@ export async function uploadSelfHostedFilesBatch(
             const metadata = await readTrackMetadata(file, { filename: file.name, siblings: selectedFiles });
             if (lyrics) {
                 metadata.lyrics = await lyrics.text();
+                if (/\.(?:lrc|irc|txt)$/i.test(lyrics.name)) {
+                    const { lyricsToTtml } = await import('./lyrics-format.js');
+                    metadata.lyrics = lyricsToTtml(metadata.lyrics, metadata.duration);
+                }
                 lyricsCount += 1;
             }
             await uploadTrack(metadata, file);
@@ -74,11 +89,11 @@ export async function uploadSelfHostedFilesBatch(
 
     let finalMessage = null;
     if (successCount > 0 && failureCount === 0) {
-        finalMessage = `${successCount} FLAC file${successCount === 1 ? '' : 's'} uploaded${lyricsCount ? ` with ${lyricsCount} TTML file${lyricsCount === 1 ? '' : 's'}` : ''}.`;
+        finalMessage = `${successCount} music file${successCount === 1 ? '' : 's'} uploaded${lyricsCount ? ` with ${lyricsCount} lyrics file${lyricsCount === 1 ? '' : 's'}` : ''}.`;
     } else if (successCount > 0 && failureCount > 0) {
-        finalMessage = `${successCount} FLAC file${successCount === 1 ? '' : 's'} uploaded, ${failureCount} failed.`;
+        finalMessage = `${successCount} music file${successCount === 1 ? '' : 's'} uploaded, ${failureCount} failed.`;
     } else if (failureCount > 0) {
-        finalMessage = `Upload failed. No FLAC files were imported (${failureCount} failed).`;
+        finalMessage = `Upload failed. No music files were imported (${failureCount} failed).`;
     }
 
     return {

@@ -21,7 +21,19 @@ describe('uploadSelfHostedFilesBatch', () => {
         });
 
         expect(uploadTrack.mock.calls[0][0].lyrics).toBe('<tt><body /></tt>');
-        expect(result.finalMessage).toBe('1 FLAC file uploaded with 1 TTML file.');
+        expect(result.finalMessage).toBe('1 music file uploaded with 1 lyrics file.');
+    });
+
+    test('accepts MP3 and converts matching LRC lyrics to TTML', async () => {
+        const audio = new File(['audio'], 'Song.mp3', { type: 'audio/mpeg' });
+        const lyrics = new File(['[00:01.00]Hello'], 'Song.lrc', { type: 'text/plain' });
+        const uploadTrack = vi.fn(async () => ({}));
+        await uploadSelfHostedFilesBatch([audio, lyrics], {
+            authUser: { id: 'user1' },
+            readTrackMetadata: vi.fn(async () => ({ title: 'Song', duration: 10 })),
+            uploadTrack,
+        });
+        expect(uploadTrack.mock.calls[0][0].lyrics).toContain('<p begin="00:00:01.000"');
     });
 
     test('requires authentication before uploading', async () => {
@@ -59,7 +71,7 @@ describe('uploadSelfHostedFilesBatch', () => {
             notify,
         });
 
-        expect(result).toMatchObject({ successCount: 2, failureCount: 0, finalMessage: '2 FLAC files uploaded.' });
+        expect(result).toMatchObject({ successCount: 2, failureCount: 0, finalMessage: '2 music files uploaded.' });
         expect(uploadTrack).toHaveBeenCalledTimes(2);
         expect(notify).toHaveBeenCalledWith('Uploading one.flac…');
         expect(notify).toHaveBeenCalledWith('Uploading two.flac…');
@@ -83,7 +95,7 @@ describe('uploadSelfHostedFilesBatch', () => {
         expect(result).toMatchObject({
             successCount: 0,
             failureCount: 1,
-            finalMessage: 'Upload failed. No FLAC files were imported (1 failed).',
+            finalMessage: 'Upload failed. No music files were imported (1 failed).',
         });
         expect(notify).toHaveBeenCalledWith('Upload failed for broken.flac: PocketBase rejected audio');
     });
@@ -107,7 +119,7 @@ describe('uploadSelfHostedFilesBatch', () => {
         expect(result).toMatchObject({
             successCount: 1,
             failureCount: 1,
-            finalMessage: '1 FLAC file uploaded, 1 failed.',
+            finalMessage: '1 music file uploaded, 1 failed.',
         });
         expect(notify).toHaveBeenCalledWith('Upload failed for bad.flac: timeout');
     });

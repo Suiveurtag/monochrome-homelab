@@ -53,7 +53,7 @@ import { createUploadStorage } from './upload-storage.js';
 import { groupTracksByUploadDay, patchTrackMetadata, uploadDayLabel } from './upload-gallery.js';
 import { spotifyImportManager } from './spotify-import-manager.js';
 import { spotifyLikesImporter } from './spotify-likes-importer.js';
-import { uploadSelfHostedFilesBatch } from './selfhost-upload-batch.js';
+import { isSupportedSelfHostedUploadFile, uploadSelfHostedFilesBatch } from './selfhost-upload-batch.js';
 import { registerSW } from 'virtual:pwa-register';
 import { openEditProfile } from './profile.js';
 import { ThemeStore } from './themeStore.js';
@@ -462,12 +462,9 @@ async function initializeSelfHostedUploads() {
         })
     );
     localDropzone?.addEventListener('drop', (event) => {
-        const files = Array.from(event.dataTransfer?.files || []).filter((file) => {
-            const name = file.name.toLowerCase();
-            return file.type === 'audio/flac' || name.endsWith('.flac') || name.endsWith('.ttml');
-        });
+        const files = Array.from(event.dataTransfer?.files || []).filter(isSupportedSelfHostedUploadFile);
         if (!files.length) {
-            showNotification('Drop one or more FLAC files, with optional matching TTML files.');
+            showNotification('Drop one or more supported music files, with optional matching lyrics files.');
             return;
         }
         const transfer = new DataTransfer();

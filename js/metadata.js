@@ -7,6 +7,7 @@ import {
     getFullArtistArray,
 } from './utils.js';
 import { addMetadataWithTagLib, getMetadataWithTagLib } from './taglib.ts';
+import { readMp3Metadata } from './metadata.mp3.js';
 import { LyricsManager } from './lyrics.js';
 import { Mp4Stik } from './taglib.types.ts';
 import { modernSettings } from './ModernSettings.js';
@@ -156,12 +157,17 @@ export async function readTrackMetadata(file, { filename = file?.name || 'Unknow
         isrc: null,
         copyright: null,
         explicit: false,
+        audioCodec: null,
+        audioBitrate: null,
         isLocal: true,
         file: file,
         id: `local-${filename}-${file.lastModified}`,
     };
 
     try {
+        if (/\.mp3$/i.test(filename) || file?.type === 'audio/mpeg') {
+            await readMp3Metadata(file, metadata);
+        }
         const data = await getMetadataWithTagLib(file, filename, true);
 
         if (data) {
@@ -195,6 +201,7 @@ export async function readTrackMetadata(file, { filename = file?.name || 'Unknow
             metadata.copyright = data.copyright || metadata.copyright;
             metadata.explicit = !!data.explicit;
         }
+        if (/\.flac$/i.test(filename) || file?.type === 'audio/flac') metadata.audioCodec = 'FLAC';
     } catch (e) {
         console.warn('Error reading metadata for', filename, e);
     }

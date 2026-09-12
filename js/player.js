@@ -34,6 +34,7 @@ import { shuffleTracks } from './recommendation-settings.js';
 import {
     getApiQuality,
     getAvailableQualityOptions,
+    PLAYBACK_QUALITY_OPTIONS,
     getNextLowerQuality,
     getQualityOption,
     getTrackQualityAvailability,
@@ -667,6 +668,7 @@ export class Player {
             fallbackReason: this.qualityFallbackReason,
             availability: getTrackQualityAvailability(this.currentTrack, variants),
             options: getAvailableQualityOptions(this.currentTrack, variants),
+            allOptions: PLAYBACK_QUALITY_OPTIONS,
         };
     }
 
