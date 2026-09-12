@@ -25,6 +25,7 @@ import ICON_INFINITY from '!lucide/infinity.svg?svg&icon';
 import ICON_LIST_MUSIC from '!lucide/list-music.svg?svg&icon';
 import ICON_MAXIMIZE from '!lucide/maximize-2.svg?svg&icon';
 import ICON_MONITOR_UP from '!lucide/monitor-up.svg?svg&icon';
+import FULLSCREEN_EXIT_SVG from '../assets/fullscreen-exit-svgrepo-com.svg?raw';
 import ICON_PAUSE from '!lucide/pause.svg?svg&icon';
 import ICON_PLAY from '!lucide/play.svg?svg&icon';
 import ICON_REPEAT from '!lucide/repeat.svg?svg&icon';
@@ -45,6 +46,9 @@ const TRACK_FADE_OUT_DURATION = 180;
 const MISSING_BIOGRAPHY = 'No biography is available for this artist yet.';
 const QUEUE_REPEAT_ALL = 1;
 
+const ICON_FULLSCREEN_EXIT = (size = 20) =>
+    FULLSCREEN_EXIT_SVG.replace('width="800px" height="800px"', `width="${size}" height="${size}"`);
+
 function icon(name, size = 20) {
     const icons = {
         'chevron-right': ICON_CHEVRON_RIGHT,
@@ -57,6 +61,7 @@ function icon(name, size = 20) {
         'list-music': ICON_LIST_MUSIC,
         'maximize-2': ICON_MAXIMIZE,
         'monitor-up': ICON_MONITOR_UP,
+        'fullscreen-exit': ICON_FULLSCREEN_EXIT,
         pause: ICON_PAUSE,
         play: ICON_PLAY,
         repeat: ICON_REPEAT,
@@ -622,7 +627,7 @@ export class NowPlayingPanel {
                     <header>
                         <h3 id="now-playing-panel-lyrics-title">Lyrics</h3>
                         <div class="now-playing-panel-lyrics-actions">
-                            <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-fullscreen" aria-label="Open fullscreen lyrics">${icon('monitor-up')}</button>
+                            <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-fullscreen" aria-label="Open fullscreen lyrics">${icon('fullscreen-exit')}</button>
                             <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-expand" aria-label="Expand lyrics in panel">${icon('maximize-2')}</button>
                             <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-collapse" aria-label="Collapse lyrics preview">${icon('chevron-up')}</button>
                         </div>
