@@ -125,7 +125,7 @@ const setFullscreenUIToggleIcon = (button, visualizerOnlyMode) => {
 const isMobileFullscreenViewport = () => window.matchMedia('(max-width: 768px)').matches;
 
 const FULLSCREEN_BACKGROUND_MODES = [
-    { key: 'solid', label: 'Couleur unie', icon: SVG_PALETTE },
+    { key: 'solid', label: 'Solid', icon: SVG_PALETTE },
     { key: 'light', label: 'Light', icon: SVG_SUN },
     { key: 'spicy', label: 'Spicy', icon: SVG_SPICY },
     { key: 'fluid', label: 'Fluid', icon: SVG_FLUID },
@@ -1653,8 +1653,8 @@ export class UIRenderer {
         const iconSize = current.key === 'spicy' ? 25 : current.key === 'fluid' ? 22 : 20;
         button.style.display = isVideoTrack ? 'none' : 'flex';
         button.innerHTML = current.icon(iconSize);
-        button.title = `Background: ${current.label} · Suivant : ${next.label}`;
-        button.setAttribute('aria-label', `Changer le background du fullscreen. Actuel : ${current.label}`);
+        button.title = `Background: ${current.label} · Next: ${next.label}`;
+        button.setAttribute('aria-label', `Change fullscreen background. Current: ${current.label}`);
         button.dataset.backgroundMode = current.key;
         button.dataset.backgroundLabel = current.label;
     }
