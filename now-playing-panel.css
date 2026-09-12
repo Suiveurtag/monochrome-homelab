@@ -1113,6 +1113,19 @@ body.now-playing-panel-resizing {
     transform: scale(0.985);
 }
 
+.now-playing-panel.lyrics-expanded .now-playing-panel-lyrics > header,
+.now-playing-panel.lyrics-expanded .now-playing-panel-lyrics-host {
+    transition:
+        opacity 180ms ease,
+        transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.now-playing-panel.lyrics-transitioning.lyrics-expanded .now-playing-panel-lyrics > header,
+.now-playing-panel.lyrics-transitioning.lyrics-expanded .now-playing-panel-lyrics-host {
+    opacity: 0;
+    transform: translateY(8px);
+}
+
 @media (prefers-reduced-motion: reduce) {
     .now-playing-panel.lyrics-transitioning .now-playing-panel-body > :not(.now-playing-panel-lyrics),
     .now-playing-panel.lyrics-transitioning .now-playing-panel-lyrics {
