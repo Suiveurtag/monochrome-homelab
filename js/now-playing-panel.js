@@ -627,9 +627,9 @@ export class NowPlayingPanel {
                     <header>
                         <h3 id="now-playing-panel-lyrics-title">Lyrics</h3>
                         <div class="now-playing-panel-lyrics-actions">
-                            <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-fullscreen" aria-label="Open fullscreen lyrics">${icon('fullscreen-exit')}</button>
+                            <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-fullscreen" aria-label="Open fullscreen lyrics">${icon('monitor-up')}</button>
                             <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-expand" aria-label="Expand lyrics in panel">${icon('maximize-2')}</button>
-                            <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-collapse" aria-label="Collapse lyrics preview">${icon('chevron-up')}</button>
+                            <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-collapse" aria-label="Collapse lyrics preview">${this.expandedLyrics ? icon('fullscreen-exit') : icon('chevron-up')}</button>
                         </div>
                     </header>
                     <div class="now-playing-panel-lyrics-host"></div>
