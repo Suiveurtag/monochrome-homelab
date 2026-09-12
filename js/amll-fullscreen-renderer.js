@@ -39,6 +39,7 @@ export async function mountAmllLyrics({
 
     const background = usesSharedNowPanelBackground ? null : BackgroundRender.new(MeshGradientRenderer);
     const lyricPlayer = new DomLyricPlayer();
+    if (mode === 'now-panel') lyricPlayer.setAlignPosition(0.5);
     const lyricElement = lyricPlayer.getElement();
     lyricElement.classList.add('amll-lyrics-content', `amll-${mode}-lyrics`);
     host.append(lyricElement);
