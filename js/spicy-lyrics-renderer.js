@@ -126,6 +126,8 @@ const SHADOW_BRIDGE_CSS = `
 }
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line {
     column-gap: 0.32ch;
+    align-self: stretch;
+    width: 100%;
 }
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line .word-group {
     column-gap: 0;
