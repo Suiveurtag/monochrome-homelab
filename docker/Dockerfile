@@ -23,8 +23,10 @@ RUN bun install
 # Copy the rest of the project
 COPY . .
 
-# Build the project
-RUN bun run build
+# Build only the assets needed by the image. The package build script also
+# opens vite-bundle-visualizer, which is useful interactively but can keep a
+# non-interactive Docker build alive after Vite has finished.
+RUN ./node_modules/.bin/vite build
 
 # Serve with nginx
 FROM nginx:1.28.2-alpine
