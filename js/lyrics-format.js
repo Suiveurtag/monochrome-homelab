@@ -16,6 +16,108 @@ function formatTtmlTime(milliseconds) {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
 }
 
+function parseTtmlTime(value) {
+    if (value == null || value === '') return null;
+    const source = String(value).trim();
+    if (/^-?\d+(?:\.\d+)?ms$/i.test(source)) return Number.parseFloat(source);
+    if (/^-?\d+(?:\.\d+)?s$/i.test(source)) return Number.parseFloat(source) * 1000;
+    const parts = source.split(':').map(Number);
+    if (parts.some(Number.isNaN)) return null;
+    if (parts.length === 3) return (parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000;
+    if (parts.length === 2) return (parts[0] * 60 + parts[1]) * 1000;
+    return Number(source) || null;
+}
+
+function splitLyricWords(text) {
+    const normalized = String(text || '').replace(/\s+/gu, ' ').trim();
+    return normalized.match(/\s*\S+/gu) || [];
+}
+
+function splitVocalSegments(text) {
+    const segments = [];
+    const pattern = /\([^()]+\)/gu;
+    let cursor = 0;
+    for (const match of String(text || '').matchAll(pattern)) {
+        if (match.index > cursor) segments.push({ text: text.slice(cursor, match.index), background: false });
+        segments.push({ text: match[0], background: true });
+        cursor = match.index + match[0].length;
+    }
+    if (cursor < String(text || '').length) segments.push({ text: text.slice(cursor), background: false });
+    return segments.length ? segments : [{ text: String(text || ''), background: false }];
+}
+
+/**
+ * Converts valid line-timed TTML into word-timed TTML. Sources such as Apple
+ * Music's `itunes:timing="Line"` exports often contain no child spans at all.
+ * Their line timing is retained; word timings are an interpolation because
+ * the source does not contain the original per-word timestamps.
+ */
+export function normalizeTtmlWordTiming(content) {
+    if (!isTtml(content) || typeof DOMParser === 'undefined' || typeof XMLSerializer === 'undefined') return content;
+
+    const document = new DOMParser().parseFromString(content.replace(/^\uFEFF/, '').trim(), 'application/xml');
+    const paragraphs = Array.from(document.getElementsByTagNameNS('*', 'p'));
+    let converted = false;
+
+    paragraphs.forEach((paragraph, index) => {
+        const timedSpans = Array.from(paragraph.getElementsByTagNameNS('*', 'span')).filter(
+            (span) => span.hasAttribute('begin') || span.hasAttribute('end') || span.hasAttribute('dur'),
+        );
+        if (timedSpans.length) return;
+
+        const segments = splitVocalSegments(paragraph.textContent);
+        const words = segments.flatMap((segment) =>
+            splitLyricWords(segment.text).map((text) => ({ text, background: segment.background })),
+        );
+        if (!words.length) return;
+        const start = parseTtmlTime(paragraph.getAttribute('begin')) ?? 0;
+        const nextStart = parseTtmlTime(paragraphs[index + 1]?.getAttribute('begin'));
+        const end = Math.max(
+            start + 1,
+            parseTtmlTime(paragraph.getAttribute('end')) ?? nextStart ?? start + 4000,
+        );
+        const totalWeight = words.reduce((sum, word) => sum + Math.max(1, word.text.trim().length), 0);
+        let cursor = start;
+
+        paragraph.replaceChildren();
+        let currentBackground = null;
+        words.forEach((word, wordIndex) => {
+            const span = document.createElementNS('http://www.w3.org/ns/ttml', 'span');
+            const weight = Math.max(1, word.text.trim().length) / totalWeight;
+            const wordEnd = wordIndex === words.length - 1 ? end : cursor + (end - start) * weight;
+            span.setAttribute('begin', formatTtmlTime(cursor));
+            span.setAttribute('end', formatTtmlTime(Math.max(cursor + 1, wordEnd)));
+            span.textContent = word.text;
+            if (word.background) {
+                if (!currentBackground) {
+                    currentBackground = document.createElementNS('http://www.w3.org/ns/ttml', 'span');
+                    currentBackground.setAttributeNS(
+                        'http://www.w3.org/ns/ttml#metadata',
+                        'ttm:role',
+                        'x-bg',
+                    );
+                    paragraph.appendChild(currentBackground);
+                }
+                currentBackground.appendChild(span);
+            } else {
+                currentBackground = null;
+                paragraph.appendChild(span);
+            }
+            cursor = wordEnd;
+        });
+        converted = true;
+    });
+
+    if (!converted) return content.replace(/^\uFEFF/, '').trim();
+    const root = document.documentElement;
+    const timingAttribute = Array.from(root.attributes).find(
+        (attribute) => attribute.localName === 'timing' || attribute.name === 'timing',
+    );
+    if (timingAttribute) timingAttribute.value = 'Word';
+    else root.setAttributeNS('http://music.apple.com/lyric-ttml-internal', 'itunes:timing', 'Word');
+    return new XMLSerializer().serializeToString(document);
+}
+
 export function parseLrc(content) {
     if (typeof content !== 'string') return [];
     const offset = Number(content.match(/^\[offset:([+-]?\d+)\]\s*$/im)?.[1] || 0);
@@ -109,6 +211,6 @@ export function isTtml(content) {
 }
 
 export function lyricsToTtml(content, durationSeconds = 0) {
-    if (isTtml(content)) return content.replace(/^\uFEFF/, '').trim();
+    if (isTtml(content)) return normalizeTtmlWordTiming(content);
     return lrcToTtml(content, durationSeconds);
 }

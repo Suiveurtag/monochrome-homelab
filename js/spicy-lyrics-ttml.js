@@ -27,6 +27,13 @@ function getAttributeByLocalName(element, localName) {
     return null;
 }
 
+function getLaneAttributes(element) {
+    return [element, ...Array.from(element.getElementsByTagNameNS('*', 'span'))]
+        .flatMap((node) => [getAttributeByLocalName(node, 'agent'), getAttributeByLocalName(node, 'role'), getAttributeByLocalName(node, 'align')])
+        .filter(Boolean)
+        .join(' ');
+}
+
 function elementTiming(element, fallbackStart = 0, fallbackEnd = fallbackStart + 4000) {
     const start = parseTtmlTime(element.getAttribute('begin')) ?? fallbackStart;
     const duration = parseTtmlTime(element.getAttribute('dur'));
@@ -40,6 +47,33 @@ function lineTimedWords(text, start, end, background) {
         .replace(/\s+/gu, ' ');
     if (!normalizedText) return [];
     return [{ text: normalizedText, spaceBefore: false, start, end, background }];
+}
+
+function isBackgroundElement(element) {
+    return /(?:^|\s)x-bg(?:\s|$)/i.test(getAttributeByLocalName(element, 'role') || '');
+}
+
+function parseWordElements(parent, lineStart, lineEnd, background = false) {
+    const childSpans = Array.from(parent.childNodes).filter(
+        (child) => child.nodeType === 1 && child.localName === 'span',
+    );
+    const regularSpans = background ? childSpans : childSpans.filter((span) => !isBackgroundElement(span));
+    const timedSpans = regularSpans.filter(
+        (span) => span.hasAttribute('begin') || span.hasAttribute('end') || span.hasAttribute('dur'),
+    );
+    const sourceSpans = timedSpans.length ? timedSpans : regularSpans;
+    if (!sourceSpans.length) return lineTimedWords(parent.textContent || '', lineStart, lineEnd, background);
+
+    return sourceSpans.map((span) => {
+        const wordTiming = elementTiming(span, lineStart, lineEnd);
+        return {
+            text: span.textContent || '',
+            spaceBefore: /^\s/u.test(span.textContent || ''),
+            start: wordTiming.start,
+            end: wordTiming.end,
+            background,
+        };
+    });
 }
 
 export function parseSpicyTtml(ttml) {
@@ -59,27 +93,14 @@ export function parseSpicyTtml(ttml) {
             const timing = elementTiming(paragraph, paragraphStart, nextStart ?? paragraphStart + 4000);
             const agent = getAttributeByLocalName(paragraph, 'agent') || '';
             const role = getAttributeByLocalName(paragraph, 'role') || '';
-            const background = /(?:^|\s)x-bg(?:\s|$)/i.test(role);
-            const spans = Array.from(paragraph.childNodes).filter(
-                (child) => child.nodeType === 1 && child.localName === 'span'
-            );
-            const timedSpans = spans.filter(
-                (span) => span.hasAttribute('begin') || span.hasAttribute('end') || span.hasAttribute('dur')
-            );
-            const syncType = timedSpans.length ? 'Syllable' : 'Line';
-            const sourceSpans = timedSpans.length ? timedSpans : spans;
-            const words = sourceSpans.length
-                ? sourceSpans.map((span) => {
-                      const wordTiming = elementTiming(span, timing.start, timing.end);
-                      return {
-                          text: span.textContent || '',
-                          spaceBefore: /^\s/u.test(span.textContent || ''),
-                          start: wordTiming.start,
-                          end: wordTiming.end,
-                          background,
-                      };
-                  })
-                : lineTimedWords(paragraph.textContent || '', timing.start, timing.end, background);
+            const laneAttributes = getLaneAttributes(paragraph);
+            const rightAligned = /^right$/i.test(getAttributeByLocalName(paragraph, 'align') || '');
+            const background = isBackgroundElement(paragraph);
+            const backgroundContainers = background
+                ? []
+                : Array.from(paragraph.getElementsByTagNameNS('*', 'span')).filter(isBackgroundElement);
+            const words = parseWordElements(paragraph, timing.start, timing.end, background);
+            const syncType = words.length > 1 ? 'Syllable' : 'Line';
 
             words.forEach((word, wordIndex) => {
                 const nextWord = words[wordIndex + 1];
@@ -96,8 +117,23 @@ export function parseSpicyTtml(ttml) {
                 // Apple/Spotify duet exports can expose the second vocal lane
                 // as x-translation even when the text is not a translation.
                 // Spicy Lyrics maps that lane to OppositeAligned.
-                opposite: /(?:v2|voice2|secondary|opposite|x-translation)/i.test(`${agent} ${role}`),
+                opposite:
+                    rightAligned ||
+                    /(?:v2|voice2|secondary|opposite|x-translation)/i.test(`${agent} ${role} ${laneAttributes}`),
                 background,
+                backgrounds: backgroundContainers.map((container) => {
+                    const containerTiming = elementTiming(container, timing.start, timing.end);
+                    return {
+                        start: containerTiming.start,
+                        end: containerTiming.end,
+                        text: container.textContent || '',
+                        words: parseWordElements(container, containerTiming.start, containerTiming.end, true),
+                        background: true,
+                        opposite: false,
+                        rtl: /[\u0590-\u08ff]/.test(container.textContent || ''),
+                        syncType: 'Syllable',
+                    };
+                }),
                 rtl: /[\u0590-\u08ff]/.test(text),
             };
         })
@@ -105,7 +141,13 @@ export function parseSpicyTtml(ttml) {
 
     const leadLines = parsed.filter((line) => !line.background);
     const backgroundLines = parsed.filter((line) => line.background);
-    leadLines.forEach((line) => (line.backgrounds = []));
+    leadLines.forEach((line) => {
+        line.backgrounds ??= [];
+        line.backgrounds.forEach((background) => {
+            background.opposite = line.opposite;
+            line.end = Math.max(line.end, background.end);
+        });
+    });
 
     backgroundLines.forEach((background) => {
         const owner = leadLines

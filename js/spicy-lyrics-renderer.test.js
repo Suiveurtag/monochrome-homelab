@@ -4,7 +4,7 @@ import { parseSpicyTtml, parseTtmlTime, SpicyLyricsElement, SpicySpring } from '
 afterEach(() => document.body.replaceChildren());
 
 const WORD_SYNC_TTML = `<?xml version="1.0" encoding="UTF-8"?>
-<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata" xmlns:itunes="http://music.apple.com/lyric-ttml-internal">
   <body><div>
     <p begin="00:00:01.000" end="00:00:03.000">
       <span begin="00:00:01.000" end="00:00:01.500">Spicy</span>
@@ -14,7 +14,7 @@ const WORD_SYNC_TTML = `<?xml version="1.0" encoding="UTF-8"?>
 </tt>`;
 
 const LINE_SYNC_TTML = `<?xml version="1.0" encoding="UTF-8"?>
-<tt xmlns="http://www.w3.org/ns/ttml" itunes:timing="Line">
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal" itunes:timing="Line">
   <body><div><p begin="00:00:09.649" end="00:00:12.174">Feel  it  come</p></div></body>
 </tt>`;
 
@@ -79,6 +79,22 @@ describe('Spicy Lyrics renderer', () => {
         expect(line.backgrounds[0].words.every((word) => word.background)).toBe(true);
     });
 
+    test('keeps an inline x-bg lane in Spicy Lyrics', () => {
+        const inlineBackgroundTtml = `<?xml version="1.0" encoding="UTF-8"?>
+        <tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
+          <body><div><p begin="00:00:01.000" end="00:00:03.000">
+            <span begin="00:00:01.000" end="00:00:02.000">Main</span>
+            <span ttm:role="x-bg"><span begin="00:00:01.500" end="00:00:02.500">(backing)</span></span>
+          </p></div></body>
+        </tt>`;
+
+        const [line] = parseSpicyTtml(inlineBackgroundTtml);
+        expect(line.text).toBe('Main');
+        expect(line.backgrounds).toHaveLength(1);
+        expect(line.backgrounds[0].text).toBe('(backing)');
+        expect(line.backgrounds[0].words[0].background).toBe(true);
+    });
+
     test('maps Apple x-translation vocal lanes to Spicy duet alignment', () => {
         const duetTtml = WORD_SYNC_TTML.replace(
             '<p begin="00:00:01.000"',
@@ -86,6 +102,16 @@ describe('Spicy Lyrics renderer', () => {
         );
 
         const [line] = parseSpicyTtml(duetTtml);
+        expect(line.opposite).toBe(true);
+    });
+
+    test('maps Apple right-aligned lanes to Spicy duet alignment', () => {
+        const rightAlignedTtml = WORD_SYNC_TTML.replace(
+            '<p begin="00:00:01.000"',
+            '<p itunes:align="right" begin="00:00:01.000"',
+        );
+
+        const [line] = parseSpicyTtml(rightAlignedTtml);
         expect(line.opposite).toBe(true);
     });
 

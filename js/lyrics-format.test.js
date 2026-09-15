@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isTtml, lrcToTtml, lyricsToTtml, parseLrc, plainLyricsToTtml } from './lyrics-format.js';
+import { isTtml, lrcToTtml, lyricsToTtml, normalizeTtmlWordTiming, parseLrc, plainLyricsToTtml } from './lyrics-format.js';
 
 describe('LRC lyrics formatting', () => {
     it('parses centisecond and millisecond timestamps', () => {
@@ -23,12 +23,36 @@ describe('LRC lyrics formatting', () => {
         expect(ttml).toContain('begin="00:00:03.000" end="00:00:05.000"');
     });
 
-    it('recognizes and preserves uploaded TTML', () => {
+    it('recognizes uploaded TTML and preserves existing word timing', () => {
         const ttml =
             '<?xml version="1.0"?><tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="1s" end="2s"><span begin="1s" end="2s">Line</span></p></div></body></tt>';
         expect(isTtml(ttml)).toBe(true);
-        expect(lyricsToTtml(ttml)).toBe(ttml);
+        expect(lyricsToTtml(ttml)).toContain('<span begin="1s" end="2s">Line</span>');
         expect(isTtml('<tt><body></body></tt>')).toBe(false);
+    });
+
+    it('adds interpolated word timings to line-timed TTML', () => {
+        const input =
+            '<?xml version="1.0"?><tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal" itunes:timing="Line"><body><div><p begin="1s" end="3s">Why\'d you wanna go</p></div></body></tt>';
+        const normalized = normalizeTtmlWordTiming(input);
+        const document = new DOMParser().parseFromString(normalized, 'application/xml');
+        const line = document.getElementsByTagNameNS('http://www.w3.org/ns/ttml', 'p')[0];
+        expect(document.documentElement.getAttribute('itunes:timing')).toBe('Word');
+        expect(line.getElementsByTagNameNS('http://www.w3.org/ns/ttml', 'span')).toHaveLength(4);
+        expect(line.textContent).toBe("Why'd you wanna go");
+        expect(line.querySelector('span')?.getAttribute('begin')).toBe('00:00:01.000');
+        expect(line.lastElementChild?.getAttribute('end')).toBe('00:00:03.000');
+    });
+
+    it('turns parenthesized vocals into an AMLL/Spicy background lane', () => {
+        const input =
+            '<?xml version="1.0"?><tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata"><body><div><p begin="1s" end="3s">Main line (background voice)</p></div></body></tt>';
+        const normalized = normalizeTtmlWordTiming(input);
+        const document = new DOMParser().parseFromString(normalized, 'application/xml');
+        const background = document.querySelector('[*|role="x-bg"]');
+        expect(background).toBeTruthy();
+        expect(background?.textContent).toBe('(background voice)');
+        expect(background?.getElementsByTagNameNS('http://www.w3.org/ns/ttml', 'span')).toHaveLength(2);
     });
 
     it('turns plain fallback lyrics into timed TTML', () => {

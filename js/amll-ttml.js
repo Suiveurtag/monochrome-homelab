@@ -22,6 +22,25 @@ function getLineRange(line) {
     };
 }
 
+function getAttributeByLocalName(element, name) {
+    return (
+        element.getAttributeNS(TTM_NAMESPACE, name) ||
+        element.getAttribute(name) ||
+        Array.from(element.attributes || []).find((attribute) => attribute.localName === name)?.value ||
+        null
+    );
+}
+
+function isDuetLine(line) {
+    const nodes = [line, ...Array.from(line.getElementsByTagNameNS('*', 'span'))];
+    return nodes.some((node) => {
+        const role = getAttributeByLocalName(node, 'role') || '';
+        const agent = getAttributeByLocalName(node, 'agent') || '';
+        const align = getAttributeByLocalName(node, 'align') || '';
+        return /(?:x-translation|v2|voice2|secondary|opposite)/i.test(`${role} ${agent}`) || /^right$/i.test(align);
+    });
+}
+
 function findBackgroundLead(backgroundLine, leadLines) {
     const background = getLineRange(backgroundLine);
     let bestLead = null;
@@ -44,9 +63,9 @@ export function prepareTtmlForAmll(ttml) {
     if (document.getElementsByTagName('parsererror').length) throw new Error('Invalid TTML XML');
 
     const lines = Array.from(document.getElementsByTagNameNS(TTML_NAMESPACE, 'p'));
-    const backgroundLines = lines.filter((line) => line.getAttributeNS(TTM_NAMESPACE, 'role') === 'x-bg');
+    const backgroundLines = lines.filter((line) => getAttributeByLocalName(line, 'role') === 'x-bg');
     const leadLines = lines.filter((line) => !backgroundLines.includes(line));
-    const duetLines = leadLines.filter((line) => line.getAttributeNS(TTM_NAMESPACE, 'role') === 'x-translation');
+    const duetLines = leadLines.filter(isDuetLine);
 
     // Spicy Lyrics marks the second vocal lane as x-translation. AMLL uses
     // ttm:agent to identify duet lines and applies its native right alignment.
@@ -96,8 +115,7 @@ export function prepareTtmlForAmll(ttml) {
             line.setAttributeNS(ITUNES_NAMESPACE, 'itunes:key', `line-${index + 1}`);
         }
         if (!line.hasAttributeNS(TTM_NAMESPACE, 'agent')) {
-            const role = line.getAttributeNS(TTM_NAMESPACE, 'role');
-            line.setAttributeNS(TTM_NAMESPACE, 'ttm:agent', role === 'x-translation' ? DUET_AGENT : DEFAULT_AGENT);
+            line.setAttributeNS(TTM_NAMESPACE, 'ttm:agent', isDuetLine(line) ? DUET_AGENT : DEFAULT_AGENT);
         }
     });
 
