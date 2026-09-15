@@ -113,6 +113,14 @@ describe('Spicy Lyrics renderer', () => {
 
         const [line] = parseSpicyTtml(rightAlignedTtml);
         expect(line.opposite).toBe(true);
+
+        const element = new SpicyLyricsElement();
+        element.ttml = rightAlignedTtml;
+        document.body.appendChild(element);
+        expect(element._lineStates[0].element.classList.contains('OppositeAligned')).toBe(true);
+        expect(element.shadowRoot.querySelector('.SpicyLyricsScrollContainer')?.classList.contains('HasDuetLines')).toBe(
+            true,
+        );
     });
 
     test('renders upstream word boundaries and emits the existing line-click seek contract', () => {
