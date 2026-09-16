@@ -79,6 +79,11 @@ export class SidePanelManager {
     }
 
     open(view, title, renderControlsCallback, renderContentCallback, forceOpen = false) {
+        // Queue is integrated into Now Playing. The former generic queue panel
+        // must never be mounted, even if an old event or hot-reloaded module
+        // tries to use the legacy route.
+        if (view === 'queue') return;
+
         // If clicking the same view that is already open, close it
         if (!forceOpen && this.currentView === view && this.panel.classList.contains('active')) {
             this.close();

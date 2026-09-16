@@ -7715,6 +7715,12 @@ input:checked + .slider::before {
     animation: fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Queue is owned by the Now Playing panel. Keep the retired side-panel route
+   from resurfacing during hot reloads or from stale saved UI state. */
+#side-panel[data-view='queue'] {
+    display: none !important;
+}
+
 #fullscreen-cover-overlay {
     position: fixed;
     inset: 0;

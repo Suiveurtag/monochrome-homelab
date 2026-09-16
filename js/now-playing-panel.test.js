@@ -221,15 +221,13 @@ describe('Now Playing panel interactions', () => {
         panel.destroy();
     });
 
-    test('hands Open queue to the existing independent queue control', async () => {
+    test('opens the integrated queue directly from Now Playing', async () => {
         const { NowPlayingPanel } = await import('./now-playing-panel.js');
         const panel = new NowPlayingPanel(dependencies());
         await waitForPanel(panel);
-        const queueButton = document.getElementById('queue-btn');
-        const click = vi.fn();
-        queueButton.addEventListener('click', click);
         panel.root.querySelector('.now-playing-panel-open-queue').click();
-        expect(click).toHaveBeenCalledOnce();
+        expect(panel.activeView).toBe('queue');
+        expect(panel.root.classList.contains('is-queue-view')).toBe(true);
         expect(panel.isOpen).toBe(true);
         panel.destroy();
     });

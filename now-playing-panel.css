@@ -1388,54 +1388,6 @@ body.now-playing-panel-resizing {
     white-space: nowrap;
 }
 
-.queue-back-button,
-.queue-header-history {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 34px;
-    border: 1px solid rgb(255 255 255 / 0.1);
-    border-radius: 999px;
-    background: rgb(255 255 255 / 0.075);
-    color: rgb(255 255 255 / 0.82);
-    cursor: pointer;
-    transition:
-        background-color 180ms ease,
-        color 180ms ease,
-        transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
-        border-color 180ms ease;
-}
-
-.queue-back-button {
-    width: 34px;
-    padding: 0;
-    transform: rotate(180deg);
-}
-
-.queue-header-history {
-    gap: 6px;
-    padding: 0 11px;
-    font-size: 0.76rem;
-    font-weight: 680;
-    white-space: nowrap;
-}
-
-.queue-back-button:hover,
-.queue-back-button:focus-visible,
-.queue-header-history:hover,
-.queue-header-history:focus-visible {
-    border-color: rgb(255 255 255 / 0.24);
-    background: rgb(255 255 255 / 0.14);
-    color: #fff;
-    outline: none;
-    transform: translateY(-1px) rotate(180deg);
-}
-
-.queue-header-history:hover,
-.queue-header-history:focus-visible {
-    transform: translateY(-1px);
-}
-
 .queue-panel-body {
     display: grid;
     gap: 14px;
@@ -2072,8 +2024,6 @@ body.now-playing-panel-resizing {
     .queue-transition-chevron,
     .queue-track-row,
     .queue-track-remove,
-    .queue-back-button,
-    .queue-header-history,
     .queue-loop-button,
     .queue-inline-toggle {
         animation: none;
@@ -2105,15 +2055,6 @@ body.queue-panel-open {
     visibility: visible;
     transform: translateY(0);
     container: queuepanel / inline-size;
-}
-
-.now-playing-panel.is-queue-view.is-queue-opening {
-    animation: queue-panel-rise 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.now-playing-panel.is-queue-view.is-queue-closing {
-    animation: queue-panel-dismiss 400ms cubic-bezier(0.55, 0, 1, 0.45) both;
-    pointer-events: none;
 }
 
 .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg,
@@ -2175,37 +2116,6 @@ body.queue-panel-open {
     font-size: var(--text-lg);
     font-weight: 760;
     letter-spacing: -0.025em;
-}
-
-.now-playing-panel.is-queue-view .queue-back-button,
-.now-playing-panel.is-queue-view .queue-header-history {
-    min-height: 34px;
-    border: 1px solid rgb(255 255 255 / 0.12);
-    background: #15151d;
-    color: rgb(255 255 255 / 0.84);
-    box-shadow: 0 7px 18px -14px rgb(0 0 0 / 0.95);
-}
-
-.now-playing-panel.is-queue-view .queue-back-button {
-    width: 34px;
-    transform: rotate(180deg);
-}
-
-.now-playing-panel.is-queue-view .queue-header-history {
-    padding: 0 11px;
-    font-size: var(--text-xs);
-}
-
-.now-playing-panel.is-queue-view .queue-back-button:hover,
-.now-playing-panel.is-queue-view .queue-back-button:focus-visible {
-    background: #20202a;
-    transform: translateY(-1px) rotate(180deg);
-}
-
-.now-playing-panel.is-queue-view .queue-header-history:hover,
-.now-playing-panel.is-queue-view .queue-header-history:focus-visible {
-    background: #20202a;
-    transform: translateY(-1px);
 }
 
 .now-playing-panel.is-queue-view .queue-panel-body {
@@ -2661,114 +2571,6 @@ body.queue-panel-open {
     font-size: 0.61rem;
 }
 
-.now-playing-panel.is-queue-view .queue-player-dock {
-    position: fixed;
-    z-index: 12;
-    right: max(12px, calc((100vw - 596px) / 2));
-    bottom: max(12px, env(safe-area-inset-bottom));
-    left: max(12px, calc((100vw - 596px) / 2));
-    display: grid;
-    grid-template-columns: 44px minmax(0, 1fr) auto;
-    align-items: center;
-    min-height: 60px;
-    gap: 9px;
-    padding: 7px 10px;
-    border: 1px solid rgb(255 255 255 / 0.15);
-    border-radius: var(--radius-xl);
-    background: #14141d;
-    box-shadow: 0 18px 45px -20px rgb(0 0 0 / 0.95);
-    animation: queue-dock-rise 620ms 220ms cubic-bezier(0.16, 1.18, 0.3, 1) both;
-}
-
-.now-playing-panel.is-queue-view .queue-player-dock > img {
-    width: 44px;
-    height: 44px;
-    border-radius: var(--radius-md);
-    object-fit: cover;
-}
-
-.now-playing-panel.is-queue-view .queue-player-dock > div:not(.queue-player-controls) {
-    display: grid;
-    min-width: 0;
-    gap: 2px;
-}
-
-.now-playing-panel.is-queue-view .queue-player-dock strong,
-.now-playing-panel.is-queue-view .queue-player-dock small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.now-playing-panel.is-queue-view .queue-player-dock strong {
-    font-size: 0.72rem;
-}
-
-.now-playing-panel.is-queue-view .queue-player-dock small {
-    color: rgb(255 255 255 / 0.53);
-    font-size: 0.6rem;
-}
-
-.now-playing-panel.is-queue-view .queue-player-controls {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.now-playing-panel.is-queue-view .queue-player-controls button {
-    display: grid;
-    width: 30px;
-    height: 30px;
-    padding: 0;
-    border: 0;
-    border-radius: var(--radius-full);
-    place-items: center;
-    background: transparent;
-    color: #fff;
-    cursor: pointer;
-    transition:
-        background-color 160ms ease,
-        transform 160ms ease;
-}
-
-.now-playing-panel.is-queue-view .queue-player-controls button:hover,
-.now-playing-panel.is-queue-view .queue-player-controls button:focus-visible {
-    background: rgb(255 255 255 / 0.09);
-    outline: none;
-    transform: scale(1.05);
-}
-
-.now-playing-panel.is-queue-view .queue-player-controls .queue-player-play {
-    width: 38px;
-    height: 38px;
-    background: #d7ed57;
-    color: #121509;
-}
-
-@keyframes queue-panel-rise {
-    from {
-        opacity: 0.82;
-        transform: translateY(100%);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes queue-panel-dismiss {
-    from {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    to {
-        opacity: 0.72;
-        transform: translateY(100%);
-    }
-}
-
 @keyframes queue-header-line {
     to {
         transform: scaleX(1);
@@ -2853,18 +2655,6 @@ body.queue-panel-open {
     }
 }
 
-@keyframes queue-dock-rise {
-    from {
-        opacity: 0;
-        transform: translateY(28px) scale(0.97);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
 @container queuepanel (max-width: 430px) {
     .now-playing-panel.is-queue-view .now-playing-panel-queue-view {
         padding-inline: 10px;
@@ -2919,7 +2709,6 @@ body.queue-panel-open {
     .now-playing-panel.is-queue-view .queue-panel-header::after,
     .now-playing-panel.is-queue-view .queue-current-card,
     .now-playing-panel.is-queue-view .queue-track-row,
-    .now-playing-panel.is-queue-view .queue-player-dock,
     .now-playing-panel.is-queue-view .queue-track-row.is-drop-target::before {
         animation: none;
         transition: none;
@@ -2927,3 +2716,572 @@ body.queue-panel-open {
 }
 
 /* stylelint-enable no-descending-specificity */
+
+/* Queue dock finish: this is deliberately last so it wins over the retired
+   fullscreen queue layout above. */
+/* stylelint-disable no-descending-specificity */
+body .now-playing-panel.is-queue-view {
+    inset: 8px 8px var(--now-playing-player-clearance) auto !important;
+    width: min(420px, calc(100vw - 16px)) !important;
+    height: auto !important;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--card);
+    box-shadow: 0 18px 54px rgb(0 0 0 / 0.38);
+}
+
+body .now-playing-panel.is-queue-view .now-playing-panel-scroll {
+    height: 100%;
+    padding: 0;
+    background: var(--card);
+}
+
+body .now-playing-panel.is-queue-view .now-playing-panel-queue-view {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 0 0 16px;
+    color: var(--foreground);
+    animation: none;
+}
+
+body .now-playing-panel.is-queue-view .queue-panel-header {
+    grid-template-columns: minmax(0, 1fr) 34px;
+    min-height: 58px;
+    gap: 0;
+    padding: 0 12px 0 16px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+    background: color-mix(in srgb, var(--card) 96%, transparent);
+}
+
+body .now-playing-panel.is-queue-view .queue-panel-title {
+    display: none;
+}
+
+body .now-playing-panel.is-queue-view .queue-header-tabs {
+    display: flex;
+    align-items: stretch;
+    align-self: stretch;
+    min-width: 0;
+    gap: 24px;
+}
+
+body .now-playing-panel.is-queue-view .queue-tab {
+    position: relative;
+    min-height: 58px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    white-space: nowrap;
+    transition: color 160ms ease;
+}
+
+body .now-playing-panel.is-queue-view .queue-tab::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background: var(--primary);
+    opacity: 0;
+    transform: scaleX(0.35);
+    transition:
+        opacity 160ms ease,
+        transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+body .now-playing-panel.is-queue-view .queue-tab:hover,
+body .now-playing-panel.is-queue-view .queue-tab:focus-visible,
+body .now-playing-panel.is-queue-view .queue-tab.is-active {
+    color: var(--foreground);
+    outline: none;
+}
+
+body .now-playing-panel.is-queue-view .queue-tab.is-active::after {
+    opacity: 1;
+    transform: scaleX(1);
+}
+
+body .now-playing-panel.is-queue-view .queue-tab:focus-visible {
+    border-radius: var(--radius-sm);
+    outline: 2px solid var(--ring);
+    outline-offset: -3px;
+}
+
+body .now-playing-panel.is-queue-view .queue-close-button {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    place-items: center;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition:
+        color 160ms ease,
+        background-color 160ms ease,
+        transform 160ms ease;
+}
+
+body .now-playing-panel.is-queue-view .queue-close-button:hover,
+body .now-playing-panel.is-queue-view .queue-close-button:focus-visible {
+    background: rgb(var(--highlight-rgb) / 0.08);
+    color: var(--foreground);
+    transform: scale(1.04);
+}
+
+body .now-playing-panel.is-queue-view .queue-close-button:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+}
+
+body .now-playing-panel.is-queue-view .queue-panel-body {
+    display: block;
+    padding: 0;
+}
+
+body .now-playing-panel.is-queue-view .queue-current-card {
+    grid-template-columns: 48px minmax(0, 1fr) 32px;
+    min-height: 86px;
+    gap: 11px;
+    padding: 14px 16px;
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    animation: queue-current-enter 420ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+body .now-playing-panel.is-queue-view .queue-current-artwork,
+body .now-playing-panel.is-queue-view .queue-current-artwork img {
+    width: 48px;
+    height: 48px;
+}
+
+body .now-playing-panel.is-queue-view .queue-current-artwork {
+    border-radius: var(--radius-sm);
+    background: var(--muted);
+}
+
+body .now-playing-panel.is-queue-view .queue-current-label {
+    margin-bottom: 5px;
+    color: var(--foreground);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: normal;
+    line-height: 1.2;
+    text-transform: none;
+}
+
+body .now-playing-panel.is-queue-view .queue-current-copy h2 {
+    color: var(--primary);
+    font-size: 0.84rem;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+body .now-playing-panel.is-queue-view .queue-current-copy p {
+    margin: 3px 0 0;
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+}
+
+body .now-playing-panel.is-queue-view .queue-waveform,
+body .now-playing-panel.is-queue-view .queue-waveform-canvas,
+body .now-playing-panel.is-queue-view .queue-current-times {
+    display: none;
+}
+
+body .now-playing-panel.is-queue-view .queue-current-state {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--primary) 34%, transparent);
+    border-radius: var(--radius-full);
+    background: rgb(var(--highlight-rgb) / 0.08);
+    color: var(--primary);
+    box-shadow: none;
+    transition:
+        background-color 160ms ease,
+        color 160ms ease,
+        transform 160ms ease;
+}
+
+body .now-playing-panel.is-queue-view .queue-current-state:hover,
+body .now-playing-panel.is-queue-view .queue-current-state:focus-visible {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    outline: none;
+    transform: scale(1.04);
+}
+
+body .now-playing-panel.is-queue-view .queue-control-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0;
+    padding: 0 16px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
+}
+
+body .now-playing-panel.is-queue-view .queue-setting-card {
+    min-height: 44px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+body .now-playing-panel.is-queue-view .queue-setting-card + .queue-setting-card {
+    border-left: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
+}
+
+body .now-playing-panel.is-queue-view .queue-endless-card,
+body .now-playing-panel.is-queue-view .queue-transition-trigger {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    min-height: 44px;
+    gap: 6px;
+    padding: 5px 9px;
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-trigger:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -3px;
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-menu {
+    border-color: var(--border);
+    background: var(--card);
+    box-shadow: 0 18px 42px rgb(0 0 0 / 0.34);
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-option {
+    color: var(--foreground);
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-option:hover,
+body .now-playing-panel.is-queue-view .queue-transition-option:focus-visible,
+body .now-playing-panel.is-queue-view .queue-transition-option.is-selected {
+    background: rgb(var(--highlight-rgb) / 0.08);
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-option:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
+}
+
+body .now-playing-panel.is-queue-view .queue-setting-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--muted-foreground);
+}
+
+body .now-playing-panel.is-queue-view .queue-setting-copy {
+    gap: 0;
+}
+
+body .now-playing-panel.is-queue-view .queue-setting-copy strong {
+    color: var(--foreground);
+    font-size: 0.65rem;
+    font-weight: 650;
+}
+
+body .now-playing-panel.is-queue-view .queue-setting-copy small {
+    color: var(--muted-foreground);
+    font-size: 0.55rem;
+}
+
+body .now-playing-panel.is-queue-view .queue-disabled-switch {
+    width: 26px;
+    height: 16px;
+    background: var(--muted);
+}
+
+body .now-playing-panel.is-queue-view .queue-disabled-switch span {
+    width: 12px;
+    height: 12px;
+    background: var(--muted-foreground);
+}
+
+body .now-playing-panel.is-queue-view .queue-endless-card.is-enabled .queue-disabled-switch {
+    background: var(--primary);
+}
+
+body .now-playing-panel.is-queue-view .queue-endless-card.is-enabled .queue-disabled-switch span {
+    background: var(--primary-foreground);
+    transform: translateX(10px);
+}
+
+body .now-playing-panel.is-queue-view .queue-list-section {
+    padding: 16px 16px 0;
+}
+
+body .now-playing-panel.is-queue-view .queue-list-heading {
+    min-height: 44px;
+    margin: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
+}
+
+body .now-playing-panel.is-queue-view .queue-up-next-heading {
+    gap: 0;
+}
+
+body .now-playing-panel.is-queue-view .queue-list-icon {
+    display: none;
+}
+
+body .now-playing-panel.is-queue-view .queue-list-heading h3 {
+    color: var(--foreground);
+    font-size: 0.9rem;
+    font-weight: 750;
+}
+
+body .now-playing-panel.is-queue-view .queue-heading-source {
+    color: var(--muted-foreground);
+    font-weight: 500;
+}
+
+body .now-playing-panel.is-queue-view .queue-list-heading p {
+    margin-top: 3px;
+    color: var(--muted-foreground);
+    font-size: 0.62rem;
+}
+
+body .now-playing-panel.is-queue-view .queue-loop-button,
+body .now-playing-panel.is-queue-view .queue-inline-toggle {
+    min-height: 28px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--muted-foreground);
+    font-size: 0.6rem;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-row {
+    grid-template-columns: minmax(0, 1fr) auto 28px 24px;
+    min-height: 62px;
+    gap: 8px;
+    padding: 6px 0;
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 64%, transparent);
+    background: transparent;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-position {
+    display: none;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-main {
+    grid-column: 1;
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 10px;
+    color: var(--foreground);
+}
+
+body .now-playing-panel.is-queue-view .queue-track-main img {
+    width: 46px;
+    height: 46px;
+    border-radius: var(--radius-sm);
+    background: var(--muted);
+}
+
+body .now-playing-panel.is-queue-view .queue-track-main strong {
+    display: block;
+    color: var(--foreground);
+    font-size: 0.8rem;
+    font-weight: 650;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-main small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--muted-foreground);
+    font-size: 0.68rem;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-main:focus-visible {
+    border-radius: var(--radius-sm);
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-row time {
+    grid-column: 2;
+    color: var(--muted-foreground);
+    font-size: 0.62rem;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-remove {
+    grid-column: 3;
+    width: 28px;
+    height: 30px;
+    opacity: 0;
+    color: var(--muted-foreground);
+}
+
+body .now-playing-panel.is-queue-view .queue-drag-handle {
+    grid-column: 4;
+    width: 24px;
+    color: var(--muted-foreground);
+}
+
+body .now-playing-panel.is-queue-view .queue-track-row:hover,
+body .now-playing-panel.is-queue-view .queue-track-row:focus-within {
+    border-radius: var(--radius-sm);
+    background: rgb(var(--highlight-rgb) / 0.045);
+    transform: none;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-row.is-pinned-next {
+    min-height: 62px;
+    margin: 0;
+    padding-inline: 6px;
+    border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--border));
+    border-radius: var(--radius-md);
+    background: rgb(var(--highlight-rgb) / 0.045);
+    box-shadow: none;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-row.is-dragging {
+    background: color-mix(in srgb, var(--card) 82%, var(--foreground));
+    box-shadow: 0 18px 32px rgb(0 0 0 / 0.32);
+}
+
+body .now-playing-panel.is-queue-view .queue-track-row.is-drop-target::before {
+    background: var(--primary);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--primary) 38%, transparent);
+}
+
+body .now-playing-panel.is-queue-view .queue-track-badge {
+    color: var(--primary);
+}
+
+body .now-playing-panel.is-queue-view .queue-list-empty {
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+    padding: 28px 12px;
+    border: 0;
+    color: var(--muted-foreground);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    body .now-playing-panel.is-queue-view .queue-track-row:hover .queue-track-remove,
+    body .now-playing-panel.is-queue-view .queue-track-row:focus-within .queue-track-remove {
+        opacity: 1;
+    }
+}
+
+@media (hover: none), (pointer: coarse) {
+    body .now-playing-panel.is-queue-view .queue-track-remove {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    body .now-playing-panel.is-queue-view {
+        inset: 0 !important;
+        width: 100vw !important;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+}
+
+/* The queue is docked on desktop, so its entrance and exit must travel on the
+   horizontal axis. The legacy vertical exit exposed a detached-looking slice
+   of the queue beneath the player while the close animation was finishing. */
+body .now-playing-panel.is-queue-view.is-queue-opening {
+    animation: queue-dock-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+body .now-playing-panel.is-queue-view.is-queue-closing {
+    animation: queue-dock-exit 220ms cubic-bezier(0.4, 0, 1, 1) both;
+    pointer-events: none;
+}
+
+@keyframes queue-dock-enter {
+    from {
+        opacity: 0;
+        transform: translateX(18px) scale(0.985);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes queue-dock-exit {
+    from {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(18px) scale(0.985);
+    }
+}
+
+@media (max-width: 768px) {
+    body .now-playing-panel.is-queue-view.is-queue-opening {
+        animation-name: queue-mobile-enter;
+    }
+
+    body .now-playing-panel.is-queue-view.is-queue-closing {
+        animation-name: queue-mobile-exit;
+    }
+}
+
+@keyframes queue-mobile-enter {
+    from {
+        opacity: 0.86;
+        transform: translateX(28px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes queue-mobile-exit {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(28px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body .now-playing-panel.is-queue-view.is-queue-opening,
+    body .now-playing-panel.is-queue-view.is-queue-closing {
+        animation: none;
+    }
+
+    body .now-playing-panel.is-queue-view .queue-tab,
+    body .now-playing-panel.is-queue-view .queue-tab::after,
+    body .now-playing-panel.is-queue-view .queue-close-button,
+    body .now-playing-panel.is-queue-view .queue-current-state,
+    body .now-playing-panel.is-queue-view .queue-track-remove {
+        animation: none;
+        transition: none;
+    }
+}
