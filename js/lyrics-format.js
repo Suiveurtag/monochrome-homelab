@@ -46,6 +46,46 @@ function splitVocalSegments(text) {
     return segments.length ? segments : [{ text: String(text || ''), background: false }];
 }
 
+const TTML_METADATA_NAMESPACE = 'http://www.w3.org/ns/ttml#metadata';
+const ITUNES_TTML_NAMESPACE = 'http://music.apple.com/lyric-ttml-internal';
+const STARS_OPENING_DUET_END = 'You need somebody, baby, just call me';
+
+function normalizedLyricText(text) {
+    return String(text || '')
+        .replace(/\s+/gu, ' ')
+        .trim()
+        .toLocaleLowerCase('en-US');
+}
+
+function metadataText(document, localName) {
+    return Array.from(document.getElementsByTagNameNS('*', localName))[0]?.textContent || '';
+}
+
+/**
+ * Some Apple line-timed exports flatten duet information into plain text.
+ * Stars is one of those exports: its first vocal lane is the second singer,
+ * but the source contains no agent or alignment attribute at all. Restore the
+ * known lane boundary before either lyrics renderer parses the document.
+ */
+function markStarsOpeningDuet(document, paragraphs) {
+    const title = normalizedLyricText(metadataText(document, 'title'));
+    const artist = normalizedLyricText(metadataText(document, 'artist'));
+    if (title !== 'stars' || artist !== 'pinkpantheress') return false;
+
+    let started = false;
+    let changed = false;
+    for (const paragraph of paragraphs) {
+        if (!started) started = normalizedLyricText(paragraph.textContent).startsWith("why'd you wanna go");
+        if (!started) continue;
+
+        paragraph.setAttributeNS(TTML_METADATA_NAMESPACE, 'ttm:agent', 'v2');
+        paragraph.setAttributeNS(ITUNES_TTML_NAMESPACE, 'itunes:align', 'right');
+        changed = true;
+        if (normalizedLyricText(paragraph.textContent) === normalizedLyricText(STARS_OPENING_DUET_END)) break;
+    }
+    return changed;
+}
+
 /**
  * Converts valid line-timed TTML into word-timed TTML. Sources such as Apple
  * Music's `itunes:timing="Line"` exports often contain no child spans at all.
@@ -108,7 +148,8 @@ export function normalizeTtmlWordTiming(content) {
         converted = true;
     });
 
-    if (!converted) return content.replace(/^\uFEFF/, '').trim();
+    const restoredDuetLayout = markStarsOpeningDuet(document, paragraphs);
+    if (!converted && !restoredDuetLayout) return content.replace(/^\uFEFF/, '').trim();
     const root = document.documentElement;
     const timingAttribute = Array.from(root.attributes).find(
         (attribute) => attribute.localName === 'timing' || attribute.name === 'timing',

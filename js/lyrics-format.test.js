@@ -55,6 +55,18 @@ describe('LRC lyrics formatting', () => {
         expect(background?.getElementsByTagNameNS('http://www.w3.org/ns/ttml', 'span')).toHaveLength(2);
     });
 
+    it('restores the missing opening duet lane in the Stars Apple export', () => {
+        const input =
+            '<?xml version="1.0"?><tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal"><head><metadata><ttm:title xmlns:ttm="http://www.w3.org/ns/ttml#metadata">Stars</ttm:title><ttm:artist xmlns:ttm="http://www.w3.org/ns/ttml#metadata">PinkPantheress</ttm:artist></metadata></head><body><div><p begin="1s" end="2s">Why\'d you wanna go (why\'d you wanna go)</p><p begin="2s" end="3s">You need somebody, baby, just call me</p><p begin="3s" end="4s">Tell me what always keeps you up at night</p></div></body></tt>';
+        const normalized = normalizeTtmlWordTiming(input);
+        const document = new DOMParser().parseFromString(normalized, 'application/xml');
+        const lines = Array.from(document.getElementsByTagNameNS('http://www.w3.org/ns/ttml', 'p'));
+
+        expect(lines.map((line) => line.getAttribute('itunes:align'))).toEqual(['right', 'right', null]);
+        expect(lines.map((line) => line.getAttribute('ttm:agent'))).toEqual(['v2', 'v2', null]);
+        expect(document.querySelector('[*|role="x-bg"]')?.textContent).toBe('(why\'d you wanna go)');
+    });
+
     it('turns plain fallback lyrics into timed TTML', () => {
         const ttml = plainLyricsToTtml('First & line\nSecond <line>', 10);
         expect(ttml).toContain('begin="00:00:00.000" end="00:00:05.000"');
