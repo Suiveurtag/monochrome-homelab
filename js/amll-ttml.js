@@ -66,30 +66,40 @@ export function prepareTtmlForAmll(ttml) {
     const backgroundLines = lines.filter((line) => getAttributeByLocalName(line, 'role') === 'x-bg');
     const leadLines = lines.filter((line) => !backgroundLines.includes(line));
     const duetLines = leadLines.filter(isDuetLine);
+    const firstLeadIsDuet = Boolean(leadLines[0] && isDuetLine(leadLines[0]));
 
     // Spicy Lyrics marks the second vocal lane as x-translation. AMLL uses
     // ttm:agent to identify duet lines and applies its native right alignment.
     if (duetLines.length > 0) {
         const metadata = document.getElementsByTagNameNS(TTML_NAMESPACE, 'metadata')[0];
         if (metadata) {
-            const declaredAgents = new Set(
+            const agentElements = new Map(
                 Array.from(metadata.getElementsByTagNameNS(TTM_NAMESPACE, 'agent'))
-                    .map((agent) => agent.getAttributeNS(XML_NAMESPACE, 'id'))
-                    .filter(Boolean),
+                    .map((agent) => [agent.getAttributeNS(XML_NAMESPACE, 'id'), agent])
+                    .filter(([id]) => id),
             );
             for (const [id, name] of [
                 [DEFAULT_AGENT, 'Main vocal'],
                 [DUET_AGENT, 'Second vocal'],
             ]) {
-                if (declaredAgents.has(id)) continue;
-                const agent = document.createElementNS(TTM_NAMESPACE, 'ttm:agent');
-                agent.setAttribute('type', 'person');
-                agent.setAttributeNS(XML_NAMESPACE, 'xml:id', id);
-                const agentName = document.createElementNS(TTM_NAMESPACE, 'ttm:name');
-                agentName.setAttribute('type', 'full');
-                agentName.textContent = name;
-                agent.appendChild(agentName);
-                metadata.appendChild(agent);
+                let agent = agentElements.get(id);
+                if (!agent) {
+                    agent = document.createElementNS(TTM_NAMESPACE, 'ttm:agent');
+                    agent.setAttributeNS(XML_NAMESPACE, 'xml:id', id);
+                    const agentName = document.createElementNS(TTM_NAMESPACE, 'ttm:name');
+                    agentName.setAttribute('type', 'full');
+                    agentName.textContent = name;
+                    agent.appendChild(agentName);
+                    metadata.appendChild(agent);
+                    agentElements.set(id, agent);
+                }
+
+                // AMLL treats the first person agent it encounters as the main
+                // voice. A source can legitimately begin with the second lane
+                // (as Stars does), so mark that agent as "other" to preserve
+                // its right/duet meaning instead of letting AMLL flip lanes.
+                if (id === DUET_AGENT && firstLeadIsDuet) agent.setAttribute('type', 'other');
+                else if (!agent.getAttribute('type')) agent.setAttribute('type', 'person');
             }
         }
     }
