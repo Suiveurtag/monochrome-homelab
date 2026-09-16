@@ -20,6 +20,7 @@ import { copyShareLink, updateShareMeta } from './share.js';
 import {
     openLyricsPanel,
     renderLyricsInFullscreen,
+    renderSpicyLyricsInFullscreen,
     clearFullscreenLyricsSync,
     clearLyricsPanelSync,
 } from './lyrics.js';
@@ -115,6 +116,7 @@ import {
     SVG_PALETTE,
     SVG_SUN,
     SVG_SPICY,
+    SVG_WAVES,
 } from './icons.js';
 
 const setFullscreenUIToggleIcon = (button, visualizerOnlyMode) => {
@@ -271,6 +273,9 @@ export class UIRenderer {
         this.fullscreenPlaybackStateCleanup = null;
         this.fullscreenDismissHandleCleanup = null;
         this.fullscreenLyricsToggleCleanup = null;
+        this.fullscreenLyricsRendererToggleCleanup = null;
+        this.fullscreenLyricsRenderer = 'amll';
+        this.fullscreenLyricsManager = null;
         this.fullscreenOpenGeneration = 0;
         this.fullscreenBackgroundMode = visualizerSettings.getBackgroundMode();
         this.fullscreenBackgroundCoverUrl = '';
@@ -1799,6 +1804,7 @@ export class UIRenderer {
         const lyricsPane = document.getElementById('fullscreen-lyrics-pane');
         const lyricsContent = document.getElementById('fullscreen-lyrics-content');
         const lyricsToggleBtn = document.getElementById('toggle-fullscreen-lyrics-btn');
+        const lyricsRendererBtn = document.getElementById('fullscreen-lyrics-renderer-btn');
         const coverImage = document.getElementById('fullscreen-cover-image');
         const coverCard = document.getElementById('fullscreen-artwork-card');
         const cdRing = document.getElementById('cd-ring');
@@ -1852,12 +1858,16 @@ export class UIRenderer {
             const canRenderLyrics = Boolean(
                 lyricsManager && fullscreenAudioElement && lyricsPane && lyricsContent && track.type !== 'video'
             );
+            this.fullscreenLyricsManager = lyricsManager || null;
             if (canRenderLyrics) {
                 this.fullscreenLyricsVisible = true;
                 if (lyricsToggleBtn) lyricsToggleBtn.style.removeProperty('display');
+                if (lyricsRendererBtn) lyricsRendererBtn.style.removeProperty('display');
                 overlay.classList.remove('lyrics-unavailable');
                 clearFullscreenLyricsSync(lyricsContent);
-                const lyricsElement = await renderLyricsInFullscreen(
+                const renderFullscreenLyrics =
+                    this.fullscreenLyricsRenderer === 'spicy' ? renderSpicyLyricsInFullscreen : renderLyricsInFullscreen;
+                const lyricsElement = await renderFullscreenLyrics(
                     track,
                     fullscreenAudioElement,
                     lyricsManager,
@@ -1868,11 +1878,14 @@ export class UIRenderer {
                 if (!lyricsElement) {
                     this.fullscreenLyricsVisible = false;
                     if (lyricsToggleBtn) lyricsToggleBtn.style.display = 'none';
+                    if (lyricsRendererBtn) lyricsRendererBtn.style.display = 'none';
                     overlay.classList.add('lyrics-unavailable');
                 }
             } else {
                 this.fullscreenLyricsVisible = false;
+                this.fullscreenLyricsManager = null;
                 if (lyricsToggleBtn) lyricsToggleBtn.style.display = 'none';
+                if (lyricsRendererBtn) lyricsRendererBtn.style.display = 'none';
                 overlay.classList.add('lyrics-unavailable');
                 if (lyricsContent) {
                     clearFullscreenLyricsSync(lyricsContent);
@@ -1890,6 +1903,7 @@ export class UIRenderer {
             this.setupFullscreenSidePanelSync(overlay);
             this.setupFullscreenDismissHandle(overlay);
             this.setupFullscreenLyricsToggle(overlay);
+            this.setupFullscreenLyricsRendererToggle(overlay);
 
             // Commit URL state only after the fullscreen shell and its lyrics
             // result are known to be mounted successfully.
@@ -2141,6 +2155,11 @@ export class UIRenderer {
             this.fullscreenLyricsToggleCleanup();
             this.fullscreenLyricsToggleCleanup = null;
         }
+        if (this.fullscreenLyricsRendererToggleCleanup) {
+            this.fullscreenLyricsRendererToggleCleanup();
+            this.fullscreenLyricsRendererToggleCleanup = null;
+        }
+        this.fullscreenLyricsManager = null;
         return true;
     }
 
@@ -2445,6 +2464,83 @@ export class UIRenderer {
             toggleButtons.forEach((toggleBtn) => toggleBtn.removeEventListener('click', handleToggle));
         };
     }
+
+    updateFullscreenLyricsRendererButton(overlay = document.getElementById('fullscreen-cover-overlay')) {
+        const button = document.getElementById('fullscreen-lyrics-renderer-btn');
+        if (!button) return;
+
+        const current = this.fullscreenLyricsRenderer === 'spicy' ? 'Spicy' : 'AMLL';
+        const next = current === 'AMLL' ? 'Spicy' : 'AMLL';
+        button.innerHTML = current === 'AMLL' ? SVG_WAVES(20) : SVG_SPICY(21);
+        button.dataset.rendererLabel = current;
+        button.dataset.renderer = current.toLowerCase();
+        button.title = `Switch lyrics renderer. Current: ${current} · Next: ${next}`;
+        button.setAttribute('aria-label', `Switch lyrics renderer. Current: ${current}. Next: ${next}`);
+        button.style.display = overlay?.classList.contains('is-video-mode') ? 'none' : 'flex';
+    }
+
+    async switchFullscreenLyricsRenderer() {
+        const overlay = document.getElementById('fullscreen-cover-overlay');
+        const lyricsContent = document.getElementById('fullscreen-lyrics-content');
+        const track = this.player?.currentTrack;
+        const audioPlayer = this.player?.activeElement;
+        const lyricsManager = this.fullscreenLyricsManager;
+        if (!overlay || !lyricsContent || !track || !audioPlayer || !lyricsManager) return false;
+
+        const nextRenderer = this.fullscreenLyricsRenderer === 'amll' ? 'spicy' : 'amll';
+        this.fullscreenLyricsRenderer = nextRenderer;
+        this.fullscreenRenderController?.abort();
+        const renderController = new AbortController();
+        const generation = ++this.fullscreenOpenGeneration;
+        this.fullscreenRenderController = renderController;
+        const isCurrentRequest = () =>
+            this.fullscreenOpenGeneration === generation && !renderController.signal.aborted;
+
+        clearFullscreenLyricsSync(lyricsContent);
+        lyricsContent.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
+
+        try {
+            const render = nextRenderer === 'spicy' ? renderSpicyLyricsInFullscreen : renderLyricsInFullscreen;
+            const lyricsElement = await render(track, audioPlayer, lyricsManager, lyricsContent, {
+                signal: renderController.signal,
+            });
+            if (!isCurrentRequest()) return false;
+            if (!lyricsElement) throw new Error(`Failed to mount ${nextRenderer} fullscreen lyrics`);
+            this.updateFullscreenLyricsRendererButton(overlay);
+            this.updateFullscreenLyricsVisibility(overlay);
+            return true;
+        } catch (error) {
+            if (renderController.signal.aborted) return false;
+            console.error(`Failed to switch fullscreen lyrics to ${nextRenderer}:`, error);
+            this.fullscreenLyricsRenderer = nextRenderer === 'spicy' ? 'amll' : 'spicy';
+            this.updateFullscreenLyricsRendererButton(overlay);
+            lyricsContent.innerHTML = '<div class="lyrics-error">Failed to load lyrics</div>';
+            return false;
+        } finally {
+            if (this.fullscreenRenderController === renderController) this.fullscreenRenderController = null;
+        }
+    }
+
+    setupFullscreenLyricsRendererToggle(overlay) {
+        if (this.fullscreenLyricsRendererToggleCleanup) {
+            this.fullscreenLyricsRendererToggleCleanup();
+            this.fullscreenLyricsRendererToggleCleanup = null;
+        }
+
+        const button = document.getElementById('fullscreen-lyrics-renderer-btn');
+        if (!button || button.style.display === 'none') return;
+
+        const handleToggle = (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void this.switchFullscreenLyricsRenderer();
+        };
+
+        button.addEventListener('click', handleToggle);
+        this.updateFullscreenLyricsRendererButton(overlay);
+        this.fullscreenLyricsRendererToggleCleanup = () => button.removeEventListener('click', handleToggle);
+    }
+
     setupFullscreenControls() {
         const playBtn = document.getElementById('fs-play-pause-btn');
         const prevBtn = document.getElementById('fs-prev-btn');

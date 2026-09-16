@@ -1010,14 +1010,66 @@ themeObserver.observe(document.documentElement, {
     attributeFilter: ['data-theme', 'style'],
 });
 
+async function mountSpicyLyrics(container, track, audioPlayer, lyricsManager, localTtml, { signal } = {}) {
+    await lyricsManager.ensureComponentLoaded();
+    if (signal?.aborted) return null;
+
+    container.innerHTML = '';
+    const amLyrics = document.createElement('spicy-lyrics');
+    amLyrics.ttml = localTtml;
+    amLyrics.style.setProperty('--spicy-lyrics-active-color', getLyricsHighlightColor());
+    if (trackIsJapanese(track)) amLyrics.setAttribute('lang', 'ja');
+    amLyrics.style.height = '100%';
+    amLyrics.style.width = '100%';
+
+    container.appendChild(amLyrics);
+    await amLyrics.setTrack(track, lyricsManager.api);
+    if (signal?.aborted) {
+        amLyrics.remove();
+        return null;
+    }
+
+    await lyricsManager.setupLyricsObserver(amLyrics);
+    if (signal?.aborted) {
+        amLyrics.remove();
+        return null;
+    }
+
+    // If Romaji mode is enabled and track has Asian text, ensure Kuroshiro is ready
+    if (lyricsManager.isRomajiMode && trackHasAsianText(track) && !lyricsManager.kuroshiroLoaded) {
+        await lyricsManager.loadKuroshiro();
+        if (signal?.aborted) {
+            amLyrics.remove();
+            return null;
+        }
+    }
+
+    if (lyricsManager.isRomajiMode) {
+        await lyricsManager.convertLyricsContent(amLyrics);
+        if (signal?.aborted) {
+            amLyrics.remove();
+            return null;
+        }
+    }
+
+    if (lyricsManager.isGeniusMode && lyricsManager.currentGeniusData) {
+        lyricsManager.applyGeniusAnnotations(amLyrics, lyricsManager.currentGeniusData.referents);
+    }
+
+    const cleanup = setupSync(track, audioPlayer, amLyrics, lyricsManager);
+
+    // Attach cleanup to container for easy access
+    container.lyricsCleanup = cleanup;
+    container.lyricsManager = lyricsManager;
+
+    return amLyrics;
+}
+
 async function renderLyricsComponent(container, track, audioPlayer, lyricsManager, { signal } = {}) {
     if (signal?.aborted) return null;
     container.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
 
     try {
-        await lyricsManager.ensureComponentLoaded();
-        if (signal?.aborted) return null;
-
         // Set initial Romaji mode
         lyricsManager.isRomajiMode = lyricsManager.getRomajiMode();
         lyricsManager.currentTrackId = track.id;
@@ -1028,55 +1080,7 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
         const localTtml = lyricsToTtml(sourceLyrics, track.duration);
         if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
 
-        container.innerHTML = '';
-        const amLyrics = document.createElement('spicy-lyrics');
-        amLyrics.ttml = localTtml;
-        amLyrics.style.setProperty('--spicy-lyrics-active-color', getLyricsHighlightColor());
-        if (trackIsJapanese(track)) amLyrics.setAttribute('lang', 'ja');
-        amLyrics.style.height = '100%';
-        amLyrics.style.width = '100%';
-
-        container.appendChild(amLyrics);
-        await amLyrics.setTrack(track, lyricsManager.api);
-        if (signal?.aborted) {
-            amLyrics.remove();
-            return null;
-        }
-
-        await lyricsManager.setupLyricsObserver(amLyrics);
-        if (signal?.aborted) {
-            amLyrics.remove();
-            return null;
-        }
-
-        // If Romaji mode is enabled and track has Asian text, ensure Kuroshiro is ready
-        if (lyricsManager.isRomajiMode && trackHasAsianText(track) && !lyricsManager.kuroshiroLoaded) {
-            await lyricsManager.loadKuroshiro();
-            if (signal?.aborted) {
-                amLyrics.remove();
-                return null;
-            }
-        }
-
-        if (lyricsManager.isRomajiMode) {
-            await lyricsManager.convertLyricsContent(amLyrics);
-            if (signal?.aborted) {
-                amLyrics.remove();
-                return null;
-            }
-        }
-
-        if (lyricsManager.isGeniusMode && lyricsManager.currentGeniusData) {
-            lyricsManager.applyGeniusAnnotations(amLyrics, lyricsManager.currentGeniusData.referents);
-        }
-
-        const cleanup = setupSync(track, audioPlayer, amLyrics, lyricsManager);
-
-        // Attach cleanup to container for easy access
-        container.lyricsCleanup = cleanup;
-        container.lyricsManager = lyricsManager;
-
-        return amLyrics;
+        return await mountSpicyLyrics(container, track, audioPlayer, lyricsManager, localTtml, { signal });
     } catch (error) {
         if (signal?.aborted || error?.name === 'AbortError') return null;
         console.error('Failed to load lyrics:', error);
@@ -1271,6 +1275,28 @@ export async function renderLyricsInFullscreen(track, audioPlayer, lyricsManager
     } catch (error) {
         if (signal?.aborted || error?.name === 'AbortError') return null;
         console.error('Failed to load AMLL fullscreen lyrics:', error);
+        container.innerHTML = '<div class="lyrics-error">Failed to load lyrics</div>';
+        return null;
+    }
+}
+
+export async function renderSpicyLyricsInFullscreen(track, audioPlayer, lyricsManager, container, { signal } = {}) {
+    if (signal?.aborted) return null;
+    container.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
+
+    try {
+        lyricsManager.isRomajiMode = lyricsManager.getRomajiMode();
+        lyricsManager.currentTrackId = track.id;
+        const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
+        if (signal?.aborted) return null;
+        const sourceLyrics = track.lyrics || fetchedLyrics?.ttml || fetchedLyrics?.subtitles || '';
+        const localTtml = lyricsToTtml(sourceLyrics, track.duration);
+        if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
+
+        return await mountSpicyLyrics(container, track, audioPlayer, lyricsManager, localTtml, { signal });
+    } catch (error) {
+        if (signal?.aborted || error?.name === 'AbortError') return null;
+        console.error('Failed to load Spicy fullscreen lyrics:', error);
         container.innerHTML = '<div class="lyrics-error">Failed to load lyrics</div>';
         return null;
     }
