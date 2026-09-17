@@ -140,7 +140,9 @@ export class NowPlayingPanel {
         this.queueCoverAnimation = null;
         this.queueCoverMorph = null;
         this.queueCoverTarget = null;
+        this.queueCoverClosingTarget = null;
         this.queueCoverSourceElement = null;
+        this.queueLayerAnimation = null;
         this.queueOpeningScheduled = false;
         this.queueLayerRefreshPending = false;
         this.nowPlayingNeedsRender = false;
@@ -530,14 +532,16 @@ export class NowPlayingPanel {
 
     closeQueue() {
         if (this.activeView !== 'queue') return;
-        const source = this.captureQueueCover(this.getQueueCoverElement());
+        const source = this.captureQueueCover(this.queueCoverMorph || this.getQueueCoverElement());
         const target = this.captureQueueCover(this.getNowPlayingCoverElement());
         const transitionToken = ++this.queueTransitionToken;
         this.queueOpeningScheduled = false;
-        this.cancelQueueCoverAnimation();
+        const layerState = this.freezeQueueMotion();
         this.queueTransition = { type: 'closing', source, target, token: transitionToken };
+        source?.element?.style.setProperty('opacity', '0');
         target?.element?.style.setProperty('opacity', '0');
         this.queueCoverTarget = target?.element || null;
+        this.queueCoverClosingTarget = target?.element || null;
         const finish = () => {
             if (transitionToken !== this.queueTransitionToken) return;
             window.clearTimeout(this.queueViewTimer);
@@ -546,7 +550,7 @@ export class NowPlayingPanel {
             this.transitionMenuOpen = false;
             this.root.classList.remove('is-queue-view', 'is-queue-opening', 'is-queue-closing');
             document.body.classList.remove('queue-panel-open');
-            this.cancelQueueCoverAnimation();
+            this.clearQueueCoverAnimation();
             this.restoreQueueCoverSource();
             this.queueLayer.classList.remove('is-visible', 'is-closing', 'is-measuring');
             this.queueLayer.hidden = true;
@@ -555,6 +559,7 @@ export class NowPlayingPanel {
             this.queueLayer.setAttribute('aria-hidden', 'true');
             this.queueTransition = null;
             this.queueCoverTarget = null;
+            this.queueCoverClosingTarget = null;
             this.queueLayerRefreshPending = false;
             this.setOpen(this.desktopMedia.matches && this.desktopOpenState, { restoreFocus: false });
             if (this.nowPlayingNeedsRender) void this.render({ preserveScroll: false });
@@ -568,8 +573,8 @@ export class NowPlayingPanel {
         this.queueLayer.classList.remove('is-visible', 'is-entering');
         this.queueLayer.classList.add('is-closing');
         this.syncQueueLayerState();
-        this.animateQueueCover(source, target, transitionToken);
-        this.queueViewTimer = window.setTimeout(finish, QUEUE_CLOSE_DURATION);
+        this.animateQueueCover(source, target, transitionToken, 'closing');
+        this.animateQueueLayer(layerState.offsetY, layerState.opacity, QUEUE_CLOSE_DURATION, transitionToken, finish, 'closing');
     }
 
     updateScrollbar() {
@@ -855,12 +860,17 @@ export class NowPlayingPanel {
     measureQueueCoverTarget() {
         const target = this.getQueueCoverElement();
         if (!target || !this.queueLayer) return null;
+        const previousTransform = this.queueLayer.style.transform;
+        const previousOpacity = this.queueLayer.style.opacity;
         this.queueLayer.classList.add('is-measuring');
+        this.queueLayer.style.setProperty('transform', 'translate3d(0, 0, 0)');
+        this.queueLayer.style.setProperty('opacity', '1');
         const snapshot = this.captureQueueCover(target);
         this.queueLayer.classList.remove('is-measuring');
-        // Commit the off-screen position before the visible class is applied.
-        // Without this read, the browser can coalesce both styles and skip the drawer slide.
-        this.queueLayer.getBoundingClientRect();
+        if (previousTransform) this.queueLayer.style.setProperty('transform', previousTransform);
+        else this.queueLayer.style.removeProperty('transform');
+        if (previousOpacity) this.queueLayer.style.setProperty('opacity', previousOpacity);
+        else this.queueLayer.style.removeProperty('opacity');
         return snapshot;
     }
 
@@ -907,13 +917,15 @@ export class NowPlayingPanel {
     }
 
     startQueueOpening(transition) {
-        if (!this.queueLayer || transition.token !== this.queueTransitionToken) return;
+        if (!this.queueLayer || !transition || transition.token !== this.queueTransitionToken) return;
         if (this.queueOpeningScheduled) return;
         const target = this.measureQueueCoverTarget();
         const source = transition.source;
         if (!target || this.reducedMotionMedia.matches) {
             this.queueTransition = null;
             this.queueLayer.classList.add('is-visible');
+            this.queueLayer.style.setProperty('transform', 'translate3d(0, 0, 0)');
+            this.queueLayer.style.setProperty('opacity', '1');
             this.syncQueueLayerState();
             this.restoreQueueCoverSource();
             this.root.classList.remove('is-queue-opening');
@@ -935,14 +947,16 @@ export class NowPlayingPanel {
             this.queueTransition = null;
             this.queueOpeningScheduled = false;
             this.hideQueueCoverSource();
-            this.queueLayer.classList.add('is-entering', 'is-visible');
+            this.queueLayer.classList.add('is-visible');
             this.syncQueueLayerState();
-            window.clearTimeout(this.queueViewTimer);
-            this.queueViewTimer = window.setTimeout(() => {
-                if (transition.token !== this.queueTransitionToken) return;
-                this.root.classList.remove('is-queue-opening');
-                this.queueLayer.classList.remove('is-entering');
-            }, QUEUE_OPEN_DURATION);
+            this.animateQueueLayer(
+                this.getQueueLayerHeight(),
+                0,
+                QUEUE_OPEN_DURATION,
+                transition.token,
+                () => this.finishQueueOpening(transition.token),
+                'opening'
+            );
             this.animateQueueCover(source, target, transition.token, 'opening');
         });
     }
@@ -950,7 +964,7 @@ export class NowPlayingPanel {
     reopenQueueTransition() {
         if (!this.queueLayer || !this.root.classList.contains('is-queue-closing')) return;
         const source = this.captureQueueCover(this.queueCoverMorph || this.getQueueCoverElement());
-        this.cancelQueueCoverAnimation();
+        const layerState = this.freezeQueueMotion();
         const transitionToken = ++this.queueTransitionToken;
         this.queueOpeningScheduled = true;
         const target = this.measureQueueCoverTarget();
@@ -960,10 +974,6 @@ export class NowPlayingPanel {
         this.queueLayer.classList.remove('is-closing');
         this.queueLayer.classList.add('is-visible');
         this.syncQueueLayerState();
-        window.clearTimeout(this.queueViewTimer);
-        this.queueViewTimer = window.setTimeout(() => {
-            if (transitionToken === this.queueTransitionToken) this.root.classList.remove('is-queue-opening');
-        }, QUEUE_OPEN_DURATION);
         if (target && !this.reducedMotionMedia.matches) {
             target.element.style.opacity = '0';
             this.queueCoverTarget = target.element;
@@ -974,12 +984,88 @@ export class NowPlayingPanel {
                 }
                 this.queueTransition = null;
                 this.queueOpeningScheduled = false;
+                this.hideQueueCoverSource();
+                this.animateQueueLayer(
+                    layerState.offsetY,
+                    layerState.opacity,
+                    QUEUE_OPEN_DURATION,
+                    transitionToken,
+                    () => this.finishQueueOpening(transitionToken),
+                    'opening'
+                );
                 this.animateQueueCover(source, target, transitionToken, 'opening');
             });
         } else {
             this.queueTransition = null;
             this.queueOpeningScheduled = false;
+            this.queueLayer.style.setProperty('transform', 'translate3d(0, 0, 0)');
+            this.queueLayer.style.setProperty('opacity', '1');
         }
+    }
+
+    getQueueLayerHeight() {
+        return this.root?.getBoundingClientRect().height || this.queueLayer?.getBoundingClientRect().height || 0;
+    }
+
+    getQueueLayerOffset() {
+        if (!this.root || !this.queueLayer) return { offsetY: this.getQueueLayerHeight(), opacity: 0 };
+        const rootRect = this.root.getBoundingClientRect();
+        const layerRect = this.queueLayer.getBoundingClientRect();
+        return {
+            offsetY: Math.max(0, Math.min(this.getQueueLayerHeight(), layerRect.top - rootRect.top)),
+            opacity: Number(getComputedStyle(this.queueLayer).opacity) || 0,
+        };
+    }
+
+    animateQueueLayer(fromY, fromOpacity, duration, token, onfinish, direction) {
+        if (!this.queueLayer || token !== this.queueTransitionToken) return;
+        const toY = direction === 'closing' ? this.getQueueLayerHeight() : 0;
+        const toOpacity = direction === 'closing' ? 0 : 1;
+        const animation = this.queueLayer.animate(
+            [
+                { transform: `translate3d(0, ${fromY}px, 0)`, opacity: fromOpacity },
+                { transform: `translate3d(0, ${toY}px, 0)`, opacity: toOpacity },
+            ],
+            { duration, easing: 'cubic-bezier(0.32, 0.72, 0, 1)', fill: 'both' }
+        );
+        this.queueLayerAnimation = animation;
+        animation.onfinish = () => {
+            if (token !== this.queueTransitionToken) return;
+            this.queueLayer.style.setProperty('transform', `translate3d(0, ${toY}px, 0)`);
+            this.queueLayer.style.setProperty('opacity', String(toOpacity));
+            animation.cancel();
+            this.queueLayerAnimation = null;
+            onfinish?.();
+        };
+    }
+
+    finishQueueOpening(token) {
+        if (token !== this.queueTransitionToken || this.activeView !== 'queue') return;
+        this.root.classList.remove('is-queue-opening');
+        this.queueTransition = null;
+        this.clearQueueCoverAnimation();
+        if (this.queueLayerRefreshPending) {
+            this.queueLayerRefreshPending = false;
+            const scrollTop = this.queueLayer.querySelector('.now-playing-panel-queue-view')?.scrollTop || 0;
+            requestAnimationFrame(() => {
+                if (token === this.queueTransitionToken && this.activeView === 'queue') {
+                    this.renderQueueLayer(this.model || {}, scrollTop);
+                }
+            });
+        }
+    }
+
+    freezeQueueMotion() {
+        const state = this.getQueueLayerOffset();
+        if (this.queueLayerAnimation) {
+            this.queueLayerAnimation.onfinish = null;
+            this.queueLayerAnimation.cancel();
+            this.queueLayerAnimation = null;
+        }
+        this.queueLayer.style.setProperty('transform', `translate3d(0, ${state.offsetY}px, 0)`);
+        this.queueLayer.style.setProperty('opacity', String(state.opacity));
+        this.clearQueueCoverAnimation();
+        return state;
     }
 
     animateQueueCover(source, target, token, direction) {
@@ -991,10 +1077,6 @@ export class NowPlayingPanel {
             this.queueCoverMorph = null;
             this.queueCoverAnimation = null;
             this.queueCoverTarget = null;
-            if (direction === 'opening' && this.queueLayerRefreshPending && this.activeView === 'queue') {
-                this.queueLayerRefreshPending = false;
-                this.renderQueueLayer(this.model || {}, this.queueLayer.querySelector('.now-playing-panel-queue-view')?.scrollTop || 0);
-            }
         };
         if (!source || !source.src || this.reducedMotionMedia.matches) {
             finish();
@@ -1042,13 +1124,24 @@ export class NowPlayingPanel {
         this.queueCoverAnimation.onfinish = finish;
     }
 
-    cancelQueueCoverAnimation() {
+    clearQueueLayerAnimation() {
+        this.queueLayerAnimation?.cancel?.();
+        this.queueLayerAnimation = null;
+    }
+
+    clearQueueCoverAnimation() {
         this.queueCoverAnimation?.cancel?.();
         this.queueCoverAnimation = null;
         this.queueCoverMorph?.remove();
         this.queueCoverMorph = null;
         this.queueCoverTarget?.style.removeProperty('opacity');
         this.queueCoverTarget = null;
+        this.queueCoverClosingTarget?.style.removeProperty('opacity');
+        this.queueCoverClosingTarget = null;
+    }
+
+    cancelQueueCoverAnimation() {
+        this.clearQueueCoverAnimation();
     }
 
     renderQueue(model = {}) {
@@ -1751,6 +1844,7 @@ export class NowPlayingPanel {
         window.clearTimeout(this.queueViewTimer);
         ++this.queueTransitionToken;
         this.queueOpeningScheduled = false;
+        this.clearQueueLayerAnimation();
         this.cancelQueueCoverAnimation();
         this.restoreQueueCoverSource();
         this.cleanupQueueDrag();
