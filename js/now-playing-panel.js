@@ -44,7 +44,7 @@ const CANVAS_LOAD_RETRY_LIMIT = 2;
 const CANVAS_RETRY_DELAY = 240;
 const TRACK_FADE_OUT_DURATION = 180;
 const QUEUE_OPEN_DURATION = 360;
-const QUEUE_CLOSE_DURATION = 320;
+const QUEUE_CLOSE_DURATION = 360;
 const QUEUE_COVER_DURATION = 360;
 const MISSING_BIOGRAPHY = 'No biography is available for this artist yet.';
 const QUEUE_REPEAT_ALL = 1;
@@ -549,26 +549,35 @@ export class NowPlayingPanel {
         this.queueCoverClosingTarget = target?.element || null;
         const finish = () => {
             if (transitionToken !== this.queueTransitionToken) return;
-            window.clearTimeout(this.queueViewTimer);
-            this.cleanupQueueDrag();
-            this.activeView = 'now-playing';
-            this.transitionMenuOpen = false;
-            this.root.classList.remove('is-queue-view', 'is-queue-opening', 'is-queue-closing');
-            document.body.classList.remove('queue-panel-open');
-            this.clearQueueCoverAnimation();
-            this.restoreQueueCoverSource();
-            this.queueLayer.classList.remove('is-visible', 'is-closing', 'is-measuring');
-            this.queueLayer.hidden = true;
-            this.queueLayer.innerHTML = '';
-            this.queueLayer.inert = true;
-            this.queueLayer.setAttribute('aria-hidden', 'true');
-            this.queueTransition = null;
-            this.queueCoverTarget = null;
-            this.queueCoverClosingTarget = null;
-            this.queueLayerRefreshPending = false;
-            this.queueOpeningSignature = null;
-            this.setOpen(this.desktopMedia.matches && this.desktopOpenState, { restoreFocus: false });
-            if (this.nowPlayingNeedsRender) void this.render({ preserveScroll: false });
+            const complete = () => {
+                if (transitionToken !== this.queueTransitionToken) return;
+                window.clearTimeout(this.queueViewTimer);
+                this.cleanupQueueDrag();
+                this.activeView = 'now-playing';
+                this.transitionMenuOpen = false;
+                this.root.classList.remove('is-queue-view', 'is-queue-opening', 'is-queue-closing');
+                document.body.classList.remove('queue-panel-open');
+                this.clearQueueCoverAnimation();
+                this.restoreQueueCoverSource();
+                this.queueLayer.classList.remove('is-visible', 'is-closing', 'is-measuring');
+                this.queueLayer.hidden = true;
+                this.queueLayer.innerHTML = '';
+                this.queueLayer.inert = true;
+                this.queueLayer.setAttribute('aria-hidden', 'true');
+                this.queueTransition = null;
+                this.queueCoverTarget = null;
+                this.queueCoverClosingTarget = null;
+                this.queueLayerRefreshPending = false;
+                this.queueOpeningSignature = null;
+                this.setOpen(this.desktopMedia.matches && this.desktopOpenState, { restoreFocus: false });
+                if (this.nowPlayingNeedsRender) void this.render({ preserveScroll: false });
+            };
+            const coverAnimation = this.queueCoverAnimation;
+            if (coverAnimation?.finished?.then) {
+                coverAnimation.finished.then(complete, complete);
+                return;
+            }
+            complete();
         };
         if (this.reducedMotionMedia.matches) {
             finish();
