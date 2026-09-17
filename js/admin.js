@@ -31,6 +31,7 @@ const CONFIG_FIELDS = {
     allow_downloads: 'admin-allow-downloads',
     allow_social_posts: 'admin-allow-social-posts',
     allow_parties: 'admin-allow-parties',
+    storage_limit_bytes: 'admin-storage-limit',
 };
 
 const state = {
@@ -589,6 +590,7 @@ function populateConfig(config) {
         const input = document.getElementById(id);
         if (!input) continue;
         if (input.type === 'checkbox') input.checked = Boolean(config[field]);
+        else if (field === 'storage_limit_bytes') input.value = config[field] ? Number(config[field]) / 1_000_000_000 : '';
         else input.value = config[field] || '';
     }
     setText('admin-instance-name-nav', config.instance_name?.trim() || 'Monochrome');
@@ -605,7 +607,12 @@ function readConfigForm() {
     for (const [field, id] of Object.entries(CONFIG_FIELDS)) {
         const input = document.getElementById(id);
         if (!input) continue;
-        data[field] = input.type === 'checkbox' ? input.checked : input.value.trim();
+        data[field] =
+            input.type === 'checkbox'
+                ? input.checked
+                : field === 'storage_limit_bytes'
+                  ? Math.max(0, Math.round(Number(input.value || 0) * 1_000_000_000))
+                  : input.value.trim();
     }
     if (!data.instance_name) data.instance_name = 'Monochrome';
     return data;

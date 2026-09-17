@@ -18,6 +18,7 @@ export const DEFAULT_CONFIG = {
     allow_downloads: true,
     allow_social_posts: true,
     allow_parties: true,
+    storage_limit_bytes: 0,
 };
 
 let cachedAppConfig = { ...DEFAULT_CONFIG };

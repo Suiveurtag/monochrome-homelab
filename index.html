@@ -3888,6 +3888,20 @@
                                                 maxlength="254"
                                                 placeholder="admin@example.com"
                                         /></label>
+                                        <label class="admin-field admin-storage-limit-field"
+                                            ><span>Storage limit</span
+                                            ><span class="admin-field-help">Maximum audio storage for this instance. Leave empty for unlimited.</span
+                                            ><div class="admin-input-with-suffix"><input
+                                                id="admin-storage-limit"
+                                                type="number"
+                                                min="0"
+                                                max="1000000"
+                                                step="0.1"
+                                                inputmode="decimal"
+                                                placeholder="50"
+                                                aria-describedby="admin-storage-limit-help"
+                                            /><span>GB</span></div
+                                            ><small id="admin-storage-limit-help">This applies to local uploads and Spotify imports.</small></label>
                                         <label class="admin-control-row admin-instance-toggle"
                                             ><span class="admin-control-icon"
                                                 ><use svg="!lucide/user-plus.svg" size="19" /></span

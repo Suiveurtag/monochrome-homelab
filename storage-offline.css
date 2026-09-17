@@ -150,6 +150,44 @@
     outline-offset: 3px;
 }
 
+.upload-storage-quota {
+    margin-top: 0.875rem;
+}
+
+.upload-storage-quota-label {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.upload-storage-quota-track {
+    height: 0.375rem;
+    margin-top: 0.45rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--secondary);
+}
+
+.upload-storage-quota-track > span {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--primary);
+    transition: width 220ms ease, background-color 220ms ease;
+}
+
+.upload-storage-quota-track.is-near-limit > span {
+    background: var(--warning, #d99a2b);
+}
+
+.upload-storage-quota-track.is-full > span {
+    background: var(--destructive, #c94b4b);
+}
+
 @media (width <= 600px) {
     .offline-settings .setting-item {
         flex-wrap: wrap;

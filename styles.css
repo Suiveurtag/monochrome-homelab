@@ -22894,6 +22894,39 @@ body.share-sheet-open {
     transition: border-color 180ms ease;
 }
 
+.admin-field-help,
+.admin-field > small {
+    color: var(--muted-foreground);
+    font-size: 0.62rem;
+    line-height: 1.45;
+}
+
+.admin-input-with-suffix {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--background);
+    overflow: hidden;
+}
+
+.admin-input-with-suffix input {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.admin-input-with-suffix input:focus {
+    border: 0;
+}
+
+.admin-input-with-suffix > span {
+    padding-right: 0.8rem;
+    color: var(--muted-foreground);
+    font-size: 0.7rem;
+    font-weight: 650;
+}
+
 .admin-field input:focus,
 .admin-field textarea:focus {
     border-color: color-mix(in srgb, var(--foreground) 42%, var(--border));
