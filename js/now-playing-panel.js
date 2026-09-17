@@ -651,13 +651,20 @@ export class NowPlayingPanel {
                 const queueChangedDuringOpening =
                     this.queueOpeningSignature !== null &&
                     this.queueOpeningSignature !== this.getQueueRenderSignature();
-                if (
-                    (this.queueCoverAnimation || this.queueOpeningScheduled || this.queueTransition?.type === 'closing') &&
-                    (this.queueTransition?.type !== 'opening' || queueChangedDuringOpening || this.nowPlayingNeedsRender)
-                ) {
-                    this.queueLayerRefreshPending = true;
-                } else {
-                    this.renderQueueLayer(model, previousScroll);
+                const queueIsStableAfterOpening =
+                    this.queueOpeningSignature !== null &&
+                    !queueChangedDuringOpening &&
+                    this.queueTransition?.type !== 'closing' &&
+                    !this.nowPlayingNeedsRender;
+                if (!queueIsStableAfterOpening) {
+                    if (
+                        (this.queueCoverAnimation || this.queueOpeningScheduled || this.queueTransition?.type === 'closing') &&
+                        (this.queueTransition?.type !== 'opening' || queueChangedDuringOpening || this.nowPlayingNeedsRender)
+                    ) {
+                        this.queueLayerRefreshPending = true;
+                    } else {
+                        this.renderQueueLayer(model, previousScroll);
+                    }
                 }
                 this.syncQueueLoopButton();
                 if (this.root.classList.contains('is-queue-opening')) {
@@ -1055,16 +1062,24 @@ export class NowPlayingPanel {
         if (token !== this.queueTransitionToken || this.activeView !== 'queue') return;
         this.root.classList.remove('is-queue-opening');
         this.queueTransition = null;
-        this.clearQueueCoverAnimation();
-        if (this.queueLayerRefreshPending) {
-            this.queueLayerRefreshPending = false;
-            const scrollTop = this.queueLayer.querySelector('.now-playing-panel-queue-view')?.scrollTop || 0;
-            requestAnimationFrame(() => {
-                if (token === this.queueTransitionToken && this.activeView === 'queue') {
-                    this.renderQueueLayer(this.model || {}, scrollTop);
-                }
-            });
+        const finish = () => {
+            if (token !== this.queueTransitionToken || this.activeView !== 'queue') return;
+            if (this.queueLayerRefreshPending) {
+                this.queueLayerRefreshPending = false;
+                const scrollTop = this.queueLayer.querySelector('.now-playing-panel-queue-view')?.scrollTop || 0;
+                requestAnimationFrame(() => {
+                    if (token === this.queueTransitionToken && this.activeView === 'queue') {
+                        this.renderQueueLayer(this.model || {}, scrollTop);
+                    }
+                });
+            }
+        };
+        const coverAnimation = this.queueCoverAnimation;
+        if (coverAnimation?.finished?.then) {
+            coverAnimation.finished.then(finish, finish);
+            return;
         }
+        finish();
     }
 
     freezeQueueMotion() {
