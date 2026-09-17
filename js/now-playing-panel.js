@@ -1280,7 +1280,7 @@ export class NowPlayingPanel {
         const endlessPressed = !!(this.player?.autoplayEnabled || this.player?.radioEnabled) && !endlessUnavailable;
         const viewLabel = this.queueView === 'history' ? 'Back to queue' : 'Recently played';
         const viewIcon = this.queueView === 'history' ? 'list-music' : 'history';
-        return `<div class="now-playing-panel-queue-view queue-motion-${motionReason}" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div class="queue-header-title"><h1 id="queue-panel-title">${this.queueView === 'history' ? 'Recently played' : 'Play queue'}</h1><button type="button" class="queue-view-switch" data-queue-view="${this.queueView === 'history' ? 'up-next' : 'history'}" aria-label="${viewLabel}" title="${viewLabel}">${icon(viewIcon, 17)}</button></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main class="queue-panel-body">${this.queueView === 'history' ? '' : `<section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${sourceLink}</h2><button type="button" class="queue-clear-button" data-queue-clear${upNext.length ? '' : ' disabled'}>Clear</button></div>${currentMarkup}</section><div class="queue-quick-actions" aria-label="Queue settings"><button type="button" role="switch" class="queue-quick-action queue-endless-card${endlessPressed ? ' is-enabled' : ''}${endlessUnavailable ? ' is-unavailable' : ''}" data-endless-toggle aria-pressed="${String(endlessPressed)}" aria-checked="${String(endlessPressed)}"><span class="queue-setting-copy"><span class="queue-setting-icon">${icon('infinity', 19)}</span><span><span class="queue-quick-label">Endless playback</span>${endlessUnavailable ? '<span class="queue-quick-status">Paused while repeat is on</span>' : ''}</span></span><span class="queue-switch" aria-hidden="true"><span class="queue-switch-thumb"></span></span></button><div class="queue-transition-card${this.transitionMenuOpen ? ' is-open' : ''}"><button type="button" class="queue-quick-action queue-transition-trigger" aria-expanded="${String(this.transitionMenuOpen)}" aria-controls="queue-transition-menu"><span class="queue-setting-icon">${icon('sliders', 17)}</span><span class="queue-transition-copy"><span class="queue-quick-label">Transition</span><small class="queue-transition-summary">${this.getTransitionSummary(transitionMode)}</small></span>${icon('chevron-right', 15)}</button>${this.renderTransitionMenu(transitionMode)}</div></div>`}${listMarkup}</main></div>`;
+        return `<div class="now-playing-panel-queue-view queue-motion-${motionReason}" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div class="queue-header-title"><h1 id="queue-panel-title">${this.queueView === 'history' ? 'Recently played' : 'Play queue'}</h1><button type="button" class="queue-view-switch" data-queue-view="${this.queueView === 'history' ? 'up-next' : 'history'}" aria-label="${viewLabel}" title="${viewLabel}">${icon(viewIcon, 17)}</button></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main class="queue-panel-body">${this.queueView === 'history' ? '' : `<section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${sourceLink}</h2><button type="button" class="queue-clear-button" data-queue-clear${upNext.length ? '' : ' disabled'}>Clear</button></div>${currentMarkup}</section><div class="queue-quick-actions" aria-label="Queue settings"><button type="button" role="switch" class="queue-quick-action queue-endless-card${endlessPressed ? ' is-enabled' : ''}${endlessUnavailable ? ' is-unavailable' : ''}" data-endless-toggle aria-pressed="${String(endlessPressed)}" aria-checked="${String(endlessPressed)}"><span class="queue-setting-copy"><span class="queue-setting-icon">${icon('infinity', 19)}</span><span><span class="queue-quick-label">Endless playback</span>${endlessUnavailable ? '<span class="queue-quick-status">Paused while repeat is on</span>' : ''}</span></span><span class="queue-switch" aria-hidden="true"><span class="queue-switch-thumb"></span></span></button>${this.renderQueueTransitionCard(transitionMode)}</div>`}${listMarkup}</main></div>`;
     }
 
     renderQueueView(model = {}) {
@@ -1316,6 +1316,10 @@ export class NowPlayingPanel {
         const option = (mode, label, detail) =>
             `<button type="button" class="queue-transition-option${selectedMode === mode ? ' is-selected' : ''}" data-transition-mode="${mode}" aria-pressed="${String(selectedMode === mode)}"><span>${label}</span><small>${detail}</small>${selectedMode === mode ? '<span class="queue-option-check" aria-hidden="true"></span>' : ''}</button>`;
         return `<div id="queue-transition-menu" class="queue-transition-menu"${this.transitionMenuOpen ? '' : ' hidden'}><div class="queue-transition-options">${option('gapless', 'Gapless', 'No space between tracks')}${option('standard', 'Standard', 'A short second of delay')}${option('crossfade', 'Crossfade', `${crossfadeSettings.getDuration()} second blend`)}</div>${selectedMode === 'crossfade' ? `<label class="queue-crossfade-control"><span>Crossfade length</span><output id="queue-crossfade-value" for="queue-crossfade-duration">${crossfadeSettings.getDuration()} s</output><input id="queue-crossfade-duration" type="range" min="1" max="12" step="1" value="${crossfadeSettings.getDuration()}" aria-label="Crossfade length" /></label>` : ''}</div>`;
+    }
+
+    renderQueueTransitionCard(transitionMode = this.getTransitionMode()) {
+        return `<div class="queue-transition-card${this.transitionMenuOpen ? ' is-open' : ''}"><button type="button" class="queue-quick-action queue-transition-trigger" aria-expanded="${String(this.transitionMenuOpen)}" aria-controls="queue-transition-menu"><span class="queue-setting-icon">${icon('sliders', 17)}</span><span class="queue-transition-copy"><span class="queue-quick-label">Transition</span><small class="queue-transition-summary">${this.getTransitionSummary(transitionMode)}</small></span>${icon('chevron-right', 15)}</button>${this.renderTransitionMenu(transitionMode)}</div>`;
     }
 
     cleanupQueueDrag() {
@@ -1903,16 +1907,20 @@ export class NowPlayingPanel {
             crossfadeSettings.setEnabled(false);
             gaplessPlaybackSettings.setEnabled(false);
         }
-        this.renderQueueControls({ preserveScroll: true });
         const transitionCard = this.root?.querySelector('.queue-transition-card');
-        const selectedOption = transitionCard?.querySelector(`[data-transition-mode="${mode}"]`);
-        transitionCard?.classList.add('is-changing');
-        selectedOption?.classList.add('is-changing');
+        const triggerHadFocus = document.activeElement === transitionCard?.querySelector('.queue-transition-trigger');
+        if (!transitionCard) return;
+        transitionCard.outerHTML = this.renderQueueTransitionCard(this.getTransitionMode());
+        const nextCard = this.root?.querySelector('.queue-transition-card');
+        const nextSelectedOption = nextCard?.querySelector(`[data-transition-mode="${mode}"]`);
+        nextCard?.classList.add('is-changing');
+        nextSelectedOption?.classList.add('is-changing');
         window.clearTimeout(this.queueTransitionChangeTimer);
         this.queueTransitionChangeTimer = window.setTimeout(() => {
-            transitionCard?.classList.remove('is-changing');
-            selectedOption?.classList.remove('is-changing');
+            nextCard?.classList.remove('is-changing');
+            nextSelectedOption?.classList.remove('is-changing');
         }, 280);
+        if (triggerHadFocus) nextCard?.querySelector('.queue-transition-trigger')?.focus({ preventScroll: true });
     }
 
     handleKeydown(event) {

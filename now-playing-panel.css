@@ -1858,6 +1858,7 @@ body .now-playing-panel.is-queue-view .queue-transition-trigger {
     min-height: 52px;
     grid-template-columns: 17px minmax(0, 1fr) 15px;
     align-items: center;
+    justify-items: stretch;
     text-align: left;
 }
 
@@ -1868,6 +1869,7 @@ body .now-playing-panel.is-queue-view .queue-transition-trigger > svg:last-child
 body .now-playing-panel.is-queue-view .queue-transition-copy {
     display: flex;
     min-width: 0;
+    justify-content: center;
     flex-direction: column;
     gap: 3px;
 }
@@ -1882,7 +1884,7 @@ body .now-playing-panel.is-queue-view .queue-transition-summary {
 }
 
 body .now-playing-panel.is-queue-view .queue-transition-copy .queue-quick-label {
-    font-size: 0.68rem;
+    font-size: 0.72rem;
 }
 
 body .now-playing-panel.is-queue-view .queue-transition-card.is-changing .queue-transition-summary {
