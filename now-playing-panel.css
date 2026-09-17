@@ -2156,6 +2156,10 @@ body .now-playing-panel.is-queue-view .now-playing-panel-queue-layer.is-visible 
     animation-play-state: running;
 }
 
+body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-static {
+    animation: none;
+}
+
 body .now-playing-panel.is-queue-view .queue-track-row.is-reconciling {
     animation: none !important;
 }
@@ -2163,13 +2167,8 @@ body .now-playing-panel.is-queue-view .queue-track-row.is-reconciling {
 body .now-playing-panel.is-queue-view .queue-track-row.is-exiting {
     z-index: 1;
     pointer-events: none;
-    animation: none !important;
-    opacity: 0;
-    transform: translate3d(-18px, 0, 0);
-    transition:
-        opacity 190ms var(--ease-out),
-        transform 190ms var(--ease-out);
-    transition-delay: var(--queue-exit-delay, 0ms);
+    animation: queue-row-exit 190ms var(--ease-out) var(--queue-exit-delay, 0ms) both !important;
+    will-change: transform, opacity;
 }
 
 body .now-playing-panel.is-queue-view .queue-track-row:last-child {
@@ -2445,6 +2444,18 @@ body .now-playing-panel.is-queue-view.is-queue-closing {
     to {
         opacity: 1;
         transform: translate3d(0, 0, 0) scale(1);
+    }
+}
+
+@keyframes queue-row-exit {
+    from {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translate3d(-18px, 0, 0);
     }
 }
 

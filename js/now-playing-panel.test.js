@@ -266,11 +266,11 @@ describe('Now Playing panel interactions', () => {
         await waitForPanel(panel);
 
         const refreshMarkup = panel.renderQueue();
-        expect(refreshMarkup).toContain('animation: none; opacity: 1; transform: none;');
+        expect(refreshMarkup).toContain('queue-track-row-static');
 
         panel.queueMotionReason = 'advance';
         const advanceMarkup = panel.renderQueue();
-        expect(advanceMarkup).not.toContain('animation: none; opacity: 1; transform: none;');
+        expect(advanceMarkup).not.toContain('queue-track-row-static');
         panel.destroy();
     });
 

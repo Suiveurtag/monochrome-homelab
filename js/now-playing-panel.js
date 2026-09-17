@@ -1458,8 +1458,8 @@ export class NowPlayingPanel {
         const motionReason = this.queueMotionReason || 'refresh';
         // A model refresh (for example playback state or metadata) must not
         // replay the list entrance. Only a structural queue change owns row motion.
-        const rowMotionStyle =
-            this.queueRowsStatic || motionReason === 'refresh' ? 'animation: none; opacity: 1; transform: none;' : '';
+        const rowMotionStyle = '';
+        const staticRowClass = this.queueRowsStatic || motionReason === 'refresh' ? ' queue-track-row-static' : '';
         this.queueMotionReason = null;
         const imageFor = (track) => {
             const source = getTrackPlayerArtwork(track);
@@ -1505,7 +1505,7 @@ export class NowPlayingPanel {
                       const queuedMode = this.manuallyQueuedTracks.get(String(track.id));
                       const isPinnedNext = queuedMode === 'next';
                       const isManualQueue = queuedMode === 'queue';
-                      const rowClass = `queue-track-row${isPinnedNext ? ' is-pinned-next' : ''}${isManualQueue ? ' is-manually-queued' : ''}`;
+                      const rowClass = `queue-track-row${staticRowClass}${isPinnedNext ? ' is-pinned-next' : ''}${isManualQueue ? ' is-manually-queued' : ''}`;
                       const badge = isPinnedNext
                           ? `<span class="queue-track-badge">${icon('sparkles', 11)} Pinned next</span>`
                           : isManualQueue
@@ -1520,7 +1520,7 @@ export class NowPlayingPanel {
                   .reverse()
                   .map(
                       (track, offset) =>
-                          `<div class="queue-track-row queue-history-row" data-track-id="${escapeHtml(String(track.id))}" style="--queue-order:${offset};--queue-delay:${Math.min(offset, 12) * 34}ms;${rowMotionStyle}"><div class="queue-track-main queue-history-main"><img src="${escapeHtml(imageFor(track))}" alt="" loading="lazy" /><span><strong>${escapeHtml(titleFor(track))}</strong><small>${escapeHtml(artistFor(track))}</small></span></div></div>`
+                          `<div class="queue-track-row queue-history-row${staticRowClass}" data-track-id="${escapeHtml(String(track.id))}" style="--queue-order:${offset};--queue-delay:${Math.min(offset, 12) * 34}ms;${rowMotionStyle}"><div class="queue-track-main queue-history-main"><img src="${escapeHtml(imageFor(track))}" alt="" loading="lazy" /><span><strong>${escapeHtml(titleFor(track))}</strong><small>${escapeHtml(artistFor(track))}</small></span></div></div>`
                   )
                   .join('')
             : `<div class="queue-list-empty"><span>${icon('history', 18)}</span><strong>No history yet</strong><p>Only tracks played in this queue appear here.</p></div>`;
