@@ -107,6 +107,9 @@ const SHADOW_BRIDGE_CSS = `
     justify-content: center;
 }
 #SpicyLyricsPage .NowBar { display: none !important; }
+#SpicyLyricsPage.Fullscreen .simplebar-track {
+    display: none !important;
+}
 #SpicyLyricsPage .LyricsContainer .LyricsContent {
     --DefaultLyricsSize: clamp(1.85rem, calc(1cqw * 7), 3.5rem);
     --spice-sidebar: #fff;
