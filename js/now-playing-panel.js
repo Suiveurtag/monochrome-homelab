@@ -135,6 +135,9 @@ export class NowPlayingPanel {
         this.queueDragIndex = null;
         this.queueDropTarget = null;
         this.queueViewTimer = null;
+        this.queueTransitionCloseTimer = null;
+        this.queueTransitionChangeTimer = null;
+        this.queueCrossfadeAnimationTimer = null;
         this.queueTransitionToken = 0;
         this.queueTransition = null;
         this.queueCoverAnimation = null;
@@ -1277,7 +1280,7 @@ export class NowPlayingPanel {
         const endlessPressed = !!(this.player?.autoplayEnabled || this.player?.radioEnabled) && !endlessUnavailable;
         const viewLabel = this.queueView === 'history' ? 'Back to queue' : 'Recently played';
         const viewIcon = this.queueView === 'history' ? 'list-music' : 'history';
-        return `<div class="now-playing-panel-queue-view queue-motion-${motionReason}" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div class="queue-header-title"><h1 id="queue-panel-title">${this.queueView === 'history' ? 'Recently played' : 'Play queue'}</h1><button type="button" class="queue-view-switch" data-queue-view="${this.queueView === 'history' ? 'up-next' : 'history'}" aria-label="${viewLabel}" title="${viewLabel}">${icon(viewIcon, 17)}</button></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main class="queue-panel-body">${this.queueView === 'history' ? '' : `<section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${sourceLink}</h2><button type="button" class="queue-clear-button" data-queue-clear${upNext.length ? '' : ' disabled'}>Clear</button></div>${currentMarkup}</section><div class="queue-quick-actions" aria-label="Queue settings"><button type="button" role="switch" class="queue-quick-action queue-endless-card${endlessPressed ? ' is-enabled' : ''}${endlessUnavailable ? ' is-unavailable' : ''}" data-endless-toggle aria-pressed="${String(endlessPressed)}" aria-checked="${String(endlessPressed)}"><span class="queue-setting-copy"><span class="queue-setting-icon">${icon('infinity', 19)}</span><span><span class="queue-quick-label">Endless playback</span>${endlessUnavailable ? '<span class="queue-quick-status">Paused while repeat is on</span>' : ''}</span></span><span class="queue-switch" aria-hidden="true"><span class="queue-switch-thumb"></span></span></button><div class="queue-transition-card${this.transitionMenuOpen ? ' is-open' : ''}"><button type="button" class="queue-quick-action queue-transition-trigger" aria-expanded="${String(this.transitionMenuOpen)}" aria-controls="queue-transition-menu"><span class="queue-setting-icon">${icon('sliders', 17)}</span><span class="queue-quick-label">Transition</span>${icon('chevron-right', 15)}</button>${this.renderTransitionMenu(transitionMode)}</div></div>`}${listMarkup}</main></div>`;
+        return `<div class="now-playing-panel-queue-view queue-motion-${motionReason}" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div class="queue-header-title"><h1 id="queue-panel-title">${this.queueView === 'history' ? 'Recently played' : 'Play queue'}</h1><button type="button" class="queue-view-switch" data-queue-view="${this.queueView === 'history' ? 'up-next' : 'history'}" aria-label="${viewLabel}" title="${viewLabel}">${icon(viewIcon, 17)}</button></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main class="queue-panel-body">${this.queueView === 'history' ? '' : `<section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${sourceLink}</h2><button type="button" class="queue-clear-button" data-queue-clear${upNext.length ? '' : ' disabled'}>Clear</button></div>${currentMarkup}</section><div class="queue-quick-actions" aria-label="Queue settings"><button type="button" role="switch" class="queue-quick-action queue-endless-card${endlessPressed ? ' is-enabled' : ''}${endlessUnavailable ? ' is-unavailable' : ''}" data-endless-toggle aria-pressed="${String(endlessPressed)}" aria-checked="${String(endlessPressed)}"><span class="queue-setting-copy"><span class="queue-setting-icon">${icon('infinity', 19)}</span><span><span class="queue-quick-label">Endless playback</span>${endlessUnavailable ? '<span class="queue-quick-status">Paused while repeat is on</span>' : ''}</span></span><span class="queue-switch" aria-hidden="true"><span class="queue-switch-thumb"></span></span></button><div class="queue-transition-card${this.transitionMenuOpen ? ' is-open' : ''}"><button type="button" class="queue-quick-action queue-transition-trigger" aria-expanded="${String(this.transitionMenuOpen)}" aria-controls="queue-transition-menu"><span class="queue-setting-icon">${icon('sliders', 17)}</span><span class="queue-transition-copy"><span class="queue-quick-label">Transition</span><small class="queue-transition-summary">${this.getTransitionSummary(transitionMode)}</small></span>${icon('chevron-right', 15)}</button>${this.renderTransitionMenu(transitionMode)}</div></div>`}${listMarkup}</main></div>`;
     }
 
     renderQueueView(model = {}) {
@@ -1734,9 +1737,16 @@ export class NowPlayingPanel {
         if (button.matches('.queue-transition-trigger')) {
             this.transitionMenuOpen = !this.transitionMenuOpen;
             const transitionCard = button.closest('.queue-transition-card');
+            const transitionMenu = transitionCard?.querySelector('.queue-transition-menu');
+            window.clearTimeout(this.queueTransitionCloseTimer);
+            if (this.transitionMenuOpen) transitionMenu?.removeAttribute('hidden');
             transitionCard?.classList.toggle('is-open', this.transitionMenuOpen);
             button.setAttribute('aria-expanded', String(this.transitionMenuOpen));
-            transitionCard?.querySelector('.queue-transition-menu')?.toggleAttribute('hidden', !this.transitionMenuOpen);
+            if (!this.transitionMenuOpen) {
+                this.queueTransitionCloseTimer = window.setTimeout(() => {
+                    if (!this.transitionMenuOpen) transitionMenu?.setAttribute('hidden', '');
+                }, 240);
+            }
             return;
         }
         if (button.matches('.queue-transition-option')) {
@@ -1789,6 +1799,10 @@ export class NowPlayingPanel {
         const duration = crossfadeSettings.setDuration(event.target.value);
         const output = this.root.querySelector('#queue-crossfade-value');
         if (output) output.textContent = `${duration} s`;
+        const control = event.target.closest('.queue-crossfade-control');
+        control?.classList.add('is-adjusting');
+        window.clearTimeout(this.queueCrossfadeAnimationTimer);
+        this.queueCrossfadeAnimationTimer = window.setTimeout(() => control?.classList.remove('is-adjusting'), 180);
     }
 
     syncQueuePlaybackButtons() {
@@ -1890,6 +1904,15 @@ export class NowPlayingPanel {
             gaplessPlaybackSettings.setEnabled(false);
         }
         this.renderQueueControls({ preserveScroll: true });
+        const transitionCard = this.root?.querySelector('.queue-transition-card');
+        const selectedOption = transitionCard?.querySelector(`[data-transition-mode="${mode}"]`);
+        transitionCard?.classList.add('is-changing');
+        selectedOption?.classList.add('is-changing');
+        window.clearTimeout(this.queueTransitionChangeTimer);
+        this.queueTransitionChangeTimer = window.setTimeout(() => {
+            transitionCard?.classList.remove('is-changing');
+            selectedOption?.classList.remove('is-changing');
+        }, 280);
     }
 
     handleKeydown(event) {
@@ -1937,6 +1960,9 @@ export class NowPlayingPanel {
     destroy() {
         this.renderController?.abort();
         window.clearTimeout(this.queueViewTimer);
+        window.clearTimeout(this.queueTransitionCloseTimer);
+        window.clearTimeout(this.queueTransitionChangeTimer);
+        window.clearTimeout(this.queueCrossfadeAnimationTimer);
         ++this.queueTransitionToken;
         this.queueOpeningScheduled = false;
         this.clearQueueLayerAnimation();

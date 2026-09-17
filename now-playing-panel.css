@@ -1704,11 +1704,11 @@ body .now-playing-panel.is-queue-view .queue-quick-action {
     display: grid;
     position: relative;
     min-width: 0;
-    min-height: 48px;
+    min-height: 52px;
     align-content: center;
     justify-items: center;
     gap: 5px;
-    padding: 7px 5px;
+    padding: 7px 10px;
     border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
     border-radius: 10px;
     background: color-mix(in srgb, var(--card) 86%, var(--foreground) 3%);
@@ -1786,6 +1786,10 @@ body .now-playing-panel.is-queue-view .queue-setting-copy {
     gap: 10px;
 }
 
+body .now-playing-panel.is-queue-view .queue-setting-copy > span:last-child {
+    min-width: 0;
+}
+
 body .now-playing-panel.is-queue-view .queue-endless-card .queue-setting-icon {
     flex: 0 0 auto;
     width: 19px;
@@ -1851,11 +1855,38 @@ body .now-playing-panel.is-queue-view .queue-transition-card {
 
 body .now-playing-panel.is-queue-view .queue-transition-trigger {
     width: 100%;
+    min-height: 52px;
     grid-template-columns: 17px minmax(0, 1fr) 15px;
+    align-items: center;
+    text-align: left;
 }
 
 body .now-playing-panel.is-queue-view .queue-transition-trigger > svg:last-child {
     color: var(--muted-foreground);
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-summary {
+    overflow: hidden;
+    color: var(--muted-foreground);
+    font-size: 0.53rem;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-copy .queue-quick-label {
+    font-size: 0.68rem;
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-card.is-changing .queue-transition-summary {
+    animation: queue-transition-summary-change 280ms var(--ease-out) both;
 }
 
 body .now-playing-panel.is-queue-view .queue-transition-card.is-open .queue-transition-trigger {
@@ -1875,7 +1906,27 @@ body .now-playing-panel.is-queue-view .queue-transition-menu {
     border-radius: 12px;
     background: var(--card);
     box-shadow: 0 18px 44px rgb(0 0 0 / 0.42);
-    animation: queue-menu-enter 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-6px) scale(0.965);
+    transform-origin: top right;
+    transition:
+        opacity 180ms var(--ease-out),
+        transform 240ms cubic-bezier(0.2, 0.9, 0.24, 1.08),
+        clip-path 240ms cubic-bezier(0.2, 0.9, 0.24, 1.08),
+        visibility 0s linear 240ms;
+    visibility: hidden;
+    clip-path: inset(0 round 16px);
+    will-change: transform, opacity, clip-path;
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-card.is-open .queue-transition-menu {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+    transition-delay: 0s;
+    visibility: visible;
+    clip-path: inset(0 round 12px);
 }
 
 body .now-playing-panel.is-queue-view .queue-transition-options {
@@ -1895,6 +1946,23 @@ body .now-playing-panel.is-queue-view .queue-transition-option {
     cursor: pointer;
     font: inherit;
     text-align: left;
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-card.is-open .queue-transition-option {
+    animation: context-menu-item-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(38ms + var(--queue-option-index, 0) * 28ms);
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-card.is-open .queue-transition-option:nth-child(2) {
+    --queue-option-index: 1;
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-card.is-open .queue-transition-option:nth-child(3) {
+    --queue-option-index: 2;
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-option.is-changing {
+    animation: queue-transition-choice 280ms var(--ease-out-back) both;
 }
 
 body .now-playing-panel.is-queue-view .queue-transition-option:hover,
@@ -1933,6 +2001,7 @@ body .now-playing-panel.is-queue-view .queue-crossfade-control {
     border-top: 1px solid var(--border);
     color: var(--muted-foreground);
     font-size: 0.62rem;
+    transform-origin: top center;
 }
 
 body .now-playing-panel.is-queue-view .queue-crossfade-control output {
@@ -1943,6 +2012,10 @@ body .now-playing-panel.is-queue-view .queue-crossfade-control output {
 body .now-playing-panel.is-queue-view .queue-crossfade-control input {
     width: 100%;
     accent-color: var(--primary);
+}
+
+body .now-playing-panel.is-queue-view .queue-crossfade-control.is-adjusting {
+    animation: queue-slider-adjust 220ms var(--ease-out) both;
 }
 
 body .now-playing-panel.is-queue-view .queue-list-section {
@@ -2226,6 +2299,42 @@ body .now-playing-panel.is-queue-view .queue-list-empty p {
 
 body .now-playing-panel.is-queue-view.is-queue-closing {
     pointer-events: none;
+}
+
+@keyframes queue-transition-summary-change {
+    0% {
+        opacity: 0.45;
+        transform: translateY(3px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes queue-transition-choice {
+    0% {
+        opacity: 0.7;
+        transform: scale(0.97);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes queue-slider-adjust {
+    0% {
+        opacity: 0.78;
+        transform: scaleY(0.96);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scaleY(1);
+    }
 }
 
 .now-playing-panel-queue-cover-morph {
