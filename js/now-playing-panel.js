@@ -145,6 +145,8 @@ export class NowPlayingPanel {
         this.queueLayerAnimation = null;
         this.queueOpeningScheduled = false;
         this.queueLayerRefreshPending = false;
+        this.queueOpeningSignature = null;
+        this.queueRowsStatic = false;
         this.nowPlayingNeedsRender = false;
         this.background = this.root
             ? mountSpicyDynamicBackground(this.root, { className: 'now-playing-panel-spicy-bg' })
@@ -518,6 +520,7 @@ export class NowPlayingPanel {
         this.queueView = 'up-next';
         this.transitionMenuOpen = false;
         this.queueMotionReason = 'open';
+        this.queueOpeningSignature = this.getQueueRenderSignature();
         this.queueTransition = { type: 'opening', source, token: transitionToken };
         window.clearTimeout(this.queueViewTimer);
         this.queueLayer.hidden = false;
@@ -525,7 +528,9 @@ export class NowPlayingPanel {
         this.root.classList.add('is-queue-view', 'is-queue-opening');
         document.body.classList.add('queue-panel-open');
         this.setOpen(true);
-        this.renderQueueOpeningShell();
+        this.queueRowsStatic = true;
+        this.renderQueueLayer(this.model || {}, 0, { startTransition: false });
+        this.queueRowsStatic = false;
         this.startQueueOpening(this.queueTransition);
         void this.render({ preserveScroll: false });
     }
@@ -561,6 +566,7 @@ export class NowPlayingPanel {
             this.queueCoverTarget = null;
             this.queueCoverClosingTarget = null;
             this.queueLayerRefreshPending = false;
+            this.queueOpeningSignature = null;
             this.setOpen(this.desktopMedia.matches && this.desktopOpenState, { restoreFocus: false });
             if (this.nowPlayingNeedsRender) void this.render({ preserveScroll: false });
         };
@@ -642,7 +648,13 @@ export class NowPlayingPanel {
                 this.nowPlayingNeedsRender = false;
             }
             if (isQueueView) {
-                if (this.queueCoverAnimation || this.queueOpeningScheduled || this.queueTransition?.type === 'closing') {
+                const queueChangedDuringOpening =
+                    this.queueOpeningSignature !== null &&
+                    this.queueOpeningSignature !== this.getQueueRenderSignature();
+                if (
+                    (this.queueCoverAnimation || this.queueOpeningScheduled || this.queueTransition?.type === 'closing') &&
+                    (this.queueTransition?.type !== 'opening' || queueChangedDuringOpening || this.nowPlayingNeedsRender)
+                ) {
                     this.queueLayerRefreshPending = true;
                 } else {
                     this.renderQueueLayer(model, previousScroll);
@@ -874,7 +886,7 @@ export class NowPlayingPanel {
         return snapshot;
     }
 
-    renderQueueLayer(model, previousScroll = 0) {
+    renderQueueLayer(model, previousScroll = 0, { startTransition = true } = {}) {
         if (!this.queueLayer) return;
         if (this.queueCoverAnimation || this.queueOpeningScheduled || this.queueTransition?.type === 'closing') {
             this.queueLayerRefreshPending = true;
@@ -885,7 +897,7 @@ export class NowPlayingPanel {
         this.queueLayer.hidden = false;
         this.queueLayer.innerHTML = this.renderQueueView(model);
         this.queueLayer.querySelector('.now-playing-panel-queue-view').scrollTop = previousScroll;
-        if (pendingTransition?.type === 'opening') this.startQueueOpening(pendingTransition);
+        if (startTransition && pendingTransition?.type === 'opening') this.startQueueOpening(pendingTransition);
         this.syncQueueLayerState();
     }
 
@@ -1158,6 +1170,7 @@ export class NowPlayingPanel {
         const media = this.player?.activeElement;
         const isPaused = media?.paused !== false;
         const motionReason = this.queueMotionReason || 'refresh';
+        const rowMotionStyle = this.queueRowsStatic ? 'animation: none; opacity: 1; transform: none;' : '';
         this.queueMotionReason = null;
         const imageFor = (track) => {
             const source = getTrackPlayerArtwork(track);
@@ -1209,7 +1222,7 @@ export class NowPlayingPanel {
                           : isManualQueue
                             ? '<span class="queue-track-badge">Added to queue</span>'
                             : '';
-                      return `<div class="${rowClass}" style="--queue-order:${offset};--queue-delay:${Math.min(offset, 12) * 34}ms" data-track-id="${escapeHtml(String(track.id))}" data-queue-index="${index}" data-draggable="${String(Boolean(queue.length))}" draggable="${String(Boolean(queue.length))}"><button type="button" class="queue-track-main" data-queue-index="${index}" ${queue.length ? '' : 'data-play-next'} aria-label="Play ${escapeHtml(titleFor(track))}"><img src="${escapeHtml(imageFor(track))}" alt="" loading="lazy" /><span class="queue-track-copy">${badge}<strong>${escapeHtml(titleFor(track))}</strong><small>${escapeHtml(artistFor(track))}</small></span></button><button type="button" class="queue-track-remove" data-remove-queue-index="${index}" aria-label="Remove ${escapeHtml(titleFor(track))} from queue">${icon('x', 16)}</button><span class="queue-drag-handle" aria-label="Drag ${escapeHtml(titleFor(track))} to reorder" title="Drag to reorder">${icon('grip', 16)}</span></div>`;
+                      return `<div class="${rowClass}" style="--queue-order:${offset};--queue-delay:${Math.min(offset, 12) * 34}ms;${rowMotionStyle}" data-track-id="${escapeHtml(String(track.id))}" data-queue-index="${index}" data-draggable="${String(Boolean(queue.length))}" draggable="${String(Boolean(queue.length))}"><button type="button" class="queue-track-main" data-queue-index="${index}" ${queue.length ? '' : 'data-play-next'} aria-label="Play ${escapeHtml(titleFor(track))}"><img src="${escapeHtml(imageFor(track))}" alt="" loading="lazy" /><span class="queue-track-copy">${badge}<strong>${escapeHtml(titleFor(track))}</strong><small>${escapeHtml(artistFor(track))}</small></span></button><button type="button" class="queue-track-remove" data-remove-queue-index="${index}" aria-label="Remove ${escapeHtml(titleFor(track))} from queue">${icon('x', 16)}</button><span class="queue-drag-handle" aria-label="Drag ${escapeHtml(titleFor(track))} to reorder" title="Drag to reorder">${icon('grip', 16)}</span></div>`;
                   })
                   .join('')
             : `<div class="queue-list-empty"><span>${icon('list-music', 18)}</span><strong>Nothing else is lined up</strong><p>${escapeHtml(emptyQueueCopy)}</p></div>`;
@@ -1218,7 +1231,7 @@ export class NowPlayingPanel {
                   .reverse()
                   .map(
                       (track, offset) =>
-                          `<div class="queue-track-row queue-history-row" style="--queue-order:${offset};--queue-delay:${Math.min(offset, 12) * 34}ms"><div class="queue-track-main queue-history-main"><img src="${escapeHtml(imageFor(track))}" alt="" loading="lazy" /><span><strong>${escapeHtml(titleFor(track))}</strong><small>${escapeHtml(artistFor(track))}</small></span></div></div>`
+                          `<div class="queue-track-row queue-history-row" style="--queue-order:${offset};--queue-delay:${Math.min(offset, 12) * 34}ms;${rowMotionStyle}"><div class="queue-track-main queue-history-main"><img src="${escapeHtml(imageFor(track))}" alt="" loading="lazy" /><span><strong>${escapeHtml(titleFor(track))}</strong><small>${escapeHtml(artistFor(track))}</small></span></div></div>`
                   )
                   .join('')
             : `<div class="queue-list-empty"><span>${icon('history', 18)}</span><strong>No history yet</strong><p>Only tracks played in this queue appear here.</p></div>`;
