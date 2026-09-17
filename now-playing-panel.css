@@ -1694,7 +1694,7 @@ body .now-playing-panel.is-queue-view .queue-current-state:focus-visible {
 
 body .now-playing-panel.is-queue-view .queue-quick-actions {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
     padding: 12px 0 14px;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
@@ -1767,6 +1767,81 @@ body .now-playing-panel.is-queue-view .queue-quick-status {
 
 body .now-playing-panel.is-queue-view .queue-endless-card.is-unavailable {
     opacity: 0.62;
+}
+
+body .now-playing-panel.is-queue-view .queue-endless-card {
+    display: flex;
+    min-height: 52px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 10px;
+    text-align: left;
+}
+
+body .now-playing-panel.is-queue-view .queue-setting-copy {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+}
+
+body .now-playing-panel.is-queue-view .queue-endless-card .queue-setting-icon {
+    flex: 0 0 auto;
+    width: 19px;
+    height: 19px;
+}
+
+body .now-playing-panel.is-queue-view .queue-endless-card .queue-quick-label,
+body .now-playing-panel.is-queue-view .queue-endless-card .queue-quick-status {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body .now-playing-panel.is-queue-view .queue-endless-card .queue-quick-label {
+    font-size: 0.68rem;
+    line-height: 1.15;
+}
+
+body .now-playing-panel.is-queue-view .queue-endless-card .queue-quick-status {
+    margin-top: 2px;
+    font-size: 0.53rem;
+    line-height: 1;
+}
+
+body .now-playing-panel.is-queue-view .queue-switch {
+    display: inline-flex;
+    position: relative;
+    flex: 0 0 auto;
+    width: 36px;
+    height: 21px;
+    align-items: center;
+    padding: 2px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--muted-foreground) 32%, transparent);
+    transition: background-color 180ms var(--ease-out);
+}
+
+body .now-playing-panel.is-queue-view .queue-switch-thumb {
+    display: block;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    background: var(--foreground);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
+    transform: translateX(0);
+    transition: transform 220ms var(--ease-out), background-color 180ms var(--ease-out);
+}
+
+body .now-playing-panel.is-queue-view .queue-endless-card.is-enabled .queue-switch {
+    background: var(--primary);
+}
+
+body .now-playing-panel.is-queue-view .queue-endless-card.is-enabled .queue-switch-thumb {
+    background: var(--primary-foreground);
+    transform: translateX(15px);
 }
 
 body .now-playing-panel.is-queue-view .queue-transition-card {
@@ -1882,6 +1957,50 @@ body .now-playing-panel.is-queue-view .queue-list-heading {
 body .now-playing-panel.is-queue-view .queue-list-heading h2 {
     font-size: 0.88rem;
     letter-spacing: -0.01em;
+}
+
+body .now-playing-panel.is-queue-view .queue-list-loop-button {
+    display: inline-grid;
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    margin-top: 1px;
+    padding: 0;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--card) 72%, transparent);
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition:
+        border-color 180ms var(--ease-out),
+        background-color 180ms var(--ease-out),
+        color 180ms var(--ease-out),
+        transform 180ms var(--ease-out);
+}
+
+body .now-playing-panel.is-queue-view .queue-list-loop-button > svg {
+    width: 15px;
+    height: 15px;
+    transition: transform 240ms var(--ease-out);
+}
+
+body .now-playing-panel.is-queue-view .queue-list-loop-button.icon-activated > svg {
+    animation: player-icon-spin 420ms var(--ease-out-back);
+}
+
+body .now-playing-panel.is-queue-view .queue-list-loop-button:hover,
+body .now-playing-panel.is-queue-view .queue-list-loop-button:focus-visible,
+body .now-playing-panel.is-queue-view .queue-list-loop-button.is-active {
+    border-color: color-mix(in srgb, var(--primary) 52%, var(--border));
+    background: rgb(var(--highlight-rgb) / 0.1);
+    color: var(--foreground);
+    outline: none;
+    transform: translateY(-1px);
+}
+
+body .now-playing-panel.is-queue-view .queue-list-loop-button.is-active > svg {
+    transform: rotate(180deg);
 }
 
 body .now-playing-panel.is-queue-view .queue-list-heading p {

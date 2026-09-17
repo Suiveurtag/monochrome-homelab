@@ -211,7 +211,16 @@ export class NowPlayingPanel {
             if (nextSignature === this.queueRenderSignature) return;
             this.queueRenderSignature = nextSignature;
             this.sourceContext = nextSourceContext;
+            if (this.activeView === 'queue') {
+                this.queueMotionReason = 'refresh';
+                this.renderQueueControls({ preserveScroll: true });
+                return;
+            }
             void this.render({ preserveScroll: true });
+        };
+        this.boundRepeatChanged = () => {
+            this.syncQueueLoopButton({ animate: true });
+            this.syncEndlessButton();
         };
         this.boundQueueTracksAdded = (event) => {
             const mode = event.detail?.mode === 'next' ? 'next' : 'queue';
@@ -346,6 +355,7 @@ export class NowPlayingPanel {
             this.boundCanvasCoverOverlayPreferenceChanged
         );
         window.addEventListener('player-queue-changed', this.boundQueueChanged);
+        window.addEventListener('player-repeat-changed', this.boundRepeatChanged);
         window.addEventListener('autoplay-state-changed', this.boundTransitionChanged);
         window.addEventListener('radio-state-changed', this.boundTransitionChanged);
         window.addEventListener('queue-tracks-added', this.boundQueueTracksAdded);
@@ -1262,12 +1272,12 @@ export class NowPlayingPanel {
         const listMarkup =
             this.queueView === 'history'
                 ? `<section class="queue-list-section" aria-labelledby="queue-history-title"><div class="queue-list-heading"><div><h2 id="queue-history-title">History</h2><p>${this.queueHistory.length} ${this.queueHistory.length === 1 ? 'track' : 'tracks'} · this queue only</p></div></div><div class="queue-track-list queue-history-list">${historyRows}</div></section>`
-                : `<section class="queue-list-section" aria-labelledby="queue-up-next-title"><div class="queue-list-heading"><div><h2 id="queue-up-next-title">Next Up from ${sourceLink}</h2><p>${upNext.length} ${upNext.length === 1 ? 'track' : 'tracks'} <span aria-hidden="true">·</span> ${escapeHtml(durationLabel)} <span class="queue-source-context">· ${escapeHtml(sourceContext)}</span></p></div></div><div class="queue-track-list">${rows}</div></section>`;
+                : `<section class="queue-list-section" aria-labelledby="queue-up-next-title"><div class="queue-list-heading"><div><h2 id="queue-up-next-title">Next Up from ${sourceLink}</h2><p>${upNext.length} ${upNext.length === 1 ? 'track' : 'tracks'} <span aria-hidden="true">·</span> ${escapeHtml(durationLabel)} <span class="queue-source-context">· ${escapeHtml(sourceContext)}</span></p></div><button type="button" class="queue-loop-button queue-list-loop-button${isLooping ? ' is-active' : ''}" aria-pressed="${String(isLooping)}" aria-label="${isLooping ? 'Disable loop queue' : 'Loop queue'}" title="${isLooping ? 'Disable loop queue' : 'Loop queue'}">${icon('repeat', 15)}</button></div><div class="queue-track-list">${rows}</div></section>`;
         const endlessUnavailable = (this.player?.repeatMode ?? 0) !== 0;
         const endlessPressed = !!(this.player?.autoplayEnabled || this.player?.radioEnabled) && !endlessUnavailable;
         const viewLabel = this.queueView === 'history' ? 'Back to queue' : 'Recently played';
         const viewIcon = this.queueView === 'history' ? 'list-music' : 'history';
-        return `<div class="now-playing-panel-queue-view queue-motion-${motionReason}" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div class="queue-header-title"><h1 id="queue-panel-title">${this.queueView === 'history' ? 'Recently played' : 'Play queue'}</h1><button type="button" class="queue-view-switch" data-queue-view="${this.queueView === 'history' ? 'up-next' : 'history'}" aria-label="${viewLabel}" title="${viewLabel}">${icon(viewIcon, 17)}</button></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main class="queue-panel-body">${this.queueView === 'history' ? '' : `<section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${sourceLink}</h2><button type="button" class="queue-clear-button" data-queue-clear${upNext.length ? '' : ' disabled'}>Clear</button></div>${currentMarkup}</section><div class="queue-quick-actions" aria-label="Queue settings"><button type="button" class="queue-quick-action queue-endless-card${endlessPressed ? ' is-enabled' : ''}${endlessUnavailable ? ' is-unavailable' : ''}" data-endless-toggle aria-pressed="${String(endlessPressed)}"><span class="queue-setting-icon">${icon('infinity', 17)}</span><span class="queue-quick-label">Endless playback</span>${endlessUnavailable ? '<span class="queue-quick-status">Paused while repeat is on</span>' : ''}</button><button type="button" class="queue-quick-action queue-loop-button${isLooping ? ' is-active' : ''}" aria-pressed="${String(isLooping)}">${icon('repeat', 17)}<span class="queue-quick-label">${isLooping ? 'Looping' : 'Loop queue'}</span></button><div class="queue-transition-card${this.transitionMenuOpen ? ' is-open' : ''}"><button type="button" class="queue-quick-action queue-transition-trigger" aria-expanded="${String(this.transitionMenuOpen)}" aria-controls="queue-transition-menu"><span class="queue-setting-icon">${icon('sliders', 17)}</span><span class="queue-quick-label">Transition</span>${icon('chevron-right', 15)}</button>${this.renderTransitionMenu(transitionMode)}</div></div>`}${listMarkup}</main></div>`;
+        return `<div class="now-playing-panel-queue-view queue-motion-${motionReason}" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div class="queue-header-title"><h1 id="queue-panel-title">${this.queueView === 'history' ? 'Recently played' : 'Play queue'}</h1><button type="button" class="queue-view-switch" data-queue-view="${this.queueView === 'history' ? 'up-next' : 'history'}" aria-label="${viewLabel}" title="${viewLabel}">${icon(viewIcon, 17)}</button></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main class="queue-panel-body">${this.queueView === 'history' ? '' : `<section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${sourceLink}</h2><button type="button" class="queue-clear-button" data-queue-clear${upNext.length ? '' : ' disabled'}>Clear</button></div>${currentMarkup}</section><div class="queue-quick-actions" aria-label="Queue settings"><button type="button" role="switch" class="queue-quick-action queue-endless-card${endlessPressed ? ' is-enabled' : ''}${endlessUnavailable ? ' is-unavailable' : ''}" data-endless-toggle aria-pressed="${String(endlessPressed)}" aria-checked="${String(endlessPressed)}"><span class="queue-setting-copy"><span class="queue-setting-icon">${icon('infinity', 19)}</span><span><span class="queue-quick-label">Endless playback</span>${endlessUnavailable ? '<span class="queue-quick-status">Paused while repeat is on</span>' : ''}</span></span><span class="queue-switch" aria-hidden="true"><span class="queue-switch-thumb"></span></span></button><div class="queue-transition-card${this.transitionMenuOpen ? ' is-open' : ''}"><button type="button" class="queue-quick-action queue-transition-trigger" aria-expanded="${String(this.transitionMenuOpen)}" aria-controls="queue-transition-menu"><span class="queue-setting-icon">${icon('sliders', 17)}</span><span class="queue-quick-label">Transition</span>${icon('chevron-right', 15)}</button>${this.renderTransitionMenu(transitionMode)}</div></div>`}${listMarkup}</main></div>`;
     }
 
     renderQueueView(model = {}) {
@@ -1683,7 +1693,7 @@ export class NowPlayingPanel {
             if (nextView === this.queueView) return;
             this.queueView = nextView;
             this.queueMotionReason = 'view';
-            return void this.render({ preserveScroll: true });
+            return void this.renderQueueControls({ preserveScroll: true });
         }
         if (button.matches('.queue-source-link') && button.dataset.queueSourceHref)
             return navigate(button.dataset.queueSourceHref);
@@ -1691,7 +1701,7 @@ export class NowPlayingPanel {
             if (!this.player?.clearQueue || !this.player.getCurrentQueue?.().length) return;
             await this.player.clearQueue();
             this.queueMotionReason = 'refresh';
-            await this.render({ preserveScroll: true });
+            this.renderQueueControls({ preserveScroll: true });
             showNotification('Queue cleared');
             return;
         }
@@ -1705,7 +1715,6 @@ export class NowPlayingPanel {
         }
         if (button.matches('[data-endless-toggle]')) {
             if ((this.player?.repeatMode ?? 0) !== 0) {
-                showNotification('Turn repeat off to use Endless playback');
                 return;
             }
             if (this.player.autoplayEnabled || this.player.radioEnabled) {
@@ -1718,13 +1727,17 @@ export class NowPlayingPanel {
                     void this.player.fetchAutoplayRecommendations();
                 }
             }
-            await this.render({ preserveScroll: true });
+            this.syncEndlessButton();
             this.root.querySelector('[data-endless-toggle]')?.focus({ preventScroll: true });
             return;
         }
         if (button.matches('.queue-transition-trigger')) {
             this.transitionMenuOpen = !this.transitionMenuOpen;
-            return void this.render({ preserveScroll: true });
+            const transitionCard = button.closest('.queue-transition-card');
+            transitionCard?.classList.toggle('is-open', this.transitionMenuOpen);
+            button.setAttribute('aria-expanded', String(this.transitionMenuOpen));
+            transitionCard?.querySelector('.queue-transition-menu')?.toggleAttribute('hidden', !this.transitionMenuOpen);
+            return;
         }
         if (button.matches('.queue-transition-option')) {
             await this.setQueueTransition(button.dataset.transitionMode);
@@ -1788,20 +1801,68 @@ export class NowPlayingPanel {
         }
     }
 
+    syncEndlessButton() {
+        const button = this.root?.querySelector('[data-endless-toggle]');
+        if (!button) return;
+        const unavailable = (this.player?.repeatMode ?? 0) !== 0;
+        const enabled = Boolean(this.player?.autoplayEnabled || this.player?.radioEnabled) && !unavailable;
+        button.classList.toggle('is-enabled', enabled);
+        button.classList.toggle('is-unavailable', unavailable);
+        button.setAttribute('aria-pressed', String(enabled));
+        button.setAttribute('aria-checked', String(enabled));
+        const status = button.querySelector('.queue-quick-status');
+        if (unavailable && !status) {
+            const copy = button.querySelector('.queue-setting-copy > span:last-child');
+            copy?.insertAdjacentHTML('beforeend', '<span class="queue-quick-status">Paused while repeat is on</span>');
+        } else if (!unavailable) {
+            status?.remove();
+        }
+    }
+
+    renderQueueControls({ preserveScroll = true } = {}) {
+        if (this.activeView !== 'queue' || !this.queueLayer) return;
+        const queueView = this.queueLayer.querySelector('.now-playing-panel-queue-view');
+        const previousScroll = preserveScroll ? queueView?.scrollTop || 0 : 0;
+        this.queueRowsStatic = true;
+        if (queueView) {
+            this.renderQueueLayer(this.model || {}, previousScroll, { startTransition: false });
+        } else if (this.content?.querySelector('.now-playing-panel-queue-view')) {
+            this.content.innerHTML = this.renderQueueView(this.model || {});
+            this.content.querySelector('.now-playing-panel-queue-view').scrollTop = previousScroll;
+        }
+        this.queueRowsStatic = false;
+        this.syncQueueLoopButton();
+    }
+
     isQueueLooping() {
         return this.player?.repeatMode === QUEUE_REPEAT_ALL;
     }
 
-    syncQueueLoopButton() {
+    syncQueueLoopButton({ animate = false } = {}) {
         const looping = this.isQueueLooping();
-        const repeatButtons = [document.getElementById('repeat-btn'), document.getElementById('fs-repeat-btn')];
+        const repeatButtons = [
+            document.getElementById('repeat-btn'),
+            document.getElementById('fs-repeat-btn'),
+            this.root?.querySelector('.queue-list-loop-button'),
+        ];
         for (const button of repeatButtons) {
             if (!button) continue;
             button.classList.toggle('active', looping);
+            button.classList.toggle('is-active', looping);
             button.classList.remove('repeat-one');
             button.setAttribute('aria-pressed', String(looping));
-            button.title = looping ? 'Repeat queue · Loop queue enabled' : 'Repeat off';
-            button.setAttribute('aria-label', looping ? 'Repeat queue enabled' : 'Turn repeat on');
+            if (button.matches('.queue-list-loop-button')) {
+                button.title = looping ? 'Disable loop queue' : 'Loop queue';
+                button.setAttribute('aria-label', looping ? 'Disable loop queue' : 'Loop queue');
+            } else {
+                button.title = looping ? 'Repeat queue · Loop queue enabled' : 'Repeat off';
+                button.setAttribute('aria-label', looping ? 'Repeat queue enabled' : 'Turn repeat on');
+            }
+            if (animate) {
+                button.classList.remove('icon-activated');
+                void button.offsetWidth;
+                button.classList.add('icon-activated');
+            }
         }
     }
 
@@ -1813,10 +1874,7 @@ export class NowPlayingPanel {
                 attempts += 1;
             }
         }
-        const looping = this.isQueueLooping();
-        this.syncQueueLoopButton();
-        showNotification(looping ? 'Loop queue enabled · Endless playback paused' : 'Loop queue disabled');
-        await this.render({ preserveScroll: true });
+        this.syncQueueLoopButton({ animate: true });
     }
 
     async setQueueTransition(mode) {
@@ -1831,7 +1889,7 @@ export class NowPlayingPanel {
             crossfadeSettings.setEnabled(false);
             gaplessPlaybackSettings.setEnabled(false);
         }
-        await this.render({ preserveScroll: true });
+        this.renderQueueControls({ preserveScroll: true });
     }
 
     handleKeydown(event) {
@@ -1908,6 +1966,7 @@ export class NowPlayingPanel {
             this.boundCanvasCoverOverlayPreferenceChanged
         );
         window.removeEventListener('player-queue-changed', this.boundQueueChanged);
+        window.removeEventListener('player-repeat-changed', this.boundRepeatChanged);
         window.removeEventListener('autoplay-state-changed', this.boundTransitionChanged);
         window.removeEventListener('radio-state-changed', this.boundTransitionChanged);
         window.removeEventListener('queue-tracks-added', this.boundQueueTracksAdded);

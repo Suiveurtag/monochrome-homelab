@@ -2346,6 +2346,7 @@ export class Player {
     async toggleRepeat() {
         this.repeatMode = (this.repeatMode + 1) % 3;
         await this.saveQueueState();
+        window.dispatchEvent(new CustomEvent('player-repeat-changed', { detail: { mode: this.repeatMode } }));
         return this.repeatMode;
     }
 
