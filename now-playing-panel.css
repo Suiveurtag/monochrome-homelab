@@ -1617,6 +1617,7 @@ body .now-playing-panel.is-queue-view .queue-empty-artwork {
 body .now-playing-panel.is-queue-view .queue-current-artwork,
 body .now-playing-panel.is-queue-view .queue-empty-artwork {
     display: grid;
+    position: relative;
     overflow: hidden;
     place-items: center;
     background: var(--muted);
@@ -1626,6 +1627,47 @@ body .now-playing-panel.is-queue-view .queue-empty-artwork {
 body .now-playing-panel.is-queue-view .queue-current-artwork img {
     display: block;
     object-fit: cover;
+}
+
+body .now-playing-panel.is-queue-view .queue-current-artwork.is-morphing {
+    background: color-mix(in srgb, var(--primary) 18%, var(--muted));
+}
+
+body .now-playing-panel.is-queue-view .queue-current-artwork .queue-advance-artwork-preview {
+    position: absolute;
+    z-index: 0;
+    inset: -7px;
+    display: block;
+    width: calc(100% + 14px);
+    height: calc(100% + 14px);
+    border-radius: inherit;
+    object-fit: cover;
+    opacity: 0.48;
+    filter: blur(7px) saturate(0.85);
+    transform: scale(1.08);
+    pointer-events: none;
+}
+
+body .now-playing-panel.is-queue-view .queue-current-artwork.is-morphing::after {
+    content: '';
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+        115deg,
+        transparent 18%,
+        color-mix(in srgb, var(--foreground) 16%, transparent) 48%,
+        transparent 78%
+    );
+    transform: translateX(-120%);
+    animation: queue-artwork-sheen 280ms var(--ease-out) both;
+    pointer-events: none;
+}
+
+body .now-playing-panel.is-queue-view .queue-current-artwork > img:not(.queue-advance-artwork-preview) {
+    position: relative;
+    z-index: 1;
 }
 
 body .now-playing-panel.is-queue-view .queue-current-copy {
@@ -2371,6 +2413,22 @@ body .now-playing-panel.is-queue-view.is-queue-closing {
     object-fit: cover;
     transform-origin: top left;
     will-change: transform, opacity;
+}
+
+@keyframes queue-artwork-sheen {
+    from {
+        opacity: 0;
+        transform: translateX(-120%);
+    }
+
+    35% {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(120%);
+    }
 }
 
 @keyframes queue-row-enter {

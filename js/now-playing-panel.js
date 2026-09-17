@@ -164,6 +164,8 @@ export class NowPlayingPanel {
         this.queueAdvanceArtworkAnimation = null;
         this.queueAdvanceArtworkTarget = null;
         this.queueAdvanceArtworkMorph = null;
+        this.queueAdvanceArtworkPreview = null;
+        this.queueAdvanceArtworkContainer = null;
         this.nowPlayingNeedsRender = false;
         this.background = this.root
             ? mountSpicyDynamicBackground(this.root, { className: 'now-playing-panel-spicy-bg' })
@@ -1114,6 +1116,19 @@ export class NowPlayingPanel {
         morph.style.borderRadius = source.borderRadius;
         this.root.append(morph);
         this.queueAdvanceArtworkMorph = morph;
+        const targetContainer = target.element.closest('.queue-current-artwork');
+        if (targetContainer) {
+            const preview = document.createElement('img');
+            preview.className = 'queue-advance-artwork-preview';
+            preview.src = source.src;
+            preview.alt = '';
+            preview.setAttribute('aria-hidden', 'true');
+            preview.draggable = false;
+            targetContainer.classList.add('is-morphing');
+            targetContainer.append(preview);
+            this.queueAdvanceArtworkPreview = preview;
+            this.queueAdvanceArtworkContainer = targetContainer;
+        }
         target.element.style.opacity = '0';
         this.queueAdvanceArtworkTarget = target.element;
         if (typeof morph.animate !== 'function') {
@@ -1121,6 +1136,10 @@ export class NowPlayingPanel {
             morph.remove();
             this.queueAdvanceArtworkMorph = null;
             this.queueAdvanceArtworkTarget = null;
+            this.queueAdvanceArtworkPreview?.remove();
+            this.queueAdvanceArtworkContainer?.classList.remove('is-morphing');
+            this.queueAdvanceArtworkPreview = null;
+            this.queueAdvanceArtworkContainer = null;
             return;
         }
         const destination = `translate3d(${toX - fromX}px, ${toY - fromY}px, 0) scale(${target.rect.width / source.rect.width}, ${target.rect.height / source.rect.height})`;
@@ -1139,6 +1158,10 @@ export class NowPlayingPanel {
             this.queueAdvanceArtworkAnimation = null;
             this.queueAdvanceArtworkTarget = null;
             this.queueAdvanceArtworkMorph = null;
+            this.queueAdvanceArtworkPreview?.remove();
+            this.queueAdvanceArtworkContainer?.classList.remove('is-morphing');
+            this.queueAdvanceArtworkPreview = null;
+            this.queueAdvanceArtworkContainer = null;
             animation.cancel();
         };
     }
@@ -1146,10 +1169,14 @@ export class NowPlayingPanel {
     clearQueueAdvanceArtworkAnimation() {
         this.queueAdvanceArtworkAnimation?.cancel?.();
         this.queueAdvanceArtworkMorph?.remove();
+        this.queueAdvanceArtworkPreview?.remove();
         this.queueAdvanceArtworkAnimation = null;
         this.queueAdvanceArtworkTarget?.style.removeProperty('opacity');
         this.queueAdvanceArtworkTarget = null;
         this.queueAdvanceArtworkMorph = null;
+        this.queueAdvanceArtworkContainer?.classList.remove('is-morphing');
+        this.queueAdvanceArtworkPreview = null;
+        this.queueAdvanceArtworkContainer = null;
     }
 
     renderQueueOpeningShell() {
