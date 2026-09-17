@@ -43,9 +43,9 @@ const CANVAS_LOAD_TIMEOUT = 20000;
 const CANVAS_LOAD_RETRY_LIMIT = 2;
 const CANVAS_RETRY_DELAY = 240;
 const TRACK_FADE_OUT_DURATION = 180;
-const QUEUE_OPEN_DURATION = 280;
-const QUEUE_CLOSE_DURATION = 240;
-const QUEUE_COVER_DURATION = 280;
+const QUEUE_OPEN_DURATION = 360;
+const QUEUE_CLOSE_DURATION = 320;
+const QUEUE_COVER_DURATION = 360;
 const MISSING_BIOGRAPHY = 'No biography is available for this artist yet.';
 const QUEUE_REPEAT_ALL = 1;
 
@@ -140,6 +140,9 @@ export class NowPlayingPanel {
         this.queueCoverAnimation = null;
         this.queueCoverMorph = null;
         this.queueCoverTarget = null;
+        this.queueCoverSourceElement = null;
+        this.queueOpeningScheduled = false;
+        this.queueLayerRefreshPending = false;
         this.nowPlayingNeedsRender = false;
         this.background = this.root
             ? mountSpicyDynamicBackground(this.root, { className: 'now-playing-panel-spicy-bg' })
@@ -507,6 +510,8 @@ export class NowPlayingPanel {
         const source = this.captureQueueCover(this.getNowPlayingCoverElement());
         this.cancelQueueCoverAnimation();
         const transitionToken = ++this.queueTransitionToken;
+        this.queueOpeningScheduled = false;
+        this.queueLayerRefreshPending = false;
         this.activeView = 'queue';
         this.queueView = 'up-next';
         this.transitionMenuOpen = false;
@@ -518,10 +523,9 @@ export class NowPlayingPanel {
         this.root.classList.add('is-queue-view', 'is-queue-opening');
         document.body.classList.add('queue-panel-open');
         this.setOpen(true);
+        this.renderQueueOpeningShell();
+        this.startQueueOpening(this.queueTransition);
         void this.render({ preserveScroll: false });
-        this.queueViewTimer = window.setTimeout(() => {
-            if (transitionToken === this.queueTransitionToken) this.root.classList.remove('is-queue-opening');
-        }, QUEUE_OPEN_DURATION);
     }
 
     closeQueue() {
@@ -529,8 +533,11 @@ export class NowPlayingPanel {
         const source = this.captureQueueCover(this.getQueueCoverElement());
         const target = this.captureQueueCover(this.getNowPlayingCoverElement());
         const transitionToken = ++this.queueTransitionToken;
+        this.queueOpeningScheduled = false;
         this.cancelQueueCoverAnimation();
         this.queueTransition = { type: 'closing', source, target, token: transitionToken };
+        target?.element?.style.setProperty('opacity', '0');
+        this.queueCoverTarget = target?.element || null;
         const finish = () => {
             if (transitionToken !== this.queueTransitionToken) return;
             window.clearTimeout(this.queueViewTimer);
@@ -540,6 +547,7 @@ export class NowPlayingPanel {
             this.root.classList.remove('is-queue-view', 'is-queue-opening', 'is-queue-closing');
             document.body.classList.remove('queue-panel-open');
             this.cancelQueueCoverAnimation();
+            this.restoreQueueCoverSource();
             this.queueLayer.classList.remove('is-visible', 'is-closing', 'is-measuring');
             this.queueLayer.hidden = true;
             this.queueLayer.innerHTML = '';
@@ -547,6 +555,7 @@ export class NowPlayingPanel {
             this.queueLayer.setAttribute('aria-hidden', 'true');
             this.queueTransition = null;
             this.queueCoverTarget = null;
+            this.queueLayerRefreshPending = false;
             this.setOpen(this.desktopMedia.matches && this.desktopOpenState, { restoreFocus: false });
             if (this.nowPlayingNeedsRender) void this.render({ preserveScroll: false });
         };
@@ -556,7 +565,7 @@ export class NowPlayingPanel {
         }
         this.root.classList.remove('is-queue-opening');
         this.root.classList.add('is-queue-closing');
-        this.queueLayer.classList.remove('is-visible');
+        this.queueLayer.classList.remove('is-visible', 'is-entering');
         this.queueLayer.classList.add('is-closing');
         this.syncQueueLayerState();
         this.animateQueueCover(source, target, transitionToken);
@@ -628,7 +637,11 @@ export class NowPlayingPanel {
                 this.nowPlayingNeedsRender = false;
             }
             if (isQueueView) {
-                this.renderQueueLayer(model, previousScroll);
+                if (this.queueCoverAnimation || this.queueOpeningScheduled || this.queueTransition?.type === 'closing') {
+                    this.queueLayerRefreshPending = true;
+                } else {
+                    this.renderQueueLayer(model, previousScroll);
+                }
                 this.syncQueueLoopButton();
                 if (this.root.classList.contains('is-queue-opening')) {
                     requestAnimationFrame(() => this.root.querySelector('.queue-close-button')?.focus({ preventScroll: true }));
@@ -805,6 +818,23 @@ export class NowPlayingPanel {
         );
     }
 
+    getNowPlayingCoverVisualElement() {
+        const element = this.getNowPlayingCoverElement();
+        return element?.closest('.now-playing-panel-media') || element || null;
+    }
+
+    hideQueueCoverSource() {
+        const element = this.getNowPlayingCoverVisualElement();
+        if (!element) return;
+        this.queueCoverSourceElement = element;
+        element.style.setProperty('opacity', '0');
+    }
+
+    restoreQueueCoverSource() {
+        this.queueCoverSourceElement?.style.removeProperty('opacity');
+        this.queueCoverSourceElement = null;
+    }
+
     getQueueCoverElement() {
         return this.queueLayer?.querySelector('.queue-current-artwork img') || null;
     }
@@ -828,11 +858,18 @@ export class NowPlayingPanel {
         this.queueLayer.classList.add('is-measuring');
         const snapshot = this.captureQueueCover(target);
         this.queueLayer.classList.remove('is-measuring');
+        // Commit the off-screen position before the visible class is applied.
+        // Without this read, the browser can coalesce both styles and skip the drawer slide.
+        this.queueLayer.getBoundingClientRect();
         return snapshot;
     }
 
     renderQueueLayer(model, previousScroll = 0) {
         if (!this.queueLayer) return;
+        if (this.queueCoverAnimation || this.queueOpeningScheduled || this.queueTransition?.type === 'closing') {
+            this.queueLayerRefreshPending = true;
+            return;
+        }
         const pendingTransition = this.queueTransition;
         if (!pendingTransition) this.cancelQueueCoverAnimation();
         this.queueLayer.hidden = false;
@@ -842,29 +879,70 @@ export class NowPlayingPanel {
         this.syncQueueLayerState();
     }
 
+    renderQueueOpeningShell() {
+        if (!this.queueLayer) return;
+        const queue = this.player?.getCurrentQueue?.() || [];
+        const currentIndex = Number(this.player?.currentQueueIndex ?? -1);
+        const currentTrack = this.currentTrack || queue[currentIndex] || null;
+        const artwork = getTrackPlayerArtwork(currentTrack);
+        const image = artwork
+            ? /^(?:data:|blob:|https?:|\/)/i.test(String(artwork))
+                ? String(artwork)
+                : this.api?.getCoverUrl?.(artwork) || String(artwork)
+            : '/assets/appicon.png';
+        const title = getTrackTitle(currentTrack, { fallback: 'Unknown title' });
+        const artist = getTrackArtists(currentTrack, { fallback: 'Unknown artist' });
+        const sourceLabel = this.sourceContext?.label || 'current queue';
+        const source = this.sourceContext?.href
+            ? `<button type="button" class="queue-source-link" data-queue-source-href="${escapeHtml(this.sourceContext.href)}">${escapeHtml(sourceLabel)}</button>`
+            : `<span class="queue-source-link">${escapeHtml(sourceLabel)}</span>`;
+        const currentMarkup = currentTrack
+            ? `<div class="queue-playing-row">
+                <div class="queue-current-artwork"><img src="${escapeHtml(image)}" alt="" loading="eager" /></div>
+                <div class="queue-current-copy"><span class="queue-current-label">Now playing</span><strong>${escapeHtml(title)}</strong><p>${escapeHtml(artist)}</p></div>
+            </div>`
+            : '<div class="queue-playing-row queue-playing-row-empty"><div class="queue-current-artwork queue-empty-artwork">—</div><div class="queue-current-copy"><span class="queue-current-label">Now playing</span><strong>Nothing is playing</strong></div></div>';
+        this.queueLayer.innerHTML = `<div class="now-playing-panel-queue-view queue-motion-open" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div class="queue-header-title"><h1 id="queue-panel-title">Play queue</h1></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main class="queue-panel-body"><section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${source}</h2><button type="button" class="queue-clear-button" disabled>Clear</button></div>${currentMarkup}</section></main></div>`;
+        this.queueLayer.hidden = false;
+    }
+
     startQueueOpening(transition) {
         if (!this.queueLayer || transition.token !== this.queueTransitionToken) return;
+        if (this.queueOpeningScheduled) return;
         const target = this.measureQueueCoverTarget();
         const source = transition.source;
-        this.queueTransition = null;
         if (!target || this.reducedMotionMedia.matches) {
+            this.queueTransition = null;
             this.queueLayer.classList.add('is-visible');
             this.syncQueueLayerState();
+            this.restoreQueueCoverSource();
+            this.root.classList.remove('is-queue-opening');
             return;
         }
         target.element.style.opacity = '0';
         this.queueCoverTarget = target.element;
+        this.queueOpeningScheduled = true;
         requestAnimationFrame(() => {
             if (
                 transition.token !== this.queueTransitionToken ||
                 this.activeView !== 'queue' ||
                 this.root.classList.contains('is-queue-closing')
             ) {
+                this.queueOpeningScheduled = false;
                 this.cancelQueueCoverAnimation();
                 return;
             }
-            this.queueLayer.classList.add('is-visible');
+            this.queueTransition = null;
+            this.queueOpeningScheduled = false;
+            this.hideQueueCoverSource();
+            this.queueLayer.classList.add('is-entering', 'is-visible');
             this.syncQueueLayerState();
+            window.clearTimeout(this.queueViewTimer);
+            this.queueViewTimer = window.setTimeout(() => {
+                if (transition.token !== this.queueTransitionToken) return;
+                this.root.classList.remove('is-queue-opening');
+                this.queueLayer.classList.remove('is-entering');
+            }, QUEUE_OPEN_DURATION);
             this.animateQueueCover(source, target, transition.token, 'opening');
         });
     }
@@ -874,6 +952,7 @@ export class NowPlayingPanel {
         const source = this.captureQueueCover(this.queueCoverMorph || this.getQueueCoverElement());
         this.cancelQueueCoverAnimation();
         const transitionToken = ++this.queueTransitionToken;
+        this.queueOpeningScheduled = true;
         const target = this.measureQueueCoverTarget();
         this.queueTransition = { type: 'opening', source, token: transitionToken };
         this.root.classList.remove('is-queue-closing');
@@ -889,12 +968,17 @@ export class NowPlayingPanel {
             target.element.style.opacity = '0';
             this.queueCoverTarget = target.element;
             requestAnimationFrame(() => {
-                if (transitionToken !== this.queueTransitionToken || this.activeView !== 'queue') return;
+                if (transitionToken !== this.queueTransitionToken || this.activeView !== 'queue') {
+                    this.queueOpeningScheduled = false;
+                    return;
+                }
                 this.queueTransition = null;
+                this.queueOpeningScheduled = false;
                 this.animateQueueCover(source, target, transitionToken, 'opening');
             });
         } else {
             this.queueTransition = null;
+            this.queueOpeningScheduled = false;
         }
     }
 
@@ -907,9 +991,14 @@ export class NowPlayingPanel {
             this.queueCoverMorph = null;
             this.queueCoverAnimation = null;
             this.queueCoverTarget = null;
+            if (direction === 'opening' && this.queueLayerRefreshPending && this.activeView === 'queue') {
+                this.queueLayerRefreshPending = false;
+                this.renderQueueLayer(this.model || {}, this.queueLayer.querySelector('.now-playing-panel-queue-view')?.scrollTop || 0);
+            }
         };
         if (!source || !source.src || this.reducedMotionMedia.matches) {
             finish();
+            if (direction === 'opening') this.restoreQueueCoverSource();
             return;
         }
         const rootRect = this.root.getBoundingClientRect();
@@ -1661,7 +1750,9 @@ export class NowPlayingPanel {
         this.renderController?.abort();
         window.clearTimeout(this.queueViewTimer);
         ++this.queueTransitionToken;
+        this.queueOpeningScheduled = false;
         this.cancelQueueCoverAnimation();
+        this.restoreQueueCoverSource();
         this.cleanupQueueDrag();
         document.body.classList.remove('queue-panel-open');
         this.cleanupMedia();
