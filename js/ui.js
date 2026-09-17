@@ -1900,7 +1900,6 @@ export class UIRenderer {
             if (coverImage?.vanillaTilt) coverImage.vanillaTilt.destroy();
             this.setupUIToggleButton(overlay);
             this.setupControlsAutoHide(overlay);
-            this.setupFullscreenSidePanelSync(overlay);
             this.setupFullscreenDismissHandle(overlay);
             this.setupFullscreenLyricsToggle(overlay);
             this.setupFullscreenLyricsRendererToggle(overlay);
@@ -2052,8 +2051,7 @@ export class UIRenderer {
             'fullscreen-dragging',
             'fullscreen-dismissing',
             'lyrics-hidden',
-            'lyrics-unavailable',
-            'queue-panel-active'
+            'lyrics-unavailable'
         );
         overlay.style.removeProperty('--fullscreen-drag-offset');
         overlay.style.removeProperty('--fullscreen-drag-progress');
@@ -2139,11 +2137,6 @@ export class UIRenderer {
         if (this.controlsIdleCleanup) {
             this.controlsIdleCleanup();
             this.controlsIdleCleanup = null;
-        }
-
-        if (this.fullscreenSidePanelSyncCleanup) {
-            this.fullscreenSidePanelSyncCleanup();
-            this.fullscreenSidePanelSyncCleanup = null;
         }
 
         if (this.fullscreenDismissHandleCleanup) {
@@ -2312,25 +2305,6 @@ export class UIRenderer {
 
         this.controlsIdleCleanup = () => {
             overlay.classList.remove('controls-idle');
-        };
-    }
-
-    setupFullscreenSidePanelSync(overlay) {
-        if (this.fullscreenSidePanelSyncCleanup) {
-            this.fullscreenSidePanelSyncCleanup();
-        }
-
-        const syncState = () => {
-            overlay.classList.toggle('queue-panel-active', sidePanelManager.isActive('queue'));
-        };
-
-        const handleChange = () => syncState();
-        window.addEventListener('side-panel-changed', handleChange);
-        syncState();
-
-        this.fullscreenSidePanelSyncCleanup = () => {
-            window.removeEventListener('side-panel-changed', handleChange);
-            overlay.classList.remove('queue-panel-active');
         };
     }
 

@@ -63,7 +63,7 @@ test('native dialogs suppress global playback shortcuts and close on Escape', as
 
 test('Escape uses the integrated queue close action instead of trapping the user', () => {
     document.body.innerHTML =
-        '<aside role="dialog" aria-modal="true"><button class="queue-back-button">Back</button></aside>';
+        '<aside role="dialog" aria-modal="true"><button class="queue-close-button">Close</button></aside>';
     const close = vi.fn();
     const button = document.querySelector('button');
     button.onclick = close;

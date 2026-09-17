@@ -5,7 +5,7 @@ export class SidePanelManager {
         this.controlsElement = document.getElementById('side-panel-controls');
         this.contentElement = document.getElementById('side-panel-content');
         this.resizerElement = document.getElementById('side-panel-resizer');
-        this.currentView = null; // 'queue' or 'lyrics'
+        this.currentView = null;
         this.isResizing = false;
         this.renderController = null;
         this.pendingRender = null;
@@ -79,11 +79,6 @@ export class SidePanelManager {
     }
 
     open(view, title, renderControlsCallback, renderContentCallback, forceOpen = false) {
-        // Queue is integrated into Now Playing. The former generic queue panel
-        // must never be mounted, even if an old event or hot-reloaded module
-        // tries to use the legacy route.
-        if (view === 'queue') return;
-
         // If clicking the same view that is already open, close it
         if (!forceOpen && this.currentView === view && this.panel.classList.contains('active')) {
             this.close();

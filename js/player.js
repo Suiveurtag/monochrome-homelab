@@ -2637,7 +2637,7 @@ export class Player {
             item.classList.toggle('playing', currentTrack && item.dataset.trackId == currentTrack.id);
         });
 
-        document.querySelectorAll('.queue-track-item').forEach((item) => {
+        document.querySelectorAll('.queue-track-row[data-queue-index]').forEach((item) => {
             const index = parseInt(item.dataset.queueIndex);
             item.classList.toggle('playing', index === this.currentQueueIndex);
         });

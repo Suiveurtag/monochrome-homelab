@@ -8,7 +8,7 @@ import {
 import '../styles/keyboard-navigation.css';
 
 const ROWS =
-    '.track-item[data-track-id], .queue-track-item, .queue-track-row[data-queue-index], .card[data-href], .card[data-track-id], .modal-option, .create-new-playlist';
+    '.track-item[data-track-id], .queue-track-row[data-queue-index], .card[data-href], .card[data-track-id], .modal-option, .create-new-playlist';
 const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex], [contenteditable="true"], summary';
 const NATIVE = 'a[href], button, input, select, textarea, summary';
 const DIALOGS =
@@ -152,7 +152,7 @@ export function initializeKeyboardNavigation(root = document) {
         }
         const overlay = dialog.querySelector(':scope > .modal-overlay');
         const close = dialog.querySelector(
-            '[data-dismiss="modal"], .modal-close, .close-shortcuts, .close-customize-shortcuts, .queue-back-button, button[id$="-cancel"], button[id$="-close"]'
+        '[data-dismiss="modal"], .modal-close, .close-shortcuts, .close-customize-shortcuts, .queue-close-button, button[id$="-cancel"], button[id$="-close"]'
         );
         if (close) close.click();
         else if (overlay) overlay.click();

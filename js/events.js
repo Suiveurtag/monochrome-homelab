@@ -2232,7 +2232,7 @@ function setupTrackSaveFloatingPanel(player, api, ui) {
             button.classList.contains('now-playing-panel-save')
         )
             return player.currentTrack;
-        const queueItem = button.closest('.queue-track-item');
+        const queueItem = button.closest('.queue-track-row');
         if (queueItem) return player.getCurrentQueue()[Number(queueItem.dataset.queueIndex)];
         const itemElement = button.closest('.track-item, .card');
         return trackDataStore.get(itemElement) || trackDataStore.get(button) || null;
@@ -3766,12 +3766,12 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
     });
 
     mainContent.addEventListener('contextmenu', async (e) => {
-        const trackItem = e.target.closest('.track-item, .queue-track-item');
+        const trackItem = e.target.closest('.track-item, .queue-track-row');
         const card = e.target.closest('.card');
 
         if (trackItem) {
             e.preventDefault();
-            if (trackItem.classList.contains('queue-track-item')) {
+            if (trackItem.classList.contains('queue-track-row')) {
                 // For queue items, get track from player's queue
                 const queueIndex = parseInt(trackItem.dataset.queueIndex);
                 contextTrack = player.getCurrentQueue()[queueIndex];
