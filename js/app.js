@@ -24,7 +24,7 @@ import { createRouter, updateTabTitle, navigate } from './router.js';
 import { initializePlayerEvents, initializeTrackInteractions, handleTrackAction } from './events.js';
 import { initializeUIInteractions } from './ui-interactions.js';
 import './queue-add-animation.js';
-import { debounce, sanitizeForFilename } from './utils.js';
+import { debounce, sanitizeForFilename, trackDataStore } from './utils.js';
 import { copyShareLink } from './share.js';
 import { sidePanelManager } from './side-panel.js';
 import { NowPlayingPanel } from './now-playing-panel.js';
@@ -804,7 +804,19 @@ function initializeKeyboardShortcuts(player, _audioPlayer) {
         repeat: () => {
             document.getElementById('repeat-btn')?.click();
         },
-        queue: () => {
+        queue: async () => {
+            const hoveredTrackElement = document.querySelector(
+                '.track-item[data-track-id]:hover, .queue-track-row[data-track-id]:hover, .card[data-track-id]:hover'
+            );
+            const hoveredTrack = hoveredTrackElement ? trackDataStore.get(hoveredTrackElement) : null;
+
+            if (hoveredTrack && !hoveredTrack.isUnavailable && !hoveredTrackElement.matches('.blocked')) {
+                await player.addToQueue(hoveredTrack);
+                if (window.renderQueueFunction) await window.renderQueueFunction();
+                showNotification(`Added to queue: ${hoveredTrack.title}`);
+                return;
+            }
+
             document.getElementById('queue-btn')?.click();
         },
         lyrics: () => {

@@ -46,6 +46,14 @@ const TRACK_FADE_OUT_DURATION = 180;
 const QUEUE_OPEN_DURATION = 360;
 const QUEUE_CLOSE_DURATION = 360;
 const QUEUE_COVER_DURATION = 360;
+const QUEUE_ROW_EXIT_DURATION = 190;
+const QUEUE_ROW_EXIT_STAGGER = 28;
+const QUEUE_ROW_RECONCILE_DURATION = 240;
+const QUEUE_ROW_RECONCILE_STAGGER = 18;
+const QUEUE_ROW_ARTWORK_DURATION = 280;
+const QUEUE_ROW_MAX_STAGGER = 8;
+const QUEUE_EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
+const QUEUE_EASE_IN_OUT = 'cubic-bezier(0.77, 0, 0.175, 1)';
 const MISSING_BIOGRAPHY = 'No biography is available for this artist yet.';
 const QUEUE_REPEAT_ALL = 1;
 
@@ -150,6 +158,12 @@ export class NowPlayingPanel {
         this.queueLayerRefreshPending = false;
         this.queueOpeningSignature = null;
         this.queueRowsStatic = false;
+        this.queueRenderedCurrentIndex = Number(player?.currentQueueIndex ?? -1);
+        this.queueListAnimation = null;
+        this.queueListAnimationToken = 0;
+        this.queueAdvanceArtworkAnimation = null;
+        this.queueAdvanceArtworkTarget = null;
+        this.queueAdvanceArtworkMorph = null;
         this.nowPlayingNeedsRender = false;
         this.background = this.root
             ? mountSpicyDynamicBackground(this.root, { className: 'now-playing-panel-spicy-bg' })
@@ -204,6 +218,7 @@ export class NowPlayingPanel {
         };
         this.boundQueueChanged = (event) => {
             const nextSourceContext = normalizeSourceContext(event.detail?.sourceContext || this.player?.sourceContext);
+            const nextCurrentIndex = Number(event.detail?.currentIndex ?? this.player?.currentQueueIndex ?? -1);
             const nextQueueSessionKey = this.getQueueSessionKey(event.detail, nextSourceContext);
             if (nextQueueSessionKey !== this.queueSessionKey) {
                 this.queueSessionKey = nextQueueSessionKey;
@@ -215,7 +230,18 @@ export class NowPlayingPanel {
             this.queueRenderSignature = nextSignature;
             this.sourceContext = nextSourceContext;
             if (this.activeView === 'queue') {
-                this.queueMotionReason = 'refresh';
+                const currentIndexChanged = nextQueueSessionKey === this.queueSessionKey && nextCurrentIndex !== this.queueRenderedCurrentIndex;
+                const nextCurrentTrack =
+                    event.detail?.queue?.[nextCurrentIndex] || this.player?.getCurrentQueue?.()?.[nextCurrentIndex];
+                const currentTrackChanged =
+                    nextCurrentTrack?.id != null &&
+                    this.currentTrack?.id != null &&
+                    String(nextCurrentTrack.id) !== String(this.currentTrack.id);
+                if (!this.queueMotionReason) this.queueMotionReason = currentIndexChanged || currentTrackChanged ? 'advance' : 'refresh';
+                this.queueRenderedCurrentIndex = nextCurrentIndex;
+                if (currentTrackChanged) {
+                    return;
+                }
                 this.renderQueueControls({ preserveScroll: true });
                 return;
             }
@@ -531,6 +557,7 @@ export class NowPlayingPanel {
         this.queueLayerRefreshPending = false;
         this.activeView = 'queue';
         this.queueView = 'up-next';
+        this.queueRenderedCurrentIndex = Number(this.player?.currentQueueIndex ?? -1);
         this.transitionMenuOpen = false;
         this.queueMotionReason = 'open';
         this.queueOpeningSignature = this.getQueueRenderSignature();
@@ -541,7 +568,7 @@ export class NowPlayingPanel {
         this.root.classList.add('is-queue-view', 'is-queue-opening');
         document.body.classList.add('queue-panel-open');
         this.setOpen(true);
-        this.queueRowsStatic = true;
+        this.queueRowsStatic = false;
         this.renderQueueLayer(this.model || {}, 0, { startTransition: false });
         this.queueRowsStatic = false;
         this.startQueueOpening(this.queueTransition);
@@ -550,6 +577,8 @@ export class NowPlayingPanel {
 
     closeQueue() {
         if (this.activeView !== 'queue') return;
+        this.cancelQueueListAnimation();
+        this.clearQueueAdvanceArtworkAnimation();
         const source = this.captureQueueCover(this.queueCoverMorph || this.getQueueCoverElement());
         const target = this.captureQueueCover(this.getNowPlayingCoverElement());
         const transitionToken = ++this.queueTransitionToken;
@@ -915,19 +944,212 @@ export class NowPlayingPanel {
         return snapshot;
     }
 
-    renderQueueLayer(model, previousScroll = 0, { startTransition = true } = {}) {
+    renderQueueLayer(model, previousScroll = 0, { startTransition = true, skipRowExit = false } = {}) {
         if (!this.queueLayer) return;
         if (this.queueCoverAnimation || this.queueOpeningScheduled || this.queueTransition?.type === 'closing') {
             this.queueLayerRefreshPending = true;
             return;
         }
+        if (this.queueListAnimation) {
+            this.queueListAnimation.pending = { model, previousScroll, startTransition, skipRowExit };
+            return;
+        }
         const pendingTransition = this.queueTransition;
         if (!pendingTransition) this.cancelQueueCoverAnimation();
+        const motionReason = this.queueMotionReason || 'refresh';
+        const markup = this.renderQueueView(model);
+        const previousView = this.queueLayer.querySelector('.now-playing-panel-queue-view');
+        const previousRows = this.getQueueTrackRows(previousView);
+        const nextMarkupRoot = document.createElement('div');
+        nextMarkupRoot.innerHTML = markup;
+        const nextRows = this.getQueueTrackRows(nextMarkupRoot.querySelector('.now-playing-panel-queue-view'));
+        const nextTrackIds = new Set(nextRows.map((row) => row.dataset.trackId));
+        const removedRows = previousRows.filter((row) => !nextTrackIds.has(row.dataset.trackId));
+        const shouldExitRows =
+            !skipRowExit &&
+            !this.reducedMotionMedia.matches &&
+            removedRows.length > 0 &&
+            (motionReason === 'remove' || motionReason === 'clear');
+
+        if (shouldExitRows) {
+            this.startQueueRowExit(removedRows, () => {
+                this.commitQueueLayerMarkup(markup, previousScroll, {
+                    motionReason,
+                    startTransition,
+                    pendingTransition,
+                });
+            }, motionReason);
+            return;
+        }
+
+        this.commitQueueLayerMarkup(markup, previousScroll, { motionReason, startTransition, pendingTransition });
+    }
+
+    getQueueTrackRows(container) {
+        return [...(container?.querySelectorAll('.queue-track-row[data-track-id]') || [])];
+    }
+
+    startQueueRowExit(rows, onfinish, motionReason = 'remove') {
+        const token = ++this.queueListAnimationToken;
+        const maxDelay = Math.min(Math.max(0, rows.length - 1), QUEUE_ROW_MAX_STAGGER) * QUEUE_ROW_EXIT_STAGGER;
+        const animationState = { token, pending: null, motionReason, timer: null };
+        this.queueListAnimation = animationState;
+        rows.forEach((row, index) => {
+            row.style.setProperty(
+                '--queue-exit-delay',
+                `${Math.min(index, QUEUE_ROW_MAX_STAGGER) * QUEUE_ROW_EXIT_STAGGER}ms`
+            );
+            row.classList.add('is-exiting');
+        });
+        animationState.timer = window.setTimeout(() => {
+            if (this.queueListAnimation?.token !== token) return;
+            const pending = this.queueListAnimation.pending;
+            this.queueListAnimation = null;
+            if (pending) {
+                this.queueMotionReason = this.queueMotionReason || animationState.motionReason;
+                this.renderQueueLayer(pending.model, pending.previousScroll, {
+                    startTransition: pending.startTransition,
+                    skipRowExit: true,
+                });
+                return;
+            }
+            onfinish?.();
+        }, QUEUE_ROW_EXIT_DURATION + maxDelay);
+    }
+
+    cancelQueueListAnimation() {
+        if (this.queueListAnimation?.timer) window.clearTimeout(this.queueListAnimation.timer);
+        this.queueListAnimationToken += 1;
+        this.queueListAnimation = null;
+        this.queueLayer?.querySelectorAll('.queue-track-row.is-exiting').forEach((row) => {
+            row.classList.remove('is-exiting');
+            row.style.removeProperty('--queue-exit-delay');
+        });
+    }
+
+    commitQueueLayerMarkup(
+        markup,
+        previousScroll,
+        { motionReason = 'refresh', startTransition = true, pendingTransition = this.queueTransition } = {}
+    ) {
+        const previousView = this.queueLayer.querySelector('.now-playing-panel-queue-view');
+        const previousRows = this.getQueueTrackRows(previousView);
+        const previousRects = new Map(
+            previousRows.map((row) => [row.dataset.trackId, { row, rect: row.getBoundingClientRect() }])
+        );
+        const advanceTrackId = String(this.currentTrack?.id ?? '');
+        const advanceSourceRow =
+            motionReason === 'advance'
+                ? previousRows.find((row) => row.dataset.trackId === advanceTrackId) || previousRows[0]
+                : null;
+        const advanceSource = this.captureQueueCover(advanceSourceRow?.querySelector('img'));
+
         this.queueLayer.hidden = false;
-        this.queueLayer.innerHTML = this.renderQueueView(model);
-        this.queueLayer.querySelector('.now-playing-panel-queue-view').scrollTop = previousScroll;
-        if (startTransition && pendingTransition?.type === 'opening') this.startQueueOpening(pendingTransition);
+        this.queueLayer.innerHTML = markup;
+        const nextView = this.queueLayer.querySelector('.now-playing-panel-queue-view');
+        if (!nextView) return;
+        nextView.scrollTop = previousScroll;
         this.syncQueueLayerState();
+        this.animateQueueRowReflow(previousRects, nextView, motionReason);
+        // The advance morph belongs to the queue's Now Playing slot. The underlying
+        // Now Playing cover must stay untouched while the queue remains open.
+        if (advanceSource) this.animateQueueAdvanceArtwork(advanceSource, nextView.querySelector('.queue-current-artwork img'));
+        if (startTransition && pendingTransition?.type === 'opening') this.startQueueOpening(pendingTransition);
+    }
+
+    animateQueueRowReflow(previousRects, nextView, motionReason) {
+        if (this.reducedMotionMedia.matches || !['advance', 'insert', 'remove', 'reorder'].includes(motionReason))
+            return;
+        for (const row of this.getQueueTrackRows(nextView)) {
+            const previous = previousRects.get(row.dataset.trackId);
+            if (!previous) continue;
+            const nextRect = row.getBoundingClientRect();
+            const deltaX = previous.rect.left - nextRect.left;
+            const deltaY = previous.rect.top - nextRect.top;
+            if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) continue;
+            row.classList.add('is-reconciling');
+            if (typeof row.animate !== 'function') {
+                row.classList.remove('is-reconciling');
+                continue;
+            }
+            const animation = row.animate(
+                [
+                    { transform: `translate3d(${deltaX}px, ${deltaY}px, 0)` },
+                    { transform: 'translate3d(0, 0, 0)' },
+                ],
+                {
+                    duration: QUEUE_ROW_RECONCILE_DURATION,
+                    delay: Math.min(Number(row.style.getPropertyValue('--queue-order')) || 0, QUEUE_ROW_MAX_STAGGER) * QUEUE_ROW_RECONCILE_STAGGER,
+                    easing: QUEUE_EASE_OUT,
+                    fill: 'both',
+                }
+            );
+            animation.onfinish = () => {
+                row.classList.remove('is-reconciling');
+                animation.cancel();
+            };
+        }
+    }
+
+    animateQueueAdvanceArtwork(source, targetElement) {
+        this.clearQueueAdvanceArtworkAnimation();
+        if (this.reducedMotionMedia.matches || !source?.src) return;
+        const target = this.captureQueueCover(targetElement);
+        if (!target || !target.src) return;
+        const rootRect = this.root.getBoundingClientRect();
+        const fromX = source.rect.left - rootRect.left;
+        const fromY = source.rect.top - rootRect.top;
+        const toX = target.rect.left - rootRect.left;
+        const toY = target.rect.top - rootRect.top;
+        const morph = document.createElement('img');
+        morph.className = 'now-playing-panel-queue-cover-morph queue-track-advance-morph';
+        morph.src = source.src;
+        morph.alt = '';
+        morph.setAttribute('aria-hidden', 'true');
+        morph.draggable = false;
+        morph.style.left = `${fromX}px`;
+        morph.style.top = `${fromY}px`;
+        morph.style.width = `${source.rect.width}px`;
+        morph.style.height = `${source.rect.height}px`;
+        morph.style.borderRadius = source.borderRadius;
+        this.root.append(morph);
+        this.queueAdvanceArtworkMorph = morph;
+        target.element.style.opacity = '0';
+        this.queueAdvanceArtworkTarget = target.element;
+        if (typeof morph.animate !== 'function') {
+            target.element.style.removeProperty('opacity');
+            morph.remove();
+            this.queueAdvanceArtworkMorph = null;
+            this.queueAdvanceArtworkTarget = null;
+            return;
+        }
+        const destination = `translate3d(${toX - fromX}px, ${toY - fromY}px, 0) scale(${target.rect.width / source.rect.width}, ${target.rect.height / source.rect.height})`;
+        const animation = morph.animate(
+            [
+                { transform: 'translate3d(0, 0, 0) scale(1, 1)', opacity: 1 },
+                { transform: destination, opacity: 1 },
+            ],
+            { duration: QUEUE_ROW_ARTWORK_DURATION, easing: QUEUE_EASE_IN_OUT, fill: 'both' }
+        );
+        this.queueAdvanceArtworkAnimation = animation;
+        animation.onfinish = () => {
+            if (this.queueAdvanceArtworkAnimation !== animation) return;
+            target.element.style.removeProperty('opacity');
+            morph.remove();
+            this.queueAdvanceArtworkAnimation = null;
+            this.queueAdvanceArtworkTarget = null;
+            this.queueAdvanceArtworkMorph = null;
+            animation.cancel();
+        };
+    }
+
+    clearQueueAdvanceArtworkAnimation() {
+        this.queueAdvanceArtworkAnimation?.cancel?.();
+        this.queueAdvanceArtworkMorph?.remove();
+        this.queueAdvanceArtworkAnimation = null;
+        this.queueAdvanceArtworkTarget?.style.removeProperty('opacity');
+        this.queueAdvanceArtworkTarget = null;
+        this.queueAdvanceArtworkMorph = null;
     }
 
     renderQueueOpeningShell() {
@@ -1268,7 +1490,7 @@ export class NowPlayingPanel {
                   .reverse()
                   .map(
                       (track, offset) =>
-                          `<div class="queue-track-row queue-history-row" style="--queue-order:${offset};--queue-delay:${Math.min(offset, 12) * 34}ms;${rowMotionStyle}"><div class="queue-track-main queue-history-main"><img src="${escapeHtml(imageFor(track))}" alt="" loading="lazy" /><span><strong>${escapeHtml(titleFor(track))}</strong><small>${escapeHtml(artistFor(track))}</small></span></div></div>`
+                          `<div class="queue-track-row queue-history-row" data-track-id="${escapeHtml(String(track.id))}" style="--queue-order:${offset};--queue-delay:${Math.min(offset, 12) * 34}ms;${rowMotionStyle}"><div class="queue-track-main queue-history-main"><img src="${escapeHtml(imageFor(track))}" alt="" loading="lazy" /><span><strong>${escapeHtml(titleFor(track))}</strong><small>${escapeHtml(artistFor(track))}</small></span></div></div>`
                   )
                   .join('')
             : `<div class="queue-list-empty"><span>${icon('history', 18)}</span><strong>No history yet</strong><p>Only tracks played in this queue appear here.</p></div>`;
@@ -1706,9 +1928,8 @@ export class NowPlayingPanel {
             return navigate(button.dataset.queueSourceHref);
         if (button.matches('[data-queue-clear]')) {
             if (!this.player?.clearQueue || !this.player.getCurrentQueue?.().length) return;
+            this.queueMotionReason = 'clear';
             await this.player.clearQueue();
-            this.queueMotionReason = 'refresh';
-            this.renderQueueControls({ preserveScroll: true });
             showNotification('Queue cleared');
             return;
         }
@@ -1763,6 +1984,7 @@ export class NowPlayingPanel {
         }
         if (button.matches('.queue-track-remove')) {
             event.stopPropagation();
+            this.queueMotionReason = 'remove';
             await this.player?.removeFromQueue?.(Number(button.dataset.removeQueueIndex));
             return;
         }
@@ -1841,7 +2063,8 @@ export class NowPlayingPanel {
         if (this.activeView !== 'queue' || !this.queueLayer) return;
         const queueView = this.queueLayer.querySelector('.now-playing-panel-queue-view');
         const previousScroll = preserveScroll ? queueView?.scrollTop || 0 : 0;
-        this.queueRowsStatic = true;
+        const motionReason = this.queueMotionReason || 'refresh';
+        this.queueRowsStatic = !['advance', 'insert', 'remove', 'clear', 'reorder'].includes(motionReason);
         if (queueView) {
             this.renderQueueLayer(this.model || {}, previousScroll, { startTransition: false });
         } else if (this.content?.querySelector('.now-playing-panel-queue-view')) {
@@ -1940,6 +2163,7 @@ export class NowPlayingPanel {
                 if (event.repeat || to <= this.player.currentQueueIndex || to >= this.player.getCurrentQueue().length)
                     return;
                 void (async () => {
+                    this.queueMotionReason = 'reorder';
                     await this.player.moveInQueue(from, to);
                     await this.render({ preserveScroll: true });
                     this.root
@@ -1974,6 +2198,8 @@ export class NowPlayingPanel {
         ++this.queueTransitionToken;
         this.queueOpeningScheduled = false;
         this.clearQueueLayerAnimation();
+        this.cancelQueueListAnimation();
+        this.clearQueueAdvanceArtworkAnimation();
         this.cancelQueueCoverAnimation();
         this.restoreQueueCoverSource();
         this.cleanupQueueDrag();

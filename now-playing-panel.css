@@ -2102,7 +2102,31 @@ body .now-playing-panel.is-queue-view .queue-track-row {
     min-height: 60px;
     gap: 4px;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 64%, transparent);
-    animation: queue-row-enter 360ms calc(40ms + var(--queue-delay)) cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: queue-row-enter 240ms var(--ease-out) calc(40ms + var(--queue-delay)) both;
+}
+
+body .now-playing-panel.is-queue-view .now-playing-panel-queue-layer:not(.is-visible) .queue-track-row {
+    animation-play-state: paused;
+}
+
+body .now-playing-panel.is-queue-view .now-playing-panel-queue-layer.is-visible .queue-track-row {
+    animation-play-state: running;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-row.is-reconciling {
+    animation: none !important;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-row.is-exiting {
+    z-index: 1;
+    pointer-events: none;
+    animation: none !important;
+    opacity: 0;
+    transform: translate3d(-18px, 0, 0);
+    transition:
+        opacity 190ms var(--ease-out),
+        transform 190ms var(--ease-out);
+    transition-delay: var(--queue-exit-delay, 0ms);
 }
 
 body .now-playing-panel.is-queue-view .queue-track-row:last-child {
