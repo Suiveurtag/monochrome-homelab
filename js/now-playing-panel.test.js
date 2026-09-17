@@ -254,6 +254,26 @@ describe('Now Playing panel interactions', () => {
         panel.destroy();
     });
 
+    test('keeps queue rows static during playback-only refreshes', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const deps = dependencies();
+        deps.player.currentQueueIndex = 0;
+        deps.player.getCurrentQueue = () => [
+            { id: 'current', title: 'Current', artist: { name: 'Artist' }, album: { cover: '/current.jpg' } },
+            { id: 'next', title: 'Next', artist: { name: 'Artist' }, album: { cover: '/next.jpg' } },
+        ];
+        const panel = new NowPlayingPanel(deps);
+        await waitForPanel(panel);
+
+        const refreshMarkup = panel.renderQueue();
+        expect(refreshMarkup).toContain('animation: none; opacity: 1; transform: none;');
+
+        panel.queueMotionReason = 'advance';
+        const advanceMarkup = panel.renderQueue();
+        expect(advanceMarkup).not.toContain('animation: none; opacity: 1; transform: none;');
+        panel.destroy();
+    });
+
     test('keeps the full-screen queue open and interactive when the viewport becomes mobile', async () => {
         const { NowPlayingPanel } = await import('./now-playing-panel.js');
         const panel = new NowPlayingPanel(dependencies());

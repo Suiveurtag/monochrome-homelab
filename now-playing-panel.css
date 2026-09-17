@@ -2144,7 +2144,8 @@ body .now-playing-panel.is-queue-view .queue-track-row {
     min-height: 60px;
     gap: 4px;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 64%, transparent);
-    animation: queue-row-enter 240ms var(--ease-out) calc(40ms + var(--queue-delay)) both;
+    animation: queue-row-enter 280ms var(--ease-out) calc(24ms + var(--queue-delay) + var(--queue-delay)) both;
+    will-change: transform, opacity;
 }
 
 body .now-playing-panel.is-queue-view .now-playing-panel-queue-layer:not(.is-visible) .queue-track-row {
@@ -2434,12 +2435,16 @@ body .now-playing-panel.is-queue-view.is-queue-closing {
 @keyframes queue-row-enter {
     from {
         opacity: 0;
-        transform: translateY(5px);
+        transform: translate3d(0, 14px, 0) scale(0.97);
+    }
+
+    68% {
+        opacity: 1;
     }
 
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translate3d(0, 0, 0) scale(1);
     }
 }
 

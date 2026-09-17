@@ -1456,7 +1456,10 @@ export class NowPlayingPanel {
         const media = this.player?.activeElement;
         const isPaused = media?.paused !== false;
         const motionReason = this.queueMotionReason || 'refresh';
-        const rowMotionStyle = this.queueRowsStatic ? 'animation: none; opacity: 1; transform: none;' : '';
+        // A model refresh (for example playback state or metadata) must not
+        // replay the list entrance. Only a structural queue change owns row motion.
+        const rowMotionStyle =
+            this.queueRowsStatic || motionReason === 'refresh' ? 'animation: none; opacity: 1; transform: none;' : '';
         this.queueMotionReason = null;
         const imageFor = (track) => {
             const source = getTrackPlayerArtwork(track);
