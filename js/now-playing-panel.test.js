@@ -274,6 +274,38 @@ describe('Now Playing panel interactions', () => {
         panel.destroy();
     });
 
+    test('does not replay row entrance animation after removing a queue track', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const deps = dependencies();
+        const current = { id: 'current', title: 'Current', artist: { name: 'Artist' }, album: { cover: '/current.jpg' } };
+        const removed = { id: 'removed', title: 'Removed', artist: { name: 'Artist' }, album: { cover: '/removed.jpg' } };
+        const remaining = { id: 'remaining', title: 'Remaining', artist: { name: 'Artist' }, album: { cover: '/remaining.jpg' } };
+        let queue = [current, removed, remaining];
+        deps.player.currentTrack = current;
+        deps.player.currentQueueIndex = 0;
+        deps.player.getCurrentQueue = () => queue;
+        const panel = new NowPlayingPanel(deps);
+        await waitForPanel(panel);
+        panel.activeView = 'queue';
+        panel.currentTrack = current;
+        panel.queueLayer.classList.add('is-visible');
+        panel.queueLayer.innerHTML = panel.renderQueue();
+
+        queue = [current, remaining];
+        panel.queueMotionReason = 'remove';
+        panel.renderQueueLayer(panel.model || {}, 0);
+
+        await vi.waitFor(() => {
+            expect(panel.queueLayer.querySelector('[data-track-id="removed"]')).toBeNull();
+        });
+        expect(
+            [...panel.queueLayer.querySelectorAll('.queue-track-row')].every((row) =>
+                row.classList.contains('queue-track-row-static')
+            )
+        ).toBe(true);
+        panel.destroy();
+    });
+
     test('keeps the full-screen queue open and interactive when the viewport becomes mobile', async () => {
         const { NowPlayingPanel } = await import('./now-playing-panel.js');
         const panel = new NowPlayingPanel(dependencies());

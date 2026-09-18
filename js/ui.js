@@ -1711,13 +1711,21 @@ export class UIRenderer {
         }
 
         if (nextMode === 'light') {
-            const started = await this.startFullscreenVisualizer(this.player?.activeElement, overlay);
+            // Commit the visual mode before touching Web Audio. Browsers can
+            // reject an automatic AudioContext resume, but the Light surface
+            // itself must still be visible and remain selectable.
+            commitMode();
+            let started = false;
+            try {
+                started = await this.startFullscreenVisualizer(this.player?.activeElement, overlay);
+            } catch (error) {
+                console.warn('Failed to start fullscreen visualizer:', error);
+            }
             if (requestId !== this.fullscreenBackgroundRequestId) {
                 if (started) this.visualizer?.stop();
                 return false;
             }
             if (!started) {
-                this.updateFullscreenBackgroundButton(this.fullscreenBackgroundMode);
                 return false;
             }
         } else {

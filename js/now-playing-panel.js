@@ -1071,6 +1071,9 @@ export class NowPlayingPanel {
         this.queueLayer.innerHTML = markup;
         const nextView = this.queueLayer.querySelector('.now-playing-panel-queue-view');
         if (!nextView) return;
+        if (motionReason === 'remove' || motionReason === 'clear') {
+            nextView.querySelectorAll('.queue-track-row').forEach((row) => row.classList.add('queue-track-row-static'));
+        }
         nextView.scrollTop = previousScroll;
         this.syncQueueLayerState();
         this.animateQueueRowReflow(previousRects, nextView, motionReason);

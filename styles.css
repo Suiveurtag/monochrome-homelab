@@ -6517,16 +6517,13 @@ input:checked + .slider::before {
     overflow: hidden;
     text-overflow: ellipsis;
     cursor: pointer;
-    transition:
-        color var(--transition-fast),
-        transform var(--transition-fast);
+    transition: color var(--transition);
     display: block;
     max-width: 100%;
 }
 
 .track-info .details .artist:hover {
     color: var(--highlight);
-    transform: translateX(2px);
 }
 
 #radio-btn.active,
@@ -10815,7 +10812,6 @@ input:checked + .slider::before {
 
 .now-playing-bar .artist .artist-link:hover {
     color: var(--highlight);
-    text-decoration: underline;
 }
 
 .track-item .artist .artist-link {
