@@ -222,6 +222,7 @@ export class SpicyDynamicBackground {
         }
 
         this.loadingSource = nextSource;
+        this.root.classList.remove('has-kawarp-background');
         this.canvas.style.display = '';
         this.loadQueue = this.loadQueue
             .catch(() => false)

@@ -84,6 +84,30 @@ describe('Spicy dynamic background', () => {
         expect(controller.fallback.style.backgroundImage).toContain('/covers/second.jpg');
     });
 
+    test('keeps the fallback visible while Kawarp loads a new source', async () => {
+        const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const controller = mountSpicyDynamicBackground(host);
+        await controller.setSource('/covers/first.jpg');
+
+        let resolveLoad;
+        kawarpInstances[0].loadImage.mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    resolveLoad = resolve;
+                })
+        );
+        const pending = controller.setSource('/covers/second.jpg');
+        await vi.waitFor(() => expect(resolveLoad).toEqual(expect.any(Function)));
+        expect(controller.root.classList.contains('has-kawarp-background')).toBe(false);
+        expect(host.querySelector('.spicy-dynamic-bg-fallback.is-visible')).toBeTruthy();
+
+        resolveLoad();
+        await pending;
+        expect(controller.root.classList.contains('has-kawarp-background')).toBe(true);
+    });
+
     test('stops hidden backgrounds and resumes their existing Kawarp instance', async () => {
         const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
         const host = document.createElement('div');
