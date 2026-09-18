@@ -39,6 +39,7 @@ export class SpicyDynamicBackground {
         this.kawarp = null;
         this.generation = 0;
         this.source = '';
+        this.loadingSource = '';
         this.transitionTimer = null;
         this.disposed = false;
         this.loadQueue = Promise.resolve(false);
@@ -203,6 +204,10 @@ export class SpicyDynamicBackground {
 
     setSource(source) {
         const nextSource = String(source || '');
+        if (!this.disposed && nextSource === this.source) {
+            if (this.root.classList.contains('has-kawarp-background')) return Promise.resolve(true);
+            if (this.loadingSource === nextSource) return this.loadQueue;
+        }
         const generation = ++this.generation;
         this.source = nextSource;
         this.disposed = false;
@@ -210,11 +215,13 @@ export class SpicyDynamicBackground {
         this.setFallbackSource(isAnimatedSource(nextSource) ? '' : nextSource);
 
         if (!nextSource || isAnimatedSource(nextSource)) {
+            this.loadingSource = '';
             this.root.classList.remove('has-kawarp-background');
             this.canvas.style.display = 'none';
             return Promise.resolve(false);
         }
 
+        this.loadingSource = nextSource;
         this.canvas.style.display = '';
         this.loadQueue = this.loadQueue
             .catch(() => false)
@@ -228,6 +235,7 @@ export class SpicyDynamicBackground {
                     else this.kawarp.renderFrame?.();
                     this.syncMotion(true);
                     this.root.classList.add('has-kawarp-background');
+                    this.loadingSource = '';
                     window.clearTimeout(this.transitionTimer);
                     this.transitionTimer = window.setTimeout(() => {
                         if (!this.disposed && generation === this.generation) {
@@ -237,6 +245,7 @@ export class SpicyDynamicBackground {
                     return true;
                 } catch (error) {
                     if (!this.disposed && generation === this.generation) {
+                        this.loadingSource = '';
                         this.root.classList.remove('has-kawarp-background');
                         this.canvas.style.display = 'none';
                         console.warn('Spicy Lyrics dynamic background fell back to cover blur:', error);
@@ -250,6 +259,7 @@ export class SpicyDynamicBackground {
     dispose() {
         this.disposed = true;
         this.generation += 1;
+        this.loadingSource = '';
         window.clearTimeout(this.transitionTimer);
         this.transitionTimer = null;
         window.clearTimeout(this.fallbackTransitionTimer);

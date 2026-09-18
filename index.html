@@ -1814,29 +1814,6 @@
 
         <div id="theme-preview-window" style="display: none"></div>
 
-        <div id="epilepsy-warning-modal" class="modal">
-            <div class="modal-overlay"></div>
-            <div class="modal-content">
-                <h3 style="color: #ef4444; display: flex; align-items: center; gap: 0.5rem">
-                    <use svg="!lucide/triangle-alert.svg" size="24" />
-                    Photosensitivity Warning
-                </h3>
-                <p style="margin: 1rem 0; line-height: 1.5">
-                    The visualizer contains flashing lights and rapidly moving patterns that may trigger seizures for
-                    people with photosensitive epilepsy.
-                </p>
-                <p style="margin-bottom: 1.5rem; font-size: 0.9rem; color: var(--muted-foreground)">
-                    Viewer discretion is advised.
-                </p>
-                <div class="modal-actions" style="flex-direction: column; gap: 0.5rem">
-                    <button id="epilepsy-accept-btn" class="btn-primary" style="width: 100%">
-                        Proceed & Don't Show Again
-                    </button>
-                    <button id="epilepsy-cancel-btn" class="btn-secondary" style="width: 100%">Cancel</button>
-                </div>
-            </div>
-        </div>
-
         <div id="desktop-update-modal" class="modal">
             <div class="modal-overlay"></div>
             <div class="modal-content">
@@ -4311,14 +4288,7 @@
                                 <div class="setting-item" id="visualizer-sensitivity-setting">
                                     <div class="info">
                                         <span class="label">Visualizer Sensitivity</span>
-                                        <span class="description"
-                                            >Adjust the intensity of the visualizer effects.
-                                            <strong
-                                                >Warning: High sensitivity may cause flashing lights and rapid motion,
-                                                which can trigger seizures in people with photosensitive
-                                                epilepsy.</strong
-                                            ></span
-                                        >
+                                        <span class="description">Adjust the intensity of the visualizer effects.</span>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 10px">
                                         <input

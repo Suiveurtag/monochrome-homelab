@@ -1711,13 +1711,12 @@ export class UIRenderer {
         }
 
         if (nextMode === 'light') {
-            const allowed = await this.ensureVisualizerPermission(this.player?.activeElement, overlay);
+            const started = await this.startFullscreenVisualizer(this.player?.activeElement, overlay);
             if (requestId !== this.fullscreenBackgroundRequestId) {
-                if (allowed === true) this.visualizer?.stop();
+                if (started) this.visualizer?.stop();
                 return false;
             }
-            if (allowed !== true) {
-                if (allowed === null) this.fullscreenVisualizerSuppressed = true;
+            if (!started) {
                 this.updateFullscreenBackgroundButton(this.fullscreenBackgroundMode);
                 return false;
             }
@@ -1802,7 +1801,6 @@ export class UIRenderer {
         this.fullscreenRenderController = renderController;
         const isCurrentRequest = () => this.fullscreenOpenGeneration === generation && !renderController.signal.aborted;
 
-        this.fullscreenVisualizerSuppressed = false;
         const isAlreadyOpen = this.isFullscreenCoverOpen(overlay);
         const nextTrackEl = document.getElementById('fullscreen-next-track');
         const lyricsPane = document.getElementById('fullscreen-lyrics-pane');
@@ -2134,7 +2132,6 @@ export class UIRenderer {
         this.fullscreenSpicyBackgroundPromise = null;
         this.fullscreenBackgroundCoverUrl = '';
         this.fullscreenBackgroundRequestId += 1;
-        this.fullscreenVisualizerSuppressed = false;
 
         // Clear UI toggle button timers
         if (this.uiToggleMouseTimer) {
@@ -2195,38 +2192,6 @@ export class UIRenderer {
 
         overlay.classList.remove('visualizer-active');
         return false;
-    }
-
-    async ensureVisualizerPermission(activeElement, overlay, { closeOnCancel = false } = {}) {
-        if (localStorage.getItem('epilepsy-warning-dismissed') === 'true') {
-            return await this.startFullscreenVisualizer(activeElement, overlay);
-        }
-
-        const modal = document.getElementById('epilepsy-warning-modal');
-        if (!modal) {
-            return await this.startFullscreenVisualizer(activeElement, overlay);
-        }
-
-        return await new Promise((resolve) => {
-            modal.classList.add('active');
-
-            const acceptBtn = document.getElementById('epilepsy-accept-btn');
-            const cancelBtn = document.getElementById('epilepsy-cancel-btn');
-
-            acceptBtn.onclick = async () => {
-                modal.classList.remove('active');
-                localStorage.setItem('epilepsy-warning-dismissed', 'true');
-                resolve(await this.startFullscreenVisualizer(activeElement, overlay));
-            };
-
-            cancelBtn.onclick = () => {
-                modal.classList.remove('active');
-                if (closeOnCancel) {
-                    this.closeFullscreenCover();
-                }
-                resolve(null);
-            };
-        });
     }
 
     async refreshFullscreenVisualizerState(_activeElement, options = {}) {

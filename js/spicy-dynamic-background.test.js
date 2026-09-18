@@ -43,6 +43,8 @@ describe('Spicy dynamic background', () => {
         expect(host.querySelectorAll('[data-spicy-background]')).toHaveLength(1);
 
         await controller.setSource('/covers/first.jpg');
+        await controller.setSource('/covers/first.jpg');
+        expect(kawarpInstances[0].loadImage).toHaveBeenCalledTimes(1);
         await controller.setSource('/covers/second.jpg');
         expect(kawarpInstances).toHaveLength(1);
         expect(kawarpInstances[0].loadImage).toHaveBeenNthCalledWith(1, '/covers/first.jpg');

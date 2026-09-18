@@ -16759,7 +16759,7 @@ body:has(#side-panel.active) #close-fullscreen-cover-btn {
 
 #fullscreen-cover-overlay #toggle-ui-btn {
     top: 1.25rem;
-    left: calc(1.5rem + env(safe-area-inset-left) + (40px * 3) + (0.4rem * 3));
+    left: calc(1.5rem + env(safe-area-inset-left) + (40px * 4) + (0.4rem * 4));
     right: auto;
     width: 40px;
     height: 40px;

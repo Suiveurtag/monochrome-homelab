@@ -60,6 +60,24 @@ const QUEUE_REPEAT_ALL = 1;
 const ICON_FULLSCREEN_EXIT = (size = 20) =>
     FULLSCREEN_EXIT_SVG.replace('width="800px" height="800px"', `width="${size}" height="${size}"`);
 
+function scaleMorphBorderRadius(borderRadius, scaleX, scaleY) {
+    const value = String(borderRadius || '').trim();
+    if (!value) return '0px';
+    const [horizontalPart, verticalPart = horizontalPart] = value.split('/').map((part) => part.trim());
+    const parsePart = (part) => {
+        const values = part.split(/\s+/).map((item) => Number.parseFloat(item));
+        return values.every(Number.isFinite) ? values : null;
+    };
+    const horizontal = parsePart(horizontalPart);
+    const vertical = parsePart(verticalPart);
+    if (!horizontal || !vertical) return value;
+    const safeScaleX = Math.abs(scaleX) || 1;
+    const safeScaleY = Math.abs(scaleY) || 1;
+    return `${horizontal.map((radius) => `${radius / safeScaleX}px`).join(' ')} / ${vertical
+        .map((radius) => `${radius / safeScaleY}px`)
+        .join(' ')}`;
+}
+
 function icon(name, size = 20) {
     const icons = {
         'chevron-right': ICON_CHEVRON_RIGHT,
@@ -1145,15 +1163,19 @@ export class NowPlayingPanel {
             this.queueAdvanceArtworkContainer = null;
             return;
         }
-        const destination = `translate3d(${toX - fromX}px, ${toY - fromY}px, 0) scale(${target.rect.width / source.rect.width}, ${target.rect.height / source.rect.height})`;
+        const scaleX = target.rect.width / source.rect.width;
+        const scaleY = target.rect.height / source.rect.height;
+        const destination = `translate3d(${toX - fromX}px, ${toY - fromY}px, 0) scale(${scaleX}, ${scaleY})`;
+        const sourceMorphBorderRadius = scaleMorphBorderRadius(source.borderRadius, 1, 1);
+        const targetMorphBorderRadius = scaleMorphBorderRadius(target.borderRadius, scaleX, scaleY);
         const animation = morph.animate(
             [
                 {
                     transform: 'translate3d(0, 0, 0) scale(1, 1)',
                     opacity: 1,
-                    borderRadius: source.borderRadius,
+                    borderRadius: sourceMorphBorderRadius,
                 },
-                { transform: destination, opacity: 1, borderRadius: target.borderRadius },
+                { transform: destination, opacity: 1, borderRadius: targetMorphBorderRadius },
             ],
             { duration: QUEUE_ROW_ARTWORK_DURATION, easing: QUEUE_EASE_IN_OUT, fill: 'both' }
         );
@@ -1409,10 +1431,12 @@ export class NowPlayingPanel {
         this.root.append(morph);
         this.queueCoverMorph = morph;
         const destination = `translate3d(${toX - fromX}px, ${toY - fromY}px, 0) scale(${scaleX}, ${scaleY})`;
+        const sourceMorphBorderRadius = scaleMorphBorderRadius(source.borderRadius, 1, 1);
+        const targetMorphBorderRadius = scaleMorphBorderRadius(target.borderRadius, scaleX, scaleY);
         const duration = direction === 'closing' ? QUEUE_CLOSE_DURATION : QUEUE_COVER_DURATION;
         if (typeof morph.animate !== 'function') {
             morph.style.transform = destination;
-            morph.style.borderRadius = target.borderRadius;
+            morph.style.borderRadius = targetMorphBorderRadius;
             window.setTimeout(finish, duration);
             return;
         }
@@ -1421,9 +1445,9 @@ export class NowPlayingPanel {
                 {
                     transform: 'translate3d(0, 0, 0) scale(1, 1)',
                     opacity: 1,
-                    borderRadius: source.borderRadius,
+                    borderRadius: sourceMorphBorderRadius,
                 },
-                { transform: destination, opacity: 1, borderRadius: target.borderRadius },
+                { transform: destination, opacity: 1, borderRadius: targetMorphBorderRadius },
             ],
             {
                 duration,
