@@ -85,14 +85,6 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     background: rgb(0 0 0 / 0.06);
 }
 
-body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg .spicy-dynamic-bg-fallback {
-    filter: brightness(0.8) contrast(1.05) saturate(1.9) blur(var(--static-background-blur, 38px));
-}
-
-body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg .spicy-dynamic-bg {
-    filter: brightness(0.86) saturate(2.65);
-}
-
 .now-playing-panel-spicy-bg .spicy-dynamic-bg-fallback {
     background-position: center;
     background-size: cover;
@@ -1559,6 +1551,7 @@ body .now-playing-panel.is-queue-view .queue-source-link {
     background: transparent;
     color: var(--foreground);
     cursor: pointer;
+    transition: color 180ms var(--ease-out);
     font: inherit;
     font-weight: 700;
     text-decoration: underline;
