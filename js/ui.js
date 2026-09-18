@@ -141,6 +141,10 @@ const getNextFullscreenBackgroundMode = (mode) => {
     return FULLSCREEN_BACKGROUND_MODES[(currentIndex + 1) % FULLSCREEN_BACKGROUND_MODES.length];
 };
 
+const getFullscreenLyricsBackgroundMode = (renderer) => (renderer === 'spicy' ? 'spicy' : 'fluid');
+
+const isExplicitFullscreenBackgroundMode = (mode) => mode === 'solid' || mode === 'light';
+
 function sortTracks(tracks, sortType) {
     if (sortType === 'custom') return [...tracks];
     const sorted = [...tracks];
@@ -1917,7 +1921,11 @@ export class UIRenderer {
             }
 
             try {
-                await this.applyFullscreenBackgroundMode(this.fullscreenBackgroundMode, { persist: false });
+                const savedBackgroundMode = getFullscreenBackgroundMode(this.fullscreenBackgroundMode);
+                const backgroundMode = isExplicitFullscreenBackgroundMode(savedBackgroundMode)
+                    ? savedBackgroundMode
+                    : getFullscreenLyricsBackgroundMode(this.fullscreenLyricsRenderer);
+                await this.applyFullscreenBackgroundMode(backgroundMode, { persist: false });
             } catch (error) {
                 console.warn('Failed to initialize fullscreen background:', error);
             }
@@ -2482,6 +2490,10 @@ export class UIRenderer {
             if (!lyricsElement) throw new Error(`Failed to mount ${nextRenderer} fullscreen lyrics`);
             this.updateFullscreenLyricsRendererButton(overlay);
             this.updateFullscreenLyricsVisibility(overlay);
+            const currentBackgroundMode = getFullscreenBackgroundMode(this.fullscreenBackgroundMode);
+            if (!isExplicitFullscreenBackgroundMode(currentBackgroundMode)) {
+                await this.applyFullscreenBackgroundMode(getFullscreenLyricsBackgroundMode(nextRenderer));
+            }
             return true;
         } catch (error) {
             if (renderController.signal.aborted) return false;

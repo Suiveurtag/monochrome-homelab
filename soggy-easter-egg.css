@@ -2,7 +2,7 @@
     position: fixed;
     top: max(1rem, env(safe-area-inset-top));
     right: max(1rem, env(safe-area-inset-right));
-    z-index: 1800;
+    z-index: 2050;
     width: 3.5rem;
     height: 3.5rem;
     padding: 0;
@@ -41,7 +41,7 @@
 
 .soggy-easter-egg-modal {
     position: fixed;
-    z-index: 1801;
+    z-index: 2051;
     inset: 0;
     display: grid;
     place-items: center;

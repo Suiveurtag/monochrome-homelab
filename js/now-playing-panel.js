@@ -920,12 +920,15 @@ export class NowPlayingPanel {
         if (!element?.getBoundingClientRect) return null;
         const rect = element.getBoundingClientRect();
         if (!rect.width || !rect.height) return null;
+        const visualElement =
+            element.closest?.('.now-playing-panel-media, .queue-current-artwork') || element;
         const computed = getComputedStyle(element);
+        const visualComputed = getComputedStyle(visualElement);
         return {
             element,
             rect,
             src: element.currentSrc || element.src || element.poster || '',
-            borderRadius: computed.borderRadius || '4px',
+            borderRadius: visualComputed.borderRadius || computed.borderRadius || '4px',
         };
     }
 
@@ -1145,8 +1148,12 @@ export class NowPlayingPanel {
         const destination = `translate3d(${toX - fromX}px, ${toY - fromY}px, 0) scale(${target.rect.width / source.rect.width}, ${target.rect.height / source.rect.height})`;
         const animation = morph.animate(
             [
-                { transform: 'translate3d(0, 0, 0) scale(1, 1)', opacity: 1 },
-                { transform: destination, opacity: 1 },
+                {
+                    transform: 'translate3d(0, 0, 0) scale(1, 1)',
+                    opacity: 1,
+                    borderRadius: source.borderRadius,
+                },
+                { transform: destination, opacity: 1, borderRadius: target.borderRadius },
             ],
             { duration: QUEUE_ROW_ARTWORK_DURATION, easing: QUEUE_EASE_IN_OUT, fill: 'both' }
         );
@@ -1405,13 +1412,18 @@ export class NowPlayingPanel {
         const duration = direction === 'closing' ? QUEUE_CLOSE_DURATION : QUEUE_COVER_DURATION;
         if (typeof morph.animate !== 'function') {
             morph.style.transform = destination;
+            morph.style.borderRadius = target.borderRadius;
             window.setTimeout(finish, duration);
             return;
         }
         this.queueCoverAnimation = morph.animate(
             [
-                { transform: 'translate3d(0, 0, 0) scale(1, 1)', opacity: 1 },
-                { transform: destination, opacity: 1 },
+                {
+                    transform: 'translate3d(0, 0, 0) scale(1, 1)',
+                    opacity: 1,
+                    borderRadius: source.borderRadius,
+                },
+                { transform: destination, opacity: 1, borderRadius: target.borderRadius },
             ],
             {
                 duration,
