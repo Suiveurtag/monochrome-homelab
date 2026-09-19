@@ -208,6 +208,11 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     opacity: 1;
 }
 
+/* Keep scrolled track metadata behind the header's backdrop layer. */
+.now-playing-panel.is-scrolled .now-playing-panel-header {
+    z-index: 4;
+}
+
 .now-playing-panel:hover .now-playing-panel-header,
 .now-playing-panel:focus-within .now-playing-panel-header {
     grid-template-columns: 34px minmax(0, 1fr) auto;
