@@ -29,6 +29,7 @@ import FULLSCREEN_EXIT_SVG from '../assets/fullscreen-exit-svgrepo-com.svg?raw';
 import ICON_PAUSE from '!lucide/pause.svg?svg&icon';
 import ICON_PLAY from '!lucide/play.svg?svg&icon';
 import ICON_REPEAT from '!lucide/repeat.svg?svg&icon';
+import ICON_SEARCH from '!lucide/search.svg?svg&icon';
 import ICON_SHARE from '!lucide/share-2.svg?svg&icon';
 import ICON_SKIP_BACK from '!lucide/skip-back.svg?svg&icon';
 import ICON_SKIP_FORWARD from '!lucide/skip-forward.svg?svg&icon';
@@ -52,6 +53,8 @@ const QUEUE_ROW_RECONCILE_DURATION = 240;
 const QUEUE_ROW_RECONCILE_STAGGER = 18;
 const QUEUE_ROW_ARTWORK_DURATION = 280;
 const QUEUE_ROW_MAX_STAGGER = 8;
+const HISTORY_INITIAL_RENDER_COUNT = 32;
+const HISTORY_RENDER_BATCH = 24;
 const QUEUE_EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
 const QUEUE_EASE_IN_OUT = 'cubic-bezier(0.77, 0, 0.175, 1)';
 const MISSING_BIOGRAPHY = 'No biography is available for this artist yet.';
@@ -94,6 +97,7 @@ function icon(name, size = 20) {
         pause: ICON_PAUSE,
         play: ICON_PLAY,
         repeat: ICON_REPEAT,
+        search: ICON_SEARCH,
         'share-2': ICON_SHARE,
         'skip-back': ICON_SKIP_BACK,
         'skip-forward': ICON_SKIP_FORWARD,
@@ -154,6 +158,19 @@ export class NowPlayingPanel {
         this.activeView = 'now-playing';
         this.queueView = 'up-next';
         this.queueHistory = [];
+        this.historyItems = [];
+        this.historyLoading = false;
+        this.historyLoaded = false;
+        this.historyError = false;
+        this.historyLoadToken = 0;
+        this.historySearchExpanded = false;
+        this.historySearchQuery = '';
+        this.historyVisibleCount = HISTORY_INITIAL_RENDER_COUNT;
+        this.historyRevealedKeys = new Set();
+        this.historyRevealObserver = null;
+        this.historyPaginationObserver = null;
+        this.queueTabAnimation = null;
+        this.queueViewScroll = { 'up-next': 0, history: 0 };
         this.queueSessionKey = this.getQueueSessionKey();
         this.transitionMenuOpen = false;
         this.manuallyQueuedTracks = new Map();
@@ -168,6 +185,9 @@ export class NowPlayingPanel {
         this.queueTransition = null;
         this.queueCoverAnimation = null;
         this.queueCoverMorph = null;
+        this.queueCanvasStage = null;
+        this.queueCanvasAnimation = null;
+        this.queueCanvasTargetOpacity = null;
         this.queueCoverTarget = null;
         this.queueCoverClosingTarget = null;
         this.queueCoverSourceElement = null;
@@ -565,6 +585,383 @@ export class NowPlayingPanel {
         if (this.queueHistory.length > 50) this.queueHistory.shift();
     }
 
+    async loadHistory({ force = false } = {}) {
+        if (this.historyLoading || (this.historyLoaded && !force) || typeof db.getHistory !== 'function') return;
+        const token = ++this.historyLoadToken;
+        this.historyLoading = true;
+        this.historyError = false;
+        if (this.queueView === 'history') this.refreshHistoryResults();
+        try {
+            const history = await db.getHistory();
+            if (token !== this.historyLoadToken) return;
+            this.historyItems = Array.isArray(history) ? history.filter(Boolean) : [];
+            this.historyLoaded = true;
+        } catch (error) {
+            if (token !== this.historyLoadToken) return;
+            this.historyError = true;
+            console.warn('Failed to load listening history:', error);
+        } finally {
+            if (token === this.historyLoadToken) {
+                this.historyLoading = false;
+                if (this.queueView === 'history') this.refreshHistoryResults();
+            }
+        }
+    }
+
+    normalizeHistorySearch(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toLocaleLowerCase();
+    }
+
+    historyTrackMatches(track, query = this.historySearchQuery) {
+        const normalizedQuery = this.normalizeHistorySearch(query);
+        if (!normalizedQuery) return true;
+        const album = getTrackDisplayAlbum(track)?.title || track?.albumTitle || '';
+        return this.normalizeHistorySearch(
+            [getTrackTitle(track, { fallback: '' }), getTrackArtists(track, { fallback: '' }), album].join(' ')
+        ).includes(normalizedQuery);
+    }
+
+    getHistoryTimestamp(track) {
+        const timestamp = Number(track?.playedAt ?? track?.timestamp ?? track?.updatedAt ?? 0);
+        return Number.isFinite(timestamp) ? timestamp : 0;
+    }
+
+    getHistoryDayKey(track) {
+        const date = new Date(this.getHistoryTimestamp(track));
+        if (Number.isNaN(date.getTime())) return 'unknown';
+        return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+    }
+
+    getHistoryDayLabel(track) {
+        const timestamp = this.getHistoryTimestamp(track);
+        const date = new Date(timestamp);
+        if (!timestamp || Number.isNaN(date.getTime())) return 'Earlier';
+        const today = new Date();
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+        const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+        const dayDelta = Math.round((todayStart - dateStart) / 86400000);
+        if (dayDelta === 0) return 'Today';
+        if (dayDelta === 1) return 'Yesterday';
+        return new Intl.DateTimeFormat(undefined, {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: date.getFullYear() === today.getFullYear() ? undefined : 'numeric',
+        }).format(date);
+    }
+
+    getHistoryTimeLabel(track) {
+        const timestamp = this.getHistoryTimestamp(track);
+        const date = new Date(timestamp);
+        if (!timestamp || Number.isNaN(date.getTime())) return '';
+        return new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(date);
+    }
+
+    getHistoryArtwork(track) {
+        const source = getTrackPlayerArtwork(track);
+        if (!source) return '/assets/appicon.png';
+        return /^(?:data:|blob:|https?:|\/)/i.test(String(source))
+            ? String(source)
+            : this.api?.getCoverUrl?.(source) || String(source);
+    }
+
+    renderHistoryRow(track, offset, scope) {
+        const title = getTrackTitle(track, { fallback: 'Unknown title' });
+        const artist = getTrackArtists(track, { fallback: 'Unknown artist' });
+        const album = getTrackDisplayAlbum(track)?.title || track?.albumTitle || '';
+        const time = this.getHistoryTimeLabel(track);
+        const metadata = album
+            ? `<span>${escapeHtml(artist)}</span><span aria-hidden="true"> · </span><span>${escapeHtml(album)}</span>`
+            : `<span>${escapeHtml(artist)}</span>`;
+        const historyKey = `${scope}:${String(track.id)}:${this.getHistoryTimestamp(track)}`;
+        const revealed = this.historyRevealedKeys.has(historyKey);
+        return `<div class="queue-track-row queue-history-row queue-track-row-static${revealed ? ' is-history-revealed' : ' is-scroll-pending'}" data-track-id="${escapeHtml(String(track.id))}" data-history-key="${escapeHtml(historyKey)}" ${revealed ? '' : 'data-history-reveal'} data-history-scope="${scope}" style="--queue-order:${offset};--queue-delay:0ms"><button type="button" class="queue-track-main queue-history-main" data-history-track-id="${escapeHtml(String(track.id))}" aria-label="Play ${escapeHtml(title)}"><img src="${escapeHtml(this.getHistoryArtwork(track))}" alt="" loading="lazy" /><span class="queue-history-copy"><strong>${escapeHtml(title)}</strong><small>${metadata}</small></span></button>${time ? `<time class="queue-history-time" datetime="${new Date(this.getHistoryTimestamp(track)).toISOString()}">${escapeHtml(time)}</time>` : ''}</div>`;
+    }
+
+    getFilteredHistory() {
+        const currentQueue = [...this.queueHistory].reverse().filter((track) => this.historyTrackMatches(track));
+        const allHistory = this.historyItems.filter((track) => this.historyTrackMatches(track));
+        return { currentQueue, allHistory };
+    }
+
+    renderHistorySections() {
+        const { currentQueue, allHistory } = this.getFilteredHistory();
+        let rowOffset = 0;
+        const currentRows = currentQueue
+            .map((track) => this.renderHistoryRow(track, rowOffset++, 'current'))
+            .join('');
+        const currentEmpty = this.historySearchQuery
+            ? 'No track from this queue matches your search.'
+            : 'Tracks played from this queue will appear here.';
+        const currentSection = `<section class="queue-history-current" aria-labelledby="queue-current-history-title"><div class="queue-history-section-heading"><div><h2 id="queue-current-history-title">This queue</h2><p>${currentQueue.length} ${currentQueue.length === 1 ? 'song' : 'songs'}</p></div></div>${currentRows ? `<div class="queue-track-list queue-history-list">${currentRows}</div>` : `<p class="queue-history-inline-empty">${currentEmpty}</p>`}</section>`;
+
+        if (this.historyLoading && !this.historyLoaded) {
+            return `${currentSection}<section class="queue-history-all"><div class="queue-history-status" role="status"><span class="queue-history-loading" aria-hidden="true"></span><p>Loading your listening history…</p></div></section>`;
+        }
+        if (this.historyError && !this.historyLoaded) {
+            return `${currentSection}<section class="queue-history-all"><div class="queue-list-empty"><span>${icon('history', 18)}</span><strong>History is unavailable</strong><p>Your current queue history remains available above.</p></div></section>`;
+        }
+
+        const visibleHistory = allHistory.slice(0, this.historyVisibleCount);
+        const dayCounts = new Map();
+        for (const track of allHistory) {
+            const key = this.getHistoryDayKey(track);
+            dayCounts.set(key, (dayCounts.get(key) || 0) + 1);
+        }
+        const groups = [];
+        for (const track of visibleHistory) {
+            const key = this.getHistoryDayKey(track);
+            let group = groups.at(-1);
+            if (!group || group.key !== key) {
+                group = { key, label: this.getHistoryDayLabel(track), tracks: [] };
+                groups.push(group);
+            }
+            group.tracks.push(track);
+        }
+        const groupedMarkup = groups
+            .map((group, groupIndex) => {
+                const rows = group.tracks
+                    .map((track) => this.renderHistoryRow(track, rowOffset++, 'all'))
+                    .join('');
+                const headingId = `queue-history-day-${groupIndex}`;
+                const songCount = dayCounts.get(group.key) || group.tracks.length;
+                return `<section class="queue-history-day" aria-labelledby="${headingId}"><div class="queue-history-day-heading"><h3 id="${headingId}">${escapeHtml(group.label)}</h3><span>${songCount} ${songCount === 1 ? 'song' : 'songs'}</span></div><div class="queue-track-list queue-history-list">${rows}</div></section>`;
+            })
+            .join('');
+        const allEmpty = this.historySearchQuery
+            ? `<div class="queue-list-empty queue-history-no-results"><span>${icon('search', 18)}</span><strong>No other matches</strong><p>Try a track, album, or artist name.</p></div>`
+            : `<div class="queue-list-empty"><span>${icon('history', 18)}</span><strong>No earlier listening yet</strong><p>Tracks listened to for at least ten seconds will appear here.</p></div>`;
+        const remaining = Math.max(0, allHistory.length - visibleHistory.length);
+        const pagination = remaining
+            ? `<button type="button" class="queue-history-load-more" data-history-load-more><span>Continue through history</span><small>${remaining} more ${remaining === 1 ? 'song' : 'songs'}</small></button>`
+            : '';
+        return `${currentSection}<section class="queue-history-all" aria-labelledby="queue-all-history-title"><div class="queue-history-section-heading queue-history-all-heading"><div><h2 id="queue-all-history-title">All history</h2><p>Grouped by day</p></div></div>${groupedMarkup || allEmpty}${pagination}</section>`;
+    }
+
+    getHistorySummary() {
+        if (this.historyLoading && !this.historyLoaded) return 'Loading…';
+        const { currentQueue, allHistory } = this.getFilteredHistory();
+        const total = currentQueue.length + allHistory.length;
+        if (this.historySearchQuery) return `${total} ${total === 1 ? 'result' : 'results'}`;
+        return '';
+    }
+
+    renderHistoryPanel() {
+        const expanded = this.historySearchExpanded;
+        const summary = this.getHistorySummary();
+        return `<section class="queue-history-view" aria-labelledby="queue-history-heading"><div class="queue-history-toolbar"><div><h2 id="queue-history-heading">Listening history</h2><p data-history-summary${summary ? '' : ' hidden'}>${escapeHtml(summary)}</p></div><div class="queue-history-search-shell${expanded ? ' is-expanded' : ''}"><button type="button" class="queue-history-search-toggle" data-history-search-toggle aria-label="Search listening history" aria-expanded="${String(expanded)}" aria-controls="queue-history-search-field">${icon('search', 17)}</button><div id="queue-history-search-field" class="queue-history-search-field" ${expanded ? '' : 'inert'}><span aria-hidden="true">${icon('search', 16)}</span><input id="queue-history-search" type="search" value="${escapeHtml(this.historySearchQuery)}" placeholder="Tracks, albums, artists" aria-label="Search tracks, albums, and artists in listening history" autocomplete="off" /><button type="button" class="queue-history-search-close" data-history-search-close aria-label="Close history search">${icon('x', 15)}</button></div></div></div><div class="queue-history-results" aria-live="polite">${this.renderHistorySections()}</div></section>`;
+    }
+
+    refreshHistoryResults() {
+        const results = this.queueLayer?.querySelector('.queue-history-results');
+        if (!results) return;
+        results.innerHTML = this.renderHistorySections();
+        const summary = this.queueLayer.querySelector('[data-history-summary]');
+        if (summary) {
+            summary.textContent = this.getHistorySummary();
+            summary.hidden = !summary.textContent;
+        }
+        this.setupHistoryRowReveal();
+    }
+
+    setupHistoryRowReveal() {
+        this.historyRevealObserver?.disconnect?.();
+        this.historyRevealObserver = null;
+        this.historyPaginationObserver?.disconnect?.();
+        this.historyPaginationObserver = null;
+        const view = this.queueLayer?.querySelector('.now-playing-panel-queue-view');
+        const rows = [...(view?.querySelectorAll('[data-history-reveal]') || [])];
+        if (this.reducedMotionMedia.matches || typeof IntersectionObserver === 'undefined') {
+            rows.forEach((row) => {
+                row.classList.remove('is-scroll-pending');
+                this.historyRevealedKeys.add(row.dataset.historyKey);
+            });
+            this.setupHistoryPagination();
+            return;
+        }
+        const observer = new IntersectionObserver(
+            (entries) => {
+                let revealed = 0;
+                for (const entry of entries) {
+                    if (!entry.isIntersecting) continue;
+                    entry.target.style.setProperty('--queue-delay', `${Math.min(revealed++, 4) * 34}ms`);
+                    entry.target.classList.remove('is-scroll-pending');
+                    entry.target.classList.add('is-scroll-visible');
+                    this.historyRevealedKeys.add(entry.target.dataset.historyKey);
+                    observer.unobserve?.(entry.target);
+                }
+            },
+            { root: view, rootMargin: '0px 0px 56px', threshold: 0.08 }
+        );
+        rows.forEach((row) => observer.observe(row));
+        this.historyRevealObserver = observer;
+        this.setupHistoryPagination();
+    }
+
+    setupHistoryPagination() {
+        this.historyPaginationObserver?.disconnect?.();
+        this.historyPaginationObserver = null;
+        const view = this.queueLayer?.querySelector('.now-playing-panel-queue-view');
+        const trigger = view?.querySelector('[data-history-load-more]');
+        if (!view || !trigger || typeof IntersectionObserver === 'undefined') return;
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (!entries.some((entry) => entry.isIntersecting)) return;
+                observer.disconnect();
+                this.loadMoreHistory();
+            },
+            { root: view, rootMargin: '0px 0px 360px', threshold: 0.01 }
+        );
+        observer.observe(trigger);
+        this.historyPaginationObserver = observer;
+    }
+
+    loadMoreHistory() {
+        const { allHistory } = this.getFilteredHistory();
+        if (this.historyVisibleCount >= allHistory.length) return;
+        const view = this.queueLayer?.querySelector('.now-playing-panel-queue-view');
+        const previousScroll = view?.scrollTop || 0;
+        this.historyVisibleCount = Math.min(allHistory.length, this.historyVisibleCount + HISTORY_RENDER_BATCH);
+        this.refreshHistoryResults();
+        if (view) view.scrollTop = previousScroll;
+    }
+
+    syncQueueTabState(view = this.queueView) {
+        const tabs = this.queueLayer?.querySelector('.queue-header-tabs');
+        if (!tabs) return;
+        tabs.classList.toggle('is-history', view === 'history');
+        for (const tab of tabs.querySelectorAll('.queue-view-switch')) {
+            const selected = tab.dataset.queueView === view;
+            tab.classList.toggle('is-active', selected);
+            tab.setAttribute('aria-selected', String(selected));
+            tab.tabIndex = selected ? 0 : -1;
+        }
+    }
+
+    switchQueueView(nextView) {
+        if (!['up-next', 'history'].includes(nextView) || nextView === this.queueView) return;
+        const queueView = this.queueLayer?.querySelector('.now-playing-panel-queue-view');
+        const outgoingBody = queueView?.querySelector('.queue-panel-body');
+        if (!queueView || !outgoingBody) return;
+        const previousView = this.queueView;
+        const previousScroll = queueView.scrollTop;
+        this.queueViewScroll[previousView] = previousScroll;
+        const direction = nextView === 'history' ? 1 : -1;
+        const outgoingClone = outgoingBody.cloneNode(true);
+        outgoingClone.removeAttribute('id');
+        outgoingClone.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'));
+        outgoingClone.setAttribute('aria-hidden', 'true');
+        outgoingClone.inert = true;
+
+        this.queueView = nextView;
+        this.queueMotionReason = 'view';
+        this.queueRowsStatic = true;
+        const scratch = document.createElement('div');
+        scratch.innerHTML = this.renderQueue(this.model || {});
+        this.queueRowsStatic = false;
+        const incomingBody = scratch.querySelector('.queue-panel-body');
+        if (!incomingBody) {
+            this.queueView = previousView;
+            return;
+        }
+        outgoingBody.replaceWith(incomingBody);
+        this.syncQueueTabState(nextView);
+        queueView.scrollTop = this.queueViewScroll[nextView] || 0;
+        this.animateQueueTabSwitch(outgoingClone, incomingBody, direction, previousScroll);
+        if (nextView === 'history') {
+            this.setupHistoryRowReveal();
+            void this.loadHistory();
+        } else {
+            this.historyRevealObserver?.disconnect?.();
+            this.historyRevealObserver = null;
+            this.historyPaginationObserver?.disconnect?.();
+            this.historyPaginationObserver = null;
+            this.syncQueuePlaybackButtons();
+            this.syncQueueLoopButton();
+        }
+    }
+
+    animateQueueTabSwitch(outgoingBody, incomingBody, direction, previousScroll) {
+        this.queueTabAnimation?.cancel?.();
+        this.queueTabAnimation = null;
+        if (this.reducedMotionMedia.matches || typeof incomingBody.animate !== 'function') return;
+        const snapshot = document.createElement('div');
+        snapshot.className = 'queue-tab-panel-snapshot';
+        outgoingBody.style.setProperty('transform', `translate3d(0, ${-previousScroll}px, 0)`);
+        snapshot.append(outgoingBody);
+        this.queueLayer.append(snapshot);
+        const distance = 32 * direction;
+        const outgoingAnimation = snapshot.animate(
+            [
+                { transform: 'translate3d(0, 0, 0)', opacity: 1 },
+                { transform: `translate3d(${-distance}px, 0, 0)`, opacity: 0 },
+            ],
+            { duration: 240, easing: QUEUE_EASE_IN_OUT, fill: 'both' }
+        );
+        const incomingAnimation = incomingBody.animate(
+            [
+                { transform: `translate3d(${distance}px, 0, 0)`, opacity: 0 },
+                { transform: 'translate3d(0, 0, 0)', opacity: 1 },
+            ],
+            { duration: 240, easing: QUEUE_EASE_IN_OUT, fill: 'both' }
+        );
+        const animationState = {
+            cancel: () => {
+                outgoingAnimation.cancel();
+                incomingAnimation.cancel();
+                snapshot.remove();
+            },
+        };
+        this.queueTabAnimation = animationState;
+        void Promise.allSettled([outgoingAnimation.finished, incomingAnimation.finished]).then(() => {
+            if (this.queueTabAnimation !== animationState) return;
+            animationState.cancel();
+            this.queueTabAnimation = null;
+        });
+    }
+
+    setHistorySearchExpanded(expanded, { focus = true } = {}) {
+        this.historySearchExpanded = Boolean(expanded);
+        const shell = this.queueLayer?.querySelector('.queue-history-search-shell');
+        const toggle = shell?.querySelector('[data-history-search-toggle]');
+        const field = shell?.querySelector('.queue-history-search-field');
+        shell?.classList.toggle('is-expanded', this.historySearchExpanded);
+        toggle?.setAttribute('aria-expanded', String(this.historySearchExpanded));
+        if (field) field.inert = !this.historySearchExpanded;
+        if (this.historySearchExpanded && focus) {
+            requestAnimationFrame(() => shell?.querySelector('#queue-history-search')?.focus({ preventScroll: true }));
+        }
+    }
+
+    closeHistorySearch() {
+        this.historySearchQuery = '';
+        this.historyVisibleCount = HISTORY_INITIAL_RENDER_COUNT;
+        this.historyRevealedKeys.clear();
+        const input = this.queueLayer?.querySelector('#queue-history-search');
+        if (input) input.value = '';
+        this.refreshHistoryResults();
+        this.setHistorySearchExpanded(false, { focus: false });
+        this.queueLayer?.querySelector('[data-history-search-toggle]')?.focus({ preventScroll: true });
+    }
+
+    async playHistoryTrack(trackId) {
+        const track = [...this.queueHistory, ...this.historyItems].find(
+            (item) => String(item?.id ?? '') === String(trackId ?? '')
+        );
+        if (!track || typeof this.player?.setQueue !== 'function') return;
+        await this.player.setQueue([track], 0, false, {
+            kind: 'single',
+            id: String(track.id),
+            label: getTrackTitle(track, { fallback: 'Listening history' }),
+            href: `/track/${track.id}`,
+        });
+        await this.player.playTrackFromQueue?.();
+    }
+
     openQueue() {
         if (this.activeView === 'queue') {
             this.reopenQueueTransition();
@@ -577,6 +974,11 @@ export class NowPlayingPanel {
         this.queueLayerRefreshPending = false;
         this.activeView = 'queue';
         this.queueView = 'up-next';
+        this.historySearchExpanded = false;
+        this.historySearchQuery = '';
+        this.historyVisibleCount = HISTORY_INITIAL_RENDER_COUNT;
+        this.historyRevealedKeys.clear();
+        this.queueViewScroll = { 'up-next': 0, history: 0 };
         this.queueRenderedCurrentIndex = Number(this.player?.currentQueueIndex ?? -1);
         this.transitionMenuOpen = false;
         this.queueMotionReason = 'open';
@@ -592,15 +994,24 @@ export class NowPlayingPanel {
         this.renderQueueLayer(this.model || {}, 0, { startTransition: false });
         this.queueRowsStatic = false;
         this.startQueueOpening(this.queueTransition);
+        void this.loadHistory({ force: true });
         void this.render({ preserveScroll: false });
     }
 
     closeQueue() {
         if (this.activeView !== 'queue') return;
+        this.historyRevealObserver?.disconnect?.();
+        this.historyRevealObserver = null;
+        this.historyPaginationObserver?.disconnect?.();
+        this.historyPaginationObserver = null;
+        this.queueTabAnimation?.cancel?.();
+        this.queueTabAnimation = null;
         this.cancelQueueListAnimation();
         this.clearQueueAdvanceArtworkAnimation();
         const source = this.captureQueueCover(this.queueCoverMorph || this.getQueueCoverElement());
         const target = this.captureQueueCover(this.getNowPlayingCoverElement());
+        const canvasStage = this.queueCanvasStage || this.getQueueCanvasStage();
+        this.queueCanvasStage = canvasStage;
         const transitionToken = ++this.queueTransitionToken;
         this.queueOpeningScheduled = false;
         const layerState = this.freezeQueueMotion();
@@ -620,7 +1031,9 @@ export class NowPlayingPanel {
                 this.root.classList.remove('is-queue-view', 'is-queue-opening', 'is-queue-closing');
                 document.body.classList.remove('queue-panel-open');
                 this.clearQueueCoverAnimation();
+                this.settleQueueCanvasStage();
                 this.restoreQueueCoverSource();
+                this.queueCanvasStage = null;
                 this.queueLayer.classList.remove('is-visible', 'is-closing', 'is-measuring');
                 this.queueLayer.hidden = true;
                 this.queueLayer.innerHTML = '';
@@ -634,9 +1047,11 @@ export class NowPlayingPanel {
                 this.setOpen(this.desktopMedia.matches && this.desktopOpenState, { restoreFocus: false });
                 if (this.nowPlayingNeedsRender) void this.render({ preserveScroll: false });
             };
-            const coverAnimation = this.queueCoverAnimation;
-            if (coverAnimation?.finished?.then) {
-                coverAnimation.finished.then(complete, complete);
+            const animations = [this.queueCoverAnimation, this.queueCanvasAnimation].filter((animation) =>
+                animation?.finished?.then
+            );
+            if (animations.length) {
+                Promise.allSettled(animations.map((animation) => animation.finished)).then(complete, complete);
                 return;
             }
             complete();
@@ -650,6 +1065,7 @@ export class NowPlayingPanel {
         this.queueLayer.classList.remove('is-visible', 'is-entering');
         this.queueLayer.classList.add('is-closing');
         this.syncQueueLayerState();
+        this.animateQueueCanvasStage(canvasStage, transitionToken, 'closing');
         this.animateQueueCover(source, target, transitionToken, 'closing');
         this.animateQueueLayer(layerState.offsetY, layerState.opacity, QUEUE_CLOSE_DURATION, transitionToken, finish, 'closing');
     }
@@ -918,11 +1334,18 @@ export class NowPlayingPanel {
         return element?.closest('.now-playing-panel-media') || element || null;
     }
 
-    hideQueueCoverSource() {
+    getQueueCanvasStage() {
+        const stage = this.canvasStage;
+        const canvas = this.canvasMedia;
+        if (!stage?.isConnected || !canvas?.isConnected || !stage.classList.contains('is-canvas-playing')) return null;
+        return stage;
+    }
+
+    hideQueueCoverSource({ preserveCanvas = false } = {}) {
         const element = this.getNowPlayingCoverVisualElement();
         if (!element) return;
         this.queueCoverSourceElement = element;
-        element.style.setProperty('opacity', '0');
+        if (!preserveCanvas) element.style.setProperty('opacity', '0');
     }
 
     restoreQueueCoverSource() {
@@ -947,6 +1370,7 @@ export class NowPlayingPanel {
             rect,
             src: element.currentSrc || element.src || element.poster || '',
             borderRadius: visualComputed.borderRadius || computed.borderRadius || '4px',
+            filter: computed.filter || 'none',
         };
     }
 
@@ -1077,6 +1501,7 @@ export class NowPlayingPanel {
         nextView.scrollTop = previousScroll;
         this.syncQueueLayerState();
         this.animateQueueRowReflow(previousRects, nextView, motionReason);
+        if (this.queueView === 'history') requestAnimationFrame(() => this.setupHistoryRowReveal());
         // The advance morph belongs to the queue's Now Playing slot. The underlying
         // Now Playing cover must stay untouched while the queue remains open.
         if (advanceSource) this.animateQueueAdvanceArtwork(advanceSource, nextView.querySelector('.queue-current-artwork img'));
@@ -1138,6 +1563,7 @@ export class NowPlayingPanel {
         morph.style.width = `${source.rect.width}px`;
         morph.style.height = `${source.rect.height}px`;
         morph.style.borderRadius = source.borderRadius;
+        morph.style.filter = source.filter;
         this.root.append(morph);
         this.queueAdvanceArtworkMorph = morph;
         const targetContainer = target.element.closest('.queue-current-artwork');
@@ -1177,8 +1603,9 @@ export class NowPlayingPanel {
                     transform: 'translate3d(0, 0, 0) scale(1, 1)',
                     opacity: 1,
                     borderRadius: sourceMorphBorderRadius,
+                    filter: source.filter,
                 },
-                { transform: destination, opacity: 1, borderRadius: targetMorphBorderRadius },
+                { transform: destination, opacity: 1, borderRadius: targetMorphBorderRadius, filter: target.filter },
             ],
             { duration: QUEUE_ROW_ARTWORK_DURATION, easing: QUEUE_EASE_IN_OUT, fill: 'both' }
         );
@@ -1234,7 +1661,7 @@ export class NowPlayingPanel {
                 <div class="queue-current-copy"><span class="queue-current-label">Now playing</span><strong>${escapeHtml(title)}</strong><p>${escapeHtml(artist)}</p></div>
             </div>`
             : '<div class="queue-playing-row queue-playing-row-empty"><div class="queue-current-artwork queue-empty-artwork">—</div><div class="queue-current-copy"><span class="queue-current-label">Now playing</span><strong>Nothing is playing</strong></div></div>';
-        this.queueLayer.innerHTML = `<div class="now-playing-panel-queue-view queue-motion-open" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div class="queue-header-title"><h1 id="queue-panel-title">Play queue</h1></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main class="queue-panel-body"><section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${source}</h2><button type="button" class="queue-clear-button" disabled>Clear</button></div>${currentMarkup}</section></main></div>`;
+        this.queueLayer.innerHTML = `<div class="now-playing-panel-queue-view queue-motion-open" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div id="queue-panel-title" class="queue-header-tabs" role="tablist" aria-label="Queue panel"><button type="button" id="queue-tab-up-next" class="queue-view-switch is-active" role="tab" data-queue-view="up-next" aria-selected="true" aria-controls="queue-panel-body">Queue</button><button type="button" id="queue-tab-history" class="queue-view-switch" role="tab" data-queue-view="history" aria-selected="false" aria-controls="queue-panel-body" tabindex="-1">History</button></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main id="queue-panel-body" class="queue-panel-body" role="tabpanel" aria-labelledby="queue-tab-up-next"><section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${source}</h2><button type="button" class="queue-clear-button" disabled>Clear</button></div>${currentMarkup}</section></main></div>`;
         this.queueLayer.hidden = false;
     }
 
@@ -1243,6 +1670,7 @@ export class NowPlayingPanel {
         if (this.queueOpeningScheduled) return;
         const target = this.measureQueueCoverTarget();
         const source = transition.source;
+        this.queueCanvasStage = this.getQueueCanvasStage();
         if (!target || this.reducedMotionMedia.matches) {
             this.queueTransition = null;
             this.queueLayer.classList.add('is-visible');
@@ -1268,7 +1696,7 @@ export class NowPlayingPanel {
             }
             this.queueTransition = null;
             this.queueOpeningScheduled = false;
-            this.hideQueueCoverSource();
+            this.hideQueueCoverSource({ preserveCanvas: Boolean(this.queueCanvasStage) });
             this.queueLayer.classList.add('is-visible');
             this.syncQueueLayerState();
             this.animateQueueLayer(
@@ -1279,6 +1707,7 @@ export class NowPlayingPanel {
                 () => this.finishQueueOpening(transition.token),
                 'opening'
             );
+            this.animateQueueCanvasStage(this.queueCanvasStage, transition.token, 'opening');
             this.animateQueueCover(source, target, transition.token, 'opening');
         });
     }
@@ -1306,7 +1735,7 @@ export class NowPlayingPanel {
                 }
                 this.queueTransition = null;
                 this.queueOpeningScheduled = false;
-                this.hideQueueCoverSource();
+                this.hideQueueCoverSource({ preserveCanvas: Boolean(this.queueCanvasStage) });
                 this.animateQueueLayer(
                     layerState.offsetY,
                     layerState.opacity,
@@ -1315,6 +1744,7 @@ export class NowPlayingPanel {
                     () => this.finishQueueOpening(transitionToken),
                     'opening'
                 );
+                this.animateQueueCanvasStage(this.queueCanvasStage, transitionToken, 'opening');
                 this.animateQueueCover(source, target, transitionToken, 'opening');
             });
         } else {
@@ -1377,12 +1807,49 @@ export class NowPlayingPanel {
                 });
             }
         };
-        const coverAnimation = this.queueCoverAnimation;
-        if (coverAnimation?.finished?.then) {
-            coverAnimation.finished.then(finish, finish);
+        const animations = [this.queueCoverAnimation, this.queueCanvasAnimation].filter((animation) =>
+            animation?.finished?.then
+        );
+        if (animations.length) {
+            Promise.allSettled(animations.map((animation) => animation.finished)).then(finish, finish);
             return;
         }
         finish();
+    }
+
+    animateQueueCanvasStage(stage, token, direction) {
+        if (!stage || token !== this.queueTransitionToken) return;
+        this.queueCanvasAnimation?.cancel?.();
+        this.queueCanvasAnimation = null;
+        const fromOpacity = Number.parseFloat(getComputedStyle(stage).opacity);
+        const toOpacity = direction === 'opening' ? 0 : 1;
+        const startOpacity = Number.isFinite(fromOpacity) ? fromOpacity : direction === 'opening' ? 1 : 0;
+        if (typeof stage.animate !== 'function') {
+            stage.style.setProperty('opacity', String(toOpacity));
+            return;
+        }
+        const animation = stage.animate(
+            [{ opacity: startOpacity }, { opacity: toOpacity }],
+            { duration: QUEUE_COVER_DURATION, easing: QUEUE_EASE_IN_OUT, fill: 'both' }
+        );
+        this.queueCanvasAnimation = animation;
+        this.queueCanvasTargetOpacity = toOpacity;
+        animation.onfinish = () => {
+            if (this.queueCanvasAnimation !== animation) return;
+            stage.style.setProperty('opacity', String(toOpacity));
+        };
+    }
+
+    settleQueueCanvasStage() {
+        const animation = this.queueCanvasAnimation;
+        const stage = this.queueCanvasStage;
+        if (animation) {
+            const opacity = this.queueCanvasTargetOpacity ?? Number.parseFloat(stage ? getComputedStyle(stage).opacity : '');
+            if (stage && Number.isFinite(opacity)) stage.style.setProperty('opacity', String(opacity));
+            animation.cancel();
+        }
+        this.queueCanvasAnimation = null;
+        this.queueCanvasTargetOpacity = null;
     }
 
     freezeQueueMotion() {
@@ -1391,6 +1858,14 @@ export class NowPlayingPanel {
             this.queueLayerAnimation.onfinish = null;
             this.queueLayerAnimation.cancel();
             this.queueLayerAnimation = null;
+        }
+        if (this.queueCanvasAnimation) {
+            const stage = this.queueCanvasStage;
+            const opacity = Number.parseFloat(stage ? getComputedStyle(stage).opacity : '');
+            this.queueCanvasAnimation.cancel();
+            this.queueCanvasAnimation = null;
+            this.queueCanvasTargetOpacity = null;
+            if (stage && Number.isFinite(opacity)) stage.style.setProperty('opacity', String(opacity));
         }
         this.queueLayer.style.setProperty('transform', `translate3d(0, ${state.offsetY}px, 0)`);
         this.queueLayer.style.setProperty('opacity', String(state.opacity));
@@ -1431,15 +1906,21 @@ export class NowPlayingPanel {
         morph.style.width = `${source.rect.width}px`;
         morph.style.height = `${source.rect.height}px`;
         morph.style.borderRadius = source.borderRadius;
+        morph.style.filter = source.filter;
         this.root.append(morph);
         this.queueCoverMorph = morph;
         const destination = `translate3d(${toX - fromX}px, ${toY - fromY}px, 0) scale(${scaleX}, ${scaleY})`;
         const sourceMorphBorderRadius = scaleMorphBorderRadius(source.borderRadius, 1, 1);
         const targetMorphBorderRadius = scaleMorphBorderRadius(target.borderRadius, scaleX, scaleY);
+        const hasCanvasTransition = Boolean(this.queueCanvasStage);
+        const morphFromOpacity = direction === 'opening' && hasCanvasTransition ? 0 : 1;
+        const morphToOpacity = direction === 'closing' && hasCanvasTransition ? 0 : 1;
         const duration = direction === 'closing' ? QUEUE_CLOSE_DURATION : QUEUE_COVER_DURATION;
         if (typeof morph.animate !== 'function') {
             morph.style.transform = destination;
             morph.style.borderRadius = targetMorphBorderRadius;
+            morph.style.opacity = String(morphToOpacity);
+            morph.style.filter = target.filter;
             window.setTimeout(finish, duration);
             return;
         }
@@ -1447,10 +1928,16 @@ export class NowPlayingPanel {
             [
                 {
                     transform: 'translate3d(0, 0, 0) scale(1, 1)',
-                    opacity: 1,
+                    opacity: morphFromOpacity,
                     borderRadius: sourceMorphBorderRadius,
+                    filter: source.filter,
                 },
-                { transform: destination, opacity: 1, borderRadius: targetMorphBorderRadius },
+                {
+                    transform: destination,
+                    opacity: morphToOpacity,
+                    borderRadius: targetMorphBorderRadius,
+                    filter: target.filter,
+                },
             ],
             {
                 duration,
@@ -1554,24 +2041,12 @@ export class NowPlayingPanel {
                   })
                   .join('')
             : `<div class="queue-list-empty"><span>${icon('list-music', 18)}</span><strong>Nothing else is lined up</strong><p>${escapeHtml(emptyQueueCopy)}</p></div>`;
-        const historyRows = this.queueHistory.length
-            ? [...this.queueHistory]
-                  .reverse()
-                  .map(
-                      (track, offset) =>
-                          `<div class="queue-track-row queue-history-row${staticRowClass}" data-track-id="${escapeHtml(String(track.id))}" style="--queue-order:${offset};--queue-delay:${Math.min(offset, 12) * 34}ms;${rowMotionStyle}"><div class="queue-track-main queue-history-main"><img src="${escapeHtml(imageFor(track))}" alt="" loading="lazy" /><span><strong>${escapeHtml(titleFor(track))}</strong><small>${escapeHtml(artistFor(track))}</small></span></div></div>`
-                  )
-                  .join('')
-            : `<div class="queue-list-empty"><span>${icon('history', 18)}</span><strong>No history yet</strong><p>Only tracks played in this queue appear here.</p></div>`;
-        const listMarkup =
-            this.queueView === 'history'
-                ? `<section class="queue-list-section" aria-labelledby="queue-history-title"><div class="queue-list-heading"><div><h2 id="queue-history-title">History</h2><p>${this.queueHistory.length} ${this.queueHistory.length === 1 ? 'track' : 'tracks'} · this queue only</p></div></div><div class="queue-track-list queue-history-list">${historyRows}</div></section>`
-                : `<section class="queue-list-section" aria-labelledby="queue-up-next-title"><div class="queue-list-heading"><div><h2 id="queue-up-next-title">Next Up from ${sourceLink}</h2><p>${upNext.length} ${upNext.length === 1 ? 'track' : 'tracks'} <span aria-hidden="true">·</span> ${escapeHtml(durationLabel)} <span class="queue-source-context">· ${escapeHtml(sourceContext)}</span></p></div><button type="button" class="queue-loop-button queue-list-loop-button${isLooping ? ' is-active' : ''}" aria-pressed="${String(isLooping)}" aria-label="${isLooping ? 'Disable loop queue' : 'Loop queue'}" title="${isLooping ? 'Disable loop queue' : 'Loop queue'}">${icon('repeat', 15)}</button></div><div class="queue-track-list">${rows}</div></section>`;
+        const listMarkup = `<section class="queue-list-section" aria-labelledby="queue-up-next-title"><div class="queue-list-heading"><div><h2 id="queue-up-next-title">Next Up from ${sourceLink}</h2><p>${upNext.length} ${upNext.length === 1 ? 'track' : 'tracks'} <span aria-hidden="true">·</span> ${escapeHtml(durationLabel)} <span class="queue-source-context">· ${escapeHtml(sourceContext)}</span></p></div><button type="button" class="queue-loop-button queue-list-loop-button${isLooping ? ' is-active' : ''}" aria-pressed="${String(isLooping)}" aria-label="${isLooping ? 'Disable loop queue' : 'Loop queue'}" title="${isLooping ? 'Disable loop queue' : 'Loop queue'}">${icon('repeat', 15)}</button></div><div class="queue-track-list">${rows}</div></section>`;
         const endlessUnavailable = (this.player?.repeatMode ?? 0) !== 0;
         const endlessPressed = !!(this.player?.autoplayEnabled || this.player?.radioEnabled) && !endlessUnavailable;
-        const viewLabel = this.queueView === 'history' ? 'Back to queue' : 'Recently played';
-        const viewIcon = this.queueView === 'history' ? 'list-music' : 'history';
-        return `<div class="now-playing-panel-queue-view queue-motion-${motionReason}" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div class="queue-header-title"><h1 id="queue-panel-title">${this.queueView === 'history' ? 'Recently played' : 'Play queue'}</h1><button type="button" class="queue-view-switch" data-queue-view="${this.queueView === 'history' ? 'up-next' : 'history'}" aria-label="${viewLabel}" title="${viewLabel}">${icon(viewIcon, 17)}</button></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main class="queue-panel-body">${this.queueView === 'history' ? '' : `<section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${sourceLink}</h2><button type="button" class="queue-clear-button" data-queue-clear${upNext.length ? '' : ' disabled'}>Clear</button></div>${currentMarkup}</section><div class="queue-quick-actions" aria-label="Queue settings"><button type="button" role="switch" class="queue-quick-action queue-endless-card${endlessPressed ? ' is-enabled' : ''}${endlessUnavailable ? ' is-unavailable' : ''}" data-endless-toggle aria-pressed="${String(endlessPressed)}" aria-checked="${String(endlessPressed)}"><span class="queue-setting-copy"><span class="queue-setting-icon">${icon('infinity', 19)}</span><span><span class="queue-quick-label">Endless playback</span>${endlessUnavailable ? '<span class="queue-quick-status">Paused while repeat is on</span>' : ''}</span></span><span class="queue-switch" aria-hidden="true"><span class="queue-switch-thumb"></span></span></button>${this.renderQueueTransitionCard(transitionMode)}</div>`}${listMarkup}</main></div>`;
+        const queueBody = `<section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${sourceLink}</h2><button type="button" class="queue-clear-button" data-queue-clear${upNext.length ? '' : ' disabled'}>Clear</button></div>${currentMarkup}</section><div class="queue-quick-actions" aria-label="Queue settings"><button type="button" role="switch" class="queue-quick-action queue-endless-card${endlessPressed ? ' is-enabled' : ''}${endlessUnavailable ? ' is-unavailable' : ''}" data-endless-toggle aria-pressed="${String(endlessPressed)}" aria-checked="${String(endlessPressed)}"><span class="queue-setting-copy"><span class="queue-setting-icon">${icon('infinity', 19)}</span><span><span class="queue-quick-label">Endless playback</span>${endlessUnavailable ? '<span class="queue-quick-status">Paused while repeat is on</span>' : ''}</span></span><span class="queue-switch" aria-hidden="true"><span class="queue-switch-thumb"></span></span></button>${this.renderQueueTransitionCard(transitionMode)}</div>${listMarkup}`;
+        const isHistory = this.queueView === 'history';
+        return `<div class="now-playing-panel-queue-view queue-motion-${motionReason}" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div id="queue-panel-title" class="queue-header-tabs${isHistory ? ' is-history' : ''}" role="tablist" aria-label="Queue panel"><button type="button" id="queue-tab-up-next" class="queue-view-switch${isHistory ? '' : ' is-active'}" role="tab" data-queue-view="up-next" aria-selected="${String(!isHistory)}" aria-controls="queue-panel-body" tabindex="${isHistory ? '-1' : '0'}">Queue</button><button type="button" id="queue-tab-history" class="queue-view-switch${isHistory ? ' is-active' : ''}" role="tab" data-queue-view="history" aria-selected="${String(isHistory)}" aria-controls="queue-panel-body" tabindex="${isHistory ? '0' : '-1'}">History</button></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main id="queue-panel-body" class="queue-panel-body" role="tabpanel" aria-labelledby="queue-tab-${isHistory ? 'history' : 'up-next'}">${isHistory ? this.renderHistoryPanel() : queueBody}</main></div>`;
     }
 
     renderQueueView(model = {}) {
@@ -1988,10 +2463,25 @@ export class NowPlayingPanel {
         if (button.matches('.queue-close-button')) return this.closeQueue();
         if (button.matches('.queue-view-switch')) {
             const nextView = button.dataset.queueView || 'up-next';
-            if (nextView === this.queueView) return;
-            this.queueView = nextView;
-            this.queueMotionReason = 'view';
-            return void this.renderQueueControls({ preserveScroll: true });
+            this.switchQueueView(nextView);
+            return;
+        }
+        if (button.matches('[data-history-search-toggle]')) {
+            this.setHistorySearchExpanded(true);
+            return;
+        }
+        if (button.matches('[data-history-search-close]')) {
+            this.closeHistorySearch();
+            return;
+        }
+        if (button.matches('[data-history-load-more]')) {
+            this.loadMoreHistory();
+            return;
+        }
+        if (button.matches('[data-history-track-id]')) {
+            event.stopPropagation();
+            await this.playHistoryTrack(button.dataset.historyTrackId);
+            return;
         }
         if (button.matches('.queue-source-link') && button.dataset.queueSourceHref)
             return navigate(button.dataset.queueSourceHref);
@@ -2090,6 +2580,13 @@ export class NowPlayingPanel {
     }
 
     handleInput(event) {
+        if (event.target.matches('#queue-history-search')) {
+            this.historySearchQuery = event.target.value;
+            this.historyVisibleCount = HISTORY_INITIAL_RENDER_COUNT;
+            this.historyRevealedKeys.clear();
+            this.refreshHistoryResults();
+            return;
+        }
         if (!event.target.matches('#queue-crossfade-duration')) return;
         const duration = crossfadeSettings.setDuration(event.target.value);
         const output = this.root.querySelector('#queue-crossfade-value');
@@ -2130,6 +2627,11 @@ export class NowPlayingPanel {
 
     renderQueueControls({ preserveScroll = true } = {}) {
         if (this.activeView !== 'queue' || !this.queueLayer) return;
+        if (this.queueView === 'history' && this.queueLayer.querySelector('.queue-history-results')) {
+            this.queueMotionReason = null;
+            this.refreshHistoryResults();
+            return;
+        }
         const queueView = this.queueLayer.querySelector('.now-playing-panel-queue-view');
         const previousScroll = preserveScroll ? queueView?.scrollTop || 0 : 0;
         const motionReason = this.queueMotionReason || 'refresh';
@@ -2217,6 +2719,14 @@ export class NowPlayingPanel {
 
     handleKeydown(event) {
         if (event.defaultPrevented || event.isComposing) return;
+        const queueTab = event.target.closest('.queue-view-switch[role="tab"]');
+        if (queueTab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+            event.preventDefault();
+            const nextView = event.key === 'ArrowLeft' || event.key === 'Home' ? 'up-next' : 'history';
+            this.switchQueueView(nextView);
+            this.queueLayer?.querySelector(`.queue-view-switch[data-queue-view="${nextView}"]`)?.focus();
+            return;
+        }
         const row = event.target.closest('.queue-track-row[data-queue-index]');
         if (row && !event.target.closest('input, textarea, select, [contenteditable="true"]')) {
             const direction = matchesShortcut(event, keyboardShortcuts.getShortcutForAction('moveTrackUp'))
@@ -2244,6 +2754,10 @@ export class NowPlayingPanel {
         }
         if (event.key === 'Escape') {
             event.preventDefault();
+            if (event.target.matches('#queue-history-search') && this.historySearchExpanded) {
+                this.closeHistorySearch();
+                return;
+            }
             if (this.activeView === 'queue') {
                 this.closeQueue();
             } else if (this.expandedLyrics) {
@@ -2270,6 +2784,17 @@ export class NowPlayingPanel {
         this.cancelQueueListAnimation();
         this.clearQueueAdvanceArtworkAnimation();
         this.cancelQueueCoverAnimation();
+        this.historyLoadToken += 1;
+        this.historyRevealObserver?.disconnect?.();
+        this.historyRevealObserver = null;
+        this.historyPaginationObserver?.disconnect?.();
+        this.historyPaginationObserver = null;
+        this.queueTabAnimation?.cancel?.();
+        this.queueTabAnimation = null;
+        this.queueCanvasAnimation?.cancel?.();
+        this.queueCanvasAnimation = null;
+        this.queueCanvasTargetOpacity = null;
+        this.queueCanvasStage = null;
         this.restoreQueueCoverSource();
         this.cleanupQueueDrag();
         document.body.classList.remove('queue-panel-open');

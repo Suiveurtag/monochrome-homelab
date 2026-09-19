@@ -1,7 +1,7 @@
 import { expect, test, describe, beforeEach, vi, afterEach } from 'vitest';
 import { Player } from '../player.js';
 import { REPEAT_MODE } from '../utils.js';
-import { audioEffectsSettings, crossfadeSettings } from '../storage.js';
+import { audioEffectsSettings, crossfadeSettings, gaplessPlaybackSettings } from '../storage.js';
 
 vi.mock('../audio-context.js', () => ({
     audioContextManager: {
@@ -283,6 +283,47 @@ describe('Player', () => {
             crossfadeFrom: audioElement,
             crossfadeDuration: 11.5,
         });
+    });
+
+    test('starts a gapless handoff shortly before the current track ends', async () => {
+        const standby = document.getElementById('audio-player-gapless');
+        player = new Player(audioElement, api);
+        player.queue = [{ id: 'current' }, { id: 'next' }];
+        player.currentQueueIndex = 0;
+        player.currentTrack = player.queue[0];
+        player.preloadCache.set('next', { url: 'https://media.test/next.flac', preloader: standby });
+        Object.defineProperty(audioElement, 'duration', { configurable: true, value: 100 });
+        Object.defineProperty(audioElement, 'currentTime', { configurable: true, value: 99.8 });
+        Object.defineProperty(standby, 'readyState', { configurable: true, value: 4 });
+        gaplessPlaybackSettings.isEnabled.mockReturnValue(true);
+        crossfadeSettings.isEnabled.mockReturnValue(false);
+        vi.spyOn(player, 'playNext').mockResolvedValue();
+
+        const started = await player.startGaplessIfNeeded(audioElement);
+
+        expect(started).toBe(true);
+        expect(player.playNext).toHaveBeenCalledWith(0, {
+            preserveGestureToken: true,
+            gaplessFrom: audioElement,
+        });
+    });
+
+    test('waits for a decoded standby deck before starting a gapless handoff', async () => {
+        const standby = document.getElementById('audio-player-gapless');
+        player = new Player(audioElement, api);
+        player.queue = [{ id: 'current' }, { id: 'next' }];
+        player.currentQueueIndex = 0;
+        player.currentTrack = player.queue[0];
+        player.preloadCache.set('next', { url: 'https://media.test/next.flac', preloader: standby });
+        Object.defineProperty(audioElement, 'duration', { configurable: true, value: 100 });
+        Object.defineProperty(audioElement, 'currentTime', { configurable: true, value: 99.8 });
+        Object.defineProperty(standby, 'readyState', { configurable: true, value: 1 });
+        gaplessPlaybackSettings.isEnabled.mockReturnValue(true);
+        crossfadeSettings.isEnabled.mockReturnValue(false);
+        vi.spyOn(player, 'playNext').mockResolvedValue();
+
+        expect(await player.startGaplessIfNeeded(audioElement)).toBe(false);
+        expect(player.playNext).not.toHaveBeenCalled();
     });
 
     test('does not crossfade when the option is disabled', async () => {

@@ -15,7 +15,11 @@ vi.mock('./lyrics.js', () => ({
     renderLyricsInNowPanel: vi.fn(async () => null),
 }));
 vi.mock('./db.js', () => ({
-    db: { isFavorite: vi.fn(async () => false), toggleFavorite: vi.fn(async () => true) },
+    db: {
+        getHistory: vi.fn(async () => []),
+        isFavorite: vi.fn(async () => false),
+        toggleFavorite: vi.fn(async () => true),
+    },
 }));
 vi.mock('./accounts/pocketbase.js', () => ({
     syncManager: { syncLibraryItem: vi.fn(async () => {}) },
@@ -63,6 +67,8 @@ function dependencies() {
             sourceContext: null,
             getCurrentQueue: () => [],
             playAtIndex: vi.fn(async () => {}),
+            setQueue: vi.fn(async () => {}),
+            playTrackFromQueue: vi.fn(async () => {}),
             autoplayEnabled: false,
             radioEnabled: false,
             repeatMode: 0,
@@ -271,6 +277,138 @@ describe('Now Playing panel interactions', () => {
         panel.queueMotionReason = 'advance';
         const advanceMarkup = panel.renderQueue();
         expect(advanceMarkup).not.toContain('queue-track-row-static');
+        panel.destroy();
+    });
+
+    test('uses persistent Queue and History tabs with searchable, day-grouped listening history', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const deps = dependencies();
+        const panel = new NowPlayingPanel(deps);
+        await waitForPanel(panel);
+        const now = Date.now();
+        panel.activeView = 'queue';
+        panel.historyLoaded = true;
+        panel.queueHistory = [
+            {
+                id: 'session-track',
+                title: 'Session song',
+                artist: { name: 'Session artist' },
+                album: { title: 'Session album', cover: '/session.jpg' },
+                playedAt: now,
+            },
+        ];
+        panel.historyItems = [
+            {
+                id: 'session-track',
+                title: 'Session song',
+                artist: { name: 'Session artist' },
+                album: { title: 'Session album', cover: '/session.jpg' },
+                timestamp: now - 1000,
+            },
+            {
+                id: 'older-track',
+                title: 'Older song',
+                artist: { name: 'Archive artist' },
+                album: { title: 'Blue archive', cover: '/older.jpg' },
+                timestamp: now - 86400000,
+            },
+            {
+                id: 'oldest-track',
+                title: 'Oldest song',
+                artist: { name: 'Another artist' },
+                album: { title: 'Red archive', cover: '/oldest.jpg' },
+                timestamp: now - 172800000,
+            },
+        ];
+        panel.queueLayer.classList.add('is-visible');
+        panel.queueLayer.innerHTML = panel.renderQueue();
+
+        const tabs = panel.queueLayer.querySelectorAll('.queue-view-switch[role="tab"]');
+        expect([...tabs].map((tab) => tab.textContent)).toEqual(['Queue', 'History']);
+        expect(tabs[0].getAttribute('aria-selected')).toBe('true');
+
+        tabs[1].click();
+
+        expect(panel.queueView).toBe('history');
+        expect(panel.queueLayer.querySelector('#queue-tab-history').getAttribute('aria-selected')).toBe('true');
+        expect(panel.queueLayer.textContent).toContain('This queue');
+        expect(panel.queueLayer.textContent).toContain('Session song');
+        expect(panel.queueLayer.textContent).toContain('All history');
+        expect(panel.queueLayer.querySelectorAll('[data-history-track-id="session-track"]')).toHaveLength(2);
+        expect(panel.queueLayer.querySelectorAll('.queue-history-day')).toHaveLength(3);
+        expect(panel.queueLayer.querySelector('[data-history-summary]').hidden).toBe(true);
+
+        panel.queueLayer.querySelector('[data-history-search-toggle]').click();
+        const input = panel.queueLayer.querySelector('#queue-history-search');
+        input.value = 'blue archive';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+
+        expect(panel.queueLayer.textContent).toContain('Older song');
+        expect(panel.queueLayer.textContent).not.toContain('Oldest song');
+        expect(panel.queueLayer.textContent).not.toContain('Session song');
+        expect(panel.queueLayer.querySelector('[data-history-summary]').textContent).toBe('1 result');
+        panel.queueLayer.querySelector('[data-history-track-id="older-track"]').click();
+        await vi.waitFor(() => expect(deps.player.setQueue).toHaveBeenCalledOnce());
+        expect(deps.player.playTrackFromQueue).toHaveBeenCalledOnce();
+        panel.destroy();
+    });
+
+    test('renders long listening history progressively as the user reaches the end', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const panel = new NowPlayingPanel(dependencies());
+        await waitForPanel(panel);
+        panel.activeView = 'queue';
+        panel.queueView = 'history';
+        panel.historyLoaded = true;
+        panel.historyItems = Array.from({ length: 70 }, (_, index) => ({
+            id: `history-${index}`,
+            title: `History song ${index}`,
+            artist: { name: 'Artist' },
+            album: { title: 'Album', cover: '/history.jpg' },
+            timestamp: Date.now() - index * 60000,
+        }));
+        panel.queueLayer.classList.add('is-visible');
+        panel.queueLayer.innerHTML = panel.renderQueue();
+
+        expect(panel.queueLayer.querySelectorAll('[data-history-track-id]')).toHaveLength(32);
+        expect(panel.queueLayer.querySelector('[data-history-load-more] small').textContent).toBe('38 more songs');
+
+        panel.loadMoreHistory();
+        expect(panel.queueLayer.querySelectorAll('[data-history-track-id]')).toHaveLength(56);
+        expect(panel.queueLayer.querySelector('[data-history-load-more] small').textContent).toBe('14 more songs');
+
+        panel.loadMoreHistory();
+        expect(panel.queueLayer.querySelectorAll('[data-history-track-id]')).toHaveLength(70);
+        expect(panel.queueLayer.querySelector('[data-history-load-more]')).toBeNull();
+        panel.destroy();
+    });
+
+    test('reveals history rows with the queue row motion as they enter the scroll viewport', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const panel = new NowPlayingPanel(dependencies());
+        await waitForPanel(panel);
+        panel.activeView = 'queue';
+        panel.queueView = 'history';
+        panel.historyLoaded = true;
+        panel.historyItems = [
+            {
+                id: 'history-track',
+                title: 'History track',
+                artist: { name: 'Artist' },
+                album: { title: 'Album', cover: '/history.jpg' },
+                timestamp: Date.now(),
+            },
+        ];
+        panel.queueLayer.classList.add('is-visible');
+        panel.queueLayer.innerHTML = panel.renderQueue();
+        panel.setupHistoryRowReveal();
+        const row = panel.queueLayer.querySelector('[data-history-reveal]');
+        const observer = intersectionObservers.at(-1);
+
+        expect(row.classList.contains('is-scroll-pending')).toBe(true);
+        observer.callback([{ target: row, isIntersecting: true }]);
+        expect(row.classList.contains('is-scroll-pending')).toBe(false);
+        expect(row.classList.contains('is-scroll-visible')).toBe(true);
         panel.destroy();
     });
 

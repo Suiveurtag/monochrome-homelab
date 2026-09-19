@@ -1217,6 +1217,7 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
 
         element.addEventListener('ended', () => {
             if (player.activeElement !== element) return;
+            if (player.isTransitionInFlight?.()) return;
             listeningTracker.onTrackEnd();
             listeningTracker.forceFlush();
             _previousTrackId = null;
@@ -1242,6 +1243,7 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
 
                 listeningTracker.onTimeUpdate(currentTime, duration, { playbackRate: element.playbackRate });
                 void player.startCrossfadeIfNeeded(element);
+                void player.startGaplessIfNeeded(element);
 
                 if (currentTime >= 10 && player.currentTrack && player.currentTrack.id !== historyLoggedTrackId) {
                     historyLoggedTrackId = player.currentTrack.id;

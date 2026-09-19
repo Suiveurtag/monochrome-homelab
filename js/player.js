@@ -107,6 +107,7 @@ export class Player {
         this._recentlyPlayedIds = [];
         this._maxRecentlyPlayed = 100;
         this._crossfadeInFlight = false;
+        this._gaplessInFlight = false;
         this._crossfadeOutgoingTrackId = null;
         this.isIOS = isIos;
         this.isPwa =
@@ -1016,7 +1017,7 @@ export class Player {
 
         const newTracks = await this.fetchMoreArtistPopularTracks();
         if (newTracks && newTracks.length > 0) {
-            await this.addToQueue(newTracks);
+            await this.addToQueue(newTracks, { userInitiated: false });
         }
     }
 
@@ -1052,6 +1053,7 @@ export class Player {
         startTime = 0,
         recursiveCount = 0,
         crossfadeDuration = 0,
+        gaplessFrom = null,
     }) {
         const streamInfo = this.preloadCache.get(track.id);
         const streamUrl = streamInfo?.url;
@@ -1145,6 +1147,8 @@ export class Player {
                         crossfadeDuration
                     );
                     if (!started && !previousActiveElement.paused) previousActiveElement.pause();
+                } else if (gaplessFrom && gaplessFrom !== activeElement && !gaplessFrom.paused) {
+                    gaplessFrom.pause();
                 }
                 this.preloadNextTracks();
             })
@@ -1285,7 +1289,12 @@ export class Player {
     }
 
     async playTrackFromQueue(startTime = 0, recursiveCount = 0, isRetry = false, options = {}) {
-        const { preserveGestureToken = false, crossfadeFrom = null, crossfadeDuration = 0 } = options;
+        const {
+            preserveGestureToken = false,
+            crossfadeFrom = null,
+            crossfadeDuration = 0,
+            gaplessFrom = null,
+        } = options;
         if (!isRetry) {
             this.isFallbackRetry = false;
         }
@@ -1346,7 +1355,7 @@ export class Player {
         this.addToRecentlyPlayed(track.id);
         const preloadedAudioDeck =
             shouldPreserveGestureToken &&
-            gaplessPlaybackSettings.isEnabled() &&
+            (gaplessPlaybackSettings.isEnabled() || crossfadeSettings.isEnabled()) &&
             !this.isRemotePlaybackActive() &&
             this.preloadCache.get(track.id)?.preloader;
         if (preloadedAudioDeck) {
@@ -1388,6 +1397,30 @@ export class Player {
             activeElement !== previousActiveElement &&
             !isVideoTrack
         );
+        const shouldGapless = Boolean(
+            gaplessFrom &&
+            gaplessFrom === previousActiveElement &&
+            preloadedAudioDeck === activeElement &&
+            activeElement !== previousActiveElement &&
+            !isVideoTrack &&
+            gaplessPlaybackSettings.isEnabled() &&
+            !crossfadeSettings.isEnabled()
+        );
+        const finishGaplessHandoff = () => {
+            if (shouldGapless && !previousActiveElement.paused) previousActiveElement.pause();
+        };
+        const finishAudioHandoff = () => {
+            if (shouldCrossfade) {
+                const started = audioContextManager.startCrossfade(
+                    previousActiveElement,
+                    activeElement,
+                    crossfadeDuration
+                );
+                if (!started && !previousActiveElement.paused) previousActiveElement.pause();
+                return;
+            }
+            finishGaplessHandoff();
+        };
         if (this.hls) {
             this.hls.destroy();
             this.hls = null;
@@ -1428,7 +1461,7 @@ export class Player {
         if (!crossfadePrepared) {
             audioContextManager.cancelCrossfade();
         }
-        if (preloadedAudioDeck && previousActiveElement !== activeElement && !crossfadePrepared) {
+        if (preloadedAudioDeck && previousActiveElement !== activeElement && !crossfadePrepared && !shouldGapless) {
             previousActiveElement.pause();
         }
 
@@ -1530,7 +1563,9 @@ export class Player {
 
             const { offlineCache } = await import('./offline-cache.js');
             const offlineBlob =
-                !isVideoTrack && !isPodcast ? await offlineCache.playbackBlob(track.id).catch(() => null) : null;
+                !preloadedAudioDeck && !isVideoTrack && !isPodcast
+                    ? await offlineCache.playbackBlob(track.id).catch(() => null)
+                    : null;
             if (this.playbackSequence !== currentSequence) return;
             if (!offlineBlob) offlineCache.activeId = null;
             // Keep URLs attached to their audio deck: a fading-out deck can still be playing.
@@ -1549,7 +1584,8 @@ export class Player {
                 if (!canPlay || this.playbackSequence !== currentSequence) return;
                 if (startTime > 0) activeElement.currentTime = startTime;
                 if (!(await this.safePlay(activeElement))) return;
-            } else if (!navigator.onLine && !track.file) {
+                finishAudioHandoff();
+            } else if (!preloadedAudioDeck && !navigator.onLine && !track.file) {
                 offlineCache.activeId = null;
                 const { showNotification } = await import('./downloads.js');
                 showNotification('This song is not saved offline. Choose a downloaded song or reconnect.');
@@ -1580,6 +1616,7 @@ export class Player {
                 }
                 const played = await this.safePlay(activeElement);
                 if (!played) return;
+                finishAudioHandoff();
             } else if (track.audioUrl && !track.isLocal) {
                 streamUrl = track.audioUrl;
                 const isPreloadedDirectStream = this.preloadCache.get(track.id)?.preloader === activeElement;
@@ -1619,6 +1656,7 @@ export class Player {
                 }
                 const played = await this.safePlay(activeElement);
                 if (!played) return;
+                finishAudioHandoff();
             } else if (track.isLocal && track.file) {
                 streamUrl = URL.createObjectURL(track.file);
                 if (this.playbackSequence !== currentSequence) return;
@@ -1638,6 +1676,7 @@ export class Player {
                 }
                 const played = await this.safePlay(activeElement);
                 if (!played) return;
+                finishAudioHandoff();
             } else if (track.type === 'video') {
                 if (UIRenderer.instance) {
                     const isInFullscreen =
@@ -1701,6 +1740,7 @@ export class Player {
                         startTime,
                         recursiveCount,
                         crossfadeDuration: crossfadePrepared ? crossfadeDuration : 0,
+                        gaplessFrom: shouldGapless ? previousActiveElement : null,
                     })
                 ) {
                     return;
@@ -1775,6 +1815,7 @@ export class Player {
                     // Instantly trigger playback rather than explicitly waiting for 'canplay'
                     // which delays the event loop and natively adds gap/latency
                     await this.safePlay(activeElement);
+                    finishAudioHandoff();
                 } else {
                     if (this.shakaInitialized) {
                         try {
@@ -1792,6 +1833,7 @@ export class Player {
                     }
                     const played = await this.safePlay(activeElement);
                     if (!played) return;
+                    finishAudioHandoff();
                 }
             }
 
@@ -1866,7 +1908,7 @@ export class Player {
                 if (this.artistPopularTracksState.artistId && this.artistPopularTracksState.hasMore) {
                     const newTracks = await this.fetchMoreArtistPopularTracks();
                     if (newTracks && newTracks.length > 0) {
-                        await this.addToQueue(newTracks);
+                        await this.addToQueue(newTracks, { userInitiated: false });
                         await this.playNext(0, options);
                     } else {
                         this.activeElement.pause();
@@ -1901,7 +1943,7 @@ export class Player {
             } else if (this.artistPopularTracksState.artistId && this.artistPopularTracksState.hasMore) {
                 const newTracks = await this.fetchMoreArtistPopularTracks();
                 if (newTracks && newTracks.length > 0) {
-                    await this.addToQueue(newTracks);
+                    await this.addToQueue(newTracks, { userInitiated: false });
                     this.currentQueueIndex++;
                     await this.playTrackFromQueue(0, recursiveCount, false, options);
                     return;
@@ -1983,6 +2025,58 @@ export class Player {
                 duration * 1000 + 250
             );
         }
+    }
+
+    async startGaplessIfNeeded(element = this.activeElement) {
+        if (
+            this._crossfadeInFlight ||
+            this._gaplessInFlight ||
+            !gaplessPlaybackSettings.isEnabled() ||
+            crossfadeSettings.isEnabled() ||
+            element !== this.activeElement ||
+            this.currentTrack?.type === 'video' ||
+            this.repeatMode === REPEAT_MODE.ONE ||
+            this.isRemotePlaybackActive()
+        ) {
+            return false;
+        }
+
+        const remaining = element.duration - element.currentTime;
+        if (!Number.isFinite(remaining) || remaining <= 0 || remaining > 0.35 || element.currentTime < 1) {
+            return false;
+        }
+
+        const currentQueue = this.getCurrentQueue();
+        const nextTrack = currentQueue[this.currentQueueIndex + 1];
+        const preload = nextTrack ? this.preloadCache.get(nextTrack.id) : null;
+        const preloader = preload?.preloader;
+        if (
+            !nextTrack ||
+            nextTrack.type === 'video' ||
+            nextTrack.isPodcast ||
+            nextTrack.isUnavailable ||
+            contentBlockingSettings.shouldHideTrack(nextTrack) ||
+            !preloader ||
+            preloader === element ||
+            preloader.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+        ) {
+            return false;
+        }
+
+        this._gaplessInFlight = true;
+        try {
+            await this.playNext(0, {
+                preserveGestureToken: true,
+                gaplessFrom: element,
+            });
+            return true;
+        } finally {
+            this._gaplessInFlight = false;
+        }
+    }
+
+    isTransitionInFlight() {
+        return this._crossfadeInFlight || this._gaplessInFlight;
     }
 
     isCrossfadeTransitionFrom(trackId) {
@@ -2071,7 +2165,7 @@ export class Player {
                         .map((track) => String(track.id))
                 );
                 tracks = tracks.filter((track) => !nowQueued.has(String(track.id)));
-                if (tracks.length) await this.addToQueue(tracks);
+                if (tracks.length) await this.addToQueue(tracks, { userInitiated: false });
                 else this._recommendationRetryAt = Date.now() + 30000;
             } catch (error) {
                 if (generation === this._queueGeneration) this._recommendationRetryAt = Date.now() + 30000;
@@ -2448,7 +2542,7 @@ export class Player {
         }
     }
 
-    async addToQueue(trackOrTracks) {
+    async addToQueue(trackOrTracks, { userInitiated = true } = {}) {
         const tracks = Array.isArray(trackOrTracks) ? trackOrTracks : [trackOrTracks];
         this.queue.push(...tracks);
 
@@ -2461,7 +2555,12 @@ export class Player {
         try {
             window.dispatchEvent(
                 new CustomEvent('queue-tracks-added', {
-                    detail: { tracks, ids: tracks.map((t) => t?.id).filter((v) => v != null), mode: 'queue' },
+                    detail: {
+                        tracks,
+                        ids: tracks.map((t) => t?.id).filter((v) => v != null),
+                        mode: 'queue',
+                        userInitiated,
+                    },
                 })
             );
         } catch {}
@@ -2490,7 +2589,12 @@ export class Player {
         try {
             window.dispatchEvent(
                 new CustomEvent('queue-tracks-added', {
-                    detail: { tracks, ids: tracks.map((t) => t?.id).filter((v) => v != null), mode: 'next' },
+                    detail: {
+                        tracks,
+                        ids: tracks.map((t) => t?.id).filter((v) => v != null),
+                        mode: 'next',
+                        userInitiated: true,
+                    },
                 })
             );
         } catch {}

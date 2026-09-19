@@ -234,6 +234,7 @@ if (typeof window !== 'undefined') {
 
     window.addEventListener('queue-tracks-added', (event) => {
         const detail = event.detail || {};
+        if (detail.userInitiated !== true) return;
         const ids = detail.ids || (detail.tracks || []).map((t) => t?.id).filter((v) => v != null);
         const tracks = detail.tracks || ids;
         if (!ids || ids.length === 0) return;
