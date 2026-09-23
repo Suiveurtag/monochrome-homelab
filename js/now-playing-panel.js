@@ -1778,7 +1778,14 @@ export class NowPlayingPanel {
                 { transform: `translate3d(0, ${fromY}px, 0)`, opacity: fromOpacity },
                 { transform: `translate3d(0, ${toY}px, 0)`, opacity: toOpacity },
             ],
-            { duration, easing: 'cubic-bezier(0.32, 0.72, 0, 1)', fill: 'both' }
+            {
+                duration,
+                easing: 'cubic-bezier(0.32, 0.72, 0, 1)',
+                fill: 'both',
+                // Keep the drawer on one compositor animation. No per-frame JS
+                // work means the browser can pace it at the display refresh rate.
+                composite: 'replace',
+            }
         );
         this.queueLayerAnimation = animation;
         animation.onfinish = () => {

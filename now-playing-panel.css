@@ -1392,7 +1392,9 @@ body.now-playing-panel-resizing {
         0 2px 8px rgb(0 0 0 / 0.24);
     opacity: 0;
     pointer-events: none;
-    transform: translateY(100%);
+    transform: translate3d(0, 100%, 0);
+    backface-visibility: hidden;
+    contain: paint;
     will-change: transform, opacity;
 }
 
