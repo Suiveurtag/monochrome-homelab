@@ -742,29 +742,15 @@ export class NowPlayingPanel {
         return `${currentSection}<section class="queue-history-all" aria-labelledby="queue-all-history-title"><div class="queue-history-section-heading queue-history-all-heading"><div><h2 id="queue-all-history-title">All history</h2><p>Grouped by day</p></div></div>${groupedMarkup || allEmpty}${pagination}</section>`;
     }
 
-    getHistorySummary() {
-        if (this.historyLoading && !this.historyLoaded) return 'Loading…';
-        const { currentQueue, allHistory } = this.getFilteredHistory();
-        const total = currentQueue.length + allHistory.length;
-        if (this.historySearchQuery) return `${total} ${total === 1 ? 'result' : 'results'}`;
-        return '';
-    }
-
     renderHistoryPanel() {
         const expanded = this.historySearchExpanded;
-        const summary = this.getHistorySummary();
-        return `<section class="queue-history-view" aria-labelledby="queue-history-heading"><div class="queue-history-toolbar"><div><h2 id="queue-history-heading">Listening history</h2><p data-history-summary${summary ? '' : ' hidden'}>${escapeHtml(summary)}</p></div><div class="queue-history-search-shell${expanded ? ' is-expanded' : ''}"><button type="button" class="queue-history-search-toggle" data-history-search-toggle aria-label="Search listening history" aria-expanded="${String(expanded)}" aria-controls="queue-history-search-field">${icon('search', 17)}</button><div id="queue-history-search-field" class="queue-history-search-field" ${expanded ? '' : 'inert'}><span aria-hidden="true">${icon('search', 16)}</span><input id="queue-history-search" type="search" value="${escapeHtml(this.historySearchQuery)}" placeholder="Tracks, albums, artists" aria-label="Search tracks, albums, and artists in listening history" autocomplete="off" /><button type="button" class="queue-history-search-close" data-history-search-close aria-label="Close history search">${icon('x', 15)}</button></div></div></div><div class="queue-history-results" aria-live="polite">${this.renderHistorySections()}</div></section>`;
+        return `<section class="queue-history-view" aria-label="Listening history"><div class="queue-history-toolbar"><div class="queue-history-search-shell${expanded ? ' is-expanded' : ''}"><button type="button" class="queue-history-search-toggle" data-history-search-toggle aria-label="Search listening history" aria-expanded="${String(expanded)}" aria-controls="queue-history-search-field">${icon('search', 17)}</button><div id="queue-history-search-field" class="queue-history-search-field" ${expanded ? '' : 'inert'}><span aria-hidden="true">${icon('search', 16)}</span><input id="queue-history-search" type="search" value="${escapeHtml(this.historySearchQuery)}" placeholder="Tracks, albums, artists" aria-label="Search tracks, albums, and artists in listening history" autocomplete="off" /><button type="button" class="queue-history-search-close" data-history-search-close aria-label="Close history search">${icon('x', 15)}</button></div></div></div><div class="queue-history-results" aria-live="polite">${this.renderHistorySections()}</div></section>`;
     }
 
     refreshHistoryResults() {
         const results = this.queueLayer?.querySelector('.queue-history-results');
         if (!results) return;
         results.innerHTML = this.renderHistorySections();
-        const summary = this.queueLayer.querySelector('[data-history-summary]');
-        if (summary) {
-            summary.textContent = this.getHistorySummary();
-            summary.hidden = !summary.textContent;
-        }
         this.setupHistoryRowReveal();
     }
 
