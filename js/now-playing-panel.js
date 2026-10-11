@@ -996,16 +996,19 @@ export class NowPlayingPanel {
         this.clearQueueAdvanceArtworkAnimation();
         const source = this.captureQueueCover(this.queueCoverMorph || this.getQueueCoverElement());
         const target = this.captureQueueCover(this.getNowPlayingCoverElement());
+        const animateCover = !this.isNowPlayingPanelScrolled();
         const canvasStage = this.queueCanvasStage || this.getQueueCanvasStage();
         this.queueCanvasStage = canvasStage;
         const transitionToken = ++this.queueTransitionToken;
         this.queueOpeningScheduled = false;
         const layerState = this.freezeQueueMotion();
         this.queueTransition = { type: 'closing', source, target, token: transitionToken };
-        source?.element?.style.setProperty('opacity', '0');
-        target?.element?.style.setProperty('opacity', '0');
-        this.queueCoverTarget = target?.element || null;
-        this.queueCoverClosingTarget = target?.element || null;
+        if (animateCover) {
+            source?.element?.style.setProperty('opacity', '0');
+            target?.element?.style.setProperty('opacity', '0');
+            this.queueCoverTarget = target?.element || null;
+            this.queueCoverClosingTarget = target?.element || null;
+        }
         const finish = () => {
             if (transitionToken !== this.queueTransitionToken) return;
             const complete = () => {
@@ -1052,8 +1055,13 @@ export class NowPlayingPanel {
         this.queueLayer.classList.add('is-closing');
         this.syncQueueLayerState();
         this.animateQueueCanvasStage(canvasStage, transitionToken, 'closing');
-        this.animateQueueCover(source, target, transitionToken, 'closing');
+        if (animateCover) this.animateQueueCover(source, target, transitionToken, 'closing');
+        else this.clearQueueCoverAnimation();
         this.animateQueueLayer(layerState.offsetY, layerState.opacity, QUEUE_CLOSE_DURATION, transitionToken, finish, 'closing');
+    }
+
+    isNowPlayingPanelScrolled() {
+        return Boolean(this.content && this.content.scrollTop > 8);
     }
 
     updateScrollbar() {
@@ -1656,6 +1664,7 @@ export class NowPlayingPanel {
         if (this.queueOpeningScheduled) return;
         const target = this.measureQueueCoverTarget();
         const source = transition.source;
+        const animateCover = !this.isNowPlayingPanelScrolled();
         this.queueCanvasStage = this.getQueueCanvasStage();
         if (!target || this.reducedMotionMedia.matches) {
             this.queueTransition = null;
@@ -1667,8 +1676,10 @@ export class NowPlayingPanel {
             this.root.classList.remove('is-queue-opening');
             return;
         }
-        target.element.style.opacity = '0';
-        this.queueCoverTarget = target.element;
+        if (animateCover) {
+            target.element.style.opacity = '0';
+            this.queueCoverTarget = target.element;
+        }
         this.queueOpeningScheduled = true;
         requestAnimationFrame(() => {
             if (
@@ -1682,7 +1693,7 @@ export class NowPlayingPanel {
             }
             this.queueTransition = null;
             this.queueOpeningScheduled = false;
-            this.hideQueueCoverSource({ preserveCanvas: Boolean(this.queueCanvasStage) });
+            if (animateCover) this.hideQueueCoverSource({ preserveCanvas: Boolean(this.queueCanvasStage) });
             this.queueLayer.classList.add('is-visible');
             this.syncQueueLayerState();
             this.animateQueueLayer(
@@ -1694,7 +1705,7 @@ export class NowPlayingPanel {
                 'opening'
             );
             this.animateQueueCanvasStage(this.queueCanvasStage, transition.token, 'opening');
-            this.animateQueueCover(source, target, transition.token, 'opening');
+            if (animateCover) this.animateQueueCover(source, target, transition.token, 'opening');
         });
     }
 
@@ -1705,6 +1716,7 @@ export class NowPlayingPanel {
         const transitionToken = ++this.queueTransitionToken;
         this.queueOpeningScheduled = true;
         const target = this.measureQueueCoverTarget();
+        const animateCover = !this.isNowPlayingPanelScrolled();
         this.queueTransition = { type: 'opening', source, token: transitionToken };
         this.root.classList.remove('is-queue-closing');
         this.root.classList.add('is-queue-opening');
@@ -1712,8 +1724,10 @@ export class NowPlayingPanel {
         this.queueLayer.classList.add('is-visible');
         this.syncQueueLayerState();
         if (target && !this.reducedMotionMedia.matches) {
-            target.element.style.opacity = '0';
-            this.queueCoverTarget = target.element;
+            if (animateCover) {
+                target.element.style.opacity = '0';
+                this.queueCoverTarget = target.element;
+            }
             requestAnimationFrame(() => {
                 if (transitionToken !== this.queueTransitionToken || this.activeView !== 'queue') {
                     this.queueOpeningScheduled = false;
@@ -1721,7 +1735,7 @@ export class NowPlayingPanel {
                 }
                 this.queueTransition = null;
                 this.queueOpeningScheduled = false;
-                this.hideQueueCoverSource({ preserveCanvas: Boolean(this.queueCanvasStage) });
+                if (animateCover) this.hideQueueCoverSource({ preserveCanvas: Boolean(this.queueCanvasStage) });
                 this.animateQueueLayer(
                     layerState.offsetY,
                     layerState.opacity,
@@ -1731,7 +1745,7 @@ export class NowPlayingPanel {
                     'opening'
                 );
                 this.animateQueueCanvasStage(this.queueCanvasStage, transitionToken, 'opening');
-                this.animateQueueCover(source, target, transitionToken, 'opening');
+                if (animateCover) this.animateQueueCover(source, target, transitionToken, 'opening');
             });
         } else {
             this.queueTransition = null;
