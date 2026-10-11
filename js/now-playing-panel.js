@@ -163,7 +163,6 @@ export class NowPlayingPanel {
         this.historyLoaded = false;
         this.historyError = false;
         this.historyLoadToken = 0;
-        this.historySearchExpanded = false;
         this.historySearchQuery = '';
         this.historyVisibleCount = HISTORY_INITIAL_RENDER_COUNT;
         this.historyRevealedKeys = new Set();
@@ -327,6 +326,10 @@ export class NowPlayingPanel {
             this.root.classList.toggle('is-scrolled', this.content.scrollTop > 8);
             this.updateScrollbar();
         };
+        this.boundQueueScroll = (event) => {
+            const queueView = event.target.closest?.('.now-playing-panel-queue-view');
+            if (queueView) queueView.classList.toggle('is-scrolled', queueView.scrollTop > 8);
+        };
         this.boundVisibilityChanged = () => this.syncPanelActivity();
         this.boundReducedMotionChanged = () => void this.render({ preserveScroll: true });
         this.boundPlaybackChanged = (event) => {
@@ -407,6 +410,7 @@ export class NowPlayingPanel {
         this.root.addEventListener('keydown', (event) => this.handleKeydown(event));
         this.reopenButton?.addEventListener('click', () => this.setOpen(true));
         this.content.addEventListener('scroll', this.boundPanelScroll, { passive: true });
+        this.queueLayer?.addEventListener('scroll', this.boundQueueScroll, { passive: true, capture: true });
         if (typeof ResizeObserver !== 'undefined') {
             this.scrollResizeObserver = new ResizeObserver(() => this.updateScrollbar());
             this.scrollResizeObserver.observe(this.content);
@@ -743,8 +747,8 @@ export class NowPlayingPanel {
     }
 
     renderHistoryPanel() {
-        const expanded = this.historySearchExpanded;
-        return `<section class="queue-history-view" aria-label="Listening history"><div class="queue-history-toolbar"><div class="queue-history-search-shell${expanded ? ' is-expanded' : ''}"><button type="button" class="queue-history-search-toggle" data-history-search-toggle aria-label="Search listening history" aria-expanded="${String(expanded)}" aria-controls="queue-history-search-field">${icon('search', 17)}</button><div id="queue-history-search-field" class="queue-history-search-field" ${expanded ? '' : 'inert'}><span aria-hidden="true">${icon('search', 16)}</span><input id="queue-history-search" type="search" value="${escapeHtml(this.historySearchQuery)}" placeholder="Tracks, albums, artists" aria-label="Search tracks, albums, and artists in listening history" autocomplete="off" /><button type="button" class="queue-history-search-close" data-history-search-close aria-label="Close history search">${icon('x', 15)}</button></div></div></div><div class="queue-history-results" aria-live="polite">${this.renderHistorySections()}</div></section>`;
+        const hasQuery = Boolean(this.historySearchQuery);
+        return `<section class="queue-history-view" aria-label="Listening history"><div class="queue-history-toolbar"><div class="queue-history-search-shell"><div class="queue-history-search-field"><button type="button" class="queue-history-search-toggle" data-history-search-toggle aria-label="Focus history search">${icon('search', 17)}</button><input id="queue-history-search" type="search" value="${escapeHtml(this.historySearchQuery)}" placeholder="Tracks, albums, artists" aria-label="Search tracks, albums, and artists in listening history" autocomplete="off" /><button type="button" class="queue-history-search-close" data-history-search-clear aria-label="Clear history search"${hasQuery ? '' : ' hidden'}>${icon('x', 15)}</button></div></div></div><div class="queue-history-results" aria-live="polite">${this.renderHistorySections()}</div></section>`;
     }
 
     refreshHistoryResults() {
@@ -857,6 +861,7 @@ export class NowPlayingPanel {
         outgoingBody.replaceWith(incomingBody);
         this.syncQueueTabState(nextView);
         queueView.scrollTop = this.queueViewScroll[nextView] || 0;
+        queueView.classList.toggle('is-scrolled', queueView.scrollTop > 8);
         this.animateQueueTabSwitch(outgoingClone, incomingBody, direction, previousScroll);
         if (nextView === 'history') {
             this.setupHistoryRowReveal();
@@ -910,28 +915,18 @@ export class NowPlayingPanel {
         });
     }
 
-    setHistorySearchExpanded(expanded, { focus = true } = {}) {
-        this.historySearchExpanded = Boolean(expanded);
-        const shell = this.queueLayer?.querySelector('.queue-history-search-shell');
-        const toggle = shell?.querySelector('[data-history-search-toggle]');
-        const field = shell?.querySelector('.queue-history-search-field');
-        shell?.classList.toggle('is-expanded', this.historySearchExpanded);
-        toggle?.setAttribute('aria-expanded', String(this.historySearchExpanded));
-        if (field) field.inert = !this.historySearchExpanded;
-        if (this.historySearchExpanded && focus) {
-            requestAnimationFrame(() => shell?.querySelector('#queue-history-search')?.focus({ preventScroll: true }));
-        }
-    }
-
-    closeHistorySearch() {
+    clearHistorySearch() {
         this.historySearchQuery = '';
         this.historyVisibleCount = HISTORY_INITIAL_RENDER_COUNT;
         this.historyRevealedKeys.clear();
         const input = this.queueLayer?.querySelector('#queue-history-search');
-        if (input) input.value = '';
+        const clearButton = this.queueLayer?.querySelector('[data-history-search-clear]');
+        if (input) {
+            input.value = '';
+            input.focus({ preventScroll: true });
+        }
+        if (clearButton) clearButton.hidden = true;
         this.refreshHistoryResults();
-        this.setHistorySearchExpanded(false, { focus: false });
-        this.queueLayer?.querySelector('[data-history-search-toggle]')?.focus({ preventScroll: true });
     }
 
     async playHistoryTrack(trackId) {
@@ -960,7 +955,6 @@ export class NowPlayingPanel {
         this.queueLayerRefreshPending = false;
         this.activeView = 'queue';
         this.queueView = 'up-next';
-        this.historySearchExpanded = false;
         this.historySearchQuery = '';
         this.historyVisibleCount = HISTORY_INITIAL_RENDER_COUNT;
         this.historyRevealedKeys.clear();
@@ -1493,6 +1487,7 @@ export class NowPlayingPanel {
             nextView.querySelectorAll('.queue-track-row').forEach((row) => row.classList.add('queue-track-row-static'));
         }
         nextView.scrollTop = previousScroll;
+        nextView.classList.toggle('is-scrolled', previousScroll > 8);
         this.syncQueueLayerState();
         this.animateQueueRowReflow(previousRects, nextView, motionReason);
         if (this.queueView === 'history') requestAnimationFrame(() => this.setupHistoryRowReveal());
@@ -2474,11 +2469,11 @@ export class NowPlayingPanel {
             return;
         }
         if (button.matches('[data-history-search-toggle]')) {
-            this.setHistorySearchExpanded(true);
+            this.queueLayer?.querySelector('#queue-history-search')?.focus({ preventScroll: true });
             return;
         }
-        if (button.matches('[data-history-search-close]')) {
-            this.closeHistorySearch();
+        if (button.matches('[data-history-search-clear]')) {
+            this.clearHistorySearch();
             return;
         }
         if (button.matches('[data-history-load-more]')) {
@@ -2591,6 +2586,8 @@ export class NowPlayingPanel {
             this.historySearchQuery = event.target.value;
             this.historyVisibleCount = HISTORY_INITIAL_RENDER_COUNT;
             this.historyRevealedKeys.clear();
+            const clearButton = this.queueLayer?.querySelector('[data-history-search-clear]');
+            if (clearButton) clearButton.hidden = !this.historySearchQuery;
             this.refreshHistoryResults();
             return;
         }
@@ -2761,8 +2758,8 @@ export class NowPlayingPanel {
         }
         if (event.key === 'Escape') {
             event.preventDefault();
-            if (event.target.matches('#queue-history-search') && this.historySearchExpanded) {
-                this.closeHistorySearch();
+            if (event.target.matches('#queue-history-search') && this.historySearchQuery) {
+                this.clearHistorySearch();
                 return;
             }
             if (this.activeView === 'queue') {
@@ -2813,6 +2810,7 @@ export class NowPlayingPanel {
         this.canvasPlaybackElement?.removeEventListener('pause', this.boundPlaybackChanged);
         this.canvasPlaybackElement = null;
         this.content?.removeEventListener('scroll', this.boundPanelScroll);
+        this.queueLayer?.removeEventListener('scroll', this.boundQueueScroll, true);
         this.queueLayer?.remove();
         this.scrollResizeObserver?.disconnect();
         this.scrollResizeObserver = null;

@@ -29,7 +29,7 @@
     box-shadow: 0 10px 36px rgb(0 0 0 / 0.36);
     isolation: isolate;
     container: nowplaying / inline-size;
-    transform: translateX(0);
+    transform: none;
     transition:
         transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
         opacity 220ms ease,
@@ -1455,12 +1455,35 @@ body .now-playing-panel.is-queue-view .queue-panel-header {
     padding: 0 14px;
     border-bottom: 0;
     background: transparent;
-    backdrop-filter: none;
+    backdrop-filter: blur(74px) saturate(1.65) brightness(0.82);
+    -webkit-backdrop-filter: blur(74px) saturate(1.65) brightness(0.82);
 }
 
 body .now-playing-panel.is-queue-view .queue-panel-header::before {
     content: '';
-    width: 32px;
+    position: absolute;
+    z-index: 0;
+    inset: 0 0 -112px;
+    pointer-events: none;
+    background: linear-gradient(
+        to bottom,
+        rgb(24 13 5 / 0.36) 0%,
+        rgb(32 17 4 / 0.3) 68%,
+        rgb(54 29 5 / 0.16) 88%,
+        transparent 100%
+    );
+    backdrop-filter: blur(74px) saturate(1.65) brightness(0.82);
+    -webkit-backdrop-filter: blur(74px) saturate(1.65) brightness(0.82);
+}
+
+body .now-playing-panel.is-queue-view .queue-header-tabs {
+    grid-column: 2;
+    z-index: 1;
+}
+
+body .now-playing-panel.is-queue-view .queue-close-button {
+    grid-column: 3;
+    z-index: 1;
 }
 
 body .now-playing-panel.is-queue-view .queue-header-tabs {
@@ -2439,9 +2462,17 @@ body .now-playing-panel.is-queue-view .queue-history-view {
 }
 
 body .now-playing-panel.is-queue-view .queue-history-toolbar {
-    position: relative;
+    position: sticky;
+    z-index: 6;
+    top: 64px;
     min-height: 52px;
-    padding: 7px 46px 7px 0;
+    padding: 7px 0;
+    transform: translate3d(0, 4px, 0);
+    transition: transform 180ms var(--ease-out);
+}
+
+body .now-playing-panel.is-queue-view .now-playing-panel-queue-view.is-scrolled .queue-history-toolbar {
+    transform: translate3d(0, 0, 0);
 }
 
 body .now-playing-panel.is-queue-view .queue-history-section-heading h2 {
@@ -2461,45 +2492,30 @@ body .now-playing-panel.is-queue-view .queue-history-section-heading p {
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-shell {
-    position: absolute;
-    z-index: 2;
-    top: 14px;
-    right: 0;
-    left: 0;
-    height: 38px;
-    pointer-events: none;
+    min-width: 0;
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-toggle,
 body .now-playing-panel.is-queue-view .queue-history-search-close {
     display: grid;
-    width: 38px;
-    height: 38px;
+    width: 32px;
+    height: 32px;
     padding: 0;
     place-items: center;
-    border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    border: 0;
     border-radius: var(--radius-full);
-    background: color-mix(in srgb, var(--card) 78%, transparent);
+    background: transparent;
     color: var(--muted-foreground);
     cursor: pointer;
     transition:
-        border-color 180ms var(--ease-out),
         background-color 180ms var(--ease-out),
-        color 180ms var(--ease-out),
-        opacity 180ms var(--ease-out),
-        transform 180ms var(--ease-out);
-}
-
-body .now-playing-panel.is-queue-view .queue-history-search-toggle {
-    margin-left: auto;
-    pointer-events: auto;
+        color 180ms var(--ease-out);
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-toggle:hover,
 body .now-playing-panel.is-queue-view .queue-history-search-toggle:focus-visible,
 body .now-playing-panel.is-queue-view .queue-history-search-close:hover,
 body .now-playing-panel.is-queue-view .queue-history-search-close:focus-visible {
-    border-color: color-mix(in srgb, var(--primary) 48%, var(--border));
     background: rgb(var(--highlight-rgb) / 0.09);
     color: var(--foreground);
     outline: none;
@@ -2512,30 +2528,30 @@ body .now-playing-panel.is-queue-view .queue-history-search-field:focus-within {
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-field {
-    position: absolute;
-    inset: 0;
+    position: relative;
     display: grid;
-    grid-template-columns: 20px minmax(0, 1fr) 32px;
+    grid-template-columns: 32px minmax(0, 1fr) 32px;
     align-items: center;
-    gap: 8px;
-    padding: 0 3px 0 12px;
-    border: 1px solid color-mix(in srgb, var(--primary) 34%, var(--border));
+    gap: 6px;
+    min-height: 38px;
+    padding: 2px 3px 2px 4px;
+    border: 0.5px solid color-mix(in srgb, var(--border) 72%, transparent);
     border-radius: var(--radius-full);
-    background: color-mix(in srgb, var(--card) 96%, var(--background));
-    box-shadow: 0 10px 28px rgb(0 0 0 / 0.24);
-    opacity: 0;
-    pointer-events: none;
-    transform: scaleX(0.96);
-    transform-origin: right center;
+    background: color-mix(in srgb, var(--card) 76%, transparent);
+    backdrop-filter: blur(14px) saturate(1.12);
     transition:
-        opacity 180ms var(--ease-out),
-        transform 180ms var(--ease-out);
+        border-color 180ms var(--ease-out),
+        background-color 180ms var(--ease-out),
+        backdrop-filter 180ms var(--ease-out);
 }
 
-body .now-playing-panel.is-queue-view .queue-history-search-field > span {
-    display: grid;
-    place-items: center;
-    color: var(--muted-foreground);
+body .now-playing-panel.is-queue-view .queue-history-search-field:focus-within {
+    border-color: color-mix(in srgb, var(--primary) 44%, var(--border));
+    background: color-mix(in srgb, var(--card) 96%, var(--background));
+}
+
+body .now-playing-panel.is-queue-view .now-playing-panel-queue-view.is-scrolled .queue-history-search-field:not(:focus-within) {
+    background: color-mix(in srgb, var(--card) 84%, transparent);
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-field input {
@@ -2559,22 +2575,11 @@ body .now-playing-panel.is-queue-view .queue-history-search-field input::-webkit
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-close {
-    width: 32px;
-    height: 32px;
-    border: 0;
-    background: transparent;
+    color: var(--muted-foreground);
 }
 
-body .now-playing-panel.is-queue-view .queue-history-search-shell.is-expanded .queue-history-search-toggle {
-    opacity: 0;
-    pointer-events: none;
-    transform: scale(0.96);
-}
-
-body .now-playing-panel.is-queue-view .queue-history-search-shell.is-expanded .queue-history-search-field {
-    opacity: 1;
-    pointer-events: auto;
-    transform: scaleX(1);
+body .now-playing-panel.is-queue-view .queue-history-search-close[hidden] {
+    display: none;
 }
 
 body .now-playing-panel.is-queue-view .queue-history-current,
