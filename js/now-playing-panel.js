@@ -51,6 +51,7 @@ const QUEUE_ROW_EXIT_DURATION = 190;
 const QUEUE_ROW_EXIT_STAGGER = 28;
 const QUEUE_ROW_RECONCILE_DURATION = 240;
 const QUEUE_ROW_RECONCILE_STAGGER = 18;
+const QUEUE_ROW_INSERT_STAGGER = 44;
 const QUEUE_ROW_ARTWORK_DURATION = 280;
 const QUEUE_ROW_MAX_STAGGER = 8;
 const HISTORY_INITIAL_RENDER_COUNT = 32;
@@ -146,6 +147,8 @@ export class NowPlayingPanel {
         this.sourceContext = normalizeSourceContext(player?.sourceContext);
         this.queueRenderSignature = this.getQueueRenderSignature();
         this.currentTrack = player?.currentTrack || null;
+        this.currentTrackQueueIndex = Number(player?.currentQueueIndex ?? -1);
+        this.queueChangeInfo = null;
         this.model = null;
         this.renderController = null;
         this.expandedLyrics = false;
@@ -174,6 +177,8 @@ export class NowPlayingPanel {
         this.transitionMenuOpen = false;
         this.manuallyQueuedTracks = new Map();
         this.queueMotionReason = null;
+        this.queueInsertionInfo = null;
+        this.queueRowMotionKeySequence = 0;
         this.queueDragIndex = null;
         this.queueDropTarget = null;
         this.queueViewTimer = null;
@@ -233,13 +238,16 @@ export class NowPlayingPanel {
         });
         this.boundTrackChanged = (event) => {
             const nextTrack = event.detail?.track || null;
+            const nextQueueIndex = Number(this.player?.currentQueueIndex ?? -1);
             const sameTrack =
                 nextTrack?.id != null &&
                 this.currentTrack?.id != null &&
-                String(nextTrack.id) === String(this.currentTrack.id);
+                String(nextTrack.id) === String(this.currentTrack.id) &&
+                nextQueueIndex === this.currentTrackQueueIndex;
             if (!sameTrack && this.currentTrack) this.recordQueueHistory(this.currentTrack);
             if (!sameTrack && nextTrack?.id != null) this.manuallyQueuedTracks.delete(String(nextTrack.id));
             this.currentTrack = nextTrack;
+            this.currentTrackQueueIndex = nextQueueIndex;
             if (sameTrack) {
                 this.syncPlaybackElement();
                 this.syncCanvasPlayback();
@@ -247,21 +255,32 @@ export class NowPlayingPanel {
             }
             if (this.activeView === 'queue') this.nowPlayingNeedsRender = true;
             this.queueRenderSignature = this.getQueueRenderSignature();
-            if (this.activeView === 'queue') this.queueMotionReason = 'advance';
+            if (this.activeView === 'queue') {
+                this.queueMotionReason = 'advance';
+                this.renderQueueControls({ preserveScroll: true });
+            }
             this.canvasExpanded = false;
             const coverId = getTrackPlayerArtwork(nextTrack);
-            if (coverId) this.background?.setFallbackSource?.(this.api.getCoverUrl(coverId));
-            void this.render();
+            // Keep the queue advance as the only visible transition; the panel refreshes on close.
+            if (this.activeView !== 'queue') {
+                if (coverId) this.background?.setFallbackSource?.(this.api.getCoverUrl(coverId));
+                void this.render();
+            }
         };
         this.boundCanvasChanged = (event) => {
             if (String(event.detail?.trackId) !== String(this.currentTrack?.id)) return;
             Object.assign(this.currentTrack, event.detail?.track || {});
-            if (this.activeView === 'queue') this.nowPlayingNeedsRender = true;
+            if (this.activeView === 'queue') {
+                this.nowPlayingNeedsRender = true;
+                return;
+            }
             void this.render({ preserveScroll: true });
         };
         this.boundQueueChanged = (event) => {
             const nextSourceContext = normalizeSourceContext(event.detail?.sourceContext || this.player?.sourceContext);
             const nextCurrentIndex = Number(event.detail?.currentIndex ?? this.player?.currentQueueIndex ?? -1);
+            const queueChangeInfo = event.detail?.queueChange || null;
+            this.queueChangeInfo = this.activeView === 'queue' ? queueChangeInfo : null;
             const nextQueueSessionKey = this.getQueueSessionKey(event.detail, nextSourceContext);
             if (nextQueueSessionKey !== this.queueSessionKey) {
                 this.queueSessionKey = nextQueueSessionKey;
@@ -269,20 +288,34 @@ export class NowPlayingPanel {
                 this.manuallyQueuedTracks.clear();
             }
             const nextSignature = this.getQueueRenderSignature(event.detail, nextSourceContext);
-            if (nextSignature === this.queueRenderSignature) return;
+            if (nextSignature === this.queueRenderSignature && queueChangeInfo?.type !== 'reorder') {
+                this.currentTrackQueueIndex = nextCurrentIndex;
+                this.queueChangeInfo = null;
+                return;
+            }
             this.queueRenderSignature = nextSignature;
             this.sourceContext = nextSourceContext;
+            const nextQueue = event.detail?.queue || this.player?.getCurrentQueue?.() || [];
+            const nextCurrentTrack = nextQueue[nextCurrentIndex];
+            const currentTrackChanged =
+                nextCurrentTrack?.id != null &&
+                this.currentTrack?.id != null &&
+                (String(nextCurrentTrack.id) !== String(this.currentTrack.id) ||
+                    (queueChangeInfo?.type === 'advance' && nextCurrentIndex !== this.currentTrackQueueIndex));
+            const queueChangeMotion = {
+                advance: 'advance',
+                insert: 'insert',
+                remove: 'remove',
+                clear: 'clear',
+                reorder: 'reorder',
+            }[queueChangeInfo?.type];
+            if (currentTrackChanged) this.queueMotionReason = 'advance';
+            else if (!this.queueMotionReason) this.queueMotionReason = queueChangeMotion || 'refresh';
+            // playTrackFromQueue publishes the queue index before the matching track event.
+            // Wait for that event so the queue never renders once with the previous Now Playing item.
+            if (currentTrackChanged) return;
+            this.currentTrackQueueIndex = nextCurrentIndex;
             if (this.activeView === 'queue') {
-                const nextCurrentTrack =
-                    event.detail?.queue?.[nextCurrentIndex] || this.player?.getCurrentQueue?.()?.[nextCurrentIndex];
-                const currentTrackChanged =
-                    nextCurrentTrack?.id != null &&
-                    this.currentTrack?.id != null &&
-                    String(nextCurrentTrack.id) !== String(this.currentTrack.id);
-                if (!this.queueMotionReason) this.queueMotionReason = currentTrackChanged ? 'advance' : 'refresh';
-                if (currentTrackChanged) {
-                    return;
-                }
                 this.renderQueueControls({ preserveScroll: true });
                 return;
             }
@@ -294,9 +327,16 @@ export class NowPlayingPanel {
         };
         this.boundQueueTracksAdded = (event) => {
             const mode = event.detail?.mode === 'next' ? 'next' : 'queue';
-            for (const track of event.detail?.tracks || []) {
+            const tracks = event.detail?.tracks || [];
+            const index = Number(event.detail?.index);
+            for (const track of tracks) {
                 if (track?.id != null) this.manuallyQueuedTracks.set(String(track.id), mode);
             }
+            this.queueInsertionInfo = {
+                mode,
+                count: tracks.length,
+                ...(Number.isInteger(index) ? { index } : {}),
+            };
             this.queueMotionReason = 'insert';
         };
         this.boundMetadataChanged = (event) => {
@@ -310,6 +350,10 @@ export class NowPlayingPanel {
             if (currentTrackChanged) {
                 Object.assign(this.currentTrack, event.detail.track || {});
                 if (this.activeView === 'queue') this.nowPlayingNeedsRender = true;
+            }
+            if (this.activeView === 'queue') {
+                this.nowPlayingNeedsRender = true;
+                return;
             }
             void this.render({ preserveScroll: true });
         };
@@ -340,6 +384,7 @@ export class NowPlayingPanel {
         this.boundPlaybackChanged = (event) => {
             if (event?.type === 'play') this.canvasRetryCount = 0;
             this.syncCanvasPlayback();
+            this.syncQueuePlaybackIndicator();
             this.syncQueuePlaybackButtons();
         };
         this.boundCanvasPlaybackInterrupted = () => {
@@ -965,6 +1010,7 @@ export class NowPlayingPanel {
         this.historyRevealedKeys.clear();
         this.queueViewScroll = { 'up-next': 0, history: 0 };
         this.transitionMenuOpen = false;
+        this.queueInsertionInfo = null;
         this.queueMotionReason = 'open';
         this.queueOpeningSignature = this.getQueueRenderSignature();
         this.queueTransition = { type: 'opening', source, token: transitionToken };
@@ -1079,14 +1125,26 @@ export class NowPlayingPanel {
 
     async render({ preserveScroll = false } = {}) {
         if (!this.root || !this.content) return;
+        const isQueueView = this.activeView === 'queue';
+        if (isQueueView && this.queueMotionReason === 'advance') {
+            const queue = this.player?.getCurrentQueue?.() || [];
+            const queueCurrentIndex = Number(this.player?.currentQueueIndex ?? -1);
+            const queueCurrentTrack = queue[queueCurrentIndex];
+            if (
+                queueCurrentTrack?.id != null &&
+                (String(queueCurrentTrack.id) !== String(this.currentTrack?.id ?? '') ||
+                    queueCurrentIndex !== this.currentTrackQueueIndex)
+            )
+                return;
+        }
         this.renderController?.abort();
         const controller = new AbortController();
         this.renderController = controller;
-        const isQueueView = this.activeView === 'queue';
         const hadRenderedNowPlaying = Boolean(this.content.querySelector('.now-playing-panel-body'));
         const hadRenderedQueue = Boolean(this.queueLayer?.querySelector('.now-playing-panel-queue-view'));
         const hadRenderedContent = hadRenderedNowPlaying || hadRenderedQueue;
-        const shouldRenderNowPlaying = !isQueueView || !hadRenderedNowPlaying || this.nowPlayingNeedsRender;
+        // Keep the covered Now Playing surface still; closeQueue renders its pending track update.
+        const shouldRenderNowPlaying = !isQueueView || !hadRenderedNowPlaying;
         const scrollContainer = isQueueView
             ? this.queueLayer?.querySelector('.now-playing-panel-queue-view') || this.queueLayer
             : this.content;
@@ -1116,8 +1174,10 @@ export class NowPlayingPanel {
             });
             if (controller.signal.aborted) return;
             this.model = model;
-            await this.background?.setSource(model.artwork.staticSrc);
-            if (controller.signal.aborted) return;
+            if (shouldRenderNowPlaying) {
+                await this.background?.setSource(model.artwork.staticSrc);
+                if (controller.signal.aborted) return;
+            }
             await fadeOut;
             if (controller.signal.aborted) return;
             if (shouldRenderNowPlaying) {
@@ -1396,7 +1456,16 @@ export class NowPlayingPanel {
         }
         const pendingTransition = this.queueTransition;
         if (!pendingTransition) this.cancelQueueCoverAnimation();
-        let motionReason = this.queueMotionReason || 'refresh';
+        const pendingQueueChange = this.queueChangeInfo;
+        const queueChangeMotion = {
+            advance: 'advance',
+            insert: 'insert',
+            remove: 'remove',
+            clear: 'clear',
+            reorder: 'reorder',
+        }[pendingQueueChange?.type];
+        let motionReason = this.queueMotionReason || queueChangeMotion || 'refresh';
+        const queueChangeInfo = pendingQueueChange?.type === motionReason ? pendingQueueChange : null;
         const previousView = this.queueLayer.querySelector('.now-playing-panel-queue-view');
         const previousRows = this.getQueueTrackRows(previousView);
         const previousIds = previousRows.map((row) => row.dataset.trackId);
@@ -1408,19 +1477,151 @@ export class NowPlayingPanel {
             else if (queueChange.removed) motionReason = 'remove';
         }
         if (motionReason !== (this.queueMotionReason || 'refresh')) this.queueMotionReason = motionReason;
-        const markup = this.renderQueueView(model);
+        let markup = this.renderQueueView(model);
         const nextMarkupRoot = document.createElement('div');
         nextMarkupRoot.innerHTML = markup;
         const nextView = nextMarkupRoot.querySelector('.now-playing-panel-queue-view');
         const nextRows = this.getQueueTrackRows(nextView);
-        const nextTrackIds = new Set(nextRows.map((row) => row.dataset.trackId));
-        const removedRows = previousRows.filter((row) => !nextTrackIds.has(row.dataset.trackId));
+        const insertionInfo = queueChangeInfo?.type === 'insert' ? queueChangeInfo : this.queueInsertionInfo;
+        const previousQueueIndexForNewIndex = (newIndex) => {
+            if (queueChangeInfo?.type === 'advance') return newIndex;
+            if (queueChangeInfo?.type === 'remove') {
+                return newIndex >= Number(queueChangeInfo.index) ? newIndex + 1 : newIndex;
+            }
+            if (queueChangeInfo?.type === 'reorder') {
+                const from = Number(queueChangeInfo.fromIndex);
+                const to = Number(queueChangeInfo.toIndex);
+                if (newIndex === to) return from;
+                if (from < to && newIndex >= from && newIndex < to) return newIndex + 1;
+                if (from > to && newIndex > to && newIndex <= from) return newIndex - 1;
+            }
+            if (
+                insertionInfo?.mode === 'next' &&
+                Number.isInteger(Number(insertionInfo.index)) &&
+                Number.isInteger(Number(insertionInfo.count)) &&
+                newIndex >= Number(insertionInfo.index) + Number(insertionInfo.count)
+            ) {
+                return newIndex - Number(insertionInfo.count);
+            }
+            return newIndex;
+        };
+        if (motionReason === 'insert') {
+            const previousEntries = this.getQueueRowEntries(previousRows, 'insert');
+            const previousIds = previousRows.map((row) => row.dataset.trackId);
+            const nextIds = nextRows.map((row) => row.dataset.trackId);
+            const insertion = insertionInfo;
+            const count = Math.max(0, nextRows.length - previousRows.length);
+            const getOccurrenceKeys = (ids) => {
+                const occurrences = new Map();
+                return ids.map((id) => {
+                    const occurrence = occurrences.get(id) || 0;
+                    occurrences.set(id, occurrence + 1);
+                    return JSON.stringify([id, occurrence]);
+                });
+            };
+            const previousOccurrenceKeys = getOccurrenceKeys(previousIds);
+            const nextOccurrenceKeys = getOccurrenceKeys(nextIds);
+            const idsMatchAt = (offset) =>
+                previousIds.every((id, index) => id === nextIds[index + offset]);
+            const insertionIndex = Number(insertion?.index);
+            const insertionCount = Number(insertion?.count);
+            const hasExactInsertion =
+                Number.isInteger(insertionIndex) && Number.isInteger(insertionCount) && insertionCount > 0;
+            const previousEntriesByQueueIndex = new Map(
+                previousRows.map((row, index) => [Number(row.dataset.queueIndex), previousEntries[index]])
+            );
+            let insertionPlacement = null;
+            if (!hasExactInsertion && insertion?.mode === 'next' && count === insertion.count && idsMatchAt(count)) {
+                insertionPlacement = 'next';
+            } else if (!hasExactInsertion && insertion?.mode === 'queue' && count === insertion.count && idsMatchAt(0)) {
+                insertionPlacement = 'queue';
+            }
+            let addedRowSequence = 0;
+            nextRows.forEach((row, index) => {
+                const queueIndex = Number(row.dataset.queueIndex);
+                let previousEntry = null;
+                let isAdded = false;
+                if (hasExactInsertion) {
+                    isAdded = queueIndex >= insertionIndex && queueIndex < insertionIndex + insertionCount;
+                    if (!isAdded) {
+                        const previousIndex =
+                            insertion.mode === 'next' && queueIndex >= insertionIndex + insertionCount
+                                ? queueIndex - insertionCount
+                                : queueIndex;
+                        previousEntry = previousEntriesByQueueIndex.get(previousIndex) || null;
+                    }
+                } else {
+                    let matchedPreviousIndex = previousOccurrenceKeys.indexOf(nextOccurrenceKeys[index]);
+                    if (insertionPlacement === 'next') {
+                        matchedPreviousIndex = index >= count ? index - count : -1;
+                    } else if (insertionPlacement === 'queue') {
+                        matchedPreviousIndex = index < previousRows.length ? index : -1;
+                    }
+                    previousEntry = matchedPreviousIndex >= 0 ? previousEntries[matchedPreviousIndex] : null;
+                    isAdded = !previousEntry;
+                }
+                if (previousEntry && !isAdded) {
+                    row.classList.add('queue-track-row-static');
+                    row.dataset.queueMotionKey = previousEntry.key;
+                } else if (isAdded) {
+                    row.classList.add('queue-track-row-added');
+                    row.dataset.queueAddedOrder = String(Math.min(addedRowSequence++, 5));
+                    row.dataset.queueMotionKey = `inserted-${++this.queueRowMotionKeySequence}`;
+                } else {
+                    row.classList.add('queue-track-row-static');
+                    row.dataset.queueMotionKey = `queue-position:${queueIndex}`;
+                }
+            });
+            this.queueInsertionInfo = null;
+            markup = nextMarkupRoot.innerHTML;
+        }
+
+        const activeEntryRowsByIndex = new Map(
+            previousRows
+                .filter((row) => row.classList.contains('queue-track-row-added'))
+                .map((row) => [Number(row.dataset.queueIndex), row])
+        );
+        nextRows.forEach((row) => {
+            if (row.classList.contains('queue-track-row-added')) return;
+            const nextIndex = Number(row.dataset.queueIndex);
+            const previousRow = activeEntryRowsByIndex.get(previousQueueIndexForNewIndex(nextIndex));
+            if (!previousRow || previousRow.dataset.trackId !== row.dataset.trackId) return;
+            row.classList.remove('queue-track-row-static');
+            row.classList.add('queue-track-row-added');
+            row.dataset.queueAddedOrder = previousRow.dataset.queueAddedOrder || '0';
+            row.dataset.queueMotionKey = previousRow.dataset.queueMotionKey || `inserted-${++this.queueRowMotionKeySequence}`;
+        });
+        markup = nextMarkupRoot.innerHTML;
+
+        if (queueChangeInfo && ['advance', 'remove', 'reorder'].includes(motionReason)) {
+            nextRows.forEach((row) => {
+                row.dataset.queueMotionKey = `queue-position:${previousQueueIndexForNewIndex(Number(row.dataset.queueIndex))}`;
+            });
+            markup = nextMarkupRoot.innerHTML;
+        }
+
+        let removedRows;
+        if (queueChangeInfo?.type === 'remove') {
+            const removedIndex = Number(queueChangeInfo.index);
+            const exactRemovedRow = previousRows.filter((row) => Number(row.dataset.queueIndex) === removedIndex);
+            removedRows = exactRemovedRow.length ? exactRemovedRow : this.getQueueRowsRemovedByCount(previousRows, nextRows);
+        } else if (queueChangeInfo?.type === 'clear') {
+            removedRows = previousRows;
+        } else {
+            removedRows = this.getQueueRowsRemovedByCount(previousRows, nextRows);
+        }
         const previousContent = this.getQueueViewContentSignature(previousView);
         const nextContent = this.getQueueViewContentSignature(nextView);
-        if (previousContent === nextContent && previousView && !(startTransition && pendingTransition?.type === 'opening')) {
+        if (
+            previousContent === nextContent &&
+            previousView &&
+            !(startTransition && pendingTransition?.type === 'opening') &&
+            !(queueChangeInfo?.type === 'reorder')
+        ) {
             previousView.scrollTop = previousScroll;
             previousView.classList.toggle('is-scrolled', previousScroll > 8);
             this.syncQueueLayerState();
+            if (this.queueChangeInfo === pendingQueueChange) this.queueChangeInfo = null;
             return;
         }
 
@@ -1441,16 +1642,39 @@ export class NowPlayingPanel {
                     motionReason,
                     startTransition,
                     pendingTransition,
+                    queueChangeInfo,
                 });
             }, motionReason);
+            if (this.queueChangeInfo === pendingQueueChange) this.queueChangeInfo = null;
             return;
         }
 
-        this.commitQueueLayerMarkup(markup, previousScroll, { motionReason, startTransition, pendingTransition });
+        this.commitQueueLayerMarkup(markup, previousScroll, {
+            motionReason,
+            startTransition,
+            pendingTransition,
+            queueChangeInfo,
+        });
+        if (this.queueChangeInfo === pendingQueueChange) this.queueChangeInfo = null;
     }
 
     getQueueTrackRows(container) {
         return [...(container?.querySelectorAll('.queue-track-row[data-track-id]') || [])];
+    }
+
+    getQueueRowsRemovedByCount(previousRows, nextRows) {
+        const remainingCounts = new Map();
+        for (const row of nextRows) {
+            const id = row.dataset.trackId;
+            remainingCounts.set(id, (remainingCounts.get(id) || 0) + 1);
+        }
+        return previousRows.filter((row) => {
+            const id = row.dataset.trackId;
+            const remaining = remainingCounts.get(id) || 0;
+            if (remaining === 0) return true;
+            remainingCounts.set(id, remaining - 1);
+            return false;
+        });
     }
 
     getQueueVisibleTrackIds() {
@@ -1499,16 +1723,29 @@ export class NowPlayingPanel {
             if (className.startsWith('queue-motion-')) clone.classList.remove(className);
         }
         clone.querySelectorAll('.queue-track-row-static').forEach((row) => row.classList.remove('queue-track-row-static'));
+        clone.querySelectorAll('[data-queue-motion-key]').forEach((row) => row.removeAttribute('data-queue-motion-key'));
+        clone.querySelectorAll('.queue-track-row-added').forEach((row) => {
+            row.classList.remove('queue-track-row-added');
+            row.removeAttribute('data-queue-added-order');
+            row.style.removeProperty('animation');
+        });
         return clone.innerHTML;
     }
 
-    getQueueRowEntries(rows) {
+    getQueueRowEntries(rows, motionReason = 'refresh', { useMappedQueuePosition = true } = {}) {
         const occurrences = new Map();
+        const useQueuePosition = ['advance', 'remove', 'reorder'].includes(motionReason);
         return rows.map((row) => {
             const id = row.dataset.trackId;
             const occurrence = occurrences.get(id) || 0;
             occurrences.set(id, occurrence + 1);
-            return { key: `${id}\u0000${occurrence}`, row };
+            const mappedPositionKey = row.dataset.queueMotionKey?.startsWith('queue-position:')
+                ? row.dataset.queueMotionKey
+                : null;
+            const key = useQueuePosition
+                ? (useMappedQueuePosition ? mappedPositionKey : null) || `queue-position:${row.dataset.queueIndex}`
+                : row.dataset.queueMotionKey || JSON.stringify([id, occurrence]);
+            return { key, row };
         });
     }
 
@@ -1553,17 +1790,24 @@ export class NowPlayingPanel {
     commitQueueLayerMarkup(
         markup,
         previousScroll,
-        { motionReason = 'refresh', startTransition = true, pendingTransition = this.queueTransition } = {}
+        {
+            motionReason = 'refresh',
+            startTransition = true,
+            pendingTransition = this.queueTransition,
+            queueChangeInfo = null,
+        } = {}
     ) {
         const previousView = this.queueLayer.querySelector('.now-playing-panel-queue-view');
         const previousRows = this.getQueueTrackRows(previousView);
         const previousRects = new Map(
-            this.getQueueRowEntries(previousRows).map(({ key, row }) => [key, { row, rect: row.getBoundingClientRect() }])
+            this.getQueueRowEntries(previousRows, motionReason, { useMappedQueuePosition: false }).map(({ key, row }) => [key, { row, rect: row.getBoundingClientRect() }])
         );
         const advanceTrackId = String(this.currentTrack?.id ?? '');
         const advanceSourceRow =
             motionReason === 'advance'
-                ? previousRows.find((row) => row.dataset.trackId === advanceTrackId) || previousRows[0]
+                ? previousRows.find((row) => Number(row.dataset.queueIndex) === Number(queueChangeInfo?.index)) ||
+                  previousRows.find((row) => row.dataset.trackId === advanceTrackId) ||
+                  previousRows[0]
                 : null;
         const advanceSource = this.captureQueueCover(advanceSourceRow?.querySelector('img'));
 
@@ -1574,6 +1818,50 @@ export class NowPlayingPanel {
         if (motionReason === 'remove' || motionReason === 'clear') {
             nextView.querySelectorAll('.queue-track-row').forEach((row) => row.classList.add('queue-track-row-static'));
         }
+        nextView.querySelectorAll('.queue-track-row-added').forEach((row) => {
+            const finishEntryAnimation = () => {
+                if (!row.isConnected) return;
+                row.style.removeProperty('animation');
+                row.classList.remove('queue-track-row-added');
+                row.classList.add('queue-track-row-static');
+                row.removeAttribute('data-queue-added-order');
+            };
+            const order = Math.min(Number(row.dataset.queueAddedOrder) || 0, QUEUE_ROW_MAX_STAGGER);
+            const delay = order * QUEUE_ROW_INSERT_STAGGER;
+            if (typeof row.animate === 'function') {
+                const reducedMotion = this.reducedMotionMedia.matches;
+                // Start after insertion, and keep the CSS keyframe as a no-WAAPI fallback.
+                row.style.setProperty('animation', 'none', 'important');
+                const animation = row.animate(
+                    reducedMotion
+                        ? [{ opacity: 0 }, { opacity: 1 }]
+                        : [
+                              { opacity: 0, transform: 'translate3d(-12%, 0, 0)' },
+                              { opacity: 1, transform: 'translate3d(0, 0, 0)' },
+                          ],
+                    {
+                        duration: reducedMotion ? 160 : 240,
+                        delay,
+                        easing: QUEUE_EASE_OUT,
+                        fill: 'both',
+                    }
+                );
+                animation.onfinish = () => {
+                    finishEntryAnimation();
+                    animation.cancel();
+                };
+                animation.oncancel = () => {
+                    if (row.isConnected && row.classList.contains('queue-track-row-added')) finishEntryAnimation();
+                };
+                return;
+            }
+            const finishCssEntryAnimation = (event) => {
+                if (event.target !== row || !event.animationName.startsWith('queue-row-added')) return;
+                finishEntryAnimation();
+                row.removeEventListener('animationend', finishCssEntryAnimation);
+            };
+            row.addEventListener('animationend', finishCssEntryAnimation);
+        });
         nextView.scrollTop = previousScroll;
         nextView.classList.toggle('is-scrolled', previousScroll > 8);
         this.syncQueueLayerState();
@@ -1599,7 +1887,8 @@ export class NowPlayingPanel {
         const token = ++this.queueRowReflowToken;
         const animations = [];
         const rows = this.getQueueTrackRows(nextView);
-        for (const { key, row } of this.getQueueRowEntries(rows)) {
+        for (const { key, row } of this.getQueueRowEntries(rows, motionReason)) {
+            if (row.classList.contains('queue-track-row-added')) continue;
             const previous = previousRects.get(key);
             if (!previous) continue;
             const nextRect = row.getBoundingClientRect();
@@ -1803,6 +2092,7 @@ export class NowPlayingPanel {
             : '/assets/appicon.png';
         const title = getTrackTitle(currentTrack, { fallback: 'Unknown title' });
         const artist = getTrackArtists(currentTrack, { fallback: 'Unknown artist' });
+        const isPaused = this.player?.activeElement?.paused !== false;
         const sourceLabel = this.sourceContext?.label || 'current queue';
         const source = this.sourceContext?.href
             ? `<button type="button" class="queue-source-link" data-queue-source-href="${escapeHtml(this.sourceContext.href)}">${escapeHtml(sourceLabel)}</button>`
@@ -1810,7 +2100,7 @@ export class NowPlayingPanel {
         const currentMarkup = currentTrack
             ? `<div class="queue-playing-row">
                 <div class="queue-current-artwork"><img src="${escapeHtml(image)}" alt="" loading="eager" /></div>
-                <div class="queue-current-copy"><span class="queue-current-label">Now playing</span><strong class="queue-current-title"><span class="queue-playing-equalizer" aria-hidden="true"></span><span class="queue-current-title-text">${escapeHtml(title)}</span></strong><p>${escapeHtml(artist)}</p></div>
+                <div class="queue-current-copy"><span class="queue-current-label">Now playing</span><strong class="queue-current-title"><span class="queue-playing-equalizer${isPaused ? ' is-paused' : ''}" aria-hidden="true"></span><span class="queue-current-title-text">${escapeHtml(title)}</span></strong><p>${escapeHtml(artist)}</p></div>
             </div>`
             : '<div class="queue-playing-row queue-playing-row-empty"><div class="queue-current-artwork queue-empty-artwork">—</div><div class="queue-current-copy"><span class="queue-current-label">Now playing</span><strong>Nothing is playing</strong></div></div>';
         this.queueLayer.innerHTML = `<div class="now-playing-panel-queue-view queue-motion-open" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div id="queue-panel-title" class="queue-header-tabs" role="tablist" aria-label="Queue panel"><button type="button" id="queue-tab-up-next" class="queue-view-switch is-active" role="tab" data-queue-view="up-next" aria-selected="true" aria-controls="queue-panel-body">Queue</button><button type="button" id="queue-tab-history" class="queue-view-switch" role="tab" data-queue-view="history" aria-selected="false" aria-controls="queue-panel-body" tabindex="-1">History</button></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main id="queue-panel-body" class="queue-panel-body" role="tabpanel" aria-labelledby="queue-tab-up-next"><section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${source}</h2><button type="button" class="queue-clear-button" disabled>Clear</button></div>${currentMarkup}</section></main></div>`;
@@ -2150,7 +2440,7 @@ export class NowPlayingPanel {
         // A model refresh (for example playback state or metadata) must not
         // replay the list entrance. Only a structural queue change owns row motion.
         const rowMotionStyle = '';
-        const staticRowClass = this.queueRowsStatic || ['refresh', 'reorder'].includes(motionReason) ? ' queue-track-row-static' : '';
+        const staticRowClass = this.queueRowsStatic || ['advance', 'refresh', 'reorder'].includes(motionReason) ? ' queue-track-row-static' : '';
         this.queueMotionReason = null;
         const imageFor = (track) => {
             const source = getTrackPlayerArtwork(track);
@@ -2185,7 +2475,7 @@ export class NowPlayingPanel {
         const currentMarkup = currentTrack
             ? `<div class="queue-playing-row">
                 <div class="queue-current-artwork"><img src="${escapeHtml(imageFor(currentTrack))}" alt="" loading="eager" /></div>
-                <div class="queue-current-copy"><span class="queue-current-label">Now playing</span><strong id="queue-current-title" class="queue-current-title"><span class="queue-playing-equalizer" aria-hidden="true"></span><span class="queue-current-title-text">${escapeHtml(titleFor(currentTrack))}</span></strong><p>${escapeHtml(artistFor(currentTrack))}</p></div>
+                <div class="queue-current-copy"><span class="queue-current-label">Now playing</span><strong id="queue-current-title" class="queue-current-title"><span class="queue-playing-equalizer${isPaused ? ' is-paused' : ''}" aria-hidden="true"></span><span class="queue-current-title-text">${escapeHtml(titleFor(currentTrack))}</span></strong><p>${escapeHtml(artistFor(currentTrack))}</p></div>
                 <button type="button" class="queue-current-state" data-queue-playback-toggle aria-label="${isPaused ? 'Play' : 'Pause'}" aria-pressed="${String(!isPaused)}">${icon(isPaused ? 'play' : 'pause', 17)}</button>
             </div>`
             : `<div class="queue-playing-row queue-playing-row-empty"><div class="queue-empty-artwork">${icon('list-music', 20)}</div><div class="queue-current-copy"><span class="queue-current-label">Now playing</span><strong id="queue-current-title">Nothing playing</strong><p>Start a track to build your queue.</p></div></div>`;
@@ -2764,6 +3054,13 @@ export class NowPlayingPanel {
         this.queueCrossfadeAnimationTimer = window.setTimeout(() => control?.classList.remove('is-adjusting'), 180);
     }
 
+    syncQueuePlaybackIndicator() {
+        const paused = this.player?.activeElement?.paused !== false;
+        for (const indicator of this.root.querySelectorAll('.queue-playing-equalizer')) {
+            indicator.classList.toggle('is-paused', paused);
+        }
+    }
+
     syncQueuePlaybackButtons() {
         if (this.activeView !== 'queue') return;
         const paused = this.player?.activeElement?.paused !== false;
@@ -2796,6 +3093,8 @@ export class NowPlayingPanel {
         if (this.activeView !== 'queue' || !this.queueLayer) return;
         if (this.queueView === 'history' && this.queueLayer.querySelector('.queue-history-results')) {
             this.queueMotionReason = null;
+            this.queueInsertionInfo = null;
+            this.queueChangeInfo = null;
             this.refreshHistoryResults();
             return;
         }

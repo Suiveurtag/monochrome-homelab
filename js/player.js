@@ -536,7 +536,7 @@ export class Player {
         }
     }
 
-    async saveQueueState() {
+    async saveQueueState(queueChange = null) {
         queueManager.saveQueue({
             queue: this.queue,
             shuffledQueue: this.shuffledQueue,
@@ -553,6 +553,7 @@ export class Player {
                     queue: this.getCurrentQueue(),
                     currentIndex: this.currentQueueIndex,
                     sourceContext: this.sourceContext,
+                    ...(queueChange ? { queueChange } : {}),
                 },
             })
         );
@@ -1342,10 +1343,11 @@ export class Player {
             }
         }
 
+        const queueChange = { type: 'advance', index: this.currentQueueIndex };
         if (shouldPreserveGestureToken) {
-            void this.saveQueueState().catch(console.error);
+            void this.saveQueueState(queueChange).catch(console.error);
         } else {
-            await this.saveQueueState();
+            await this.saveQueueState(queueChange);
         }
 
         this.currentTrack = track;
@@ -2544,6 +2546,7 @@ export class Player {
 
     async addToQueue(trackOrTracks, { userInitiated = true } = {}) {
         const tracks = Array.isArray(trackOrTracks) ? trackOrTracks : [trackOrTracks];
+        const insertionIndex = this.getCurrentQueue().length;
         this.queue.push(...tracks);
 
         if (this.shuffleActive) {
@@ -2559,6 +2562,7 @@ export class Player {
                         tracks,
                         ids: tracks.map((t) => t?.id).filter((v) => v != null),
                         mode: 'queue',
+                        index: insertionIndex,
                         userInitiated,
                     },
                 })
@@ -2569,7 +2573,7 @@ export class Player {
             this.currentQueueIndex = this.getCurrentQueue().length - tracks.length;
             await this.playTrackFromQueue(0, 0);
         }
-        await this.saveQueueState();
+        await this.saveQueueState({ type: 'insert', mode: 'queue', index: insertionIndex, count: tracks.length });
     }
 
     async addNextToQueue(trackOrTracks) {
@@ -2593,13 +2597,14 @@ export class Player {
                         tracks,
                         ids: tracks.map((t) => t?.id).filter((v) => v != null),
                         mode: 'next',
+                        index: insertIndex,
                         userInitiated: true,
                     },
                 })
             );
         } catch {}
 
-        await this.saveQueueState();
+        await this.saveQueueState({ type: 'insert', mode: 'next', index: insertIndex, count: tracks.length });
         this.preloadNextTracks(); // Update preload since next track changed
     }
 
@@ -2627,7 +2632,7 @@ export class Player {
             }
         }
 
-        await this.saveQueueState();
+        await this.saveQueueState({ type: 'remove', index });
         this.preloadNextTracks();
     }
 
@@ -2653,7 +2658,7 @@ export class Player {
         }
 
         this.preloadCache.clear();
-        await this.saveQueueState();
+        await this.saveQueueState({ type: 'clear' });
     }
 
     async wipeQueue() {
@@ -2672,7 +2677,7 @@ export class Player {
         this.shuffledQueue = [];
         this.originalQueueBeforeShuffle = [];
         this.currentQueueIndex = -1;
-        await this.saveQueueState();
+        await this.saveQueueState({ type: 'clear' });
         if (UIRenderer.instance) {
             UIRenderer.instance.setCurrentTrack(null);
         }
@@ -2697,7 +2702,7 @@ export class Player {
         } else if (fromIndex > this.currentQueueIndex && toIndex <= this.currentQueueIndex) {
             this.currentQueueIndex++;
         }
-        await this.saveQueueState();
+        await this.saveQueueState({ type: 'reorder', fromIndex, toIndex });
     }
 
     getCurrentQueue() {

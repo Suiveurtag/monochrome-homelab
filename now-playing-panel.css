@@ -1432,6 +1432,7 @@ body .now-playing-panel.is-queue-view .now-playing-panel-queue-view {
     min-height: 100%;
     flex-direction: column;
     color: var(--foreground);
+    --queue-control-secondary: color-mix(in srgb, var(--foreground) 76%, var(--muted-foreground));
     overflow-y: auto;
     background: transparent;
     scrollbar-width: none;
@@ -1523,7 +1524,7 @@ body .now-playing-panel.is-queue-view .queue-view-switch {
     padding: 0 14px;
     border: 0;
     background: transparent;
-    color: var(--muted-foreground);
+    color: var(--queue-control-secondary);
     cursor: pointer;
     font: inherit;
     font-size: 0.9rem;
@@ -1555,7 +1556,7 @@ body .now-playing-panel.is-queue-view .queue-close-button {
     border: 0;
     border-radius: var(--radius-full);
     background: transparent;
-    color: var(--muted-foreground);
+    color: var(--queue-control-secondary);
     cursor: pointer;
     transition:
         color 150ms ease,
@@ -1658,7 +1659,7 @@ body .now-playing-panel.is-queue-view .queue-clear-button {
     padding: 2px 0;
     border: 0;
     background: transparent;
-    color: var(--muted-foreground);
+    color: var(--queue-control-secondary);
     cursor: pointer;
     font: inherit;
     font-size: 0.72rem;
@@ -1795,6 +1796,20 @@ body .now-playing-panel.is-queue-view .queue-playing-equalizer {
     background-color: var(--primary);
     -webkit-mask: url('/assets/queue-equalizer.gif') center / contain no-repeat;
     mask: url('/assets/queue-equalizer.gif') center / contain no-repeat;
+}
+
+body .now-playing-panel.is-queue-view .queue-playing-equalizer.is-paused {
+    background-color: transparent;
+    background-image:
+        linear-gradient(var(--primary), var(--primary)),
+        linear-gradient(var(--primary), var(--primary)),
+        linear-gradient(var(--primary), var(--primary)),
+        linear-gradient(var(--primary), var(--primary));
+    background-repeat: no-repeat;
+    background-position: 0 8px, 3px 4px, 6px 6px, 9px 2px;
+    background-size: 2px 4px, 2px 8px, 2px 6px, 2px 10px;
+    -webkit-mask: none;
+    mask: none;
 }
 
 body .now-playing-panel.is-queue-view .queue-current-title-text {
@@ -2191,10 +2206,14 @@ body .now-playing-panel.is-queue-view .queue-list-loop-button {
     margin-top: 1px;
     padding: 0;
     place-items: center;
-    border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 38%, var(--border));
     border-radius: 8px;
-    background: color-mix(in srgb, var(--card) 72%, transparent);
-    color: var(--muted-foreground);
+    background: color-mix(
+        in srgb,
+        var(--primary) 8%,
+        color-mix(in srgb, var(--card) 78%, transparent)
+    );
+    color: var(--queue-control-secondary);
     cursor: pointer;
     transition:
         border-color 180ms var(--ease-out),
@@ -2265,6 +2284,30 @@ body .now-playing-panel.is-queue-view .now-playing-panel-queue-layer.is-visible 
 
 body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-static {
     animation: none;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-added {
+    animation: queue-row-added 240ms var(--ease-out) both;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-added[data-queue-added-order='1'] {
+    animation-delay: 44ms;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-added[data-queue-added-order='2'] {
+    animation-delay: 88ms;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-added[data-queue-added-order='3'] {
+    animation-delay: 132ms;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-added[data-queue-added-order='4'] {
+    animation-delay: 176ms;
+}
+
+body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-added[data-queue-added-order='5'] {
+    animation-delay: 220ms;
 }
 
 body .now-playing-panel.is-queue-view .queue-track-row.is-reconciling {
@@ -2527,7 +2570,7 @@ body .now-playing-panel.is-queue-view .queue-history-search-close {
     border: 0;
     border-radius: var(--radius-full);
     background: transparent;
-    color: var(--muted-foreground);
+    color: var(--queue-control-secondary);
     cursor: pointer;
     transition:
         background-color 180ms var(--ease-out),
@@ -2557,9 +2600,14 @@ body .now-playing-panel.is-queue-view .queue-history-search-field {
     gap: 6px;
     min-height: 38px;
     padding: 2px 3px 2px 4px;
-    border: 0.5px solid color-mix(in srgb, var(--border) 72%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 40%, var(--border));
     border-radius: var(--radius-full);
-    background: color-mix(in srgb, var(--card) 76%, transparent);
+    background: color-mix(
+        in srgb,
+        var(--primary) 7%,
+        color-mix(in srgb, var(--card) 72%, transparent)
+    );
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 18%, transparent);
     backdrop-filter: blur(14px) saturate(1.12);
     transition:
         border-color 180ms var(--ease-out),
@@ -2568,8 +2616,9 @@ body .now-playing-panel.is-queue-view .queue-history-search-field {
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-field:focus-within {
-    border-color: color-mix(in srgb, var(--primary) 44%, var(--border));
-    background: color-mix(in srgb, var(--card) 96%, var(--background));
+    border-color: color-mix(in srgb, var(--primary) 74%, var(--border));
+    background: color-mix(in srgb, var(--card) 88%, var(--background));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 32%, transparent);
 }
 
 body .now-playing-panel.is-queue-view .now-playing-panel-queue-view.is-scrolled .queue-history-search-field:not(:focus-within) {
@@ -2589,7 +2638,7 @@ body .now-playing-panel.is-queue-view .queue-history-search-field input {
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-field input::placeholder {
-    color: var(--muted-foreground);
+    color: var(--queue-control-secondary);
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-field input::-webkit-search-cancel-button {
@@ -2597,7 +2646,11 @@ body .now-playing-panel.is-queue-view .queue-history-search-field input::-webkit
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-close {
-    color: var(--muted-foreground);
+    color: var(--queue-control-secondary);
+}
+
+body .now-playing-panel.is-queue-view .queue-history-search-field .queue-history-search-toggle {
+    color: var(--primary);
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-close[hidden] {
@@ -2864,6 +2917,28 @@ body .now-playing-panel.is-queue-view.is-queue-closing {
     }
 }
 
+@keyframes queue-row-added {
+    from {
+        opacity: 0;
+        transform: translate3d(-12%, 0, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@keyframes queue-row-added-reduced {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
 @keyframes queue-row-exit {
     from {
         opacity: 1;
@@ -2935,5 +3010,29 @@ body .now-playing-panel.is-queue-view.is-queue-closing {
     body .now-playing-panel.is-queue-view .queue-history-row.is-scroll-pending {
         opacity: 1;
         transform: none;
+    }
+
+    body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-added {
+        animation: queue-row-added-reduced 160ms var(--ease-out) both !important;
+    }
+
+    body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-added[data-queue-added-order='1'] {
+        animation-delay: 44ms !important;
+    }
+
+    body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-added[data-queue-added-order='2'] {
+        animation-delay: 88ms !important;
+    }
+
+    body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-added[data-queue-added-order='3'] {
+        animation-delay: 132ms !important;
+    }
+
+    body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-added[data-queue-added-order='4'] {
+        animation-delay: 176ms !important;
+    }
+
+    body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-added[data-queue-added-order='5'] {
+        animation-delay: 220ms !important;
     }
 }

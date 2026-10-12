@@ -5,6 +5,7 @@ const intersectionObservers = [];
 vi.mock('./spicy-dynamic-background.js', () => ({
     mountSpicyDynamicBackground: () => ({
         setSource: vi.fn(async () => true),
+        setFallbackSource: vi.fn(),
         connectPlayback: vi.fn(),
         dispose: vi.fn(),
     }),
@@ -260,7 +261,7 @@ describe('Now Playing panel interactions', () => {
         panel.destroy();
     });
 
-    test('keeps queue rows static during playback-only refreshes', async () => {
+    test('keeps queue rows static on advances so FLIP owns their movement', async () => {
         const { NowPlayingPanel } = await import('./now-playing-panel.js');
         const deps = dependencies();
         deps.player.currentQueueIndex = 0;
@@ -276,7 +277,7 @@ describe('Now Playing panel interactions', () => {
 
         panel.queueMotionReason = 'advance';
         const advanceMarkup = panel.renderQueue();
-        expect(advanceMarkup).not.toContain('queue-track-row-static');
+        expect(advanceMarkup).toContain('queue-track-row-static');
         panel.destroy();
     });
 
@@ -654,6 +655,168 @@ describe('Now Playing panel interactions', () => {
         expect(panel.root.classList.contains('is-track-transitioning')).toBe(false);
         panel.destroy();
     });
+
+    test('waits for the skipped track before rendering the queue advance', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const deps = dependencies();
+        const current = { id: 'current', title: 'Current', artist: { name: 'Artist' }, album: { cover: '/current.jpg' } };
+        const next = { id: 'next', title: 'Next', artist: { name: 'Artist' }, album: { cover: '/next.jpg' } };
+        const after = { id: 'after', title: 'After', artist: { name: 'Artist' }, album: { cover: '/after.jpg' } };
+        const queue = [current, next, after];
+        deps.player.currentTrack = current;
+        deps.player.currentQueueIndex = 0;
+        deps.player.getCurrentQueue = () => queue;
+        const panel = new NowPlayingPanel(deps);
+        await waitForPanel(panel);
+        await panel.render({ preserveScroll: true });
+        panel.activeView = 'queue';
+        panel.currentTrack = current;
+        panel.queueLayer.hidden = false;
+        panel.queueLayer.classList.add('is-visible');
+        panel.queueLayer.innerHTML = panel.renderQueue();
+        const nowPlayingBody = panel.content.querySelector('.now-playing-panel-body');
+
+        const readBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+        const getBoundingClientRect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect');
+        getBoundingClientRect.mockImplementation(function () {
+            if (this.matches('.queue-current-artwork img')) return new DOMRect(8, 80, 48, 48);
+            const row = this.matches('.queue-track-row') ? this : this.closest('.queue-track-row');
+            if (row) {
+                const rows = [...row.parentElement.querySelectorAll('.queue-track-row')];
+                const top = 160 + rows.indexOf(row) * 60;
+                return this === row ? new DOMRect(0, top, 320, 56) : new DOMRect(8, top, 48, 48);
+            }
+            return readBoundingClientRect.call(this);
+        });
+        const rowAnimations = vi.spyOn(HTMLElement.prototype, 'animate');
+
+        deps.player.currentQueueIndex = 1;
+        const renderQueueLayer = vi.spyOn(panel, 'renderQueueLayer');
+        panel.boundQueueChanged(
+            new CustomEvent('player-queue-changed', {
+                detail: { queue, currentIndex: 1, sourceContext: deps.player.sourceContext },
+            })
+        );
+        await panel.render({ preserveScroll: true });
+
+        expect(renderQueueLayer).not.toHaveBeenCalled();
+
+        deps.player.currentTrack = next;
+        const renderPanel = vi.spyOn(panel, 'render');
+        const updateBackground = vi.spyOn(panel.background, 'setFallbackSource');
+        const updateBackgroundSource = vi.spyOn(panel.background, 'setSource');
+        updateBackgroundSource.mockClear();
+        panel.boundTrackChanged(new CustomEvent('player-track-changed', { detail: { track: next } }));
+        window.dispatchEvent(
+            new CustomEvent('player-canvas-changed', {
+                detail: { trackId: 'next', track: { videoCoverUrl: '/next-video.mp4' } },
+            })
+        );
+        window.dispatchEvent(
+            new CustomEvent('track-metadata-updated', {
+                detail: { trackId: 'next', track: { title: 'Next metadata' } },
+            })
+        );
+
+        expect(renderPanel).not.toHaveBeenCalled();
+        expect(updateBackground).not.toHaveBeenCalled();
+        expect(updateBackgroundSource).not.toHaveBeenCalled();
+        expect(renderQueueLayer).toHaveBeenCalledTimes(1);
+        expect(panel.nowPlayingNeedsRender).toBe(true);
+        expect(panel.content.querySelector('.now-playing-panel-body')).toBe(nowPlayingBody);
+        expect(panel.queueLayer.querySelector('#queue-current-title .queue-current-title-text').textContent).toBe('Next');
+        const movedRowAnimationIndex = rowAnimations.mock.contexts.findIndex((element) =>
+            element.matches('.queue-track-row')
+        );
+        expect(movedRowAnimationIndex).toBeGreaterThanOrEqual(0);
+        expect(rowAnimations.mock.calls[movedRowAnimationIndex][0][0].transform).toContain('60px');
+        expect(rowAnimations.mock.contexts.filter((element) => element.matches('.queue-track-row'))).toHaveLength(1);
+        const afterRow = panel.queueLayer.querySelector('[data-track-id="after"]');
+        expect(afterRow.classList.contains('queue-track-row-static')).toBe(true);
+        expect(panel.queueLayer.querySelector('[data-track-id="after"]')).toBe(afterRow);
+        expect(panel.queueLayer.querySelector('[data-track-id="next"]')).toBeNull();
+        rowAnimations.mockRestore();
+        getBoundingClientRect.mockRestore();
+        panel.destroy();
+    });
+
+    test.each([
+        { mode: 'queue', insertionIndex: 3, expectedMovingRows: 0, duplicate: false },
+        { mode: 'next', insertionIndex: 1, expectedMovingRows: 2, duplicate: false },
+        { mode: 'next', insertionIndex: 1, expectedMovingRows: 2, duplicate: true },
+    ])(
+        'animates only newly added rows for $mode queue additions (duplicate: $duplicate)',
+        async ({ mode, insertionIndex, expectedMovingRows, duplicate }) => {
+            const { NowPlayingPanel } = await import('./now-playing-panel.js');
+            const deps = dependencies();
+            const current = { id: 'current', title: 'Current', artist: { name: 'Artist' }, album: { cover: '/current.jpg' } };
+            const next = { id: 'next', title: 'Next', artist: { name: 'Artist' }, album: { cover: '/next.jpg' } };
+            const after = { id: 'after', title: 'After', artist: { name: 'Artist' }, album: { cover: '/after.jpg' } };
+            const added = {
+                id: duplicate ? 'next' : 'added',
+                title: 'Added',
+                artist: { name: 'Artist' },
+                album: { cover: '/added.jpg' },
+            };
+            const queue = [current, next, after];
+            deps.player.currentTrack = current;
+            deps.player.currentQueueIndex = 0;
+            deps.player.getCurrentQueue = () => queue;
+            const panel = new NowPlayingPanel(deps);
+            await waitForPanel(panel);
+            await panel.render({ preserveScroll: true });
+            panel.activeView = 'queue';
+            panel.queueLayer.hidden = false;
+            panel.queueLayer.classList.add('is-visible');
+            panel.queueLayer.innerHTML = panel.renderQueue();
+
+            const readBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+            const getBoundingClientRect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect');
+            getBoundingClientRect.mockImplementation(function () {
+                const row = this.matches('.queue-track-row') ? this : this.closest('.queue-track-row');
+                if (row) {
+                    const rows = [...row.parentElement.querySelectorAll('.queue-track-row')];
+                    const top = 160 + rows.indexOf(row) * 60;
+                    return this === row ? new DOMRect(0, top, 320, 56) : new DOMRect(8, top, 48, 48);
+                }
+                return readBoundingClientRect.call(this);
+            });
+            const rowAnimations = vi.spyOn(HTMLElement.prototype, 'animate');
+
+            queue.splice(insertionIndex, 0, added);
+            window.dispatchEvent(
+                new CustomEvent('queue-tracks-added', {
+                    detail: { tracks: [added], mode, userInitiated: true },
+                })
+            );
+            window.dispatchEvent(
+                new CustomEvent('player-queue-changed', {
+                    detail: { queue, currentIndex: 0, sourceContext: deps.player.sourceContext },
+                })
+            );
+
+            const rows = [...panel.queueLayer.querySelectorAll('.queue-track-row')];
+            const addedRow = rows[insertionIndex - 1];
+            expect(addedRow.dataset.trackId).toBe(added.id);
+            expect(addedRow.classList.contains('queue-track-row-static')).toBe(false);
+            expect(addedRow.classList.contains('queue-track-row-added')).toBe(true);
+            expect(addedRow.dataset.queueAddedOrder).toBe('0');
+            rows.filter((row) => row !== addedRow).forEach((row) => {
+                expect(row.classList.contains('queue-track-row-static')).toBe(true);
+                expect(row.classList.contains('queue-track-row-added')).toBe(false);
+            });
+            const movedRows = rowAnimations.mock.contexts.filter((element) => element.matches('.queue-track-row'));
+            expect(movedRows).toHaveLength(expectedMovingRows + 1);
+            await panel.render({ preserveScroll: true });
+            expect([...panel.queueLayer.querySelectorAll('.queue-track-row')]).toEqual(rows);
+            expect(rowAnimations.mock.contexts.filter((element) => element.matches('.queue-track-row'))).toHaveLength(
+                expectedMovingRows + 1
+            );
+            panel.destroy();
+            rowAnimations.mockRestore();
+            getBoundingClientRect.mockRestore();
+        }
+    );
 
     test('does not rebuild the panel when pause saves an unchanged queue', async () => {
         const { NowPlayingPanel } = await import('./now-playing-panel.js');
