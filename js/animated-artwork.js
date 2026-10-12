@@ -93,8 +93,8 @@ function scanArtwork(root) {
     candidates.push(...(root.querySelectorAll?.('img[src], video[data-animated-artwork][src]') || []));
     for (const element of candidates) {
         const source = element.getAttribute('src') || '';
-        const forcedBlobVideo = source.startsWith('blob:') && element.dataset.artworkMime === 'video/mp4';
-        if ((isVideoArtwork(source) || forcedBlobVideo) !== (element.tagName === 'VIDEO')) {
+        const forcedVideo = element.dataset.artworkMime === 'video/mp4';
+        if ((isVideoArtwork(source) || forcedVideo) !== (element.tagName === 'VIDEO')) {
             renderArtworkElement(element, source);
         }
     }

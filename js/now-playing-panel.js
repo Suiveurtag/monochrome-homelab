@@ -2571,6 +2571,7 @@ export class NowPlayingPanel {
             video.playsInline = true;
             video.preload = 'auto';
             video.poster = model.artwork.staticSrc;
+            video.dataset.canvasHlsUrl = model.artwork.animatedSrc;
             stage.append(video);
         } else {
             const candidate = document.createElement('img');
@@ -2612,11 +2613,11 @@ export class NowPlayingPanel {
                 this.syncCanvasPlayback();
             });
         };
-        const fail = () => this.failCanvasMedia(video);
-        video.addEventListener('loadeddata', markReady, { once: true });
-        video.addEventListener('canplay', markReady, { once: true });
-        video.addEventListener('playing', markReady, { once: true });
-        video.addEventListener('error', fail, { once: true });
+        const handleLoadError = () => this.retryCanvasLoad(video);
+        video.addEventListener('loadeddata', markReady);
+        video.addEventListener('canplay', markReady);
+        video.addEventListener('playing', markReady);
+        video.addEventListener('error', handleLoadError);
         video.addEventListener('play', this.boundCanvasPlaybackStarted);
         video.addEventListener('pause', this.boundCanvasPlaybackInterrupted);
         video.addEventListener('stalled', this.boundCanvasPlaybackInterrupted);
@@ -2638,7 +2639,12 @@ export class NowPlayingPanel {
 
         this.armCanvasLoadTimeout(video);
         if (isHls && this.ui?.setupHlsVideo) {
-            await this.ui.setupHlsVideo(video, { hlsUrl: model.artwork.animatedSrc }, poster);
+            await this.ui.setupHlsVideo(video, { hlsUrl: model.artwork.animatedSrc }, poster, {
+                preserveOnError: true,
+                autoplay: false,
+                onReady: () => this.syncCanvasPlayback(),
+                onError: () => this.retryCanvasLoad(video),
+            });
         } else if (isVideoArtwork(model.artwork.animatedSrc)) {
             video.load?.();
         }
@@ -2649,14 +2655,47 @@ export class NowPlayingPanel {
         window.clearTimeout(this.canvasLoadTimer);
         this.canvasLoadTimer = window.setTimeout(() => {
             if (video !== this.canvasMedia || video.dataset.canvasReady === 'true') return;
-            if (this.canvasLoadRetryCount < CANVAS_LOAD_RETRY_LIMIT) {
-                this.canvasLoadRetryCount += 1;
-                video.load?.();
-                this.armCanvasLoadTimeout(video);
-                return;
-            }
-            this.failCanvasMedia(video);
+            this.retryCanvasLoad(video);
         }, CANVAS_LOAD_TIMEOUT);
+    }
+
+    retryCanvasLoad(video) {
+        if (video !== this.canvasMedia) return;
+        if (!video.isConnected) {
+            this.failCanvasMedia(video);
+            return;
+        }
+        window.clearTimeout(this.canvasLoadTimer);
+        this.canvasLoadTimer = null;
+        if (this.canvasLoadRetryCount >= CANVAS_LOAD_RETRY_LIMIT) {
+            this.failCanvasMedia(video);
+            return;
+        }
+
+        this.canvasLoadRetryCount += 1;
+        delete video.dataset.canvasReady;
+        this.canvasStage?.classList.remove('is-canvas-ready', 'is-canvas-playing');
+        this.canvasLoadTimer = window.setTimeout(() => {
+            this.canvasLoadTimer = null;
+            if (video !== this.canvasMedia || !video.isConnected) return;
+            this.armCanvasLoadTimeout(video);
+            const hlsUrl = video.dataset.canvasHlsUrl;
+            if (hlsUrl && this.ui?.setupHlsVideo) {
+                video._hls?.destroy?.();
+                video._hls = null;
+                const poster = this.canvasStage?.querySelector('.now-playing-panel-poster');
+                void this.ui
+                    .setupHlsVideo(video, { hlsUrl }, poster, {
+                        preserveOnError: true,
+                        autoplay: false,
+                        onReady: () => this.syncCanvasPlayback(),
+                        onError: () => this.retryCanvasLoad(video),
+                    })
+                    .catch(() => this.retryCanvasLoad(video));
+            } else {
+                video.load?.();
+            }
+        }, CANVAS_RETRY_DELAY);
     }
 
     failCanvasMedia(video = this.canvasMedia) {
@@ -2672,6 +2711,10 @@ export class NowPlayingPanel {
         this.canvasExpanded = false;
         this.canvasVisibilityObserver?.disconnect();
         this.canvasVisibilityObserver = null;
+        video.removeEventListener('play', this.boundCanvasPlaybackStarted);
+        video.removeEventListener('pause', this.boundCanvasPlaybackInterrupted);
+        video.removeEventListener('stalled', this.boundCanvasPlaybackInterrupted);
+        video.removeEventListener('waiting', this.boundCanvasPlaybackInterrupted);
         video._hls?.destroy?.();
         video.pause();
         video.removeAttribute('src');

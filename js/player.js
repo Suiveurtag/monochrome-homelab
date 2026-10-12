@@ -214,7 +214,7 @@ export class Player {
         }
 
         this.loadQueueState();
-        await this.hydrateRestoredQueueMetadata();
+        await this.hydrateQueueMetadata();
         window.addEventListener('track-metadata-updated', this.boundTrackMetadataUpdated);
         await this.setupMediaSession();
 
@@ -506,19 +506,28 @@ export class Player {
         }
     }
 
-    async hydrateRestoredQueueMetadata() {
+    async hydrateQueueMetadata() {
         const getTracks = this.api?.getAPI?.()?.getTracks;
         if (typeof getTracks !== 'function' || (!this.queue.length && !this.shuffledQueue.length)) return;
 
+        const queueGeneration = this._queueGeneration || 0;
         try {
             const latestTracks = await getTracks.call(this.api.getAPI());
+            if (queueGeneration !== (this._queueGeneration || 0)) return;
+
+            const currentQueue = this.getCurrentQueue();
+            const currentTrackBeforeHydration =
+                this.currentQueueIndex >= 0 && this.currentQueueIndex < currentQueue.length
+                    ? currentQueue[this.currentQueueIndex]
+                    : this.currentTrack;
+            const currentTrackId = currentTrackBeforeHydration?.id == null ? null : String(currentTrackBeforeHydration.id);
+            const currentCanvasBeforeHydration = getTrackPlayerCanvas(currentTrackBeforeHydration);
             const hydrated = hydrateQueuedTracks(
-                [this.queue, this.shuffledQueue, this.originalQueueBeforeShuffle],
+                [this.queue, this.shuffledQueue, this.originalQueueBeforeShuffle, [this.currentTrack]],
                 latestTracks
             );
             if (!hydrated) return;
 
-            const currentQueue = this.getCurrentQueue();
             if (this.currentQueueIndex >= 0 && this.currentQueueIndex < currentQueue.length) {
                 this.currentTrack = currentQueue[this.currentQueueIndex];
             }
@@ -531,8 +540,21 @@ export class Player {
                 repeatMode: this.repeatMode,
                 sourceContext: this.sourceContext,
             });
+
+            const currentCanvas = getTrackPlayerCanvas(this.currentTrack);
+            if (
+                currentTrackId &&
+                currentTrackId === String(this.currentTrack?.id ?? '') &&
+                currentCanvas !== currentCanvasBeforeHydration
+            ) {
+                window.dispatchEvent(
+                    new CustomEvent('player-canvas-changed', {
+                        detail: { trackId: currentTrackId, track: this.currentTrack },
+                    })
+                );
+            }
         } catch (error) {
-            console.warn('[Player] Could not refresh restored queue metadata:', error);
+            console.warn('[Player] Could not refresh queue metadata:', error);
         }
     }
 
@@ -2463,6 +2485,7 @@ export class Player {
         };
         this.preloadCache.clear();
         await this.saveQueueState();
+        void this.hydrateQueueMetadata();
     }
 
     async switchTrackVersion(track) {
@@ -2574,6 +2597,7 @@ export class Player {
             await this.playTrackFromQueue(0, 0);
         }
         await this.saveQueueState({ type: 'insert', mode: 'queue', index: insertionIndex, count: tracks.length });
+        void this.hydrateQueueMetadata();
     }
 
     async addNextToQueue(trackOrTracks) {
@@ -2605,6 +2629,7 @@ export class Player {
         } catch {}
 
         await this.saveQueueState({ type: 'insert', mode: 'next', index: insertIndex, count: tracks.length });
+        void this.hydrateQueueMetadata();
         this.preloadNextTracks(); // Update preload since next track changed
     }
 

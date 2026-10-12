@@ -39,7 +39,10 @@ function resolveArtwork(track, api) {
         staticSrc,
         animatedSrc,
         heroSrc: animatedSrc || staticSrc,
-        isVideo: Boolean(animatedSrc && (isVideoArtwork(animatedSrc) || /\.m3u8(?:$|[?#])/i.test(animatedSrc))),
+        isVideo: Boolean(
+            animatedSrc &&
+                (explicitAnimated || isVideoArtwork(animatedSrc) || /\.m3u8(?:$|[?#])/i.test(animatedSrc))
+        ),
     };
 }
 

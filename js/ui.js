@@ -58,7 +58,7 @@ import { bindPlaylistReordering } from './playlist-reordering.js';
 import { shuffleTracks } from './recommendation-settings.js';
 import { realRandom } from './recommendation-engine.js';
 import { AlbumCoverInspector } from './album-cover-inspector.js';
-import { getTrackDisplayAlbum } from './track-versions.js';
+import { getTrackDisplayAlbum, getTrackPlayerCanvas } from './track-versions.js';
 import {
     applyTrackSaveStateToButton,
     buildTrackSaveStateSnapshot,
@@ -1575,12 +1575,16 @@ export class UIRenderer {
 
             const artworkSources = getArtworkSources({
                 cover: track.image || track.cover || track.album?.cover,
-                animatedCover: null,
+                animatedCover:
+                    getTrackPlayerCanvas(track) ||
+                    track.animatedCover ||
+                    track.album?.videoCoverUrl ||
+                    track.album?.animatedCover,
                 coverFallback:
                     track.coverFallback || track.staticCover || track.album?.coverFallback || track.album?.staticCover,
             });
             const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-            const videoCoverUrl = reducedMotion ? null : artworkSources.animated || null;
+            const videoCoverUrl = reducedMotion ? null : getTrackPlayerCanvas(track) || artworkSources.animated || null;
             const staticCover = artworkSources.static || '/assets/appicon.png';
             const coverUrl = /^(?:data:|blob:|https?:|\/)/i.test(String(staticCover))
                 ? staticCover
@@ -1599,9 +1603,16 @@ export class UIRenderer {
 
             if (videoCoverUrl) {
                 const isPaused = this.player?.activeElement?.paused ?? true;
+                const isHlsCanvas = /\.m3u8(?:$|[?#])/i.test(videoCoverUrl);
+                const createFallbackImage = () => {
+                    const fallback = document.createElement('img');
+                    fallback.src = coverUrl;
+                    fallback.id = currentImage.id;
+                    fallback.className = currentImage.className;
+                    return fallback;
+                };
                 if (currentImage.tagName === 'IMG') {
                     const video = document.createElement('video');
-                    video.src = videoCoverUrl;
                     video.autoplay = !isPaused;
                     video.loop = true;
                     video.muted = true;
@@ -1610,15 +1621,35 @@ export class UIRenderer {
                     video.className = currentImage.className;
                     video.id = currentImage.id;
                     video.style.objectFit = 'cover';
+                    video.dataset.fullscreenCanvasUrl = videoCoverUrl;
+                    currentImage.src = coverUrl;
                     currentImage.replaceWith(video);
-                    if (!isPaused) {
+                    if (isHlsCanvas) {
+                        void this.setupHlsVideo(video, { hlsUrl: videoCoverUrl }, currentImage, {
+                            autoplay: !isPaused,
+                        });
+                    } else {
+                        video.src = videoCoverUrl;
+                    }
+                    if (!isHlsCanvas && !isPaused) {
                         video.play().catch(() => {});
                     }
-                } else if (currentImage.src !== videoCoverUrl) {
-                    currentImage.src = videoCoverUrl;
-                    if (!isPaused) {
-                        currentImage.play().catch(() => {});
+                } else if (currentImage.dataset.fullscreenCanvasUrl !== videoCoverUrl) {
+                    const fallback = createFallbackImage();
+                    currentImage._hls?.destroy?.();
+                    currentImage._hls = null;
+                    currentImage.removeAttribute('src');
+                    currentImage.dataset.fullscreenCanvasUrl = videoCoverUrl;
+                    currentImage.autoplay = !isPaused;
+                    if (isHlsCanvas) {
+                        void this.setupHlsVideo(currentImage, { hlsUrl: videoCoverUrl }, fallback, {
+                            autoplay: !isPaused,
+                        });
                     } else {
+                        currentImage.src = videoCoverUrl;
+                        if (!isPaused) currentImage.play().catch(() => {});
+                    }
+                    if (isPaused) {
                         currentImage.pause();
                     }
                 } else {
@@ -1630,6 +1661,9 @@ export class UIRenderer {
                 }
             } else {
                 if (currentImage.tagName === 'VIDEO') {
+                    currentImage._hls?.destroy?.();
+                    currentImage._hls = null;
+                    currentImage.pause();
                     const img = document.createElement('img');
                     img.src = coverUrl;
                     img.id = currentImage.id;
@@ -4000,19 +4034,23 @@ export class UIRenderer {
         return items.filter((item) => !favoriteIds.has(item.id));
     }
 
-    async setupHlsVideo(video, result, fallbackImg) {
+    async setupHlsVideo(video, result, fallbackImg, options = {}) {
         if (!result) return;
         const url = typeof result === 'string' ? result : result.videoUrl || result.hlsUrl;
         if (!url) return;
+        const isHlsUrl = /\.m3u8(?:$|[?#])/i.test(url) || /application\/vnd\.apple\.mpegurl/i.test(url);
 
-        if (url.endsWith('.m3u8')) {
+        if (isHlsUrl) {
             const Hls = (await import('hls.js')).default;
+            if (!video.isConnected) return;
             if (Hls.isSupported()) {
                 const hls = new Hls();
                 video._hls = hls;
                 hls.loadSource(url);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    options.onReady?.();
+                    if (options.autoplay === false) return;
                     video.play().catch((e) => {
                         console.warn('Autoplay failed, muted play might be required:', e);
                         video.muted = true;
@@ -4022,15 +4060,24 @@ export class UIRenderer {
                 hls.on(Hls.Events.ERROR, (_event, data) => {
                     if (data.fatal) {
                         console.warn('HLS fatal error:', data.type);
-                        video.replaceWith(fallbackImg);
                         hls.destroy();
+                        if (video._hls === hls) video._hls = null;
+                        if (options.preserveOnError) {
+                            options.onError?.(data);
+                        } else if (fallbackImg && video.isConnected) {
+                            video.replaceWith(fallbackImg);
+                        }
                     }
                 });
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                 // safari supports HLS natively
                 video.src = url;
             } else {
-                video.replaceWith(fallbackImg);
+                if (options.preserveOnError) {
+                    options.onError?.();
+                } else if (fallbackImg && video.isConnected) {
+                    video.replaceWith(fallbackImg);
+                }
             }
         } else {
             // MP4
@@ -4042,6 +4089,7 @@ export class UIRenderer {
             });
         }
         video.onerror = async () => {
+            if (options.preserveOnError) return;
             if (result.hlsUrl) {
                 // HLS fallback (for some reason alot of animated covers js dont work on MP4 lol)
                 await this.setupHlsVideo(video, { videoUrl: null, hlsUrl: result.hlsUrl }, fallbackImg);

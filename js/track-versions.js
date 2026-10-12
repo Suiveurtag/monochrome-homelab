@@ -82,10 +82,17 @@ export function getTrackPlayerArtwork(track, allTracks = []) {
 
 export function getTrackPlayerCanvas(track, allTracks = []) {
     if (track?.useOriginalTrackAssets === false) {
-        return track?.videoUrl || track?.videoCoverUrl || track?.album?.videoCoverUrl || null;
+        return track?.serverCanvasUrl || track?.videoUrl || track?.videoCoverUrl || track?.album?.videoCoverUrl || null;
     }
     const mainTrack = getTrackVersionMainTrack(track, allTracks);
-    return mainTrack?.videoUrl || mainTrack?.videoCoverUrl || mainTrack?.album?.videoCoverUrl || null;
+    return (
+        mainTrack?.serverCanvasUrl ||
+        mainTrack?.videoUrl ||
+        mainTrack?.videoCoverUrl ||
+        mainTrack?.album?.videoCoverUrl ||
+        track?.versionMainAlbum?.videoCoverUrl ||
+        null
+    );
 }
 
 export function hydrateTrackVersionDisplayMetadata(tracks = []) {
