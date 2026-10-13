@@ -1243,8 +1243,11 @@ body.site-intro-active {
 }
 
 .access-brand img {
-    width: 24px;
-    height: 24px;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    background: transparent;
     filter: brightness(0) invert(1);
 }
 
@@ -5029,6 +5032,8 @@ body.multi-select-mode .track-item:hover {
 .now-playing-panel *,
 .track-save-floating-panel,
 .track-save-floating-panel *,
+.access-gate,
+.access-gate *,
 .modal-content h1,
 .modal-content h2,
 .modal-content h3,
