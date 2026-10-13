@@ -81,7 +81,24 @@ export function createRouter(ui) {
 
         switch (page) {
             case 'login':
+                const appContainer = document.querySelector('.app-container');
+                if (appContainer && !document.body.classList.contains('login-page-active')) {
+                    document.body.classList.add('login-page-fading');
+                    await new Promise((resolve) => {
+                        const finish = () => {
+                            appContainer.removeEventListener('transitionend', onTransitionEnd);
+                            window.clearTimeout(fallback);
+                            resolve();
+                        };
+                        const onTransitionEnd = (event) => {
+                            if (event.target === appContainer && event.propertyName === 'opacity') finish();
+                        };
+                        const fallback = window.setTimeout(finish, 240);
+                        appContainer.addEventListener('transitionend', onTransitionEnd);
+                    });
+                }
                 document.body.classList.add('login-page-active');
+                document.body.classList.remove('login-page-fading');
                 await ui.showPage('home');
                 await showLoginPage();
                 break;

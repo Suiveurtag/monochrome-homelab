@@ -1037,6 +1037,11 @@ body.login-page-active .app-container {
     display: none;
 }
 
+body.login-page-fading .app-container {
+    opacity: 0;
+    transition: opacity 180ms ease-out;
+}
+
 .sr-only {
     position: absolute;
     width: 1px;
