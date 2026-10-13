@@ -4,7 +4,7 @@ import I_LOCK from '!lucide/lock-keyhole.svg?svg&icon';
 import I_PLAY from '!lucide/play.svg?svg&icon';
 import I_MUSIC from '!lucide/audio-lines.svg?svg&icon';
 import I_REFRESH from '!lucide/refresh-cw.svg?svg&icon';
-import { animateStatsScene } from './listening-stats-scene.js';
+import { animateStatsScene, syncStatsSegments, transitionStatsContent } from './listening-stats-scene.js';
 import { pb } from './accounts/config.js';
 import { listeningTimezoneOffsets } from './listening-timezone.js';
 
@@ -81,6 +81,7 @@ class ListeningStats {
                 if (chart) chart.innerHTML = this.chart();
             }
             compactChart = compact;
+            syncStatsSegments(this.root);
         });
         this.resizeObserver.observe(this.root);
         this.root.addEventListener('click', (event) => void this.click(event));
@@ -173,7 +174,10 @@ class ListeningStats {
         const generation = ++this.generation;
         const uid = pb.authStore.record?.id;
         const content = this.root.querySelector('#stats-content');
-        if (!quiet) {
+        const retained = !quiet && Boolean(this.data?.summary);
+        content.classList.toggle('stats-pending', retained);
+        content.inert = retained;
+        if (!quiet && !retained) {
             this.data = null;
             content.innerHTML =
                 '<div class="stats-loading" role="status"><span></span><span></span><p>Loading your listening…</p></div>';
@@ -192,6 +196,17 @@ class ListeningStats {
             }
             const data = await this.request();
             if (generation !== this.generation || uid !== pb.authStore.record?.id || !this.active()) return;
+            if (
+                quiet &&
+                this.data?.summary &&
+                data.summary &&
+                JSON.stringify({ ...this.data, generatedAt: 0 }) === JSON.stringify({ ...data, generatedAt: 0 })
+            ) {
+                this.data = data;
+                this.root.querySelector('#stats-export').disabled = false;
+                this.updateControls();
+                return;
+            }
             this.data = data;
             this.updateControls();
             if (data.locked) {
@@ -212,18 +227,21 @@ class ListeningStats {
                 focused &&
                 ['data-chart-point', 'data-hour', 'data-play-track'].find((attr) => focused.hasAttribute(attr));
             const focusValue = focusAttr ? focused.getAttribute(focusAttr) : null;
-            content.classList.toggle('stats-update', quiet);
-            this.render();
+            content.classList.toggle('stats-update', quiet || retained);
+            this.render(retained ? Number(content.querySelector('[data-count]')?.dataset.count) : undefined);
+            if (retained) transitionStatsContent(content);
             if (quiet && focusAttr)
                 this.root.querySelector(`[${focusAttr}="${CSS.escape(focusValue)}"]`)?.focus({ preventScroll: true });
-            if (quiet) this.root.querySelector('#stats-content').classList.add('stats-update');
-            else this.root.querySelector('#stats-content').classList.remove('stats-update');
         } catch (error) {
             if (generation !== this.generation) return;
             this.data = null;
             content.innerHTML = `${this.message('Your stats could not be loaded', error.status === 0 ? 'The server is unreachable. Check your connection and retry; pending listens stay on this device.' : 'Please retry. If the problem continues, contact your instance administrator.', I_REFRESH)}<button type="button" class="btn-secondary stats-retry" data-stats-action="retry">Retry</button>`;
         } finally {
-            if (generation === this.generation) this.root.removeAttribute('aria-busy');
+            if (generation === this.generation) {
+                this.root.removeAttribute('aria-busy');
+                content.classList.remove('stats-pending');
+                content.inert = false;
+            }
         }
     }
     message(title, text, icon) {
@@ -238,7 +256,13 @@ class ListeningStats {
             button.innerHTML = `${periods[button.dataset.period]}${long && locked ? I_LOCK(12) : ''}`;
             button.title = long && locked ? 'Locked for the annual recap' : '';
         }
-        this.root.querySelector('#stats-period-label').textContent = periodLabel(this.data, this.anchor, this.period);
+        const label = this.root.querySelector('#stats-period-label');
+        const nextLabel = periodLabel(this.data, this.anchor, this.period);
+        if (label.textContent !== nextLabel) {
+            label.textContent = nextLabel;
+            transitionStatsContent(label);
+        }
+        syncStatsSegments(this.root);
         const input = this.root.querySelector('#stats-date');
         input.value = this.anchor;
         input.max = dateKey();
@@ -256,7 +280,7 @@ class ListeningStats {
                     : +current > +today - ((today.getDay() + 6) % 7) * 86400000;
         this.root.querySelector('[data-stats-action="next"]').disabled = this.period === 'lifetime' || same;
     }
-    render() {
+    render(startCount) {
         const d = this.data,
             s = d.summary;
         const comparison =
@@ -278,7 +302,7 @@ class ListeningStats {
                         <div class="stats-cover-fan" data-cover-count="${favorites.length}"><svg class="stats-orbit" viewBox="0 0 600 350" aria-hidden="true"><ellipse cx="300" cy="175" rx="284" ry="63" transform="rotate(-19 300 175)"/></svg>
                         ${favorites.map((track, i) => `<button type="button" class="stats-cover-card stats-cover-${i}" data-play-track="${escape(track.id)}" aria-label="Play ${escape(track.title)}" style="--stats-order:${i}">${cover(track)}<span class="stats-cover-play">${I_PLAY(24)}</span></button>`).join('')}
                         ${!most ? `<div class="stats-no-cover">${I_MUSIC(48)}<span>Your next favorite starts with a listen.</span></div>` : ''}</div>
-                        ${most ? `<div class="stats-showcase-caption"><span><strong><span class="stats-most-label">Your most played · </span>${escape(most.title)}</strong><span>${escape((most.artists || []).map((a) => a.name).join(', '))}</span></span><button type="button" class="stats-hero-play" data-play-track="${escape(most.id)}" aria-label="Play ${escape(most.title)}">${I_PLAY(22)}</button></div>` : ''}
+                        ${most ? `<div class="stats-showcase-caption"><span><strong><span class="stats-most-label">Your most played ·&nbsp;</span>${escape(most.title)}</strong><span>${escape((most.artists || []).map((a) => a.name).join(', '))}</span></span><button type="button" class="stats-hero-play" data-play-track="${escape(most.id)}" aria-label="Play ${escape(most.title)}">${I_PLAY(22)}</button></div>` : ''}
                     </div>
                 </div>
                 <section class="stats-trend" aria-labelledby="stats-trend-title"><div class="stats-section-header"><div><h2 id="stats-trend-title">Listening activity</h2><p>${this.period === 'day' ? 'Hour by hour' : this.period === 'year' ? 'Month by month' : this.period === 'lifetime' ? 'Year by year' : 'Day by day'}</p></div><div class="stats-segments" role="group" aria-label="Chart measure"><button type="button" data-unit="minutes" aria-pressed="${this.unit === 'minutes'}">Minutes</button><button type="button" data-unit="streams" aria-pressed="${this.unit === 'streams'}">Streams</button></div></div><div id="stats-chart">${this.chart()}</div></section>
@@ -291,7 +315,8 @@ class ListeningStats {
 </div></div>
             <section class="stats-history" aria-labelledby="stats-history-title"><div class="stats-section-header"><div><h2 id="stats-history-title">Listening history</h2><p>Every stream, including repeats</p></div><span>${count(d.historyTotal)} streams</span></div><div id="stats-history-list">${this.history()}</div><div class="stats-history-footer"><span>Page ${count(d.historyPage)} of ${count(Math.max(1, Math.ceil(d.historyTotal / 30)))}</span><div><button type="button" class="stats-icon-button" data-stats-action="history-previous" aria-label="Previous history page" ${d.historyPage <= 1 ? 'disabled' : ''}>${I_CHEVRON_LEFT(18)}</button><button type="button" class="stats-icon-button" data-stats-action="history-next" aria-label="Next history page" ${d.historyPage * 30 >= d.historyTotal ? 'disabled' : ''}>${I_CHEVRON_RIGHT(18)}</button></div></div></section>
             <p class="stats-footnote">A playback session counts once after 30 seconds of heard audio. Pauses and seeks do not add listening time. Only new listens are included; earlier device history cannot be reconstructed reliably. Updated ${new Date(d.generatedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}.</p>`;
-        animateStatsScene(this.root);
+        animateStatsScene(this.root, startCount);
+        syncStatsSegments(this.root);
     }
     chart() {
         const items = this.data.activity;
@@ -299,10 +324,12 @@ class ListeningStats {
         const max = Math.max(1, ...values);
         const ceiling = Math.ceil(max / 4) * 4;
         const width = this.root.clientWidth <= 560 ? 400 : 1000;
+        const height = width === 400 ? 240 : 160;
+        const baseline = height - 46;
         const right = width - 32;
         const span = right - 48;
         const x = (i) => 48 + (i / Math.max(1, items.length - 1)) * span;
-        const y = (value) => 194 - (value / ceiling) * 160;
+        const y = (value) => baseline - (value / ceiling) * (height - 80);
         const coordinates = values.map((v, i) => [x(i), y(v)]);
         const curve = coordinates
             .map(([px, py], i) =>
@@ -311,6 +338,17 @@ class ListeningStats {
                     : `C ${coordinates[i - 1][0] + (px - coordinates[i - 1][0]) / 2},${coordinates[i - 1][1]} ${px - (px - coordinates[i - 1][0]) / 2},${py} ${px},${py}`
             )
             .join(' ');
+        const stems = values
+            .flatMap((value, i) =>
+                Array.from({ length: i < values.length - 1 ? 12 : 1 }, (_, step) => {
+                    const t = step / 12;
+                    const smooth = t * t * (3 - 2 * t);
+                    const height = y(value + ((values[i + 1] ?? value) - value) * smooth);
+                    const px = x(i) + (i < values.length - 1 ? (x(i + 1) - x(i)) * t : 0);
+                    return `<line class="stats-chart-stem" x1="${px}" x2="${px}" y1="${height}" y2="${baseline}"/>`;
+                })
+            )
+            .join('');
         const ticks = [
             ...new Set([
                 0,
@@ -320,18 +358,18 @@ class ListeningStats {
                 items.length - 1,
             ]),
         ];
-        return `<figure class="stats-chart-figure"><div class="stats-chart-tooltip" hidden aria-hidden="true"></div><svg class="stats-chart-svg" viewBox="0 0 ${width} 240" preserveAspectRatio="none" role="group" aria-labelledby="stats-chart-caption">
+        return `<figure class="stats-chart-figure"><div class="stats-chart-tooltip" hidden aria-hidden="true"></div><svg class="stats-chart-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="group" aria-labelledby="stats-chart-caption">
             <defs><linearGradient id="stats-line-colors"><stop stop-color="var(--stats-color-0)"/><stop offset=".5" stop-color="var(--stats-color-1)"/><stop offset="1" stop-color="var(--stats-color-2)"/></linearGradient><linearGradient id="stats-area-color" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--stats-color-0)" stop-opacity=".22"/><stop offset="1" stop-color="var(--stats-color-1)" stop-opacity="0"/></linearGradient></defs>
             ${[0, 2, 4].map((i) => `<line class="stats-gridline" x1="48" x2="${right}" y1="${y((ceiling * i) / 4)}" y2="${y((ceiling * i) / 4)}"/><text x="32" y="${y((ceiling * i) / 4) + 4}" text-anchor="end">${count((ceiling * i) / 4)}</text>`).join('')}
-            ${values.some((v) => v > 0) ? `<path class="stats-chart-area" d="${curve} L ${x(items.length - 1)},194 L ${x(0)},194 Z"/><path class="stats-chart-line" d="${curve}" pathLength="1"/>${values.map((v, i) => `<circle class="stats-chart-dot" data-point-dot="${i}" cx="${x(i)}" cy="${y(v)}" r="3"/>`).join('')}` : `<text class="stats-no-activity" x="${width / 2}" y="115" text-anchor="middle">No listening activity in this period</text>`}
+            ${values.some((v) => v > 0) ? `${stems}<path class="stats-chart-area" d="${curve} L ${x(items.length - 1)},${baseline} L ${x(0)},${baseline} Z"/><path class="stats-chart-line" d="${curve}" pathLength="1"/>${values.map((v, i) => `<circle class="stats-chart-dot" data-point-dot="${i}" cx="${x(i)}" cy="${y(v)}" r="3"/>`).join('')}` : `<text class="stats-no-activity" x="${width / 2}" y="${height / 2}" text-anchor="middle">No listening activity in this period</text>`}
             ${ticks
                 .filter((i) => i >= 0)
                 .map(
                     (i) =>
-                        `<text x="${x(i)}" y="224" text-anchor="middle">${escape(labelFor(items[i].key, this.period))}</text>`
+                        `<text x="${x(i)}" y="${height - 16}" text-anchor="middle">${escape(labelFor(items[i].key, this.period))}</text>`
                 )
                 .join('')}
-            ${items.map((p, i) => `<rect class="stats-chart-hit" x="${x(i) - Math.min(20, span / Math.max(1, items.length) / 2)}" y="30" width="${Math.min(40, span / Math.max(1, items.length))}" height="165" tabindex="0" role="button" data-chart-point="${i}" aria-label="${escape(fullLabel(p.key, this.period))}: ${minutes(p.seconds)} minutes, ${count(p.streams)} streams"/>`).join('')}
+            ${items.map((p, i) => `<rect class="stats-chart-hit" x="${x(i) - Math.min(20, span / Math.max(1, items.length) / 2)}" y="20" width="${Math.min(40, span / Math.max(1, items.length))}" height="${height - 65}" tabindex="0" role="button" data-chart-point="${i}" aria-label="${escape(fullLabel(p.key, this.period))}: ${minutes(p.seconds)} minutes, ${count(p.streams)} streams"/>`).join('')}
             </svg><figcaption id="stats-chart-caption"><span>Hover, tap or use arrow keys to explore</span><strong id="stats-chart-detail" aria-live="polite">${minutes(this.data.summary.seconds)} min · ${count(this.data.summary.streams)} streams</strong></figcaption></figure>`;
     }
     showPoint(index) {
@@ -358,17 +396,29 @@ class ListeningStats {
         const total = this.data.artistSeconds;
         const shown = data.reduce((sum, artist) => sum + artist.seconds, 0);
         const entries = total > shown ? [...data, { name: 'Other artists', seconds: total - shown }] : data;
-        let offset = 0;
-        return `<div class="stats-rotation"><svg class="stats-donut" viewBox="0 0 160 160" role="img" aria-label="Artist listening time distribution"><circle class="stats-donut-track" cx="80" cy="80" r="62"/>${entries
+        let offset = -90;
+        const polar = (angle) => [
+            80 + 62 * Math.cos((angle * Math.PI) / 180),
+            80 + 62 * Math.sin((angle * Math.PI) / 180),
+        ];
+        const arcs = entries
             .map((entry, i) => {
-                const share = total ? (entry.seconds / total) * 100 : 0;
-                const out = `<circle class="stats-donut-segment" cx="80" cy="80" r="62" pathLength="100" stroke="${tones[i]}" stroke-dasharray="${share} ${100 - share}" stroke-dashoffset="${-offset}" transform="rotate(-90 80 80)"><title>${escape(entry.name)}: ${Math.round(share)}%</title></circle>`;
-                offset += share;
-                return out;
+                const share = total > 0 ? Math.max(0, entry.seconds / total) : 0;
+                const sweep = share * 360;
+                const start = offset;
+                offset += sweep;
+                if (!share) return '';
+                const gap = entries.length === 1 ? 0 : Math.min(9, sweep * 0.35);
+                const [sx, sy] = polar(start + gap / 2);
+                const [ex, ey] = polar(start + sweep - gap / 2);
+                const path =
+                    share >= 0.999
+                        ? `M 80 18 A 62 62 0 1 1 79.99 18`
+                        : `M ${sx} ${sy} A 62 62 0 ${sweep - gap > 180 ? 1 : 0} 1 ${ex} ${ey}`;
+                return `<path class="stats-donut-segment" d="${path}" pathLength="1" style="--stats-order:${i}" stroke="${tones[i % tones.length]}"><title>${escape(entry.name)}: ${Math.round(share * 100)}%</title></path>`;
             })
-            .join(
-                ''
-            )}<text x="80" y="79" text-anchor="middle">${count(this.data.summary.artists)}</text><text class="stats-donut-label" x="80" y="98" text-anchor="middle">artists</text></svg><ul class="stats-legend">${entries.length ? entries.map((a, i) => `<li><span class="stats-swatch" style="--stats-tone:${tones[i]}"></span>${a.id ? `<a href="/artist/${encodeURIComponent(a.id)}">${escape(a.name)}</a>` : `<span>${escape(a.name)}</span>`}<strong>${Math.round((a.seconds / total) * 100)}%</strong></li>`).join('') : '<li class="stats-muted">Your artists will appear after your first stream.</li>'}</ul></div>`;
+            .join('');
+        return `<div class="stats-rotation"><svg class="stats-donut" viewBox="0 0 160 160" role="img" aria-label="Artist listening time distribution"><circle class="stats-donut-track" cx="80" cy="80" r="62"/>${arcs}<text x="80" y="79" text-anchor="middle">${count(this.data.summary.artists)}</text><text class="stats-donut-label" x="80" y="98" text-anchor="middle">artists</text></svg><ul class="stats-legend">${entries.length ? entries.map((a, i) => `<li><span class="stats-swatch" style="--stats-tone:${tones[i % tones.length]}"></span>${a.id ? `<a href="/artist/${encodeURIComponent(a.id)}">${escape(a.name)}</a>` : `<span>${escape(a.name)}</span>`}<strong>${total > 0 ? Math.round((a.seconds / total) * 100) : 0}%</strong></li>`).join('') : '<li class="stats-muted">Your artists will appear after your first stream.</li>'}</ul></div>`;
     }
     hours() {
         const max = Math.max(1, ...this.data.hours);
@@ -402,15 +452,18 @@ class ListeningStats {
         if (button.dataset.unit && this.data?.summary) {
             this.unit = button.dataset.unit;
             this.root.querySelector('#stats-chart').innerHTML = this.chart();
+            transitionStatsContent(this.root.querySelector('#stats-chart'));
             for (const b of this.root.querySelectorAll('[data-unit]'))
                 b.setAttribute('aria-pressed', String(b.dataset.unit === this.unit));
         }
         if (button.dataset.rank && this.data?.summary) {
             this.rank = button.dataset.rank;
             this.root.querySelector('#stats-rank-list').innerHTML = this.ranking();
+            transitionStatsContent(this.root.querySelector('#stats-rank-list'));
             for (const b of this.root.querySelectorAll('[data-rank]'))
                 b.setAttribute('aria-pressed', String(b.dataset.rank === this.rank));
         }
+        syncStatsSegments(this.root);
         if (button.dataset.chartPoint !== undefined) this.showPoint(Number(button.dataset.chartPoint));
         if (button.dataset.hour !== undefined) {
             const hour = Number(button.dataset.hour);

@@ -1191,6 +1191,52 @@ body.site-intro-active {
     display: none;
 }
 
+.access-gate.access-gate-exiting {
+    pointer-events: none;
+}
+
+.access-gate.access-gate-exiting::after {
+    position: fixed;
+    z-index: 20;
+    top: var(--access-unlock-y, 50%);
+    left: var(--access-unlock-x, 50%);
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgb(74 222 128 / 0.4), rgb(34 197 94 / 0.18) 36%, transparent 72%);
+    content: '';
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0.35);
+    animation: access-gate-unlock-wave 300ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes access-gate-unlock-wave {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.35);
+    }
+
+    24% {
+        opacity: 0.85;
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(var(--access-unlock-exit-scale, 8));
+    }
+}
+
+@keyframes access-gate-unlock-wave-reduced {
+    0%,
+    100% {
+        opacity: 0;
+    }
+
+    35% {
+        opacity: 0.3;
+    }
+}
+
 .dot-field-container {
     position: absolute;
     inset: 0;
@@ -2128,6 +2174,10 @@ body.site-intro-active {
     .access-card {
         opacity: 1;
         transform: none;
+    }
+
+    .access-gate.access-gate-exiting::after {
+        animation: access-gate-unlock-wave-reduced 180ms ease-out both;
     }
 
     .access-gate.access-gate-ready .access-card,

@@ -190,6 +190,39 @@ async function playAccessGrantedAnimation(card, message) {
     card.removeAttribute('aria-busy');
 }
 
+async function playAccessGateExitAnimation(gate, card) {
+    if (!gate) return;
+
+    document.body.classList.remove('login-page-active', 'login-page-fading');
+    const icon = card?.querySelector('.access-card-icon');
+    if (icon) {
+        const rect = icon.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        const farthestX = Math.max(x, window.innerWidth - x);
+        const farthestY = Math.max(y, window.innerHeight - y);
+        gate.style.setProperty('--access-unlock-x', `${x}px`);
+        gate.style.setProperty('--access-unlock-y', `${y}px`);
+        gate.style.setProperty('--access-unlock-exit-scale', String(Math.hypot(farthestX, farthestY) / 100 + 0.1));
+    }
+
+    gate.classList.add('access-gate-exiting');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const fade = gate.animate([{ opacity: 1 }, { opacity: 0 }], {
+        duration: reducedMotion ? 180 : 280,
+        easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+        fill: 'forwards',
+    });
+    await fade.finished.catch(() => {});
+
+    gate.hidden = true;
+    gate.classList.remove('access-gate-exiting');
+    gate.style.removeProperty('--access-unlock-x');
+    gate.style.removeProperty('--access-unlock-y');
+    gate.style.removeProperty('--access-unlock-exit-scale');
+    document.body.classList.remove('access-gated');
+}
+
 export async function enforceAccessGate({ onReady } = {}) {
     await authManager.ready;
     const config = await loadAppConfig();
@@ -266,8 +299,7 @@ export async function enforceAccessGate({ onReady } = {}) {
                 const user = await authManager.signInWithEmail(email.value.trim(), password.value, { silent: true });
                 if (user.access_status !== 'active') throw new Error('Account not active');
                 await playAccessGrantedAnimation(card, message);
-                gate.hidden = true;
-                document.body.classList.remove('access-gated');
+                await playAccessGateExitAnimation(gate, card);
                 resolve();
             } catch {
                 setMessage(
@@ -363,8 +395,7 @@ export async function showLoginPage() {
                     const user = await authManager.signInWithEmail(email.value.trim(), password.value, { silent: true });
                     if (user.access_status !== 'active') throw new Error('Account not active');
                     await playAccessGrantedAnimation(card, message);
-                    gate.hidden = true;
-                    document.body.classList.remove('access-gated');
+                    await playAccessGateExitAnimation(gate, card);
                     window.history.replaceState({}, '', '/');
                     window.dispatchEvent(new PopStateEvent('popstate'));
                 } catch {
