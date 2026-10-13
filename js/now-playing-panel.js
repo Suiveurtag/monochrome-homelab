@@ -2,7 +2,7 @@ import { mountSpicyDynamicBackground } from './spicy-dynamic-background.js';
 import { buildNowPlayingPanelModel, normalizeSourceContext } from './now-playing-panel-model.js';
 import { clearLyricsContainerSync, renderLyricsInContainer, renderLyricsInNowPanel } from './lyrics.js';
 import { createTrackSaveIconHTML } from './track-save-ui.js';
-import { escapeHtml, getTrackArtists, getTrackTitle } from './utils.js';
+import { escapeHtml, getTrackArtists, getTrackTitle, REPEAT_MODE } from './utils.js';
 import { copyShareLink } from './share.js';
 import { isVideoArtwork, renderArtworkElement } from './animated-artwork.js';
 import { navigate } from './router.js';
@@ -59,8 +59,6 @@ const HISTORY_RENDER_BATCH = 24;
 const QUEUE_EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
 const QUEUE_EASE_IN_OUT = 'cubic-bezier(0.77, 0, 0.175, 1)';
 const MISSING_BIOGRAPHY = 'No biography is available for this artist yet.';
-const QUEUE_REPEAT_ALL = 1;
-
 const ICON_FULLSCREEN_EXIT = (size = 20) =>
     FULLSCREEN_EXIT_SVG.replace('width="800px" height="800px"', `width="${size}" height="${size}"`);
 
@@ -617,7 +615,7 @@ export class NowPlayingPanel {
         const nextTrack = queue[currentIndex + 1] || null;
         return JSON.stringify({
             currentIndex,
-            repeatMode: this.player?.repeatMode ?? 0,
+            repeatMode: this.player?.repeatMode ?? REPEAT_MODE.OFF,
             endless: !!(this.player?.autoplayEnabled || this.player?.radioEnabled),
             queueIds: queue.map((track) => String(track?.id ?? '')).join(','),
             nextTrackId: nextTrack?.id == null ? null : String(nextTrack.id),
@@ -1723,6 +1721,12 @@ export class NowPlayingPanel {
             if (className.startsWith('queue-motion-')) clone.classList.remove(className);
         }
         clone.querySelectorAll('.queue-track-row-static').forEach((row) => row.classList.remove('queue-track-row-static'));
+        // Reflow is presentation state; including it here forces a DOM swap mid-animation.
+        clone.querySelectorAll('.queue-track-row.is-reconciling').forEach((row) => {
+            row.classList.remove('is-reconciling');
+            row.style.removeProperty('transition');
+            row.style.removeProperty('transform');
+        });
         clone.querySelectorAll('[data-queue-motion-key]').forEach((row) => row.removeAttribute('data-queue-motion-key'));
         clone.querySelectorAll('.queue-track-row-added').forEach((row) => {
             row.classList.remove('queue-track-row-added');
@@ -1836,7 +1840,7 @@ export class NowPlayingPanel {
                     reducedMotion
                         ? [{ opacity: 0 }, { opacity: 1 }]
                         : [
-                              { opacity: 0, transform: 'translate3d(-12%, 0, 0)' },
+                              { opacity: 0, transform: 'translate3d(-18px, 0, 0)' },
                               { opacity: 1, transform: 'translate3d(0, 0, 0)' },
                           ],
                     {
@@ -2432,7 +2436,9 @@ export class NowPlayingPanel {
         const queueDuration = upNext.reduce((total, track) => total + (Number(track.duration) || 0), 0);
         const durationLabel =
             queueDuration > 0 ? this.formatQueueTime(queueDuration) : upNext.length ? 'duration unavailable' : '0 min';
-        const isLooping = this.player?.repeatMode === QUEUE_REPEAT_ALL;
+        const repeatMode = this.player?.repeatMode ?? REPEAT_MODE.OFF;
+        const repeatState = this.getQueueRepeatState(repeatMode);
+        const isLooping = repeatMode === REPEAT_MODE.ALL;
         const transitionMode = this.getTransitionMode();
         const media = this.player?.activeElement;
         const isPaused = media?.paused !== false;
@@ -2465,13 +2471,15 @@ export class NowPlayingPanel {
             ? `<button type="button" class="queue-source-link" data-queue-source-href="${escapeHtml(this.sourceContext.href)}">${escapeHtml(sourceLabel)}</button>`
             : `<span class="queue-source-link">${escapeHtml(sourceLabel)}</span>`;
         const emptyQueueCopy =
-            (this.player?.repeatMode ?? 0) === 0 && (this.player?.autoplayEnabled || this.player?.radioEnabled)
+            repeatMode === REPEAT_MODE.OFF && (this.player?.autoplayEnabled || this.player?.radioEnabled)
                 ? 'Related songs will be added when available.'
                 : isLooping
                   ? `Loop queue will restart ${sourceLabel}.`
-                  : this.sourceContext?.kind === 'album'
-                    ? `End of ${sourceLabel}. Playback stops here.`
-                    : 'Playback stops when this queue ends.';
+                  : repeatMode === REPEAT_MODE.ONE
+                    ? 'The current track will repeat.'
+                    : this.sourceContext?.kind === 'album'
+                      ? `End of ${sourceLabel}. Playback stops here.`
+                      : 'Playback stops when this queue ends.';
         const currentMarkup = currentTrack
             ? `<div class="queue-playing-row">
                 <div class="queue-current-artwork"><img src="${escapeHtml(imageFor(currentTrack))}" alt="" loading="eager" /></div>
@@ -2496,8 +2504,8 @@ export class NowPlayingPanel {
                   })
                   .join('')
             : `<div class="queue-list-empty"><span>${icon('list-music', 18)}</span><strong>Nothing else is lined up</strong><p>${escapeHtml(emptyQueueCopy)}</p></div>`;
-        const listMarkup = `<section class="queue-list-section" aria-labelledby="queue-up-next-title"><div class="queue-list-heading"><div><h2 id="queue-up-next-title">Next Up from ${sourceLink}</h2><p>${upNext.length} ${upNext.length === 1 ? 'track' : 'tracks'} <span aria-hidden="true">·</span> ${escapeHtml(durationLabel)} <span class="queue-source-context">· ${escapeHtml(sourceContext)}</span></p></div><button type="button" class="queue-loop-button queue-list-loop-button${isLooping ? ' is-active' : ''}" aria-pressed="${String(isLooping)}" aria-label="${isLooping ? 'Disable loop queue' : 'Loop queue'}" title="${isLooping ? 'Disable loop queue' : 'Loop queue'}">${icon('repeat', 15)}</button></div><div class="queue-track-list">${rows}</div></section>`;
-        const endlessUnavailable = (this.player?.repeatMode ?? 0) !== 0;
+        const listMarkup = `<section class="queue-list-section" aria-labelledby="queue-up-next-title"><div class="queue-list-heading"><div><h2 id="queue-up-next-title">Next Up from ${sourceLink}</h2><p>${upNext.length} ${upNext.length === 1 ? 'track' : 'tracks'} <span aria-hidden="true">·</span> ${escapeHtml(durationLabel)} <span class="queue-source-context">· ${escapeHtml(sourceContext)}</span></p></div><button type="button" class="queue-loop-button queue-list-loop-button${repeatState.active ? ' is-active' : ''}${repeatMode === REPEAT_MODE.ONE ? ' repeat-one' : ''}" aria-pressed="${String(repeatState.active)}" aria-label="${repeatState.actionLabel}" title="${repeatState.title}">${icon('repeat', 15)}</button></div><div class="queue-track-list">${rows}</div></section>`;
+        const endlessUnavailable = repeatMode !== REPEAT_MODE.OFF;
         const endlessPressed = !!(this.player?.autoplayEnabled || this.player?.radioEnabled) && !endlessUnavailable;
         const queueBody = `<section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${sourceLink}</h2><button type="button" class="queue-clear-button" data-queue-clear${upNext.length ? '' : ' disabled'}>Clear</button></div>${currentMarkup}</section><div class="queue-quick-actions" aria-label="Queue settings"><button type="button" role="switch" class="queue-quick-action queue-endless-card${endlessPressed ? ' is-enabled' : ''}${endlessUnavailable ? ' is-unavailable' : ''}" data-endless-toggle aria-pressed="${String(endlessPressed)}" aria-checked="${String(endlessPressed)}"><span class="queue-setting-copy"><span class="queue-setting-icon">${icon('infinity', 19)}</span><span><span class="queue-quick-label">Endless playback</span>${endlessUnavailable ? '<span class="queue-quick-status">Paused while repeat is on</span>' : ''}</span></span><span class="queue-switch" aria-hidden="true"><span class="queue-switch-thumb"></span></span></button>${this.renderQueueTransitionCard(transitionMode)}</div>${listMarkup}`;
         const isHistory = this.queueView === 'history';
@@ -2999,7 +3007,7 @@ export class NowPlayingPanel {
             return;
         }
         if (button.matches('[data-endless-toggle]')) {
-            if ((this.player?.repeatMode ?? 0) !== 0) {
+            if ((this.player?.repeatMode ?? REPEAT_MODE.OFF) !== REPEAT_MODE.OFF) {
                 return;
             }
             if (this.player.autoplayEnabled || this.player.radioEnabled) {
@@ -3036,7 +3044,7 @@ export class NowPlayingPanel {
             return;
         }
         if (button.matches('.queue-loop-button')) {
-            await this.setQueueLoop(!this.isQueueLooping());
+            await this.cycleQueueRepeatMode();
             return;
         }
         if (button.matches('.queue-track-remove')) {
@@ -3117,7 +3125,7 @@ export class NowPlayingPanel {
     syncEndlessButton() {
         const button = this.root?.querySelector('[data-endless-toggle]');
         if (!button) return;
-        const unavailable = (this.player?.repeatMode ?? 0) !== 0;
+        const unavailable = (this.player?.repeatMode ?? REPEAT_MODE.OFF) !== REPEAT_MODE.OFF;
         const enabled = Boolean(this.player?.autoplayEnabled || this.player?.radioEnabled) && !unavailable;
         button.classList.toggle('is-enabled', enabled);
         button.classList.toggle('is-unavailable', unavailable);
@@ -3155,47 +3163,50 @@ export class NowPlayingPanel {
         this.syncQueueLoopButton();
     }
 
-    isQueueLooping() {
-        return this.player?.repeatMode === QUEUE_REPEAT_ALL;
+    getQueueRepeatState(mode = this.player?.repeatMode ?? REPEAT_MODE.OFF) {
+        if (mode === REPEAT_MODE.ALL) {
+            return {
+                active: true,
+                title: 'Repeat queue',
+                actionLabel: 'Repeat queue enabled. Switch to repeat one',
+            };
+        }
+        if (mode === REPEAT_MODE.ONE) {
+            return {
+                active: true,
+                title: 'Repeat one',
+                actionLabel: 'Repeat one enabled. Turn repeat off',
+            };
+        }
+        return {
+            active: false,
+            title: 'Repeat off',
+            actionLabel: 'Turn repeat on',
+        };
     }
 
     syncQueueLoopButton({ animate = false } = {}) {
-        const looping = this.isQueueLooping();
-        const repeatButtons = [
-            document.getElementById('repeat-btn'),
-            document.getElementById('fs-repeat-btn'),
-            this.root?.querySelector('.queue-list-loop-button'),
-        ];
-        for (const button of repeatButtons) {
-            if (!button) continue;
-            button.classList.toggle('active', looping);
-            button.classList.toggle('is-active', looping);
-            button.classList.remove('repeat-one');
-            button.setAttribute('aria-pressed', String(looping));
-            if (button.matches('.queue-list-loop-button')) {
-                button.title = looping ? 'Disable loop queue' : 'Loop queue';
-                button.setAttribute('aria-label', looping ? 'Disable loop queue' : 'Loop queue');
-            } else {
-                button.title = looping ? 'Repeat queue · Loop queue enabled' : 'Repeat off';
-                button.setAttribute('aria-label', looping ? 'Repeat queue enabled' : 'Turn repeat on');
-            }
-            if (animate) {
-                button.classList.remove('icon-activated');
-                void button.offsetWidth;
-                button.classList.add('icon-activated');
-            }
+        const button = this.root?.querySelector('.queue-list-loop-button');
+        if (!button) return;
+        const mode = this.player?.repeatMode ?? REPEAT_MODE.OFF;
+        const state = this.getQueueRepeatState(mode);
+        button.classList.toggle('active', state.active);
+        button.classList.toggle('is-active', state.active);
+        button.classList.toggle('repeat-one', mode === REPEAT_MODE.ONE);
+        button.setAttribute('aria-pressed', String(state.active));
+        button.title = state.title;
+        button.setAttribute('aria-label', state.actionLabel);
+        if (animate) {
+            button.classList.remove('icon-activated');
+            void button.offsetWidth;
+            button.classList.add('icon-activated');
         }
     }
 
-    async setQueueLoop(enabled) {
-        if (typeof this.player?.toggleRepeat === 'function') {
-            let attempts = 0;
-            while (this.isQueueLooping() !== enabled && attempts < 3) {
-                await this.player.toggleRepeat();
-                attempts += 1;
-            }
-        }
-        this.syncQueueLoopButton({ animate: true });
+    async cycleQueueRepeatMode() {
+        if (typeof this.player?.toggleRepeat !== 'function') return;
+        await this.player.toggleRepeat();
+        this.syncQueueLoopButton();
     }
 
     async setQueueTransition(mode) {

@@ -1449,32 +1449,13 @@ body .now-playing-panel.is-queue-view .queue-panel-header {
     top: 0;
     isolation: isolate;
     display: grid;
-    grid-template-columns: 32px minmax(0, 1fr) 32px;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
     min-height: 64px;
     align-items: center;
-    gap: 12px;
-    padding: 0 14px;
-    border-bottom: 0;
-    background: transparent;
-    backdrop-filter: blur(74px) saturate(1.65) brightness(0.82);
-    -webkit-backdrop-filter: blur(74px) saturate(1.65) brightness(0.82);
-}
-
-body .now-playing-panel.is-queue-view .queue-panel-header::before {
-    content: '';
-    position: absolute;
-    z-index: 0;
-    inset: 0 0 -112px;
-    pointer-events: none;
-    background: linear-gradient(
-        to bottom,
-        rgb(24 13 5 / 0.36) 0%,
-        rgb(32 17 4 / 0.3) 68%,
-        rgb(54 29 5 / 0.16) 88%,
-        transparent 100%
-    );
-    backdrop-filter: blur(74px) saturate(1.65) brightness(0.82);
-    -webkit-backdrop-filter: blur(74px) saturate(1.65) brightness(0.82);
+    gap: 8px;
+    padding: 0 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
 }
 
 body .now-playing-panel.is-queue-view .queue-header-tabs {
@@ -1505,9 +1486,8 @@ body .now-playing-panel.is-queue-view .queue-header-tabs::after {
     bottom: -1px;
     left: 0;
     height: 2px;
-    border-radius: 999px 999px 0 0;
+    border-radius: 1px 1px 0 0;
     background: var(--primary);
-    box-shadow: 0 -3px 12px color-mix(in srgb, var(--primary) 32%, transparent);
     transform: translate3d(0, 0, 0);
     transition: transform 240ms cubic-bezier(0.77, 0, 0.175, 1);
     will-change: transform;
@@ -1546,10 +1526,15 @@ body .now-playing-panel.is-queue-view .queue-view-switch:focus-visible {
     outline: none;
 }
 
+body .now-playing-panel.is-queue-view .queue-view-switch:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -3px;
+}
+
 body .now-playing-panel.is-queue-view .queue-close-button {
     display: grid;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     justify-self: end;
     padding: 0;
     place-items: center;
@@ -1566,10 +1551,9 @@ body .now-playing-panel.is-queue-view .queue-close-button {
 
 body .now-playing-panel.is-queue-view .queue-close-button:hover,
 body .now-playing-panel.is-queue-view .queue-close-button:focus-visible {
-    background: rgb(var(--highlight-rgb) / 0.09);
+    background: var(--secondary);
     color: var(--foreground);
     outline: none;
-    transform: scale(1.04);
 }
 
 body .now-playing-panel.is-queue-view .queue-close-button:focus-visible {
@@ -1680,7 +1664,7 @@ body .now-playing-panel.is-queue-view .queue-clear-button:disabled {
 
 body .now-playing-panel.is-queue-view .queue-playing-row {
     display: grid;
-    grid-template-columns: 44px minmax(0, 1fr) 32px;
+    grid-template-columns: 44px minmax(0, 1fr) 36px;
     min-width: 0;
     align-items: center;
     gap: 11px;
@@ -1831,70 +1815,71 @@ body .now-playing-panel.is-queue-view .queue-current-copy p {
 
 body .now-playing-panel.is-queue-view .queue-current-state {
     display: grid;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     padding: 0;
     place-items: center;
-    border: 1px solid color-mix(in srgb, var(--foreground) 22%, var(--border));
+    border: 0;
     border-radius: var(--radius-full);
-    background: transparent;
-    color: var(--foreground);
+    background: var(--primary);
+    color: var(--primary-foreground);
     cursor: pointer;
     transition:
-        background-color 150ms ease,
-        border-color 150ms ease,
-        color 150ms ease,
-        transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+        transform 160ms var(--ease-out),
+        filter 160ms var(--ease-out);
 }
 
-body .now-playing-panel.is-queue-view .queue-current-state:hover,
+body .now-playing-panel.is-queue-view .queue-current-state:hover {
+    filter: brightness(1.08);
+    transform: scale(1.04);
+}
+
 body .now-playing-panel.is-queue-view .queue-current-state:focus-visible {
-    border-color: var(--foreground);
-    background: var(--foreground);
-    color: var(--background);
-    outline: none;
-    transform: scale(1.05);
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
 }
 
 body .now-playing-panel.is-queue-view .queue-quick-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-    padding: 12px 0 14px;
+    gap: 4px;
+    padding: 9px 0 12px;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
 }
 
 body .now-playing-panel.is-queue-view .queue-quick-action {
-    display: grid;
+    display: flex;
     position: relative;
     min-width: 0;
-    min-height: 52px;
-    align-content: center;
-    justify-items: center;
-    gap: 5px;
-    padding: 7px 10px;
-    border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--card) 86%, var(--foreground) 3%);
-    color: var(--muted-foreground);
+    min-height: 42px;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 9px;
+    padding: 5px 8px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--queue-control-secondary);
     cursor: pointer;
     font: inherit;
     transition:
-        border-color 150ms ease,
         background-color 150ms ease,
         color 150ms ease,
-        transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+        border-color 150ms ease;
 }
 
 body .now-playing-panel.is-queue-view .queue-quick-action:hover,
 body .now-playing-panel.is-queue-view .queue-quick-action:focus-visible,
 body .now-playing-panel.is-queue-view .queue-quick-action.is-active,
 body .now-playing-panel.is-queue-view .queue-quick-action.is-enabled {
-    border-color: color-mix(in srgb, var(--primary) 44%, var(--border));
-    background: rgb(var(--highlight-rgb) / 0.08);
+    border-color: transparent;
+    background: rgb(var(--highlight-rgb) / 0.06);
     color: var(--foreground);
-    outline: none;
-    transform: translateY(-1px);
+}
+
+body .now-playing-panel.is-queue-view .queue-quick-action:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
 }
 
 body .now-playing-panel.is-queue-view .queue-setting-icon,
@@ -1912,9 +1897,9 @@ body .now-playing-panel.is-queue-view .queue-quick-action > svg {
 body .now-playing-panel.is-queue-view .queue-quick-label {
     max-width: 100%;
     overflow: hidden;
-    font-size: 0.59rem;
-    font-weight: 650;
-    line-height: 1.05;
+    font-size: 0.68rem;
+    font-weight: 600;
+    line-height: 1.15;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -1923,8 +1908,8 @@ body .now-playing-panel.is-queue-view .queue-quick-status {
     max-width: 100%;
     overflow: hidden;
     color: var(--muted-foreground);
-    font-size: 0.5rem;
-    line-height: 1;
+    font-size: 0.56rem;
+    line-height: 1.15;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -1935,11 +1920,11 @@ body .now-playing-panel.is-queue-view .queue-endless-card.is-unavailable {
 
 body .now-playing-panel.is-queue-view .queue-endless-card {
     display: flex;
-    min-height: 52px;
+    min-height: 42px;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 7px 10px;
+    padding: 5px 8px;
     text-align: left;
 }
 
@@ -1975,16 +1960,16 @@ body .now-playing-panel.is-queue-view .queue-endless-card .queue-quick-label {
 
 body .now-playing-panel.is-queue-view .queue-endless-card .queue-quick-status {
     margin-top: 2px;
-    font-size: 0.53rem;
-    line-height: 1;
+    font-size: 0.56rem;
+    line-height: 1.15;
 }
 
 body .now-playing-panel.is-queue-view .queue-switch {
     display: inline-flex;
     position: relative;
     flex: 0 0 auto;
-    width: 36px;
-    height: 21px;
+    width: 30px;
+    height: 18px;
     align-items: center;
     padding: 2px;
     border-radius: 999px;
@@ -1994,8 +1979,8 @@ body .now-playing-panel.is-queue-view .queue-switch {
 
 body .now-playing-panel.is-queue-view .queue-switch-thumb {
     display: block;
-    width: 17px;
-    height: 17px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     background: var(--foreground);
     box-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
@@ -2009,7 +1994,7 @@ body .now-playing-panel.is-queue-view .queue-endless-card.is-enabled .queue-swit
 
 body .now-playing-panel.is-queue-view .queue-endless-card.is-enabled .queue-switch-thumb {
     background: var(--primary-foreground);
-    transform: translateX(15px);
+    transform: translateX(12px);
 }
 
 body .now-playing-panel.is-queue-view .queue-transition-card {
@@ -2018,9 +2003,10 @@ body .now-playing-panel.is-queue-view .queue-transition-card {
 }
 
 body .now-playing-panel.is-queue-view .queue-transition-trigger {
+    display: grid;
     width: 100%;
-    min-height: 52px;
-    grid-template-columns: 17px minmax(0, 1fr) 15px;
+    min-height: 42px;
+    grid-template-columns: 16px minmax(0, 1fr) 14px;
     align-items: center;
     justify-items: stretch;
     text-align: left;
@@ -2028,6 +2014,13 @@ body .now-playing-panel.is-queue-view .queue-transition-trigger {
 
 body .now-playing-panel.is-queue-view .queue-transition-trigger > svg:last-child {
     color: var(--muted-foreground);
+    transition: transform 180ms var(--ease-out), color 180ms var(--ease-out);
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-trigger:hover > svg:last-child,
+body .now-playing-panel.is-queue-view .queue-transition-trigger[aria-expanded='true'] > svg:last-child {
+    color: currentcolor;
+    transform: translateX(2px);
 }
 
 body .now-playing-panel.is-queue-view .queue-transition-copy {
@@ -2041,8 +2034,8 @@ body .now-playing-panel.is-queue-view .queue-transition-copy {
 body .now-playing-panel.is-queue-view .queue-transition-summary {
     overflow: hidden;
     color: var(--muted-foreground);
-    font-size: 0.53rem;
-    line-height: 1;
+    font-size: 0.56rem;
+    line-height: 1.15;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -2056,8 +2049,8 @@ body .now-playing-panel.is-queue-view .queue-transition-card.is-changing .queue-
 }
 
 body .now-playing-panel.is-queue-view .queue-transition-card.is-open .queue-transition-trigger {
-    border-color: color-mix(in srgb, var(--primary) 44%, var(--border));
-    background: rgb(var(--highlight-rgb) / 0.08);
+    border-color: transparent;
+    background: rgb(var(--highlight-rgb) / 0.06);
     color: var(--foreground);
 }
 
@@ -2200,31 +2193,27 @@ body .now-playing-panel.is-queue-view .queue-list-heading h2 {
 
 body .now-playing-panel.is-queue-view .queue-list-loop-button {
     display: inline-grid;
+    position: relative;
     flex: 0 0 auto;
-    width: 28px;
-    height: 28px;
-    margin-top: 1px;
+    width: 32px;
+    height: 32px;
+    align-self: center;
+    margin: 0;
     padding: 0;
     place-items: center;
-    border: 1px solid color-mix(in srgb, var(--primary) 38%, var(--border));
-    border-radius: 8px;
-    background: color-mix(
-        in srgb,
-        var(--primary) 8%,
-        color-mix(in srgb, var(--card) 78%, transparent)
-    );
-    color: var(--queue-control-secondary);
+    border: 0;
+    border-radius: var(--radius-full);
+    background: var(--secondary);
+    color: var(--muted-foreground);
     cursor: pointer;
     transition:
-        border-color 180ms var(--ease-out),
         background-color 180ms var(--ease-out),
-        color 180ms var(--ease-out),
-        transform 180ms var(--ease-out);
+        color 180ms var(--ease-out);
 }
 
 body .now-playing-panel.is-queue-view .queue-list-loop-button > svg {
-    width: 15px;
-    height: 15px;
+    width: 16px;
+    height: 16px;
     transition: transform 240ms var(--ease-out);
 }
 
@@ -2233,17 +2222,39 @@ body .now-playing-panel.is-queue-view .queue-list-loop-button.icon-activated > s
 }
 
 body .now-playing-panel.is-queue-view .queue-list-loop-button:hover,
-body .now-playing-panel.is-queue-view .queue-list-loop-button:focus-visible,
-body .now-playing-panel.is-queue-view .queue-list-loop-button.is-active {
-    border-color: color-mix(in srgb, var(--primary) 52%, var(--border));
-    background: rgb(var(--highlight-rgb) / 0.1);
+body .now-playing-panel.is-queue-view .queue-list-loop-button:focus-visible {
+    background: color-mix(in srgb, var(--secondary) 78%, var(--foreground) 22%);
     color: var(--foreground);
-    outline: none;
-    transform: translateY(-1px);
 }
 
-body .now-playing-panel.is-queue-view .queue-list-loop-button.is-active > svg {
+body .now-playing-panel.is-queue-view .queue-list-loop-button:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+}
+
+body .now-playing-panel.is-queue-view .queue-list-loop-button.is-active {
+    color: var(--primary);
+}
+
+body .now-playing-panel.is-queue-view .queue-list-loop-button.is-active:not(.repeat-one) > svg {
     transform: rotate(180deg);
+}
+
+body .now-playing-panel.is-queue-view .queue-list-loop-button.repeat-one::after {
+    content: '1';
+    position: absolute;
+    right: 5px;
+    bottom: 4px;
+    display: grid;
+    width: 9px;
+    height: 9px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--secondary);
+    color: var(--foreground);
+    font-size: 7px;
+    font-weight: 700;
+    line-height: 1;
 }
 
 body .now-playing-panel.is-queue-view .queue-list-heading p {
@@ -2271,7 +2282,6 @@ body .now-playing-panel.is-queue-view .queue-track-row {
     gap: 4px;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 64%, transparent);
     animation: queue-row-enter 280ms var(--ease-out) calc(24ms + var(--queue-delay) + var(--queue-delay)) both;
-    will-change: transform, opacity;
 }
 
 body .now-playing-panel.is-queue-view .now-playing-panel-queue-layer:not(.is-visible) .queue-track-row {
@@ -2288,6 +2298,7 @@ body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-static {
 
 body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-added {
     animation: queue-row-added 240ms var(--ease-out) both;
+    will-change: transform, opacity;
 }
 
 body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-added[data-queue-added-order='1'] {
@@ -2312,6 +2323,7 @@ body .now-playing-panel.is-queue-view .queue-track-row.queue-track-row-added[dat
 
 body .now-playing-panel.is-queue-view .queue-track-row.is-reconciling {
     animation: none !important;
+    will-change: transform;
 }
 
 body .now-playing-panel.is-queue-view .queue-track-row.is-exiting {
@@ -2568,7 +2580,7 @@ body .now-playing-panel.is-queue-view .queue-history-search-close {
     padding: 0;
     place-items: center;
     border: 0;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius);
     background: transparent;
     color: var(--queue-control-secondary);
     cursor: pointer;
@@ -2581,15 +2593,15 @@ body .now-playing-panel.is-queue-view .queue-history-search-toggle:hover,
 body .now-playing-panel.is-queue-view .queue-history-search-toggle:focus-visible,
 body .now-playing-panel.is-queue-view .queue-history-search-close:hover,
 body .now-playing-panel.is-queue-view .queue-history-search-close:focus-visible {
-    background: rgb(var(--highlight-rgb) / 0.09);
+    background: var(--secondary);
     color: var(--foreground);
     outline: none;
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-toggle:focus-visible,
-body .now-playing-panel.is-queue-view .queue-history-search-close:focus-visible,
-body .now-playing-panel.is-queue-view .queue-history-search-field:focus-within {
-    box-shadow: 0 0 0 2px var(--ring);
+body .now-playing-panel.is-queue-view .queue-history-search-close:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-field {
@@ -2597,32 +2609,26 @@ body .now-playing-panel.is-queue-view .queue-history-search-field {
     display: grid;
     grid-template-columns: 32px minmax(0, 1fr) 32px;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     min-height: 38px;
     padding: 2px 3px 2px 4px;
-    border: 1px solid color-mix(in srgb, var(--primary) 40%, var(--border));
-    border-radius: var(--radius-full);
-    background: color-mix(
-        in srgb,
-        var(--primary) 7%,
-        color-mix(in srgb, var(--card) 72%, transparent)
-    );
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 18%, transparent);
-    backdrop-filter: blur(14px) saturate(1.12);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--input);
     transition:
         border-color 180ms var(--ease-out),
         background-color 180ms var(--ease-out),
-        backdrop-filter 180ms var(--ease-out);
+        box-shadow 180ms var(--ease-out);
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-field:focus-within {
-    border-color: color-mix(in srgb, var(--primary) 74%, var(--border));
-    background: color-mix(in srgb, var(--card) 88%, var(--background));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 32%, transparent);
+    border-color: var(--ring);
+    background: var(--input);
+    box-shadow: 0 0 0 3px rgb(var(--highlight-rgb) / 0.16);
 }
 
 body .now-playing-panel.is-queue-view .now-playing-panel-queue-view.is-scrolled .queue-history-search-field:not(:focus-within) {
-    background: color-mix(in srgb, var(--card) 84%, transparent);
+    background: var(--input);
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-field input {
@@ -2650,7 +2656,7 @@ body .now-playing-panel.is-queue-view .queue-history-search-close {
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-field .queue-history-search-toggle {
-    color: var(--primary);
+    color: var(--queue-control-secondary);
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-close[hidden] {
@@ -2920,7 +2926,7 @@ body .now-playing-panel.is-queue-view.is-queue-closing {
 @keyframes queue-row-added {
     from {
         opacity: 0;
-        transform: translate3d(-12%, 0, 0);
+        transform: translate3d(-18px, 0, 0);
     }
 
     to {

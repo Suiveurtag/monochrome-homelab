@@ -44,6 +44,7 @@ vi.mock('./listening-tracker.js', () => ({
     listeningTracker: { getArtistSignal: vi.fn(() => ({ playCount: 1234 })) },
 }));
 vi.mock('./utils.js', () => ({
+    REPEAT_MODE: { OFF: 0, ALL: 1, ONE: 2 },
     escapeHtml: (value) => String(value ?? ''),
     getTrackArtists: (track) => track?.artist?.name || 'Unknown artist',
     getTrackTitle: (track) => track?.title || 'Unknown title',
