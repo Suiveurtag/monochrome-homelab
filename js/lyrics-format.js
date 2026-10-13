@@ -16,20 +16,59 @@ function formatTtmlTime(milliseconds) {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
 }
 
-function parseTtmlTime(value) {
+function parseTtmlTime(value, timingParameters = {}) {
     if (value == null || value === '') return null;
     const source = String(value).trim();
+    if (!source) return null;
     if (/^-?\d+(?:\.\d+)?ms$/i.test(source)) return Number.parseFloat(source);
     if (/^-?\d+(?:\.\d+)?s$/i.test(source)) return Number.parseFloat(source) * 1000;
-    const parts = source.split(':').map(Number);
-    if (parts.some(Number.isNaN)) return null;
-    if (parts.length === 3) return (parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000;
-    if (parts.length === 2) return (parts[0] * 60 + parts[1]) * 1000;
-    return Number(source) || null;
+
+    const frameClock = source.match(/^(\d+):(\d{2}):(\d{2}):(\d+)(?:\.(\d+))?$/);
+    if (frameClock) {
+        const [, hours, minutes, seconds, frames, subframes = '0'] = frameClock;
+        const frameRate = timingParameters.frameRate || 30;
+        const subFrameRate = timingParameters.subFrameRate || 1;
+        const elapsedFrames = Number(frames) + Number(subframes) / subFrameRate;
+        return (
+            (Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds)) * 1000 + (elapsedFrames * 1000) / frameRate
+        );
+    }
+
+    const frameOffset = source.match(/^(-?\d+(?:\.\d+)?)f$/i);
+    if (frameOffset) return (Number.parseFloat(frameOffset[1]) * 1000) / (timingParameters.frameRate || 30);
+    const tickOffset = source.match(/^(-?\d+(?:\.\d+)?)t$/i);
+    if (tickOffset) return (Number.parseFloat(tickOffset[1]) * 1000) / (timingParameters.tickRate || 1);
+
+    const clock = source.match(/^(?:(\d+):)?(\d{1,2}):(\d{1,2}(?:\.\d+)?)$/);
+    if (clock) {
+        const [, hours = '0', minutes, seconds] = clock;
+        return (Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds)) * 1000;
+    }
+    const seconds = Number(source);
+    return Number.isFinite(seconds) && source !== '' ? seconds * 1000 : null;
+}
+
+function getTtmlTimingParameters(root) {
+    const attribute = (localName) =>
+        Array.from(root?.attributes || []).find((item) => item.localName === localName)?.value;
+    const multiplier = attribute('frameRateMultiplier')?.trim().split(/\s+/u).map(Number);
+    const rateMultiplier =
+        multiplier?.length === 2 && multiplier.every(Number.isFinite) && multiplier[1] !== 0
+            ? multiplier[0] / multiplier[1]
+            : 1;
+    const frameRate = (Number(attribute('frameRate')) || 30) * rateMultiplier;
+    const subFrameRate = Number(attribute('subFrameRate')) || 1;
+    return {
+        frameRate,
+        subFrameRate,
+        tickRate: Number(attribute('tickRate')) || frameRate * subFrameRate,
+    };
 }
 
 function splitLyricWords(text) {
-    const normalized = String(text || '').replace(/\s+/gu, ' ').trim();
+    const normalized = String(text || '')
+        .replace(/\s+/gu, ' ')
+        .trim();
     return normalized.match(/\s*\S+/gu) || [];
 }
 
@@ -48,6 +87,7 @@ function splitVocalSegments(text) {
 
 const TTML_METADATA_NAMESPACE = 'http://www.w3.org/ns/ttml#metadata';
 const ITUNES_TTML_NAMESPACE = 'http://music.apple.com/lyric-ttml-internal';
+const MONOCHROME_TTML_NAMESPACE = 'https://monochrome.tf/ns/lyrics';
 const STARS_OPENING_DUET_END = 'You need somebody, baby, just call me';
 
 function normalizedLyricText(text) {
@@ -87,34 +127,42 @@ function markStarsOpeningDuet(document, paragraphs) {
 }
 
 /**
- * Converts valid line-timed TTML into word-timed TTML. Sources such as Apple
- * Music's `itunes:timing="Line"` exports often contain no child spans at all.
- * Their line timing is retained; word timings are an interpolation because
- * the source does not contain the original per-word timestamps.
+ * Adds word timing only when the TTML source lacks word spans and is not
+ * identified as line-only. LRC-derived lines stay timed as complete lines.
  */
 export function normalizeTtmlWordTiming(content) {
     if (!isTtml(content) || typeof DOMParser === 'undefined' || typeof XMLSerializer === 'undefined') return content;
 
     const document = new DOMParser().parseFromString(content.replace(/^\uFEFF/, '').trim(), 'application/xml');
+    const timingParameters = getTtmlTimingParameters(document.documentElement);
     const paragraphs = Array.from(document.getElementsByTagNameNS('*', 'p'));
+    const timingAttribute = Array.from(document.documentElement.attributes).find(
+        (attribute) => attribute.localName === 'timing' || attribute.name === 'timing'
+    );
+    const explicitlyLineOnly = isLineOnlyLyrics(content);
     let converted = false;
 
     paragraphs.forEach((paragraph, index) => {
+        if (explicitlyLineOnly) return;
         const timedSpans = Array.from(paragraph.getElementsByTagNameNS('*', 'span')).filter(
-            (span) => span.hasAttribute('begin') || span.hasAttribute('end') || span.hasAttribute('dur'),
+            (span) => span.hasAttribute('begin') || span.hasAttribute('end') || span.hasAttribute('dur')
         );
         if (timedSpans.length) return;
 
         const segments = splitVocalSegments(paragraph.textContent);
         const words = segments.flatMap((segment) =>
-            splitLyricWords(segment.text).map((text) => ({ text, background: segment.background })),
+            splitLyricWords(segment.text).map((text) => ({ text, background: segment.background }))
         );
         if (!words.length) return;
-        const start = parseTtmlTime(paragraph.getAttribute('begin')) ?? 0;
-        const nextStart = parseTtmlTime(paragraphs[index + 1]?.getAttribute('begin'));
+        const start = parseTtmlTime(paragraph.getAttribute('begin'), timingParameters) ?? 0;
+        const nextStart = parseTtmlTime(paragraphs[index + 1]?.getAttribute('begin'), timingParameters);
+        const duration = parseTtmlTime(paragraph.getAttribute('dur'), timingParameters);
         const end = Math.max(
             start + 1,
-            parseTtmlTime(paragraph.getAttribute('end')) ?? nextStart ?? start + 4000,
+            parseTtmlTime(paragraph.getAttribute('end'), timingParameters) ??
+                (duration == null ? null : start + duration) ??
+                nextStart ??
+                start + 4000
         );
         const totalWeight = words.reduce((sum, word) => sum + Math.max(1, word.text.trim().length), 0);
         let cursor = start;
@@ -131,11 +179,7 @@ export function normalizeTtmlWordTiming(content) {
             if (word.background) {
                 if (!currentBackground) {
                     currentBackground = document.createElementNS('http://www.w3.org/ns/ttml', 'span');
-                    currentBackground.setAttributeNS(
-                        'http://www.w3.org/ns/ttml#metadata',
-                        'ttm:role',
-                        'x-bg',
-                    );
+                    currentBackground.setAttributeNS('http://www.w3.org/ns/ttml#metadata', 'ttm:role', 'x-bg');
                     paragraph.appendChild(currentBackground);
                 }
                 currentBackground.appendChild(span);
@@ -151,11 +195,10 @@ export function normalizeTtmlWordTiming(content) {
     const restoredDuetLayout = markStarsOpeningDuet(document, paragraphs);
     if (!converted && !restoredDuetLayout) return content.replace(/^\uFEFF/, '').trim();
     const root = document.documentElement;
-    const timingAttribute = Array.from(root.attributes).find(
-        (attribute) => attribute.localName === 'timing' || attribute.name === 'timing',
-    );
-    if (timingAttribute) timingAttribute.value = 'Word';
-    else root.setAttributeNS('http://music.apple.com/lyric-ttml-internal', 'itunes:timing', 'Word');
+    if (converted) {
+        if (timingAttribute) timingAttribute.value = 'Word';
+        else root.setAttributeNS('http://music.apple.com/lyric-ttml-internal', 'itunes:timing', 'Word');
+    }
     return new XMLSerializer().serializeToString(document);
 }
 
@@ -196,7 +239,11 @@ export function lrcToTtml(content, durationSeconds = 0) {
         .join('\n');
 
     return `<?xml version="1.0" encoding="UTF-8"?>
-<tt xmlns="http://www.w3.org/ns/ttml">
+<tt xmlns="http://www.w3.org/ns/ttml"
+    xmlns:itunes="${ITUNES_TTML_NAMESPACE}"
+    xmlns:monochrome="${MONOCHROME_TTML_NAMESPACE}"
+    itunes:timing="Line"
+    monochrome:lineOnly="true">
   <body>
     <div>
 ${body}
@@ -225,7 +272,11 @@ export function plainLyricsToTtml(content, durationSeconds = 0) {
         .join('\n');
 
     return `<?xml version="1.0" encoding="UTF-8"?>
-<tt xmlns="http://www.w3.org/ns/ttml">
+<tt xmlns="http://www.w3.org/ns/ttml"
+    xmlns:itunes="${ITUNES_TTML_NAMESPACE}"
+    xmlns:monochrome="${MONOCHROME_TTML_NAMESPACE}"
+    itunes:timing="Line"
+    monochrome:lineOnly="true">
   <body>
     <div>
 ${body}
@@ -249,6 +300,38 @@ export function isTtml(content) {
         document.documentElement?.localName === 'tt' &&
         document.getElementsByTagNameNS('*', 'p').length > 0
     );
+}
+
+/**
+ * LRC contains only line timestamps. Keep that source-level behavior when it
+ * has been converted to TTML and passed through the renderers.
+ */
+export function isLineOnlyLyrics(content) {
+    if (!isTtml(content)) return parseLrc(content).length > 0;
+    if (typeof DOMParser === 'undefined') return false;
+
+    const document = new DOMParser().parseFromString(content.replace(/^\uFEFF/, '').trim(), 'application/xml');
+    const root = document.documentElement;
+    const attributes = Array.from(root?.attributes || []);
+    const lineOnlyAttribute = attributes.find((attribute) => attribute.localName === 'lineOnly');
+    const timingAttribute = attributes.find((attribute) => attribute.localName === 'timing');
+    if (lineOnlyAttribute?.value.toLowerCase() === 'true' || timingAttribute?.value.toLowerCase() === 'line')
+        return true;
+    if (timingAttribute?.value.toLowerCase() === 'word') return false;
+
+    // Older imports converted .lrc files to bare TTML paragraphs without
+    // preserving their extension. Those files have paragraph timing only;
+    // don't interpolate fake word timing into them during playback.
+    const paragraphs = Array.from(document.getElementsByTagNameNS('*', 'p'));
+    const hasParagraphTiming = paragraphs.some((paragraph) =>
+        ['begin', 'end', 'dur'].some((name) => paragraph.hasAttribute(name))
+    );
+    const hasTimedSpans = paragraphs.some((paragraph) =>
+        Array.from(paragraph.getElementsByTagNameNS('*', 'span')).some((span) =>
+            ['begin', 'end', 'dur'].some((name) => span.hasAttribute(name))
+        )
+    );
+    return paragraphs.length > 0 && hasParagraphTiming && !hasTimedSpans;
 }
 
 export function lyricsToTtml(content, durationSeconds = 0) {

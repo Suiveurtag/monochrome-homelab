@@ -388,8 +388,9 @@ async function initializeSelfHostedUploads() {
         const { readTrackMetadata } = await loadMetadataModule();
         const result = await uploadSelfHostedFilesBatch(files, {
             authUser: authManager.user,
+            allowUnauthenticated: !authManager.user && document.documentElement.dataset.canUpload === 'true',
             readTrackMetadata,
-            uploadTrack: (metadata, file) => uploadSelfHostedTrack(metadata, file),
+            uploadTrack: (metadata, file, coverFile) => uploadSelfHostedTrack(metadata, file, coverFile),
             notify: (message) => showNotification(message),
         });
 
@@ -3243,8 +3244,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('header-discord-auth').onclick = () => authManager.signInWithDiscord();
                 document.getElementById('header-spotify-auth').onclick = () => authManager.signInWithSpotify();
                 document.getElementById('header-email-auth').onclick = () => {
-                    document.getElementById('email-auth-modal').classList.add('active');
                     headerAccountDropdown.classList.remove('active');
+                    navigate('/login');
                 };
             } else {
                 const data = await syncManager.getUserData();

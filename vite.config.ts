@@ -119,6 +119,7 @@ export default defineConfig((_options) => {
                         /^VirtualLyrics/,
                         /^(?:SpicyRenderer|UseSpicyFont|SimpleLyricsMode|MinimalLyricsMode|Fullscreen|Active|NotSung|Sung|FeelSung|OppositeAligned|HasDuetLines|HasRtlLines|HideLineBlur|InstantScroll|pre-hidden|musical-line|dotGroup|dot|word|word-group|letter|letterGroup|PartOfWord|LastWordInLine|LastLetterInWord|Emphasis|bg-line|bg-word|rtl)$/,
                         /^lyplus-/,
+                        /^stats-/,
                         /^track-save/,
                         /^track-queue/,
                         /^queue-animating/,

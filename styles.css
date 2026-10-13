@@ -1033,6 +1033,15 @@ body.access-gated {
     overflow: hidden;
 }
 
+body.login-page-active .app-container {
+    display: none;
+}
+
+body.login-page-fading .app-container {
+    opacity: 0;
+    transition: opacity 180ms ease-out;
+}
+
 .sr-only {
     position: absolute;
     width: 1px;
@@ -1116,6 +1125,55 @@ body.site-intro-active {
     opacity: 0 !important;
 }
 
+.login-transition {
+    position: fixed;
+    inset: 0;
+    z-index: 12001;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    color: #f7f7f8;
+    pointer-events: none;
+}
+
+.login-transition[hidden] {
+    display: none;
+}
+
+.login-transition-veil {
+    position: absolute;
+    inset: 0;
+    background: #08080a;
+}
+
+.login-transition-mark {
+    position: relative;
+    width: 92px;
+    height: auto;
+    overflow: visible;
+    transform-box: view-box;
+    transform-origin: center;
+    will-change: transform, opacity;
+}
+
+.login-transition-reveal {
+    transform-box: fill-box;
+    transform-origin: left center;
+}
+
+.login-transition-outline {
+    fill: transparent;
+    stroke: currentcolor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.login-transition-fill {
+    fill: currentcolor;
+    opacity: 0;
+}
+
 .access-gate {
     position: fixed;
     inset: 0;
@@ -1131,6 +1189,52 @@ body.site-intro-active {
 
 .access-gate[hidden] {
     display: none;
+}
+
+.access-gate.access-gate-exiting {
+    pointer-events: none;
+}
+
+.access-gate.access-gate-exiting::after {
+    position: fixed;
+    z-index: 20;
+    top: var(--access-unlock-y, 50%);
+    left: var(--access-unlock-x, 50%);
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgb(74 222 128 / 0.4), rgb(34 197 94 / 0.18) 36%, transparent 72%);
+    content: '';
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0.35);
+    animation: access-gate-unlock-wave 300ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes access-gate-unlock-wave {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.35);
+    }
+
+    24% {
+        opacity: 0.85;
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(var(--access-unlock-exit-scale, 8));
+    }
+}
+
+@keyframes access-gate-unlock-wave-reduced {
+    0%,
+    100% {
+        opacity: 0;
+    }
+
+    35% {
+        opacity: 0.3;
+    }
 }
 
 .dot-field-container {
@@ -1185,8 +1289,11 @@ body.site-intro-active {
 }
 
 .access-brand img {
-    width: 24px;
-    height: 24px;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    background: transparent;
     filter: brightness(0) invert(1);
 }
 
@@ -2067,6 +2174,10 @@ body.site-intro-active {
     .access-card {
         opacity: 1;
         transform: none;
+    }
+
+    .access-gate.access-gate-exiting::after {
+        animation: access-gate-unlock-wave-reduced 180ms ease-out both;
     }
 
     .access-gate.access-gate-ready .access-card,
@@ -4971,6 +5082,8 @@ body.multi-select-mode .track-item:hover {
 .now-playing-panel *,
 .track-save-floating-panel,
 .track-save-floating-panel *,
+.access-gate,
+.access-gate *,
 .modal-content h1,
 .modal-content h2,
 .modal-content h3,

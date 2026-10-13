@@ -42,6 +42,7 @@ import { getVibrantColorFromImage } from './vibrant-color.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { authManager } from './accounts/auth.js';
 import { pb } from './accounts/config.js';
+import { getCachedAppConfig } from './access-control.js';
 import { partyManager } from './listening-party.js';
 import { Visualizer } from './visualizer.js';
 import { audioContextManager } from './audio-context.js';
@@ -54,6 +55,7 @@ import { isVideoArtwork, setArtworkBackground } from './animated-artwork.js';
 import { getArtworkSources } from './artwork-media.js';
 import { getTrackThemeColor } from './track-theme-color.js';
 import { listeningTracker } from './listening-tracker.js';
+import { getGlobalStreamCount, loadGlobalStreamCounts } from './listening-sync.js';
 import { bindPlaylistReordering } from './playlist-reordering.js';
 import { shuffleTracks } from './recommendation-settings.js';
 import { realRandom } from './recommendation-engine.js';
@@ -316,7 +318,7 @@ export class UIRenderer {
         };
         window.addEventListener('favorites-changed', invalidateTrackSaveState);
         window.addEventListener('playlist-tracks-changed', invalidateTrackSaveState);
-        window.addEventListener('listening-data-updated', (event) => {
+        window.addEventListener('listening-stream-synced', (event) => {
             const trackId = event.detail?.trackId;
             if (trackId == null) return;
             document
@@ -325,7 +327,7 @@ export class UIRenderer {
                 )
                 .forEach((row) => {
                     const plays = row.querySelector('.album-track-plays');
-                    if (plays) plays.textContent = Number(event.detail?.playCount || 0).toLocaleString();
+                    if (plays) plays.textContent = Number(event.detail?.globalStreams || 0).toLocaleString();
                 });
         });
 
@@ -745,7 +747,7 @@ export class UIRenderer {
         const yearDisplay = getTrackYearDisplay(track);
         const albumTitle = displayAlbum?.title || displayAlbum?.name || track.albumTitle || '—';
         const addedDate = formatRelativeDate(track.addedAt || track.dateAdded);
-        const playCount = listeningTracker.getTrackSignal(track.id)?.playCount || 0;
+        const playCount = getGlobalStreamCount(track.id);
 
         const actionsHTML = isUnavailable
             ? ''
@@ -3305,7 +3307,7 @@ export class UIRenderer {
         const stats = document.getElementById('selfhost-upload-stats');
         if (!container) return;
 
-        if (!authManager.user) {
+        if (!authManager.user && getCachedAppConfig().require_login !== false) {
             if (stats) stats.textContent = 'Sign in with email/password to upload music to this server.';
             container.innerHTML = createPlaceholder('Server uploads are private per account. Sign in to view them.');
             return;
@@ -3328,6 +3330,7 @@ export class UIRenderer {
         container.innerHTML = tracks
             .map((track, index) => {
                 const base = this.createTrackItemHTML(track, index, true, false, false, true);
+                if (!authManager.user) return base;
                 return base.replace(
                     '<div class="track-item-actions">',
                     `<div class="track-item-actions">
@@ -4477,6 +4480,7 @@ export class UIRenderer {
                 if (discA !== discB) return discA - discB;
                 return a.trackNumber - b.trackNumber;
             });
+            await loadGlobalStreamCounts(tracks.map((track) => track.id)).catch(() => {});
             await this.renderListWithTracks(tracklistContainer, tracks, false, true, true, true, 'album');
 
             recentActivityManager.addAlbum(album);

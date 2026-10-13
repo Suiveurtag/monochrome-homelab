@@ -77,6 +77,7 @@
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/assets/logo.svg" type="image/svg+xml" />
         <link rel="stylesheet" href="/styles.css" />
+        <link rel="stylesheet" href="/listening-stats.css" />
         <link rel="stylesheet" href="/player-refined.css" />
         <link rel="stylesheet" href="/now-playing-panel.css" />
         <link rel="stylesheet" href="/soggy-easter-egg.css" />
@@ -84,6 +85,14 @@
     </head>
 
     <body>
+        <!-- Listening Stats direction contract.
+        THESIS: Listening becomes a living stage built from the listener's music.
+        OWN-WORLD: Monochrome typography and native controls, artwork colors, spatial covers, precise motion.
+        STORY: Choose a period, feel its scale, explore activity, replay favorites and inspect history.
+        FIRST VIEWPORT: Oversize listening time beside an artwork fan, flowing into an integrated activity curve.
+        FORM: Immersive listening canvas, seed 5d21f129; approved B Scene at .impeccable/mocks/listening-stats-redesign/scene-b.png.
+        FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+        -->
         <!--
         THESIS: Administration is a calm operator console, refusing the generic card mosaic for one searchable member table and explicit control ledgers.
         OWN-WORLD: Monochrome ink-on-ink surfaces, neutral hairlines, compact workhorse type, restrained 12–16px corners, and semantic color only for account state.
@@ -120,6 +129,18 @@
                     <text class="site-intro-wordmark site-intro-word-fill" x="112" y="76">Monochrome</text>
                 </svg>
             </div>
+        </div>
+        <div id="login-transition" class="login-transition" aria-hidden="true" hidden>
+            <div class="login-transition-veil"></div>
+            <svg class="login-transition-mark" viewBox="12.25 6.25 78 78" role="presentation">
+                <defs>
+                    <mask id="login-transition-mask">
+                        <rect class="login-transition-reveal" x="12" y="7" width="78" height="78" fill="white" />
+                    </mask>
+                </defs>
+                <path class="login-transition-outline" mask="url(#login-transition-mask)" d="M39.5 10H86.5V57H63V33.5H39.5ZM16 33.5H39.5V57H63V80.5H16Z" />
+                <path class="login-transition-fill" d="M39.5 10H86.5V57H63V33.5H39.5ZM16 33.5H39.5V57H63V80.5H16Z" />
+            </svg>
         </div>
         <div id="access-gate" class="access-gate" hidden>
             <div id="access-dot-field" class="dot-field-container" aria-hidden="true"></div>
@@ -1949,9 +1970,9 @@
                                 </a>
                             </li>
                             <li class="nav-item" id="sidebar-nav-recent">
-                                <a href="/recent">
-                                    <use svg="./images/recent.svg" size="24" />
-                                    <span>Recent</span>
+                                <a href="/stats">
+                                    <use svg="!lucide/chart-no-axes-combined.svg" size="24" />
+                                    <span>Listening stats</span>
                                 </a>
                             </li>
                             <li class="nav-item" id="sidebar-nav-settings">
@@ -2681,6 +2702,34 @@
                             </div>
                         </section>
                     </div>
+                </div>
+
+                <div id="page-stats" class="page">
+                    <header class="stats-header">
+                        <div><h1>Listening stats</h1></div>
+                        <div class="stats-header-actions">
+                            <button type="button" class="stats-icon-button" data-stats-action="refresh" aria-label="Refresh listening stats"><use svg="!lucide/refresh-cw.svg" size="17" /></button>
+                            <button type="button" id="stats-export" class="btn-secondary" data-stats-action="export" disabled><use svg="!lucide/download.svg" size="16" /><span>Export</span></button>
+                        </div>
+                    </header>
+                    <div class="stats-toolbar">
+                        <div class="stats-segments stats-periods" role="group" aria-label="Listening period">
+                            <button type="button" data-period="day" aria-pressed="false">Day</button>
+                            <button type="button" data-period="week" aria-pressed="true">Week</button>
+                            <button type="button" data-period="month" aria-pressed="false">Month</button>
+                            <button type="button" data-period="year" aria-pressed="false">Year</button>
+                            <button type="button" data-period="lifetime" aria-pressed="false">Lifetime</button>
+                        </div>
+                        <div class="stats-date-controls">
+                            <button type="button" class="stats-icon-button" data-stats-action="previous" aria-label="Previous listening period"><use svg="!lucide/chevron-left.svg" size="18" /></button>
+                            <span id="stats-period-label">This week</span>
+                            <label class="stats-date-picker" title="Choose a listening date"><use svg="!lucide/calendar-days.svg" size="16" /><span class="sr-only">Choose a listening date</span><input type="date" id="stats-date" /></label>
+                            <button type="button" class="stats-icon-button" data-stats-action="next" aria-label="Next listening period"><use svg="!lucide/chevron-right.svg" size="18" /></button>
+                            <button type="button" class="stats-today" data-stats-action="today">Today</button>
+                        </div>
+                    </div>
+                    <p id="stats-feedback" class="stats-feedback" role="status"></p>
+                    <div id="stats-content"></div>
                 </div>
 
                 <div id="page-recent" class="page">
@@ -3818,8 +3867,13 @@
                                                         size="19" /></span
                                                 ><span
                                                     ><strong>Listening stats</strong
-                                                    ><small>Recent listening history and activity insights</small></span
+                                                    ><small>Unlock listening insights for everyone, including admins</small></span
                                                 ><input id="admin-feature-stats" type="checkbox" role="switch"
+                                            /></label>
+                                            <label class="admin-control-row"
+                                                ><span class="admin-control-icon"><use svg="!lucide/lock-keyhole.svg" size="19" /></span
+                                                ><span><strong>Keep the annual recap under wraps</strong><small>Lock Year and Lifetime for everyone. Listening continues to count.</small></span
+                                                ><input id="admin-stats-lock-long-term" type="checkbox" role="switch"
                                             /></label>
                                             <label class="admin-control-row"
                                                 ><span class="admin-control-icon"
@@ -3881,11 +3935,35 @@
                                             ><small id="admin-storage-limit-help">This applies to local uploads and Spotify imports.</small></label>
                                         <label class="admin-control-row admin-instance-toggle"
                                             ><span class="admin-control-icon"
+                                                ><use svg="!lucide/lock-keyhole.svg" size="19" /></span
+                                            ><span
+                                                ><strong>Require an account to use the instance</strong
+                                                ><small>Turn off to let visitors browse the shared catalogue without signing in.</small></span
+                                            ><input id="admin-require-login" type="checkbox" role="switch"
+                                        /></label>
+                                        <label class="admin-control-row admin-instance-toggle"
+                                            ><span class="admin-control-icon is-warning"
+                                                ><use svg="!lucide/upload-cloud.svg" size="19" /></span
+                                            ><span
+                                                ><strong>Allow uploads without an account</strong
+                                                ><small>Not recommended: anyone can add files to the shared library. Requires public access and Upload music permission.</small></span
+                                            ><input id="admin-allow-guest-uploads" type="checkbox" role="switch"
+                                        /></label>
+                                        <label class="admin-control-row admin-instance-toggle"
+                                            ><span class="admin-control-icon"
                                                 ><use svg="!lucide/user-plus.svg" size="19" /></span
                                             ><span
-                                                ><strong>Open registrations</strong
-                                                ><small>Allow new people to request an account</small></span
+                                                ><strong>Allow new accounts</strong
+                                                ><small>Permit people to register an account on this instance</small></span
                                             ><input id="admin-registrations-open" type="checkbox" role="switch"
+                                        /></label>
+                                        <label class="admin-control-row admin-instance-toggle"
+                                            ><span class="admin-control-icon is-warning"
+                                                ><use svg="!lucide/shield-check.svg" size="19" /></span
+                                            ><span
+                                                ><strong>Approve accounts manually</strong
+                                                ><small>Keep new accounts pending until an administrator activates them</small></span
+                                            ><input id="admin-require-approval" type="checkbox" role="switch"
                                         /></label>
                                         <label class="admin-control-row admin-instance-toggle"
                                             ><span class="admin-control-icon is-warning"
@@ -4628,9 +4706,9 @@
                                     </div>
                                     <div class="setting-item">
                                         <div class="info">
-                                            <span class="label">Show Recent in Sidebar</span>
+                                            <span class="label">Show Listening Stats in Sidebar</span>
                                             <span class="description"
-                                                >Display the Recent link in the sidebar navigation</span
+                                                >Display the Listening Stats link in the sidebar navigation</span
                                             >
                                         </div>
                                         <label class="toggle-switch">

@@ -168,11 +168,10 @@ export async function markSpotifyImportPlaylistCreated(id, client = pb) {
 }
 
 export function createTrackFormData(track, file, ownerId, coverFile = null) {
-    if (!ownerId) throw new Error('You must be signed in to upload music.');
     if (!file) throw new Error('Missing audio file.');
 
     const formData = new FormData();
-    formData.set('owner', ownerId);
+    if (ownerId) formData.set('owner', ownerId);
     formData.set('title', track?.title || file.name?.replace(/\.[^/.]+$/, '') || 'Unknown Title');
     formData.set('artist', firstArtistName(track));
     formData.set('album', track?.hideFromArtistPage ? '' : track?.album?.title || 'Unknown Album');
@@ -235,7 +234,12 @@ export async function importRemoteSelfHostedTrack(payload, client = pb, fetchImp
 }
 
 export async function uploadSelfHostedTrack(track, file, coverFile = null, client = pb) {
-    if (!client?.authStore?.isValid) throw new Error('You must be signed in to upload music.');
+    if (
+        !client?.authStore?.isValid &&
+        document.documentElement.dataset.canUpload !== 'true'
+    ) {
+        throw new Error('You must be signed in to upload music.');
+    }
     const ownerId = client.authStore.model?.id || client.authStore.model?.$id;
     const record = await client
         .collection(SELFHOST_TRACKS_COLLECTION)

@@ -1,18 +1,23 @@
 import { authManager } from './accounts/auth.js';
 import { pb } from './accounts/config.js';
 import { initializeDotField } from './dot-field.js';
+import { playLoginTransition, revealAccessGate } from './site-intro.js';
 
 export const DEFAULT_CONFIG = {
     registrations_open: true,
+    require_login: true,
+    require_approval: true,
     maintenance_mode: false,
     announcement: '',
     instance_name: 'Monochrome',
     support_email: '',
     feature_social: true,
     feature_stats: true,
+    stats_lock_long_term: false,
     feature_uploads: true,
     feature_parties: true,
     allow_uploads: true,
+    allow_guest_uploads: false,
     allow_catalog_edits: true,
     allow_catalog_deletes: true,
     allow_downloads: true,
@@ -48,6 +53,15 @@ export function getCachedAppConfig() {
 }
 
 export function isFeatureEnabled(feature, user = authManager.user, config = cachedAppConfig) {
+    if (!user || user.access_status !== 'active') {
+        return (
+            feature === 'uploads' &&
+            config.require_login === false &&
+            config.allow_guest_uploads === true &&
+            config.feature_uploads !== false
+        );
+    }
+    if (feature === 'stats') return config.feature_stats !== false;
     if (isAdminAccount(user)) return true;
     const field = FEATURE_FIELDS[feature];
     return field ? config[field] !== false : true;
@@ -55,9 +69,17 @@ export function isFeatureEnabled(feature, user = authManager.user, config = cach
 
 export function canUsePermission(permission, user = authManager.user, config = cachedAppConfig) {
     if (isAdminAccount(user)) return true;
-    if (!user || user.access_status !== 'active') return false;
     const field = PERMISSION_FIELDS[permission];
     if (!field) return true;
+    if (!user || user.access_status !== 'active') {
+        return (
+            permission === 'upload_music' &&
+            config.require_login === false &&
+            config.allow_guest_uploads === true &&
+            config.allow_uploads !== false &&
+            config.feature_uploads !== false
+        );
+    }
     if (permission === 'upload_music' && config.feature_uploads === false) return false;
     if (permission === 'create_social_posts' && config.feature_social === false) return false;
     if (permission === 'create_parties' && config.feature_parties === false) return false;
@@ -69,7 +91,6 @@ export function applyInstancePolicy(config = cachedAppConfig) {
     const root = document.documentElement;
     const featureTargets = {
         social: document.getElementById('sidebar-nav-social'),
-        stats: document.getElementById('sidebar-nav-recent'),
         uploads: document.getElementById('sidebar-nav-upload'),
         parties: document.getElementById('sidebar-nav-party'),
     };
@@ -169,13 +190,48 @@ async function playAccessGrantedAnimation(card, message) {
     card.removeAttribute('aria-busy');
 }
 
+async function playAccessGateExitAnimation(gate, card) {
+    if (!gate) return;
+
+    document.body.classList.remove('login-page-active', 'login-page-fading');
+    const icon = card?.querySelector('.access-card-icon');
+    if (icon) {
+        const rect = icon.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        const farthestX = Math.max(x, window.innerWidth - x);
+        const farthestY = Math.max(y, window.innerHeight - y);
+        gate.style.setProperty('--access-unlock-x', `${x}px`);
+        gate.style.setProperty('--access-unlock-y', `${y}px`);
+        gate.style.setProperty('--access-unlock-exit-scale', String(Math.hypot(farthestX, farthestY) / 100 + 0.1));
+    }
+
+    gate.classList.add('access-gate-exiting');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const fade = gate.animate([{ opacity: 1 }, { opacity: 0 }], {
+        duration: reducedMotion ? 180 : 280,
+        easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+        fill: 'forwards',
+    });
+    await fade.finished.catch(() => {});
+
+    gate.hidden = true;
+    gate.classList.remove('access-gate-exiting');
+    gate.style.removeProperty('--access-unlock-x');
+    gate.style.removeProperty('--access-unlock-y');
+    gate.style.removeProperty('--access-unlock-exit-scale');
+    document.body.classList.remove('access-gated');
+}
+
 export async function enforceAccessGate({ onReady } = {}) {
     await authManager.ready;
     const config = await loadAppConfig();
     applyInstancePolicy(config);
     applyAnnouncement(config);
 
-    if (!window.__AUTH_GATE__) {
+    // Public instances may be browsed without creating an account. Writes and
+    // member-only features continue to require an active PocketBase account.
+    if (!config.require_login && !config.maintenance_mode) {
         await onReady?.({ gateVisible: false });
         return;
     }
@@ -234,6 +290,7 @@ export async function enforceAccessGate({ onReady } = {}) {
     await onReady?.({ gateVisible: true });
 
     return new Promise((resolve) => {
+        form.dataset.loginPageBound = 'true';
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
             submit.disabled = true;
@@ -242,8 +299,7 @@ export async function enforceAccessGate({ onReady } = {}) {
                 const user = await authManager.signInWithEmail(email.value.trim(), password.value, { silent: true });
                 if (user.access_status !== 'active') throw new Error('Account not active');
                 await playAccessGrantedAnimation(card, message);
-                gate.hidden = true;
-                document.body.classList.remove('access-gated');
+                await playAccessGateExitAnimation(gate, card);
                 resolve();
             } catch {
                 setMessage(
@@ -262,11 +318,16 @@ export async function enforceAccessGate({ onReady } = {}) {
             signup.disabled = true;
             setMessage(message, 'Creating your request...');
             try {
-                await authManager.signUpWithEmail(email.value.trim(), password.value, { silent: true });
+                await authManager.signUpWithEmail(email.value.trim(), password.value, {
+                    silent: true,
+                    requireApproval: config.require_approval !== false,
+                });
                 password.value = '';
                 setMessage(
                     message,
-                    'Request created. An administrator must approve your account before you can sign in.',
+                    config.require_approval
+                        ? 'Request created. An administrator must approve your account before you can sign in.'
+                        : 'Account created. You can now sign in.',
                     'success'
                 );
             } catch (error) {
@@ -276,6 +337,101 @@ export async function enforceAccessGate({ onReady } = {}) {
             }
         });
     });
+}
+
+export async function showLoginPage() {
+    await authManager.ready;
+    const gate = document.getElementById('access-gate');
+    const form = document.getElementById('access-gate-form');
+    if (!gate || !form) return;
+
+    const config = await loadAppConfig();
+    const message = document.getElementById('access-message');
+    const email = document.getElementById('access-email');
+    const password = document.getElementById('access-password');
+    const submit = document.getElementById('access-signin');
+    const signup = document.getElementById('access-signup');
+    const maintenance = document.getElementById('access-maintenance');
+    const maintenanceSignout = document.getElementById('access-maintenance-signout');
+    const card = gate.querySelector('.access-card');
+
+    gate.hidden = false;
+    document.body.classList.add('access-gated');
+    if (!gate.dataset.loginPageInitialized) {
+        initializeDotField(document.getElementById('access-dot-field'), {
+            dotRadius: 1.5,
+            dotSpacing: 14,
+            bulgeStrength: 67,
+            glowRadius: 160,
+            sparkle: false,
+            waveAmplitude: 0,
+            cursorRadius: 500,
+            cursorForce: 0.1,
+            bulgeOnly: true,
+            gradientFrom: '#8300ff',
+            gradientTo: '#B497CF',
+            glowColor: '#120F17',
+        });
+        initializeLockClickAnimation(card);
+        gate.dataset.loginPageInitialized = 'true';
+    }
+    signup.disabled = !config.registrations_open;
+    signup.title = config.registrations_open ? '' : 'Registrations are closed';
+
+    if (config.maintenance_mode && authManager.user?.role !== 'admin') {
+        form.hidden = true;
+        maintenance.hidden = false;
+        maintenanceSignout.onclick = () => window.location.assign('/');
+    } else {
+        form.hidden = false;
+        maintenance.hidden = true;
+        if (!form.dataset.loginPageBound) {
+            form.dataset.loginPageBound = 'true';
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                submit.disabled = true;
+                setMessage(message, 'Checking your account...');
+                try {
+                    const user = await authManager.signInWithEmail(email.value.trim(), password.value, { silent: true });
+                    if (user.access_status !== 'active') throw new Error('Account not active');
+                    await playAccessGrantedAnimation(card, message);
+                    await playAccessGateExitAnimation(gate, card);
+                    window.history.replaceState({}, '', '/');
+                    window.dispatchEvent(new PopStateEvent('popstate'));
+                } catch {
+                    setMessage(message, 'Access refused. Your account may still be pending or may have been banned.', 'error');
+                } finally {
+                    submit.disabled = false;
+                }
+            });
+            signup.addEventListener('click', async () => {
+                if (!config.registrations_open || !form.reportValidity()) return;
+                signup.disabled = true;
+                setMessage(message, 'Creating your request...');
+                try {
+                    await authManager.signUpWithEmail(email.value.trim(), password.value, {
+                        silent: true,
+                        requireApproval: config.require_approval !== false,
+                    });
+                    password.value = '';
+                    setMessage(
+                        message,
+                        config.require_approval !== false
+                            ? 'Request created. An administrator must approve your account before you can sign in.'
+                            : 'Account created. You can now sign in.',
+                        'success'
+                    );
+                } catch (error) {
+                    setMessage(message, error?.message || 'Unable to create this account.', 'error');
+                } finally {
+                    signup.disabled = false;
+                }
+            });
+        }
+    }
+
+    revealAccessGate();
+    await playLoginTransition();
 }
 
 export { loadAppConfig };

@@ -472,7 +472,7 @@ func fetchTTML(item track) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(`<?xml version="1.0" encoding="UTF-8"?><tt xmlns="http://www.w3.org/ns/ttml"><body><div>`)
+	b.WriteString(`<?xml version="1.0" encoding="UTF-8"?><tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal" xmlns:monochrome="https://monochrome.tf/ns/lyrics" itunes:timing="Line" monochrome:lineOnly="true"><body><div>`)
 	for index, line := range lyrics.Lines {
 		start, _ := strconv.ParseInt(line.StartTimeMs, 10, 64)
 		end := int64(item.DurationMS)

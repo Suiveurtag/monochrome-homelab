@@ -1129,6 +1129,8 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
     let historyLoggedTrackId = null;
 
     const { listeningTracker } = await import('./listening-tracker.js');
+    const { initializeListeningSync } = await import('./listening-sync.js');
+    initializeListeningSync(listeningTracker);
 
     let _previousTrackId = null;
 
@@ -1180,6 +1182,7 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
                         listeningTracker.forceFlush();
                     }
                     _previousTrackId = currentId;
+                    historyLoggedTrackId = null;
                     listeningTracker.onTrackStart(player.currentTrack);
                     listeningTracker.onSeek(element.currentTime);
                 }
@@ -1191,6 +1194,7 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
                 await updateWaveform();
             }
 
+            listeningTracker.onSeek(element.currentTime);
             playerBarEffects.setPlaying(true);
             setPlayerStatus({ state: 'ready' });
             revealCurrentQualityBadge(player);
@@ -1209,6 +1213,8 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
 
         element.addEventListener('pause', () => {
             if (player.activeElement !== element) return;
+            listeningTracker.onTimeUpdate(element.currentTime, element.duration, { playbackRate: element.playbackRate });
+            listeningTracker.forceFlush();
             clearBufferingFallback();
             playerBarEffects.setPlaying(false);
             player.updateMediaSessionPlaybackState();
@@ -1218,6 +1224,7 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
         element.addEventListener('ended', () => {
             if (player.activeElement !== element) return;
             if (player.isTransitionInFlight?.()) return;
+            listeningTracker.onTimeUpdate(element.currentTime, element.duration, { playbackRate: element.playbackRate });
             listeningTracker.onTrackEnd();
             listeningTracker.forceFlush();
             _previousTrackId = null;
@@ -1241,11 +1248,11 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
                 progressBar?.setAttribute('aria-valuenow', String(Math.round(currentTime)));
                 progressBar?.setAttribute('aria-valuetext', `${formatTime(currentTime)} of ${formatTime(duration)}`);
 
-                listeningTracker.onTimeUpdate(currentTime, duration, { playbackRate: element.playbackRate });
+                if (!element.paused && !element.seeking) listeningTracker.onTimeUpdate(currentTime, duration, { playbackRate: element.playbackRate });
                 void player.startCrossfadeIfNeeded(element);
                 void player.startGaplessIfNeeded(element);
 
-                if (currentTime >= 10 && player.currentTrack && player.currentTrack.id !== historyLoggedTrackId) {
+                if (listeningTracker.getSessionSignals().accumulatedPlayTime >= 30 && player.currentTrack && player.currentTrack.id !== historyLoggedTrackId) {
                     historyLoggedTrackId = player.currentTrack.id;
                     const historyEntry = await db.addToHistory(player.currentTrack);
                     await syncManager.syncHistoryItem(historyEntry);

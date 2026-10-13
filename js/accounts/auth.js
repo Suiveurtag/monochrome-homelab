@@ -170,10 +170,16 @@ export class AuthManager {
         }
     }
 
-    async signUpWithEmail(email, password, { silent = false } = {}) {
+    async signUpWithEmail(email, password, { silent = false, requireApproval = true } = {}) {
         try {
-            const user = await auth.create('unique()', email, password);
-            if (!silent) alert('Account request created. An administrator must approve it before you can sign in.');
+            const user = await auth.create('unique()', email, password, { requireApproval });
+            if (!silent) {
+                alert(
+                    requireApproval
+                        ? 'Account request created. An administrator must approve it before you can sign in.'
+                        : 'Account created. You can now sign in.'
+                );
+            }
             return user;
         } catch (error) {
             console.error('Sign Up failed:', error);

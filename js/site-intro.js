@@ -72,6 +72,58 @@ export function resolveSiteIntroTarget() {
     return isUsableTarget(sidebarBrand) ? sidebarBrand : null;
 }
 
+export async function playLoginTransition() {
+    const overlay = document.getElementById('login-transition');
+    if (!overlay || prefersReducedMotion()) return;
+
+    const mark = overlay.querySelector('.login-transition-mark');
+    const reveal = overlay.querySelector('.login-transition-reveal');
+    const fill = overlay.querySelector('.login-transition-fill');
+    const veil = overlay.querySelector('.login-transition-veil');
+    if (!mark || !reveal || !fill || !veil) return;
+
+    reveal.setAttribute('width', '78');
+    reveal.style.transform = 'scaleX(0)';
+    fill.style.opacity = '0';
+    mark.style.transform = 'scale(1)';
+    mark.style.opacity = '1';
+    veil.style.opacity = '1';
+    overlay.hidden = false;
+    const dotField = document.getElementById('access-dot-field');
+    dotField?.pauseAnimation?.();
+
+    const markWidth = mark.getBoundingClientRect().width;
+    const openingWidth = (markWidth * 23.5) / 78;
+    const exitScale = Math.max(window.innerWidth, window.innerHeight) / openingWidth + 4;
+    const drawing = reveal.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], {
+        duration: 900,
+        easing: 'cubic-bezier(0.77, 0, 0.175, 1)',
+        fill: 'forwards',
+    });
+    await drawing.finished.catch(() => {});
+
+    await fill.animate([{ opacity: 0 }, { opacity: 1 }], {
+        duration: 220,
+        easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+        fill: 'forwards',
+    }).finished.catch(() => {});
+
+    const zoom = mark.animate(
+        [{ transform: 'scale(1)' }, { transform: `scale(${exitScale})` }],
+        { duration: 1250, easing: 'cubic-bezier(0.77, 0, 0.175, 1)', fill: 'forwards' }
+    );
+    const fadeVeil = veil.animate([{ opacity: 1 }, { opacity: 0 }], {
+        duration: 700,
+        delay: 550,
+        easing: 'ease-out',
+        fill: 'forwards',
+    });
+    await Promise.all([zoom.finished, fadeVeil.finished].map((animation) => animation.catch(() => {})));
+    overlay.hidden = true;
+    for (const animation of overlay.getAnimations({ subtree: true })) animation.cancel();
+    dotField?.resumeAnimation?.();
+}
+
 function prepareOverlay(overlay) {
     for (const animation of overlay.getAnimations({ subtree: true })) animation.cancel();
     for (const frame of overlay.siteIntroFrames || []) window.cancelAnimationFrame(frame);

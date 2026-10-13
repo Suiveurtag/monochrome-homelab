@@ -1,6 +1,6 @@
 {
     "schemaVersion": 2,
-    "generatedAt": "2026-08-26T17:02:36Z",
+    "generatedAt": "2026-10-13T00:02:00Z",
     "title": "Design System: Monochrome Social",
     "extensions": {
         "colorMeta": {
@@ -8,43 +8,106 @@
                 "role": "neutral",
                 "displayName": "Page Ink",
                 "canonical": "var(--background)",
-                "tonalRamp": ["#050505", "#0a0a0a", "#141414", "#1f1f1f", "#2a2a2a", "#3d3d3d", "#6b6b6b", "#a0a0a0"]
+                "tonalRamp": [
+                    "#050505",
+                    "#0a0a0a",
+                    "#141414",
+                    "#1f1f1f",
+                    "#2a2a2a",
+                    "#3d3d3d",
+                    "#6b6b6b",
+                    "#a0a0a0"
+                ]
             },
             "foreground": {
                 "role": "primary",
                 "displayName": "Foreground Ink (the accent)",
                 "canonical": "var(--foreground)",
-                "tonalRamp": ["#5a5a5a", "#787878", "#969696", "#b4b4b4", "#c7c7c7", "#dadada", "#e8e8e8", "#f5f5f5"]
+                "tonalRamp": [
+                    "#5a5a5a",
+                    "#787878",
+                    "#969696",
+                    "#b4b4b4",
+                    "#c7c7c7",
+                    "#dadada",
+                    "#e8e8e8",
+                    "#f5f5f5"
+                ]
             },
             "card": {
                 "role": "neutral",
                 "displayName": "Card Surface",
                 "canonical": "var(--card)",
-                "tonalRamp": ["#0f0f0f", "#141414", "#1a1a1a", "#222222", "#2a2a2a", "#3a3a3a", "#4d4d4d", "#666666"]
+                "tonalRamp": [
+                    "#0f0f0f",
+                    "#141414",
+                    "#1a1a1a",
+                    "#222222",
+                    "#2a2a2a",
+                    "#3a3a3a",
+                    "#4d4d4d",
+                    "#666666"
+                ]
             },
             "muted": {
                 "role": "neutral",
                 "displayName": "Muted Fill (avatar/art placeholder)",
                 "canonical": "var(--muted)",
-                "tonalRamp": ["#141414", "#1f1f1f", "#282828", "#333333", "#454545", "#5c5c5c", "#7a7a7a", "#999999"]
+                "tonalRamp": [
+                    "#141414",
+                    "#1f1f1f",
+                    "#282828",
+                    "#333333",
+                    "#454545",
+                    "#5c5c5c",
+                    "#7a7a7a",
+                    "#999999"
+                ]
             },
             "muted-foreground": {
                 "role": "neutral",
                 "displayName": "Muted Text",
                 "canonical": "var(--muted-foreground)",
-                "tonalRamp": ["#4a4a4a", "#5e5e5e", "#727272", "#868686", "#a0a0a0", "#b4b4b4", "#c8c8c8", "#dcdcdc"]
+                "tonalRamp": [
+                    "#4a4a4a",
+                    "#5e5e5e",
+                    "#727272",
+                    "#868686",
+                    "#a0a0a0",
+                    "#b4b4b4",
+                    "#c8c8c8",
+                    "#dcdcdc"
+                ]
             },
             "border": {
                 "role": "neutral",
                 "displayName": "Hairline",
                 "canonical": "var(--border)",
-                "tonalRamp": ["#1a1a1a", "#2a2a2a", "#3a3a3a", "#4a4a4a", "#5f5f5f", "#787878", "#9a9a9a", "#bfbfbf"]
+                "tonalRamp": [
+                    "#1a1a1a",
+                    "#2a2a2a",
+                    "#3a3a3a",
+                    "#4a4a4a",
+                    "#5f5f5f",
+                    "#787878",
+                    "#9a9a9a",
+                    "#bfbfbf"
+                ]
             },
             "secondary": {
                 "role": "neutral",
                 "displayName": "Secondary Fill",
                 "canonical": "var(--secondary)",
-                "tonalRamp": ["#141414", "#1f1f1f", "#2a2a2a", "#383838", "#4a4a4a", "#616161", "#808080", "#a5a5a5"]
+                "tonalRamp": [
+                    "#141414",
+                    "#1f1f1f",
+                    "#2a2a2a",
+                    "#383838",
+                    "#4a4a4a",
+                    "#616161",
+                    "#808080",
+                    "#a5a5a5"
+                ]
             },
             "highlight": {
                 "role": "primary",
@@ -65,26 +128,65 @@
                 "role": "tertiary",
                 "displayName": "Presence Green (alive only)",
                 "canonical": "#5ee890",
-                "tonalRamp": ["#0d3a20", "#145c32", "#1d7a43", "#279954", "#3cb96a", "#5ee890", "#8cefb0", "#c2f8d5"]
+                "tonalRamp": [
+                    "#0d3a20",
+                    "#145c32",
+                    "#1d7a43",
+                    "#279954",
+                    "#3cb96a",
+                    "#5ee890",
+                    "#8cefb0",
+                    "#c2f8d5"
+                ]
             },
             "listening-white": {
                 "role": "tertiary",
                 "displayName": "Listening White (playing now)",
                 "canonical": "#ffffff",
-                "tonalRamp": ["#404040", "#595959", "#737373", "#8c8c8c", "#a6a6a6", "#bfbfbf", "#d9d9d9", "#ffffff"]
+                "tonalRamp": [
+                    "#404040",
+                    "#595959",
+                    "#737373",
+                    "#8c8c8c",
+                    "#a6a6a6",
+                    "#bfbfbf",
+                    "#d9d9d9",
+                    "#ffffff"
+                ]
             },
             "like-red": {
                 "role": "tertiary",
                 "displayName": "Like Red (liked hearts only)",
                 "canonical": "#ff5470",
-                "tonalRamp": ["#4d0f1a", "#7a1728", "#a61f36", "#d02a44", "#ef3f58", "#ff5470", "#ff8ba0", "#ffc4d0"]
+                "tonalRamp": [
+                    "#4d0f1a",
+                    "#7a1728",
+                    "#a61f36",
+                    "#d02a44",
+                    "#ef3f58",
+                    "#ff5470",
+                    "#ff8ba0",
+                    "#ffc4d0"
+                ]
             }
         },
         "typographyMeta": {
-            "display": { "displayName": "Display", "purpose": "The single 'Social' page h1." },
-            "title": { "displayName": "Title", "purpose": "Thread names, panel heroes, card headings." },
-            "body": { "displayName": "Body", "purpose": "Feed post text (0.9rem/1.55, pre-wrap)." },
-            "message": { "displayName": "Message", "purpose": "Chat bubble text (0.82rem/1.5, pre-wrap)." },
+            "display": {
+                "displayName": "Display",
+                "purpose": "The single 'Social' page h1."
+            },
+            "title": {
+                "displayName": "Title",
+                "purpose": "Thread names, panel heroes, card headings."
+            },
+            "body": {
+                "displayName": "Body",
+                "purpose": "Feed post text (0.9rem/1.55, pre-wrap)."
+            },
+            "message": {
+                "displayName": "Message",
+                "purpose": "Chat bubble text (0.82rem/1.5, pre-wrap)."
+            },
             "meta": {
                 "displayName": "Meta",
                 "purpose": "Handles, timestamps, previews, status lines; tabular-nums for clocks."
@@ -167,7 +269,11 @@
                 "value": "240ms",
                 "purpose": "Message enter: translateY(7px) + fade. Also share-sheet editor and group modal card rise."
             },
-            { "name": "duration-panel", "value": "280ms", "purpose": "Info panel slide-in: translateX(14px) + fade." },
+            {
+                "name": "duration-panel",
+                "value": "280ms",
+                "purpose": "Info panel slide-in: translateX(14px) + fade."
+            },
             {
                 "name": "duration-thumb",
                 "value": "260ms",
@@ -217,6 +323,21 @@
                 "name": "admin-reduced-motion",
                 "value": "prefers-reduced-motion: reduce -> 0.01ms duration; 1 iteration; scroll-behavior auto",
                 "purpose": "Scoped to #page-admin including pseudo-elements; JavaScript inspector scrolling also switches from smooth to auto."
+            },
+            {
+                "name": "ease-stats-reveal",
+                "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+                "purpose": "Stats B Scene only: stage and cover entrances, chart/rotation/hour reveals, and interaction easing."
+            },
+            {
+                "name": "stats-reveal-durations",
+                "value": "count-up 850ms; headline 700ms; caption 800ms; covers 950ms + 90ms stagger; orbit 1200ms; stroke 700ms; area/donut 650ms; bars 500ms + 12ms stagger; rows 450ms; in-view ambience 10s loop",
+                "purpose": "Finite Stats B entrances; quiet updates suppress count-up and scene/chart/row reveals. Loading pulse and refresh spin represent active state."
+            },
+            {
+                "name": "stats-reduced-motion",
+                "value": "prefers-reduced-motion: reduce -> animation: none; transition: none",
+                "purpose": "Stats descendants and pseudo-elements disable CSS motion; JavaScript skips count-up and pointer tilt, retaining static cover rotations. Social/Admin remain unchanged."
             }
         ],
         "breakpoints": [
@@ -249,6 +370,16 @@
                 "name": "admin-phone",
                 "value": "@container admin-page (max-width: 560px)",
                 "purpose": "Metrics become 2-by-2, status and forms stack, the ledger becomes identity-first, and the inspector becomes a fixed edge drawer."
+            },
+            {
+                "name": "stats-analysis-stack",
+                "value": "@container (max-width: 900px)",
+                "purpose": "Stats B analysis stacks and rotation/hour rail becomes two columns; donut 100px, cover fan 280px."
+            },
+            {
+                "name": "stats-phone",
+                "value": "@container (max-width: 560px)",
+                "purpose": "Stats B stage and rail stack vertically; fan 245px, donut 120px, panels 16px; controls wrap, secondary times hide. ResizeObserver rebuilds compact chart geometry at 560px."
             }
         ],
         "patterns": [
@@ -307,7 +438,49 @@
                 "value": "role=dialog + aria-labelledby; aria-modal on phone; inert background; focus close on open; Escape close; focus return to opener",
                 "purpose": "The attached inspector becomes a complete modal drawer at the shipped 560px phone condition."
             }
-        ]
+        ],
+        "surfaces": {
+            "listening-stats": {
+                "northStar": "The Listening Stage",
+                "mode": "operate",
+                "approved": true,
+                "seed": "5d21f129",
+                "contractSource": "index.html first body comment",
+                "approvedComp": ".impeccable/mocks/listening-stats-redesign/scene-b.png",
+                "qualityBar": ".impeccable/mocks/listening-stats-redesign/quality-bar.md",
+                "documentation": ".impeccable/surfaces/listening-stats.md",
+                "source": [
+                    "index.html#page-stats",
+                    "listening-stats.css",
+                    "js/listening-stats.js",
+                    "js/listening-stats-scene.js"
+                ],
+                "composition": "Open 44%/56% giant-minutes/artwork stage with integrated smooth activity curve; covers capped at 230px, caption top margin 18px on desktop/mobile; 58%/42% ranking and rotation/hour rail; full-width history.",
+                "colorAuthority": "getVibrantColorFromImage on actual fan covers; inherited foreground/theme mixes on unavailable extraction. Local colors reset each render.",
+                "chartGeometry": "1000x160 desktop /400x240 compact viewBox;130px/210px display height; responsive rebuild at560px; stems interpolate the same activity curve.",
+                "shadows": [
+                    "cover: 0 22px 40px rgb(0 0 0 / 28%)",
+                    "cover hover/focus: 0 30px 45px rgb(0 0 0 / 35%)",
+                    "tooltip: 0 5px 16px rgb(0 0 0 / 15%)"
+                ],
+                "evidence": [
+                    ".impeccable/screenshots/listening-stats-polish-desktop-final.jpg",
+                    ".impeccable/screenshots/listening-stats-polish-rotation.jpg",
+                    ".impeccable/screenshots/listening-stats-polish-mobile.jpg"
+                ],
+                "evidenceContext": "Local previews use demonstration sessions and real imported cover art. Capture refresh may follow final fixes.",
+                "policy": "Existing 30-second heard-audio qualification and locks remain authoritative for administrators too; collection continues while reads/export are locked.",
+                "navigationMotion": {
+                    "segmentMs": 280,
+                    "replacementMs": 320,
+                    "countMs": 450,
+                    "initialCountMs": 850,
+                    "interruptible": true,
+                    "quietRefresh": "No supersession of navigation; unchanged payloads retain inspected DOM."
+                },
+                "rotation": "Rounded arc paths; radius62, cap-aware gap, thickness at most10, count-only center, sole positive entry full circle."
+            }
+        }
     },
     "components": [
         {
@@ -397,6 +570,14 @@
             "description": "Complete policy-ledger label with semantic icon, title, explanatory sentence, and native checkbox switch; the entire row is the target.",
             "html": "<label class=\"ds-admin-policy\"><span class=\"ds-admin-policy-icon\" aria-hidden=\"true\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 2v20\"/><path d=\"m17 5-5-3-5 3\"/><path d=\"m17 19-5 3-5-3\"/></svg></span><span class=\"ds-admin-policy-copy\"><strong>Edit catalogue</strong><small>Change metadata, artwork, lyrics and versions</small></span><input class=\"ds-admin-switch\" type=\"checkbox\" role=\"switch\" checked /></label>",
             "css": ".ds-admin-policy { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; gap: 0.75rem; min-height: 68px; padding: 0.72rem 0.9rem; border: 1px solid var(--border); background: color-mix(in srgb,var(--background) 94%,var(--card)); color: var(--foreground); font-family: var(--font-family,Inter,sans-serif); cursor: pointer; transition: background-color 180ms ease; } .ds-admin-policy:hover { background: rgb(var(--highlight-rgb,245 245 245) / 0.035); } .ds-admin-policy-icon { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid var(--border); border-radius: 9px; color: var(--muted-foreground); background: rgb(var(--highlight-rgb,245 245 245) / 0.025); } .ds-admin-policy-copy { display: grid; gap: 0.18rem; min-width: 0; } .ds-admin-policy-copy strong { font-size: 0.72rem; font-weight: 650; } .ds-admin-policy-copy small { color: var(--muted-foreground); font-size: 0.61rem; line-height: 1.35; } .ds-admin-switch { position: relative; width: 36px; height: 20px; margin: 0; border: 1px solid var(--border); border-radius: 999px; appearance: none; background: var(--muted); cursor: pointer; transition: border-color 180ms ease,background-color 180ms ease; } .ds-admin-switch::after { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted-foreground); content: ''; transition: transform 220ms cubic-bezier(0.22,1,0.36,1),background-color 180ms ease; } .ds-admin-switch:checked { border-color: var(--foreground); background: var(--foreground); } .ds-admin-switch:checked::after { background: var(--background); transform: translateX(16px); } .ds-admin-switch:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; } @media (prefers-reduced-motion: reduce) { .ds-admin-policy,.ds-admin-switch,.ds-admin-switch::after { transition-duration: 0.01ms; } }"
+        },
+        {
+            "name": "Stats Period Segments",
+            "kind": "custom",
+            "refersTo": null,
+            "description": "Stats B native pill period buttons with foreground selected fill, explicit pressed state, visible focus and press feedback; local to Stats.",
+            "html": "<div class=\"ds-stats-periods\" role=\"group\" aria-label=\"Listening period\"><button type=\"button\" aria-pressed=\"false\">Day</button><button type=\"button\" aria-pressed=\"true\">Week</button><button type=\"button\" aria-pressed=\"false\">Month</button><button type=\"button\" aria-pressed=\"false\">Year</button><button type=\"button\" aria-pressed=\"false\">Lifetime</button></div>",
+            "css": ".ds-stats-periods { display: inline-flex; gap: 2px; padding: 4px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 70%, transparent); font-family: var(--font-family,Inter,sans-serif); } .ds-stats-periods button { display: flex; align-items: center; justify-content: center; min-height: 32px; min-width: 66px; padding: 0.45rem 0.8rem; border: 0; border-radius: 999px; background: transparent; color: var(--muted-foreground); font: inherit; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: color 180ms, background 180ms, opacity 180ms, transform 240ms cubic-bezier(0.16,1,0.3,1); } .ds-stats-periods button:hover { color: var(--foreground); background: rgb(var(--highlight-rgb), 0.06); } .ds-stats-periods button[aria-pressed=\"true\"] { background: var(--foreground); color: var(--background); box-shadow: 0 3px 10px rgb(0 0 0 / 12%); } .ds-stats-periods button:focus-visible { outline: 2px solid var(--foreground); outline-offset: 3px; } .ds-stats-periods button:active:not(:disabled) { transform: scale(0.95); } @media (prefers-reduced-motion: reduce) { .ds-stats-periods button { animation: none; transition: none; } }"
         }
     ],
     "narrative": {

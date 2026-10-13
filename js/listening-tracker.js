@@ -2,6 +2,7 @@ import { artistsOf, genresOf, compactTrack, decay, DAY } from './recommendation-
 
 const STORAGE_KEY = 'monochrome-listening-data';
 const COMPLETION_RATIO_THRESHOLD = 0.3;
+export const STREAM_SECONDS = 30;
 
 export class ListeningTracker {
     constructor() {
@@ -18,6 +19,18 @@ export class ListeningTracker {
         this._trackDuration = 0;
         this._flushTimer = null;
         this._lastSearch = null;
+        this._sessionSink = null;
+        // sessionStorage survives this tab's reload but belongs to no other tab.
+        try {
+            this._tabId = sessionStorage.getItem('monochrome-listening-tab') || globalThis.crypto.randomUUID();
+            sessionStorage.setItem('monochrome-listening-tab', this._tabId);
+        } catch {
+            this._tabId = null;
+        }
+        this._sessionId = null;
+        this._slices = new Map();
+        this._streamQualified = false;
+        this._lastCheckpoint = 0;
     }
 
     // Device-local profiles are isolated by authenticated account.
@@ -31,6 +44,26 @@ export class ListeningTracker {
         this._storageKey = id ? `${STORAGE_KEY}:${id}` : STORAGE_KEY;
         this._data = null;
         this._lastSearch = null;
+    }
+
+    setSessionSink(sink) {
+        this._sessionSink = sink;
+    }
+
+    _sendSession(ended = false, session = this._sessionSnapshot()) {
+        if (!session?.sessionId) return;
+        this._sessionSink?.(
+            {
+                sessionId: session.sessionId,
+                track: session.track,
+                startedAt: session.startedAt,
+                lastAt: session.at,
+                seconds: session.playTime,
+                slices: session.slices,
+                ended,
+            },
+            this._userId
+        );
     }
 
     get accountKey() {
@@ -52,7 +85,12 @@ export class ListeningTracker {
             if (!Array.isArray(this._data.recent)) this._data.recent = [];
             const pending = this._data.pendingSession;
             delete this._data.pendingSession;
-            if (pending?.track?.id && pending.playTime > 0) {
+            if (
+                pending?.track?.id &&
+                pending.playTime > 0 &&
+                (!pending.tabId || !this._tabId || pending.tabId === this._tabId)
+            ) {
+                this._sendSession(true, pending);
                 this._recordSession(pending, 'interrupted');
                 this._flush();
             }
@@ -100,12 +138,26 @@ export class ListeningTracker {
         this._finalizeCurrent(true);
         if (!track?.id || track.isPodcast || track.type === 'video') return;
         this._currentTrackId = String(track.id);
-        this._currentTrack = compactTrack(track);
+        this._currentTrack = {
+            ...compactTrack(track),
+            cover: track.cover || track.album?.cover || '',
+            isSelfHosted: !!track.isSelfHosted,
+            album: track.album?.id
+                ? { ...compactTrack(track).album, cover: track.album.cover || track.cover || '' }
+                : null,
+        };
+        this._sessionId =
+            globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2).padEnd(16, '0')}`;
+        this._slices = new Map();
+        this._streamQualified = false;
+        this._lastCheckpoint = 0;
         this._playStartTime = Date.now();
         this._lastTimeUpdate = 0;
         this._lastUpdateAt = Date.now();
         this._accumulatedPlayTime = 0;
         this._trackDuration = Number(track.duration) || 0;
+        this._sendSession();
+        this._save();
     }
     onTimeUpdate(currentTime, duration, { playbackRate = 1 } = {}) {
         if (!this._currentTrackId || this._playStartTime === null) return;
@@ -116,8 +168,30 @@ export class ListeningTracker {
         const elapsed = Math.max(0, now - this._lastUpdateAt) / 1000;
         // Background tabs may receive infrequent updates. Allow elapsed playback,
         // while onSeek resets the baseline for both short and long seeks.
-        if (delta > 0 && delta <= Math.max(5, elapsed * (Number(playbackRate) || 1) + 0.5))
-            this._accumulatedPlayTime += delta;
+        const rate = Math.max(0.1, Number(playbackRate) || 1);
+        if (delta > 0 && delta <= Math.max(5, elapsed * rate + 0.5)) {
+            const heard = Math.min(delta / rate, elapsed);
+            this._accumulatedPlayTime += heard;
+            let cursor = now - heard * 1000;
+            while (cursor < now) {
+                const minute = Math.floor(cursor / 60000) * 60000;
+                const next = Math.min(now, minute + 60000);
+                this._slices.set(minute, (this._slices.get(minute) || 0) + (next - cursor) / 1000);
+                cursor = next;
+            }
+            if (!this._streamQualified && this._accumulatedPlayTime >= STREAM_SECONDS) {
+                this._streamQualified = true;
+                this._trackEntry(this._currentTrack).playCount++;
+                this._notify(this._currentTrackId);
+                this._sendSession();
+                this._save();
+                this._lastCheckpoint = now;
+            } else if (now - this._lastCheckpoint >= 15000) {
+                this._sendSession();
+                this._save();
+                this._lastCheckpoint = now;
+            }
+        }
         this._lastTimeUpdate = currentTime;
         this._lastUpdateAt = now;
     }
@@ -143,6 +217,11 @@ export class ListeningTracker {
                   playTime: this._accumulatedPlayTime,
                   duration: this._trackDuration,
                   at: Date.now(),
+                  startedAt: this._playStartTime,
+                  sessionId: this._sessionId,
+                  tabId: this._tabId,
+                  qualified: this._streamQualified,
+                  slices: [...this._slices].map(([at, seconds]) => ({ at, seconds })),
               }
             : null;
     }
@@ -150,6 +229,7 @@ export class ListeningTracker {
     _finalizeCurrent(wasSkipped = false) {
         if (!this._currentTrackId || this._playStartTime === null) return;
         const session = this._sessionSnapshot();
+        this._sendSession(true, session);
         this._recordSession(
             session,
             wasSkipped === true ? 'skipped' : wasSkipped === 'interrupted' ? 'interrupted' : 'ended'
@@ -164,16 +244,17 @@ export class ListeningTracker {
         this._notify(session.track.id);
     }
 
-    _recordSession({ track, playTime, duration, at }, reason) {
+    _recordSession({ track, playTime, duration, at, qualified }, reason) {
         if (reason === 'interrupted' && playTime <= 0) return;
         const ratio = duration > 0 ? Math.min(playTime / duration, 1) : 0;
         const data = this._load();
         const signal = this._trackEntry(track);
         const now = Number(at) || Date.now();
         const replay = ratio >= 0.5 && signal.lastPlayed > now - DAY && signal.playCount > 0;
-        signal.playCount++;
+        signal.attemptCount++;
+        if (playTime >= STREAM_SECONDS && !qualified) signal.playCount++;
         signal.totalPlayTime += playTime;
-        signal.avgCompletionRatio = signal.playCount === 1 ? ratio : signal.avgCompletionRatio * 0.8 + ratio * 0.2;
+        signal.avgCompletionRatio = signal.attemptCount === 1 ? ratio : signal.avgCompletionRatio * 0.8 + ratio * 0.2;
         signal.lastPlayed = now;
         signal.updatedAt = now;
         let weight = ratio >= 0.9 ? 1.5 : ratio >= 0.5 ? 0.5 : 0;
@@ -203,6 +284,7 @@ export class ListeningTracker {
         const id = String(track.id);
         const initial = {
             playCount: 0,
+            attemptCount: 0,
             skipCount: 0,
             totalPlayTime: 0,
             completionCount: 0,
@@ -232,7 +314,7 @@ export class ListeningTracker {
                 ...previous,
                 name,
                 affinity: decay(previous.affinity, previous.updatedAt, now) + weight,
-                playCount: previous.playCount + (playTime > 0 ? 1 : 0),
+                playCount: previous.playCount + (playTime >= STREAM_SECONDS ? 1 : 0),
                 skipCount: previous.skipCount + (skipped ? 1 : 0),
                 totalPlayTime: previous.totalPlayTime + playTime,
                 updatedAt: now,
@@ -317,7 +399,7 @@ export class ListeningTracker {
     getTrackScore(id) {
         const s = this.getTrackSignal(id);
         if (!s) return 0;
-        const plays = Math.max(1, s.playCount);
+        const plays = Math.max(1, s.attemptCount ?? s.playCount);
         return (
             s.avgCompletionRatio * 2 +
             (s.completionCount / plays) * 3 -
@@ -358,7 +440,11 @@ export class ListeningTracker {
     }
     getFrequentlySkippedTrackIds(limit = 50) {
         return Object.entries(this._load().tracks)
-            .filter(([, v]) => v.playCount >= 2 && (v.earlySkipCount ?? v.skipCount) / v.playCount > 0.5)
+            .filter(
+                ([, v]) =>
+                    (v.attemptCount ?? v.playCount) >= 2 &&
+                    (v.earlySkipCount ?? v.skipCount) / (v.attemptCount ?? v.playCount) > 0.5
+            )
             .sort((a, b) => b[1].skipCount - a[1].skipCount)
             .slice(0, limit)
             .map(([id]) => id);
@@ -396,6 +482,7 @@ export class ListeningTracker {
         if (this._flushTimer) clearTimeout(this._flushTimer);
         this._flushTimer = null;
         this._save();
+        this._sendSession();
     }
 }
 export const listeningTracker = new ListeningTracker();
