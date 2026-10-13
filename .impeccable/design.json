@@ -455,23 +455,30 @@
                     "js/listening-stats.js",
                     "js/listening-stats-scene.js"
                 ],
-                "composition": "Open 44%/56% giant-minutes/artwork stage with integrated smooth activity curve; covers capped at 260px, caption top margin 14px on desktop/mobile; 58%/42% ranking and rotation/hour rail; full-width history.",
+                "composition": "Open 44%/56% giant-minutes/artwork stage with integrated smooth activity curve; covers capped at 230px, caption top margin 18px on desktop/mobile; 58%/42% ranking and rotation/hour rail; full-width history.",
                 "colorAuthority": "getVibrantColorFromImage on actual fan covers; inherited foreground/theme mixes on unavailable extraction. Local colors reset each render.",
-                "chartGeometry": "1000x240 desktop / 400x240 compact viewBox; 180px / 210px display height; ResizeObserver rebuilds on crossing 560px.",
+                "chartGeometry": "1000x160 desktop /400x240 compact viewBox;130px/210px display height; responsive rebuild at560px; stems interpolate the same activity curve.",
                 "shadows": [
                     "cover: 0 22px 40px rgb(0 0 0 / 28%)",
                     "cover hover/focus: 0 30px 45px rgb(0 0 0 / 35%)",
                     "tooltip: 0 5px 16px rgb(0 0 0 / 15%)"
                 ],
                 "evidence": [
-                    ".impeccable/screenshots/listening-stats-scene-desktop-caption-final.jpg",
-                    ".impeccable/screenshots/listening-stats-scene-desktop-ledgers.jpg",
-                    ".impeccable/screenshots/listening-stats-scene-mobile-caption.jpg",
-                    ".impeccable/screenshots/listening-stats-scene-mobile.jpg",
-                    ".impeccable/screenshots/listening-stats-scene-mobile-ledgers.jpg"
+                    ".impeccable/screenshots/listening-stats-polish-desktop-final.jpg",
+                    ".impeccable/screenshots/listening-stats-polish-rotation.jpg",
+                    ".impeccable/screenshots/listening-stats-polish-mobile.jpg"
                 ],
                 "evidenceContext": "Local previews use demonstration sessions and real imported cover art. Capture refresh may follow final fixes.",
-                "policy": "Existing 30-second heard-audio qualification and locks remain authoritative for administrators too; collection continues while reads/export are locked."
+                "policy": "Existing 30-second heard-audio qualification and locks remain authoritative for administrators too; collection continues while reads/export are locked.",
+                "navigationMotion": {
+                    "segmentMs": 280,
+                    "replacementMs": 320,
+                    "countMs": 450,
+                    "initialCountMs": 850,
+                    "interruptible": true,
+                    "quietRefresh": "No supersession of navigation; unchanged payloads retain inspected DOM."
+                },
+                "rotation": "Rounded arc paths; radius62, cap-aware gap, thickness at most10, count-only center, sole positive entry full circle."
             }
         }
     },

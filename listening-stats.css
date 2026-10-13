@@ -1714,7 +1714,7 @@
 }
 
 .stats-donut-segment {
-    stroke-width: 10px;
+    stroke-width: var(--stats-arc-width, 10px);
     stroke-linecap: round;
     stroke-dasharray: 1;
     animation: stats-draw 650ms var(--stats-ease) both;
@@ -1730,7 +1730,7 @@
 }
 
 .stats-donut-segment:hover {
-    stroke-width: 13px;
+    opacity: 0.8;
 }
 
 .stats-legend li {
@@ -1794,9 +1794,11 @@
     position: relative;
     z-index: 1;
 }
+
 .stats-artists .stats-section-header p {
     display: none;
 }
+
 .stats-artists .stats-legend li {
     padding-block: 5px;
 }

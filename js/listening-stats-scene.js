@@ -14,6 +14,8 @@ export function animateStatsScene(root, startCount) {
     const images = [...root.querySelectorAll('.stats-cover-card img')];
     for (let index = 0; index < 3; index++) root.style.removeProperty(`--stats-color-${index}`);
     images.forEach((img, index) => {
+        const cached = colors.get(img.src);
+        if (cached) root.style.setProperty(`--stats-color-${index}`, cached);
         const apply = () => {
             if (signal.aborted) return;
             let color = colors.get(img.src);
@@ -43,14 +45,21 @@ export function animateStatsScene(root, startCount) {
         const from = Number.isFinite(startCount) ? startCount : 0;
         const duration = Number.isFinite(startCount) ? 450 : 850;
         const formatter = new Intl.NumberFormat();
+        metric.textContent = formatter.format(from);
+        metric.dataset.displayCount = String(from);
         const start = performance.now();
         let frame;
         const tick = (now) => {
             if (signal.aborted) return;
             const progress = Math.min(1, (now - start) / duration);
-            metric.textContent = formatter.format(Math.round(from + (total - from) * (1 - Math.pow(1 - progress, 4))));
+            const displayed = Math.round(from + (total - from) * (1 - Math.pow(1 - progress, 4)));
+            metric.textContent = formatter.format(displayed);
+            metric.dataset.displayCount = String(displayed);
             if (progress < 1 && !reduced.matches && !document.hidden) frame = requestAnimationFrame(tick);
-            else metric.textContent = formatter.format(total);
+            else {
+                metric.textContent = formatter.format(total);
+                metric.dataset.displayCount = String(total);
+            }
         };
         frame = requestAnimationFrame(tick);
         signal.addEventListener('abort', () => cancelAnimationFrame(frame), { once: true });

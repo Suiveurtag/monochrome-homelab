@@ -743,8 +743,8 @@ secondary count labels, and inspectable detail rather than flattening the stage 
 ## Layout
 
 The page is a centered inline-size container capped at 1320px. Its stage uses a 44%/56% split and
-minimum height of 330px. The artwork fan height is `clamp(250px, 31cqi, 390px)`; each cover is
-capped at 260px wide. Its caption sits below the fan with a 14px top margin on desktop and mobile,
+minimum height of 290px. The artwork fan height is `clamp(230px, 25cqi, 310px)`; each cover is
+capped at 230px wide. Its caption sits below the fan with an 18px top margin on desktop and mobile,
 keeping text clear of rotated artwork. The isolated scene clips its own atmosphere and keeps decorative art inside its bounds.
 The activity curve is integrated into the scene, without an enclosing analysis card.
 
@@ -753,13 +753,13 @@ occupy separate panels in the right rail. History returns to a full-width flat l
 and a hairline. Analysis panels use 20px padding; ordinary spacing continues to use app tokens.
 
 - **At 900px container width:** analysis becomes one column; the rail becomes two columns;
-  rotation uses a 100px donut; the fan is 280px high.
+  rotation uses a 100px donut; the fan is 245px high.
 - **At 560px container width:** the stage stacks number, artwork, caption, and curve; period
-  segments fill their row and dates wrap below; the fan is 245px high; panels use 16px padding;
+  segments fill their row and dates wrap below; the fan is 220px high; panels use 16px padding;
   the rail stacks vertically and rotation uses a 120px donut. Ranking time and history duration
   hide while identity, stream counts, dates, and actions remain. The album ranking column is hidden
   in this expression at all widths.
-- **Chart geometry:** the SVG uses a 1000×240 desktop or 400×240 compact viewBox, with a 180px
+- **Chart geometry:** the SVG uses a 1000×160 desktop or 400×240 compact viewBox, with a 130px
   desktop / 210px phone display height. A ResizeObserver rebuilds the chart on crossing 560px,
   accounting for sidebar/player changes as well as viewport resizing.
 
@@ -807,7 +807,7 @@ Minutes/Streams selects chart units. Cubic SVG segments form the smooth curve ov
 and a fading area. Pointer, tap, or keyboard inspection selects a point, exposes its tooltip, and
 updates a polite live caption. ArrowLeft/ArrowRight/Home/End navigate points. The tooltip duplicates
 information from the accessible caption and is hidden from assistive technology. Rotation combines
-a donut with linked artist names and percentage text. Hour bars expose time and listening minutes
+a ring of rounded arc paths with linked artist names and percentage text, without artwork in its center. Stroke thickness is capped at 10 SVG units and adapts to tiny shares; gaps account for the rounded cap width. Only a sole positive entry renders a full circle. Musical stems under the activity curve interpolate that same curve rather than introducing data. Hour bars expose time and listening minutes
 through accessible labels and update the readable hour note.
 
 ### Rankings and session ledger
@@ -827,9 +827,9 @@ and earlier device history is not reconstructed. This is separate from Admin's o
 ### Focus and motion
 
 Native controls receive visible foreground focus (2px, 3px offset); chart targets receive a visible
-stroke. The Stats easing is `cubic-bezier(0.16, 1, 0.3, 1)`. The minutes count rises once over 850ms;
+stroke. The Stats easing is `cubic-bezier(0.16, 1, 0.3, 1)`. The minutes count rises initially over 850ms, and period changes interpolate over 450ms from the currently painted value (including an interrupted animation);
 headline/caption entrances take 700/800ms, covers 950ms with 90ms staggering, orbit 1200ms, curve
-700ms, area/donut 650ms, hour bars 500ms with 12ms staggering, and rows 450ms. Cover hover/focus
+550ms, area/ring 650ms, hour bars 500ms with 12ms staggering, and rows 450ms. Cover hover/focus
 lifts 12px; press scales native buttons to 0.95. Control micro-transitions are generally 180–240ms.
 
 The 10s ambient breathing loop runs only while its scene is in view; loading placeholders pulse
@@ -854,3 +854,7 @@ rotations. These local timings do not change Social or Admin motion.
 - **Don't** promote Stats artwork colors, scale, shadows, sentence-case headings, or motion into Social
   or Admin rules.
 - **Don't** imply locks stop collection, admins bypass Stats locks, or old device history was backfilled.
+
+### Stats navigation polish
+
+Period, chart-unit and ranking selectors use a sliding pill (280ms), recalculated on container resize. Date labels and content replacement use cancelable 320ms opacity/translation transitions. During period/week requests, existing content remains dimmed and inert instead of collapsing to a skeleton; initial loads retain their announced skeleton. Quiet refreshes wait until navigation finishes and skip DOM replacement when payloads are unchanged, preserving point/hour inspection. Latest-response and account guards still enforce data boundaries. Pointer tilt runs at most once per animation frame; artwork extraction uses a bounded 64-item cache and reuses cached colors before paint. Reduced motion skips these effects. These changes are scoped to Listening Stats.

@@ -37,7 +37,7 @@ The first body comment in `index.html` records this approved contract:
 Header and pill period/date controls lead into an open 44%/56% stage: giant heard-minute count and
 comparison on the left, up to three actual top-track covers in a spatial fan with a thin elliptical
 orbit on the right. Streams, artists, and active days support the headline; track/album/streak
-counts form a quiet detail line. Covers are capped at 260px wide; the caption has a 14px top
+counts form a quiet detail line. Covers are capped at 230px wide; the caption has a 18px top
 margin on desktop and mobile to clear rotated artwork, names the most-played track, and offers replay.
 The smooth colored SVG activity curve spans the scene's lower edge and switches Minutes/Streams.
 
@@ -91,3 +91,7 @@ These local preview captures use demonstration sessions and real imported cover 
 are verification data, not production metrics or design tokens. Source and scoped CSS establish the
 implemented details. The captures may be refreshed after final fixes; older neutral-ledger and
 light-theme captures do not prove B Scene's final appearance.
+
+## Navigation polish
+
+Closer B density: compact cover fan, 1000×160 /130px desktop activity curve (400×240 /210px mobile), musical stems from the same curve. Rounded arc ring keeps a count-only center and cap-aware tiny segments. Sliding selector 280ms, cancelable content/date transition320ms, numeric interpolation450ms from the currently painted value. Existing scene remains dim/inert during navigation; quiet updates neither supersede navigation nor redraw unchanged data. Pointer writes are RAF-batched and palette cache bounded to64.

@@ -171,6 +171,7 @@ class ListeningStats {
         });
     }
     async load(quiet = false) {
+        if (quiet && this.root.hasAttribute('aria-busy')) return;
         const generation = ++this.generation;
         const uid = pb.authStore.record?.id;
         const content = this.root.querySelector('#stats-content');
@@ -228,7 +229,10 @@ class ListeningStats {
                 ['data-chart-point', 'data-hour', 'data-play-track'].find((attr) => focused.hasAttribute(attr));
             const focusValue = focusAttr ? focused.getAttribute(focusAttr) : null;
             content.classList.toggle('stats-update', quiet || retained);
-            this.render(retained ? Number(content.querySelector('[data-count]')?.dataset.count) : undefined);
+            const previousMetric = content.querySelector('[data-count]');
+            this.render(
+                retained ? Number(previousMetric?.dataset.displayCount ?? previousMetric?.dataset.count) : undefined
+            );
             if (retained) transitionStatsContent(content);
             if (quiet && focusAttr)
                 this.root.querySelector(`[${focusAttr}="${CSS.escape(focusValue)}"]`)?.focus({ preventScroll: true });
@@ -408,14 +412,17 @@ class ListeningStats {
                 const start = offset;
                 offset += sweep;
                 if (!share) return '';
-                const gap = entries.length === 1 ? 0 : Math.min(9, sweep * 0.35);
+                const thickness = Math.min(10, ((62 * sweep * Math.PI) / 180) * 0.25);
+                const capAngle = ((thickness / 62) * 180) / Math.PI;
+                const gap =
+                    entries.filter((e) => e.seconds > 0).length === 1 ? 0 : capAngle + Math.min(1.5, sweep * 0.1);
                 const [sx, sy] = polar(start + gap / 2);
                 const [ex, ey] = polar(start + sweep - gap / 2);
                 const path =
-                    share >= 0.999
+                    share === 1 && entries.filter((e) => e.seconds > 0).length === 1
                         ? `M 80 18 A 62 62 0 1 1 79.99 18`
                         : `M ${sx} ${sy} A 62 62 0 ${sweep - gap > 180 ? 1 : 0} 1 ${ex} ${ey}`;
-                return `<path class="stats-donut-segment" d="${path}" pathLength="1" style="--stats-order:${i}" stroke="${tones[i % tones.length]}"><title>${escape(entry.name)}: ${Math.round(share * 100)}%</title></path>`;
+                return `<path class="stats-donut-segment" d="${path}" pathLength="1" style="--stats-order:${i};--stats-arc-width:${thickness}px" stroke="${tones[i % tones.length]}"><title>${escape(entry.name)}: ${Math.round(share * 100)}%</title></path>`;
             })
             .join('');
         return `<div class="stats-rotation"><svg class="stats-donut" viewBox="0 0 160 160" role="img" aria-label="Artist listening time distribution"><circle class="stats-donut-track" cx="80" cy="80" r="62"/>${arcs}<text x="80" y="79" text-anchor="middle">${count(this.data.summary.artists)}</text><text class="stats-donut-label" x="80" y="98" text-anchor="middle">artists</text></svg><ul class="stats-legend">${entries.length ? entries.map((a, i) => `<li><span class="stats-swatch" style="--stats-tone:${tones[i % tones.length]}"></span>${a.id ? `<a href="/artist/${encodeURIComponent(a.id)}">${escape(a.name)}</a>` : `<span>${escape(a.name)}</span>`}<strong>${total > 0 ? Math.round((a.seconds / total) * 100) : 0}%</strong></li>`).join('') : '<li class="stats-muted">Your artists will appear after your first stream.</li>'}</ul></div>`;
@@ -504,6 +511,7 @@ class ListeningStats {
             await this.load();
         }
         if (action === 'history-next' || action === 'history-previous') {
+            if (this.root.hasAttribute('aria-busy')) return;
             this.historyPage += action === 'history-next' ? 1 : -1;
             await this.load(true);
         }
