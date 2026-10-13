@@ -58,6 +58,8 @@ export function initializeDotField(container, options = {}) {
     let glowOpacity = 0;
     let animationFrame = 0;
     let resizeTimer = 0;
+    let speedInterval = 0;
+    let paused = false;
 
     function buildDots() {
         dots.length = 0;
@@ -113,6 +115,7 @@ export function initializeDotField(container, options = {}) {
     }
 
     function draw() {
+        if (paused) return;
         frame++;
         const time = frame * 0.02;
         const targetEngagement = reducedMotion ? 0 : Math.min(pointer.speed / 5, 1);
@@ -182,11 +185,28 @@ export function initializeDotField(container, options = {}) {
         animationFrame = window.requestAnimationFrame(draw);
     }
 
+    function pauseAnimation() {
+        if (paused) return;
+        paused = true;
+        window.cancelAnimationFrame(animationFrame);
+        window.clearInterval(speedInterval);
+        speedInterval = 0;
+    }
+
+    function resumeAnimation() {
+        if (!paused) return;
+        paused = false;
+        speedInterval = window.setInterval(updatePointerSpeed, 20);
+        animationFrame = window.requestAnimationFrame(draw);
+    }
+
     resize();
+    container.pauseAnimation = pauseAnimation;
+    container.resumeAnimation = resumeAnimation;
     window.addEventListener('resize', scheduleResize);
     window.addEventListener('pointermove', updatePointer, { passive: true });
     document.addEventListener('mouseleave', resetPointer);
-    const speedInterval = window.setInterval(updatePointerSpeed, 20);
+    speedInterval = window.setInterval(updatePointerSpeed, 20);
     animationFrame = window.requestAnimationFrame(draw);
 
     return () => {
@@ -196,6 +216,8 @@ export function initializeDotField(container, options = {}) {
         window.removeEventListener('resize', scheduleResize);
         window.removeEventListener('pointermove', updatePointer);
         document.removeEventListener('mouseleave', resetPointer);
+        delete container.pauseAnimation;
+        delete container.resumeAnimation;
         container.replaceChildren();
         delete container.dataset.initialized;
     };

@@ -40,7 +40,7 @@ const account = {
         }
     },
 
-    async create(_id, email, password) {
+    async create(_id, email, password, { requireApproval = true } = {}) {
         const username =
             email
                 .split('@')[0]
@@ -51,7 +51,7 @@ const account = {
             password,
             passwordConfirm: password,
             name: username,
-            access_status: 'pending',
+            access_status: requireApproval ? 'pending' : 'active',
             role: 'member',
         });
         return normalizeUser(record);

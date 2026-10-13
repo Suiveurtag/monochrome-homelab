@@ -10,7 +10,7 @@ import {
     SVG_GLOBE,
 } from './icons.js';
 import { sidePanelManager } from './side-panel.js';
-import { isTtml, lyricsToTtml, parseLrc } from './lyrics-format.js';
+import { isLineOnlyLyrics, isTtml, lyricsToTtml, parseLrc } from './lyrics-format.js';
 import { Player } from './player.js';
 
 // Check if text contains Japanese, Chinese, or Korean characters
@@ -1010,12 +1010,20 @@ themeObserver.observe(document.documentElement, {
     attributeFilter: ['data-theme', 'style'],
 });
 
-async function mountSpicyLyrics(container, track, audioPlayer, lyricsManager, localTtml, { signal } = {}) {
+async function mountSpicyLyrics(
+    container,
+    track,
+    audioPlayer,
+    lyricsManager,
+    localTtml,
+    { signal, lineOnly = false } = {}
+) {
     await lyricsManager.ensureComponentLoaded();
     if (signal?.aborted) return null;
 
     container.innerHTML = '';
     const amLyrics = document.createElement('spicy-lyrics');
+    amLyrics.lineOnly = lineOnly;
     amLyrics.ttml = localTtml;
     amLyrics.style.setProperty('--spicy-lyrics-active-color', getLyricsHighlightColor());
     if (trackIsJapanese(track)) amLyrics.setAttribute('lang', 'ja');
@@ -1077,10 +1085,11 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
         const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
         if (signal?.aborted) return null;
         const sourceLyrics = track.lyrics || fetchedLyrics?.ttml || fetchedLyrics?.subtitles || '';
+        const lineOnly = isLineOnlyLyrics(sourceLyrics);
         const localTtml = lyricsToTtml(sourceLyrics, track.duration);
         if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
 
-        return await mountSpicyLyrics(container, track, audioPlayer, lyricsManager, localTtml, { signal });
+        return await mountSpicyLyrics(container, track, audioPlayer, lyricsManager, localTtml, { signal, lineOnly });
     } catch (error) {
         if (signal?.aborted || error?.name === 'AbortError') return null;
         console.error('Failed to load lyrics:', error);
@@ -1259,6 +1268,7 @@ export async function renderLyricsInFullscreen(track, audioPlayer, lyricsManager
         const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
         if (signal?.aborted) return null;
         const sourceLyrics = track.lyrics || fetchedLyrics?.ttml || fetchedLyrics?.subtitles || '';
+        const lineOnly = isLineOnlyLyrics(sourceLyrics);
         const localTtml = lyricsToTtml(sourceLyrics, track.duration);
         if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
 
@@ -1270,6 +1280,7 @@ export async function renderLyricsInFullscreen(track, audioPlayer, lyricsManager
             audioPlayer,
             lyricsManager,
             ttml: localTtml,
+            lineOnly,
             signal,
         });
     } catch (error) {
@@ -1290,10 +1301,11 @@ export async function renderSpicyLyricsInFullscreen(track, audioPlayer, lyricsMa
         const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
         if (signal?.aborted) return null;
         const sourceLyrics = track.lyrics || fetchedLyrics?.ttml || fetchedLyrics?.subtitles || '';
+        const lineOnly = isLineOnlyLyrics(sourceLyrics);
         const localTtml = lyricsToTtml(sourceLyrics, track.duration);
         if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
 
-        return await mountSpicyLyrics(container, track, audioPlayer, lyricsManager, localTtml, { signal });
+        return await mountSpicyLyrics(container, track, audioPlayer, lyricsManager, localTtml, { signal, lineOnly });
     } catch (error) {
         if (signal?.aborted || error?.name === 'AbortError') return null;
         console.error('Failed to load Spicy fullscreen lyrics:', error);
@@ -1311,6 +1323,7 @@ export async function renderLyricsInSidePanel(track, audioPlayer, lyricsManager,
         const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
         if (signal?.aborted) return null;
         const sourceLyrics = track.lyrics || fetchedLyrics?.ttml || fetchedLyrics?.subtitles || '';
+        const lineOnly = isLineOnlyLyrics(sourceLyrics);
         const localTtml = lyricsToTtml(sourceLyrics, track.duration);
         if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
 
@@ -1322,6 +1335,7 @@ export async function renderLyricsInSidePanel(track, audioPlayer, lyricsManager,
             audioPlayer,
             lyricsManager,
             ttml: localTtml,
+            lineOnly,
             signal,
         });
     } catch (error) {
@@ -1341,6 +1355,7 @@ export async function renderLyricsInNowPanel(track, audioPlayer, lyricsManager, 
         const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
         if (signal?.aborted) return null;
         const sourceLyrics = track.lyrics || fetchedLyrics?.ttml || fetchedLyrics?.subtitles || '';
+        const lineOnly = isLineOnlyLyrics(sourceLyrics);
         const localTtml = lyricsToTtml(sourceLyrics, track.duration);
         if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
 
@@ -1352,6 +1367,7 @@ export async function renderLyricsInNowPanel(track, audioPlayer, lyricsManager, 
             audioPlayer,
             lyricsManager,
             ttml: localTtml,
+            lineOnly,
             signal,
             mode: 'now-panel',
         });

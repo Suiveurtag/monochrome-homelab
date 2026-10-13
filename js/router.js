@@ -4,7 +4,7 @@ import { loadProfile } from './profile.js';
 import { settingsUiState } from './storage.js';
 import { socialManager } from './social.js';
 import { adminManager } from './admin.js';
-import { isFeatureEnabled, loadAppConfig } from './access-control.js';
+import { isFeatureEnabled, loadAppConfig, showLoginPage } from './access-control.js';
 
 export function navigate(path) {
     if (path === window.location.pathname) {
@@ -28,9 +28,9 @@ export function createRouter(ui) {
 
         if (path.startsWith('/')) path = path.substring(1);
         if (path.endsWith('/')) path = path.substring(0, path.length - 1);
-        if (path === '' || path === 'index.html' || path === 'login' || path === 'login.html') {
+        if (path === '' || path === 'index.html' || path === 'login.html') {
             path = 'home';
-            if (window.location.pathname === '/login' || window.location.pathname === '/login.html') {
+            if (window.location.pathname === '/login.html') {
                 window.history.replaceState({}, '', '/');
             }
         }
@@ -38,6 +38,15 @@ export function createRouter(ui) {
         const parts = path.split('/');
         let page = parts[0];
         const param = parts.slice(1).join('/');
+
+        if (page !== 'login') {
+            document.body.classList.remove('login-page-active');
+            const loginGate = document.getElementById('access-gate');
+            if (loginGate?.dataset.loginPageInitialized === 'true') {
+                loginGate.hidden = true;
+                document.body.classList.remove('access-gated');
+            }
+        }
 
         if (page !== 'admin' && adminManager.shouldBlockNavigation?.(`/${path}`)) {
             window.history.pushState({ app: true }, '', '/admin');
@@ -71,6 +80,17 @@ export function createRouter(ui) {
         };
 
         switch (page) {
+            case 'login':
+                document.body.classList.add('login-page-active');
+                await ui.showPage('home');
+                await showLoginPage();
+                break;
+            case 'stats': {
+                await ui.showPage('stats');
+                const { renderListeningStats } = await import('./listening-stats.js');
+                await renderListeningStats(ui);
+                break;
+            }
             case 'admin':
                 await adminManager.renderPage(ui);
                 break;

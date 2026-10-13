@@ -1,0 +1,67 @@
+[
+  {
+    "name": "desktop",
+    "errors": [],
+    "stats": "Minutes listened\n503\n+844% vs. previous week\nStreams\n145\nAt least 30 seconds per listen\nArtists heard\n5\n7 tracks · 6 albums\nActive days\n7\nLongest streak · 7 days",
+    "overflow": false
+  },
+  {
+    "interaction": "chart",
+    "name": "desktop",
+    "detail": "8 Thu · 72 min · 21 streams"
+  },
+  {
+    "interaction": "artist ranking",
+    "rows": 5
+  },
+  {
+    "interaction": "export",
+    "history": 145,
+    "streams": 145
+  },
+  {
+    "interaction": "admin long-term lock",
+    "exportDisabled": true,
+    "noSummary": true
+  },
+  {
+    "name": "mobile",
+    "errors": [],
+    "stats": "Minutes listened\n503\n+844% vs. previous week\nStreams\n145\nAt least 30 seconds per listen\nArtists heard\n5\n7 tracks · 6 albums\nActive days\n7\nLongest streak · 7 days",
+    "overflow": false
+  },
+  {
+    "interaction": "chart",
+    "name": "mobile",
+    "detail": "8 Thu · 72 min · 21 streams"
+  },
+  {
+    "interaction": "artist ranking",
+    "rows": 5
+  },
+  {
+    "interaction": "export",
+    "history": 145,
+    "streams": 145
+  },
+  {
+    "name": "light",
+    "errors": [],
+    "stats": "Minutes listened\n503\n+844% vs. previous week\nStreams\n145\nAt least 30 seconds per listen\nArtists heard\n5\n7 tracks · 6 albums\nActive days\n7\nLongest streak · 7 days",
+    "overflow": false
+  },
+  {
+    "interaction": "chart",
+    "name": "light",
+    "detail": "8 Thu · 72 min · 21 streams"
+  },
+  {
+    "interaction": "artist ranking",
+    "rows": 5
+  },
+  {
+    "interaction": "export",
+    "history": 145,
+    "streams": 145
+  }
+]

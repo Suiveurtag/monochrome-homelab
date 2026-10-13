@@ -166,10 +166,10 @@ class CommandPalette {
                 id: 'nav-recent',
                 group: 'Navigation',
                 icon: 'clock',
-                label: 'Go to Recent',
-                keywords: ['recent', 'history', 'last played'],
+                label: 'Go to Listening Stats',
+                keywords: ['stats', 'listening', 'recent', 'history', 'last played'],
                 action: () => {
-                    navigate('/recent');
+                    navigate('/stats');
                 },
             },
             {

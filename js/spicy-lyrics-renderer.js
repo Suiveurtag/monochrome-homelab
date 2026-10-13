@@ -299,6 +299,7 @@ export class SpicyLyricsElement extends HTMLElement {
         super();
         this._root = this.attachShadow({ mode: 'open' });
         this._ttml = '';
+        this._lineOnly = false;
         this._currentTime = 0;
         this._lines = [];
         this._lineStates = [];
@@ -345,12 +346,22 @@ export class SpicyLyricsElement extends HTMLElement {
 
     set ttml(value) {
         this._ttml = value || '';
-        this._lines = addMusicalInterludes(parseSpicyTtml(this._ttml));
+        this._lines = addMusicalInterludes(parseSpicyTtml(this._ttml, { lineOnly: this._lineOnly }));
         if (this._connected) this.render();
     }
 
     get ttml() {
         return this._ttml;
+    }
+
+    set lineOnly(value) {
+        this._lineOnly = Boolean(value);
+        this._lines = addMusicalInterludes(parseSpicyTtml(this._ttml, { lineOnly: this._lineOnly }));
+        if (this._connected) this.render();
+    }
+
+    get lineOnly() {
+        return this._lineOnly;
     }
 
     set currentTime(value) {

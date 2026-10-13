@@ -16,17 +16,33 @@ function resolveCoverUrl(track, api) {
     return api?.getCoverUrl?.(cover, '1280') || cover;
 }
 
+function collapseLyricsToLines(lines) {
+    return lines.map((line) => {
+        const text = line.words.map((word) => word.word).join('');
+        const romanWord = line.words.map((word) => word.romanWord || '').join('');
+        const word = {
+            word: text,
+            startTime: line.startTime,
+            endTime: line.endTime,
+        };
+        if (romanWord) word.romanWord = romanWord;
+        return { ...line, words: text ? [word] : [] };
+    });
+}
+
 export async function mountAmllLyrics({
     container,
     track,
     audioPlayer,
     lyricsManager,
     ttml,
+    lineOnly = false,
     signal,
     mode = 'fullscreen',
 }) {
     const currentTime = () => Math.max(0, audioPlayer.currentTime * 1000 - (lyricsManager?.timingOffset || 0));
-    const lines = parseTTML(prepareTtmlForAmll(ttml)).lines;
+    const parsedLines = parseTTML(prepareTtmlForAmll(ttml)).lines;
+    const lines = lineOnly ? collapseLyricsToLines(parsedLines) : parsedLines;
     if (!lines.length) throw new Error('AMLL could not parse any synchronized lyric lines');
 
     const host = document.createElement('div');

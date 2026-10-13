@@ -127,9 +127,8 @@ function markStarsOpeningDuet(document, paragraphs) {
 }
 
 /**
- * Adds interpolated word timing to unmarked line-timed TTML. Lyrics converted
- * from line-only sources carry Monochrome's `lineOnly` marker so their timing
- * is kept at the line level across upload and playback.
+ * Adds word timing only when the TTML source lacks word spans and is not
+ * identified as line-only. LRC-derived lines stay timed as complete lines.
  */
 export function normalizeTtmlWordTiming(content) {
     if (!isTtml(content) || typeof DOMParser === 'undefined' || typeof XMLSerializer === 'undefined') return content;
@@ -140,10 +139,7 @@ export function normalizeTtmlWordTiming(content) {
     const timingAttribute = Array.from(document.documentElement.attributes).find(
         (attribute) => attribute.localName === 'timing' || attribute.name === 'timing'
     );
-    const lineOnlyAttribute = Array.from(document.documentElement.attributes).find(
-        (attribute) => attribute.localName === 'lineOnly'
-    );
-    const explicitlyLineOnly = lineOnlyAttribute?.value.toLowerCase() === 'true';
+    const explicitlyLineOnly = isLineOnlyLyrics(content);
     let converted = false;
 
     paragraphs.forEach((paragraph, index) => {
@@ -304,6 +300,38 @@ export function isTtml(content) {
         document.documentElement?.localName === 'tt' &&
         document.getElementsByTagNameNS('*', 'p').length > 0
     );
+}
+
+/**
+ * LRC contains only line timestamps. Keep that source-level behavior when it
+ * has been converted to TTML and passed through the renderers.
+ */
+export function isLineOnlyLyrics(content) {
+    if (!isTtml(content)) return parseLrc(content).length > 0;
+    if (typeof DOMParser === 'undefined') return false;
+
+    const document = new DOMParser().parseFromString(content.replace(/^\uFEFF/, '').trim(), 'application/xml');
+    const root = document.documentElement;
+    const attributes = Array.from(root?.attributes || []);
+    const lineOnlyAttribute = attributes.find((attribute) => attribute.localName === 'lineOnly');
+    const timingAttribute = attributes.find((attribute) => attribute.localName === 'timing');
+    if (lineOnlyAttribute?.value.toLowerCase() === 'true' || timingAttribute?.value.toLowerCase() === 'line')
+        return true;
+    if (timingAttribute?.value.toLowerCase() === 'word') return false;
+
+    // Older imports converted .lrc files to bare TTML paragraphs without
+    // preserving their extension. Those files have paragraph timing only;
+    // don't interpolate fake word timing into them during playback.
+    const paragraphs = Array.from(document.getElementsByTagNameNS('*', 'p'));
+    const hasParagraphTiming = paragraphs.some((paragraph) =>
+        ['begin', 'end', 'dur'].some((name) => paragraph.hasAttribute(name))
+    );
+    const hasTimedSpans = paragraphs.some((paragraph) =>
+        Array.from(paragraph.getElementsByTagNameNS('*', 'span')).some((span) =>
+            ['begin', 'end', 'dur'].some((name) => span.hasAttribute(name))
+        )
+    );
+    return paragraphs.length > 0 && hasParagraphTiming && !hasTimedSpans;
 }
 
 export function lyricsToTtml(content, durationSeconds = 0) {

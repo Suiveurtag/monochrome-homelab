@@ -37,10 +37,11 @@ describe('ListeningTracker play counts', () => {
         tracker.forceFlush();
 
         expect(tracker.getTrackSignal('track-1')).toMatchObject({
-            playCount: 2,
+            playCount: 0,
+            attemptCount: 2,
             skipCount: 1,
         });
-        expect(new ListeningTracker().getTrackSignal('track-1')?.playCount).toBe(2);
+        expect(new ListeningTracker().getTrackSignal('track-1')?.playCount).toBe(0);
     });
 
     function listen(tracker, seconds, duration) {
@@ -58,6 +59,72 @@ describe('ListeningTracker play counts', () => {
         genres: ['Ambient'],
         album: { id: 'album', title: 'Album' },
     };
+
+    test('qualifies at 30 heard seconds, checkpoints once, and never counts a seek', () => {
+        const tracker = new ListeningTracker();
+        tracker.setUser('alice');
+        const sink = vi.fn();
+        tracker.setSessionSink(sink);
+        tracker.onTrackStart(track);
+        listen(tracker, 29, 100);
+        expect(tracker.getTrackSignal('song')?.playCount || 0).toBe(0);
+        tracker.onSeek(80);
+        vi.advanceTimersByTime(1000);
+        tracker.onTimeUpdate(81, 100);
+        expect(tracker.getTrackSignal('song').playCount).toBe(1);
+        tracker.forceFlush();
+        expect(sink.mock.calls.at(-1)[0]).toMatchObject({ seconds: 30, ended: false });
+        tracker.onSkip();
+        tracker.onTrackEnd();
+        expect(tracker.getTrackSignal('song').playCount).toBe(1);
+        const final = sink.mock.calls.findLast(([payload]) => payload.ended)[0];
+        expect(final.seconds).toBe(30);
+        expect(final.slices.reduce((sum, s) => sum + s.seconds, 0)).toBe(30);
+        expect(sink.mock.calls.every(([, user]) => user === 'alice')).toBe(true);
+    });
+
+    test('uses real listening seconds at 2x speed and survives a pause', () => {
+        const tracker = new ListeningTracker();
+        tracker.onTrackStart(track);
+        for (let i = 1; i <= 15; i++) {
+            vi.advanceTimersByTime(1000);
+            tracker.onTimeUpdate(i * 2, 100, { playbackRate: 2 });
+        }
+        expect(tracker.getSessionSignals().accumulatedPlayTime).toBe(15);
+        expect(tracker.getTrackSignal('song')?.playCount || 0).toBe(0);
+        vi.advanceTimersByTime(60000);
+        tracker.onSeek(30); // Resume establishes a fresh baseline.
+        vi.advanceTimersByTime(1000);
+        tracker.onTimeUpdate(32, 100, { playbackRate: 2 });
+        expect(tracker.getSessionSignals().accumulatedPlayTime).toBe(16);
+    });
+
+    test('opening another tab does not finalize the first tab active stream', () => {
+        const tabStorage = (id) => ({ getItem: () => id, setItem: () => {} });
+        vi.stubGlobal('sessionStorage', tabStorage('first-tab'));
+        const first = new ListeningTracker();
+        first.onTrackStart(track);
+        listen(first, 30, 100);
+        first.forceFlush();
+        vi.stubGlobal('sessionStorage', tabStorage('second-tab'));
+        const second = new ListeningTracker();
+        const sink = vi.fn();
+        second.setSessionSink(sink);
+        expect(second.getTrackSignal('song').playCount).toBe(1);
+        expect(second.getTrackSignal('song').attemptCount).toBe(0);
+        expect(sink).not.toHaveBeenCalled();
+    });
+
+    test('recovery does not count an already qualified checkpoint twice', () => {
+        const tracker = new ListeningTracker();
+        tracker.onTrackStart(track);
+        listen(tracker, 30, 100);
+        tracker.forceFlush();
+        const recovered = new ListeningTracker();
+        expect(recovered.getTrackSignal('song').playCount).toBe(1);
+        recovered.forceFlush();
+        expect(new ListeningTracker().getTrackSignal('song').playCount).toBe(1);
+    });
 
     test('records completion, replay, album listening, and one finalization per session', () => {
         const tracker = new ListeningTracker();
@@ -123,9 +190,9 @@ describe('ListeningTracker play counts', () => {
         tracker.forceFlush();
         expect(tracker.getSessionSignals().currentTrackId).toBe('song');
         const recovered = new ListeningTracker();
-        expect(recovered.getTrackSignal('song')).toMatchObject({ playCount: 1, totalPlayTime: 20, skipCount: 0 });
+        expect(recovered.getTrackSignal('song')).toMatchObject({ playCount: 0, totalPlayTime: 20, skipCount: 0 });
         recovered.forceFlush();
-        expect(new ListeningTracker().getTrackSignal('song')?.playCount).toBe(1);
+        expect(new ListeningTracker().getTrackSignal('song')?.playCount).toBe(0);
     });
 
     test('isolates accounts and closes the previous account session without a false skip', () => {
@@ -138,7 +205,7 @@ describe('ListeningTracker play counts', () => {
         expect(tracker.getSessionSignals().currentTrackId).toBeNull();
         tracker.recordSignal('like', { ...track, id: 'bob-song' });
         tracker.setUser('alice');
-        expect(tracker.getTrackSignal('song')).toMatchObject({ playCount: 1, skipCount: 0, totalPlayTime: 10 });
+        expect(tracker.getTrackSignal('song')).toMatchObject({ playCount: 0, skipCount: 0, totalPlayTime: 10 });
         expect(tracker.getTrackSignal('bob-song')).toBeNull();
     });
 

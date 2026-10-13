@@ -18,14 +18,18 @@ const escapeHtml = (value) =>
 const CONFIG_FIELDS = {
     instance_name: 'admin-instance-name',
     support_email: 'admin-support-email',
+    require_login: 'admin-require-login',
+    require_approval: 'admin-require-approval',
     registrations_open: 'admin-registrations-open',
     maintenance_mode: 'admin-maintenance-mode',
     announcement: 'admin-announcement',
     feature_social: 'admin-feature-social',
     feature_stats: 'admin-feature-stats',
+    stats_lock_long_term: 'admin-stats-lock-long-term',
     feature_uploads: 'admin-feature-uploads',
     feature_parties: 'admin-feature-parties',
     allow_uploads: 'admin-allow-uploads',
+    allow_guest_uploads: 'admin-allow-guest-uploads',
     allow_catalog_edits: 'admin-allow-catalog-edits',
     allow_catalog_deletes: 'admin-allow-catalog-deletes',
     allow_downloads: 'admin-allow-downloads',
@@ -596,7 +600,13 @@ function populateConfig(config) {
     setText('admin-instance-name-nav', config.instance_name?.trim() || 'Monochrome');
     setText(
         'admin-access-state',
-        config.maintenance_mode ? 'Admins only' : config.registrations_open ? 'Open' : 'Invite only'
+        config.maintenance_mode
+            ? 'Admins only'
+            : config.require_login === false
+              ? 'Public'
+              : config.registrations_open
+                ? 'Open'
+                : 'Invite only'
     );
     setText('admin-announcement-count', String(config.announcement || '').length);
     state.savedConfig = readConfigForm();

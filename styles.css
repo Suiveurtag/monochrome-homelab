@@ -1033,6 +1033,10 @@ body.access-gated {
     overflow: hidden;
 }
 
+body.login-page-active .app-container {
+    display: none;
+}
+
 .sr-only {
     position: absolute;
     width: 1px;
@@ -1114,6 +1118,55 @@ body.site-intro-active {
 
 .site-intro-target-hidden {
     opacity: 0 !important;
+}
+
+.login-transition {
+    position: fixed;
+    inset: 0;
+    z-index: 12001;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    color: #f7f7f8;
+    pointer-events: none;
+}
+
+.login-transition[hidden] {
+    display: none;
+}
+
+.login-transition-veil {
+    position: absolute;
+    inset: 0;
+    background: #08080a;
+}
+
+.login-transition-mark {
+    position: relative;
+    width: 92px;
+    height: auto;
+    overflow: visible;
+    transform-box: view-box;
+    transform-origin: center;
+    will-change: transform, opacity;
+}
+
+.login-transition-reveal {
+    transform-box: fill-box;
+    transform-origin: left center;
+}
+
+.login-transition-outline {
+    fill: transparent;
+    stroke: currentcolor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.login-transition-fill {
+    fill: currentcolor;
+    opacity: 0;
 }
 
 .access-gate {

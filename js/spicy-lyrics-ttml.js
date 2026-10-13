@@ -156,7 +156,7 @@ function parseWordElements(parent, lineStart, lineEnd, background = false, timin
     });
 }
 
-export function parseSpicyTtml(ttml) {
+export function parseSpicyTtml(ttml, { lineOnly = false } = {}) {
     if (!ttml || typeof DOMParser === 'undefined') return [];
     const documentNode = new DOMParser().parseFromString(ttml, 'application/xml');
     if (documentNode.getElementsByTagName('parsererror').length) throw new Error('Invalid TTML document');
@@ -167,7 +167,7 @@ export function parseSpicyTtml(ttml) {
         : Array.from(documentNode.getElementsByTagName('p'));
     const timingParameters = getTtmlTimingParameters(documentNode.documentElement);
     const explicitlyLineTimed =
-        getAttributeByLocalName(documentNode.documentElement, 'timing')?.toLowerCase() === 'line';
+        lineOnly || getAttributeByLocalName(documentNode.documentElement, 'timing')?.toLowerCase() === 'line';
     const paragraphRanges = paragraphs.map((paragraph) => getTimedDescendantRange(paragraph, timingParameters));
     const parsed = paragraphs
         .map((paragraph, lineIndex) => {
@@ -189,12 +189,12 @@ export function parseSpicyTtml(ttml) {
                 ? []
                 : Array.from(paragraph.getElementsByTagNameNS('*', 'span')).filter(isBackgroundElement);
             let words;
-            if (explicitlyLineTimed && !background) {
+            if (explicitlyLineTimed) {
                 const textOnly = paragraph.cloneNode(true);
                 Array.from(textOnly.getElementsByTagNameNS('*', 'span'))
                     .filter(isBackgroundElement)
                     .forEach((element) => element.remove());
-                words = lineTimedWords(textOnly.textContent || '', timing.start, timing.end, false);
+                words = lineTimedWords(textOnly.textContent || '', timing.start, timing.end, background);
             } else {
                 words = parseWordElements(paragraph, timing.start, timing.end, background, timingParameters);
             }
@@ -231,17 +231,24 @@ export function parseSpicyTtml(ttml) {
                         start: containerTiming.start,
                         end: containerTiming.end,
                         text: container.textContent || '',
-                        words: parseWordElements(
-                            container,
-                            containerTiming.start,
-                            containerTiming.end,
-                            true,
-                            timingParameters
-                        ),
+                        words: explicitlyLineTimed
+                            ? lineTimedWords(
+                                  container.textContent || '',
+                                  containerTiming.start,
+                                  containerTiming.end,
+                                  true
+                              )
+                            : parseWordElements(
+                                  container,
+                                  containerTiming.start,
+                                  containerTiming.end,
+                                  true,
+                                  timingParameters
+                              ),
                         background: true,
                         opposite: false,
                         rtl: /[\u0590-\u08ff]/.test(container.textContent || ''),
-                        syncType: 'Syllable',
+                        syncType: explicitlyLineTimed ? 'Line' : 'Syllable',
                     };
                 }),
                 rtl: /[\u0590-\u08ff]/.test(text),

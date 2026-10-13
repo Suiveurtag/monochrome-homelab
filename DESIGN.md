@@ -673,3 +673,184 @@ JavaScript scroll uses `auto` instead of `smooth` under the same preference.
 **The State-Change Motion Rule.** Motion may reveal overview readiness, inspector attachment, bulk
 selection, dirty policy state, or live health. It must never decorate idle ledger content, and every
 new Admin transition must be covered by the scoped reduced-motion rule.
+
+
+# Surface Addendum: Listening Stats
+
+> **Boundary.** This addendum documents only `index.html#page-stats`, `listening-stats.css`,
+> `js/listening-stats.js`, and `js/listening-stats-scene.js`. The frontmatter and Social rules above
+> retain their Social scope; the Admin addendum retains its own scope. Stats consumes app tokens
+> and adds artwork-derived local colors; its composition does not become a global rule.
+> The approved B Scene contract, seed `5d21f129`, is recorded in
+> `.impeccable/surfaces/listening-stats.md`. This replaces the earlier candidate-6 ledger expression.
+
+## Overview
+
+**Creative North Star: "The Listening Stage"**
+
+Listening becomes a living stage built from the listener's music. The approved B Scene expression
+uses an open split composition: a giant listening-time number on the left, actual album covers in
+a spatial fan on the right, and a smooth activity curve flowing across the lower edge. Artwork
+supplies the ambient color; inherited typography, controls, and theme surfaces keep it Monochrome.
+
+The stage opens into denser analysis: On repeat rankings beside a rotation and hours rail, then
+individual listening history. This local world follows the approved comp and quality bar rather
+than the earlier neutral metric-strip design.
+
+**Key Characteristics:**
+
+- Actual listened-to covers, thin elliptical orbit, and extracted artwork atmosphere
+- Oversized tabular minutes with three supporting counts; open stage before denser analysis
+- Smooth colored SVG curve with visible tooltip and keyboard inspection
+- Container-driven layout and a chart rebuilt when available width crosses 560px
+- Finite count-up and entrances, restrained ongoing atmosphere, quiet refresh suppression
+
+## Colors
+
+App tokens remain authoritative for text, controls, panels, rules, and missing-art states:
+`--foreground`, `--background`, `--card`, `--muted`, `--muted-foreground`, and `--border`.
+`--highlight-rgb` remains the inherited comma-separated RGB triplet used for hover washes.
+
+Three surface-local colors (`--stats-color-0` through `--stats-color-2`) are extracted from the
+actual fan images with `getVibrantColorFromImage`, cached by image URL, and reset on each render.
+Unavailable extraction falls back to foreground and foreground/background mixes (72% and 48%).
+These colors feed the scene's soft radial ambience, comparison text, curve gradient, area fill,
+rotation swatches, and hour bars. Rotation supplements the three colors with foreground mixes,
+muted foreground, and border; names and percentages accompany every swatch.
+
+**The Stats Artwork Authority Rule.** Color comes from real listening artwork or inherited theme
+fallbacks. Keep readable labels and numeric values alongside color; never invent categorical brand
+colors or replacement cover images.
+
+## Typography
+
+**Display & Body Font:** the inherited `--font-family` (Inter with the application's script and
+system fallbacks). Stats introduces no font family.
+
+The main minutes count is heavy and tightly tracked (800, `clamp(4.5rem, 12cqi, 9rem)`, line-height
+0.95, tracking -0.04em); narrow containers use `clamp(4rem, 20cqi, 7rem)`. The descriptor is lighter
+(550, `clamp(1.25rem, 2.8cqi, 2.1rem)`; 1.5rem on phones). Supporting counts use 650 with
+`clamp(1.4rem, 3cqi, 2rem)`; phone counts use 1.65rem. Tabular numerals stabilize metrics and ledgers.
+
+The page title stays modest (1.7rem/750; 1.35rem at 560px), panel headings use sentence case
+(1rem/650; 0.95rem on phones), and the integrated activity heading is 0.8rem. Controls use
+0.75rem/600, table text 0.8rem (0.76rem on phones), supporting text about 0.65–0.8rem.
+SVG axis labels share the inherited font (14px in SVG coordinates).
+
+**The Stats Scale Rule.** Listening time is the focal number. Preserve its readable descriptor,
+secondary count labels, and inspectable detail rather than flattening the stage into equal cards.
+
+## Layout
+
+The page is a centered inline-size container capped at 1320px. Its stage uses a 44%/56% split and
+minimum height of 330px. The artwork fan height is `clamp(250px, 31cqi, 390px)`; each cover is
+capped at 260px wide. Its caption sits below the fan with a 14px top margin on desktop and mobile,
+keeping text clear of rotated artwork. The isolated scene clips its own atmosphere and keeps decorative art inside its bounds.
+The activity curve is integrated into the scene, without an enclosing analysis card.
+
+Below it, analysis uses a 58%/42% ranking/rail split with 12px gaps. Rotation and hour analysis
+occupy separate panels in the right rail. History returns to a full-width flat ledger after 36px
+and a hairline. Analysis panels use 20px padding; ordinary spacing continues to use app tokens.
+
+- **At 900px container width:** analysis becomes one column; the rail becomes two columns;
+  rotation uses a 100px donut; the fan is 280px high.
+- **At 560px container width:** the stage stacks number, artwork, caption, and curve; period
+  segments fill their row and dates wrap below; the fan is 245px high; panels use 16px padding;
+  the rail stacks vertically and rotation uses a 120px donut. Ranking time and history duration
+  hide while identity, stream counts, dates, and actions remain. The album ranking column is hidden
+  in this expression at all widths.
+- **Chart geometry:** the SVG uses a 1000×240 desktop or 400×240 compact viewBox, with a 180px
+  desktop / 210px phone display height. A ResizeObserver rebuilds the chart on crossing 560px,
+  accounting for sidebar/player changes as well as viewport resizing.
+
+**The Stats Available-Width Rule.** Reflow against the Stats container, not viewport assumptions.
+Keep flexible identity content at `min-width: 0` and preserve the stage-to-analysis-to-history order.
+
+## Elevation & Depth
+
+Depth belongs to the artwork stage and inspection layer. The square covers cast a resting shadow
+(`0 22px 40px rgb(0 0 0 / 28%)`) and lift with a stronger shadow on hover or focus
+(`0 30px 45px rgb(0 0 0 / 35%)`). The hero play button and selected segments have small shadows;
+the chart tooltip uses `0 5px 16px rgb(0 0 0 / 15%)`.
+
+Analysis panels use a card/transparent mix (88%), one-pixel borders, and no shadow. Rankings and
+history keep quiet rules and hover washes. The application's floating player remains outside scope.
+
+## Shapes
+
+The signature is a fan of square artwork with slight corners (3px), perspective, gentle opposing
+rotations (4°, -13°, 12°), and a thin elliptical orbit. One- and two-cover layouts adapt the fan
+without creating missing artwork. Controls use pill segments, circular date arrows and hero play,
+and inherited compact icon corners. Analysis panels use 16px corners; tooltip corners are 8px.
+Ledger artwork keeps 5px corners or a circle for artists; hour bars round only their tops (3px).
+
+## Components
+
+### Period, date, and export controls
+
+Day, Week, Month, Year, and Lifetime are native buttons with `aria-pressed` in a labelled group;
+Week is the default. Previous/next, Today, and the labelled native date input change the anchor;
+Lifetime disables date navigation. Refresh and JSON export retain native semantics. Export is
+disabled during loading, locked, or failed states; feedback is a `role="status"` region.
+
+### Listening stage and artwork
+
+The heard-minute total includes period comparison text and labelled streams, artists, and active
+days, followed by track/album/streak detail. The fan uses up to three real top-track covers and
+excludes the app-icon fallback. Cover buttons and the most-played caption's play button replay
+actual tracks. Mouse movement tilts the fan gently; pointer leave clears tilt. Missing-cover and
+empty-period guidance remains textual and theme-based.
+
+### Activity, rotation, and hours
+
+Minutes/Streams selects chart units. Cubic SVG segments form the smooth curve over quiet gridlines
+and a fading area. Pointer, tap, or keyboard inspection selects a point, exposes its tooltip, and
+updates a polite live caption. ArrowLeft/ArrowRight/Home/End navigate points. The tooltip duplicates
+information from the accessible caption and is hidden from assistive technology. Rotation combines
+a donut with linked artist names and percentage text. Hour bars expose time and listening minutes
+through accessible labels and update the readable hour note.
+
+### Rankings and session ledger
+
+Tracks/Artists/Albums selects a semantic table with caption and scoped headers. Identity, artwork,
+counts, and explicit play/open actions remain aligned. History is a chronological session list
+with track identity, semantic date/time, duration where space permits, and play controls; pagination
+shows 30 sessions per page and disables unavailable directions.
+
+### Feedback and access state
+
+Loading, empty, retryable-error, and locked states explain what is happening. The 30-second heard-
+audio qualification and all-stats/Year/Lifetime locks remain backend policy, including for admins.
+Collection continues while visibility and export are locked; pauses and seeks do not inflate time,
+and earlier device history is not reconstructed. This is separate from Admin's ordinary bypass.
+
+### Focus and motion
+
+Native controls receive visible foreground focus (2px, 3px offset); chart targets receive a visible
+stroke. The Stats easing is `cubic-bezier(0.16, 1, 0.3, 1)`. The minutes count rises once over 850ms;
+headline/caption entrances take 700/800ms, covers 950ms with 90ms staggering, orbit 1200ms, curve
+700ms, area/donut 650ms, hour bars 500ms with 12ms staggering, and rows 450ms. Cover hover/focus
+lifts 12px; press scales native buttons to 0.95. Control micro-transitions are generally 180–240ms.
+
+The 10s ambient breathing loop runs only while its scene is in view; loading placeholders pulse
+and refresh spins only in their relevant state. Quiet updates suppress count-up, scene/cover/row
+entrances, and chart/donut/hour reveals. Reduced motion disables scoped CSS animations and
+transitions including pseudo-elements, skips count-up and pointer tilt, and keeps static cover
+rotations. These local timings do not change Social or Admin motion.
+
+## Do's and Don'ts
+
+### Do:
+
+- **Do** use actual listening artwork, local extracted colors, inherited theme tokens, and real counts.
+- **Do** preserve labelled native controls, semantic tables, keyboard point inspection, live feedback,
+  focus visibility, and reduced motion.
+- **Do** verify the split stage and vertical phone scene against the approved B comp and quality bar,
+  including content width reduced by the app shell/player.
+
+### Don't:
+
+- **Don't** restore the old four-equal-metrics strip, neutral-only chart, or 700px artist-analysis layout.
+- **Don't** promote Stats artwork colors, scale, shadows, sentence-case headings, or motion into Social
+  or Admin rules.
+- **Don't** imply locks stop collection, admins bypass Stats locks, or old device history was backfilled.
