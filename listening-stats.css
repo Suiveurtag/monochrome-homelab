@@ -286,6 +286,9 @@
     border-radius: 5px;
     background: var(--muted);
     color: var(--muted-foreground);
+    transition:
+        transform 260ms var(--stats-ease),
+        border-radius 260ms;
 }
 
 .stats-artwork img {
@@ -822,10 +825,10 @@
 .stats-ambience {
     position: absolute;
     z-index: -1;
-    inset: -40px -12px 10%;
     overflow: hidden;
     pointer-events: none;
-    mask-image: linear-gradient(transparent, black 25%, black 60%, transparent);
+    inset: -36px -12px 0;
+    mask-image: linear-gradient(transparent, black 18%, black 72%, transparent);
 }
 
 .stats-ambience::before {
@@ -836,9 +839,10 @@
         radial-gradient(ellipse at 76% 33%, color-mix(in srgb, var(--stats-color-0) 24%, transparent), transparent 47%),
         radial-gradient(ellipse at 93% 44%, color-mix(in srgb, var(--stats-color-1) 24%, transparent), transparent 38%),
         radial-gradient(ellipse at 48% 75%, color-mix(in srgb, var(--stats-color-2) 14%, transparent), transparent 50%);
-    transition: background 800ms;
     animation: stats-breathe 10s ease-in-out infinite alternate;
     animation-play-state: paused;
+    opacity: 0.62;
+    transition: opacity 500ms var(--stats-ease);
 }
 
 .stats-in-view .stats-ambience::before {
@@ -848,7 +852,6 @@
 .stats-headline {
     padding: 24px 0 16px;
     min-width: 0;
-    animation: stats-stage-enter 700ms var(--stats-ease) both;
 }
 
 .stats-total {
@@ -925,9 +928,8 @@
     overflow: visible;
     pointer-events: none;
     fill: none;
-    stroke: color-mix(in srgb, var(--foreground) 32%, transparent);
     stroke-width: 0.6px;
-    animation: stats-orbit-enter 1200ms var(--stats-ease) both;
+    stroke: color-mix(in srgb, var(--foreground) 43%, transparent);
 }
 
 .stats-cover-card img {
@@ -1040,6 +1042,11 @@
 
 .stats-trend .stats-section-header {
     margin-bottom: 0;
+    position: absolute;
+    inset: -20px 0 auto;
+    z-index: 2;
+    justify-content: flex-end;
+    pointer-events: none;
 }
 
 .stats-trend .stats-section-header h2 {
@@ -1093,24 +1100,31 @@
     gap: var(--space-2);
     color: var(--muted-foreground);
     font-size: 0.7rem;
-    min-height: 32px;
     padding: 4px 0 0;
+    padding-top: 0;
+    min-height: 24px;
 }
 
 .stats-analysis {
     display: grid;
     grid-template-columns: minmax(0, 58%) minmax(0, 42%);
     gap: 12px;
-    margin-top: 24px;
     margin-bottom: 0;
+    margin-top: 14px;
 }
 
 .stats-panel {
     min-width: 0;
     border-radius: 16px;
-    background: color-mix(in srgb, var(--card) 88%, transparent);
     padding: 20px;
     border: 1px solid var(--border);
+    position: relative;
+    isolation: isolate;
+    overflow: clip;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--card) 93%, var(--stats-color-0)), var(--card) 42%);
+    transition:
+        border-color 240ms,
+        background-color 240ms;
 }
 
 .stats-ranking,
@@ -1228,6 +1242,7 @@
 .stats-history-items li {
     transition: background 200ms;
     animation: stats-row-enter 450ms var(--stats-ease) both;
+    animation-delay: calc(var(--stats-order, 0) * 22ms);
 }
 
 .stats-table tbody tr:nth-child(2) {
@@ -1296,20 +1311,6 @@
     to {
         transform: translateY(0);
         opacity: 1;
-        filter: blur(0);
-    }
-}
-
-@keyframes stats-cover-enter {
-    from {
-        opacity: 0.2;
-        translate: 0 28px;
-        filter: blur(6px);
-    }
-
-    to {
-        opacity: 1;
-        translate: 0 0;
         filter: blur(0);
     }
 }
@@ -1627,6 +1628,10 @@
     background: transparent;
 }
 
+.stats-segments button[aria-pressed='true']:hover {
+    color: var(--background);
+}
+
 .stats-stage {
     display: grid;
     grid-template-columns: minmax(0, 44%) minmax(0, 56%);
@@ -1657,10 +1662,9 @@
     transition:
         transform 600ms var(--stats-ease),
         box-shadow 400ms !important;
-    animation: stats-cover-enter 950ms var(--stats-ease) both;
-    animation-delay: calc(var(--stats-order) * 90ms);
     max-width: 230px;
     top: 8%;
+    isolation: isolate;
 }
 
 .stats-cover-1 {
@@ -1688,18 +1692,19 @@
     gap: 20px;
     align-items: center;
     justify-content: center;
-    animation: stats-stage-enter 800ms var(--stats-ease) both;
     margin-top: 18px;
 }
 
 .stats-trend {
-    margin-top: 12px;
+    position: relative;
+    margin-top: -12px;
 }
 
 .stats-chart-stem {
     stroke: url('#stats-line-colors');
     stroke-width: 0.7px;
-    opacity: 0.4;
+    opacity: 0.36;
+    transition: opacity 250ms;
 }
 
 .stats-chart-line {
@@ -1709,8 +1714,8 @@
     stroke-dasharray: 1;
     animation: stats-draw 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
     stroke: url('#stats-line-colors');
-    stroke-width: 2.5;
     animation-duration: 550ms;
+    stroke-width: 2.2px;
 }
 
 .stats-donut-segment {
@@ -1801,4 +1806,434 @@
 
 .stats-artists .stats-legend li {
     padding-block: 5px;
+}
+
+/* B — artwork light is quiet until a listener explores the scene. */
+
+.stats-art-light {
+    position: absolute;
+    inset: 0;
+    opacity: 0.2;
+    transition:
+        opacity 600ms var(--stats-ease),
+        transform 800ms var(--stats-ease);
+}
+
+.stats-art-light > span {
+    position: absolute;
+    left: calc(42% + var(--stats-order) * 15%);
+    top: 5%;
+    width: 34%;
+    height: 65%;
+    filter: blur(50px) saturate(1.65);
+    transform: rotate(calc(var(--stats-order) * 15deg - 10deg));
+}
+
+.stats-art-light img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.stats-scene:focus-within .stats-art-light {
+    opacity: 0.43;
+    transform: scale(1.04);
+}
+
+.stats-cover-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0.16;
+    background:
+        radial-gradient(
+            circle at var(--stats-shine-x, 50%) var(--stats-shine-y, 25%),
+            rgb(255 255 255 / 42%),
+            transparent 65%
+        ),
+        linear-gradient(135deg, rgb(255 255 255 / 20%), transparent 38%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 25%);
+    transition: opacity 250ms var(--stats-ease);
+}
+
+.stats-cover-card:focus-visible::after {
+    opacity: 0.6;
+}
+
+.stats-cover-play svg {
+    transition: transform 280ms var(--stats-ease);
+}
+
+.stats-cover-card:is(:hover, :focus-visible) .stats-cover-play svg {
+    transform: scale(1.12);
+}
+
+.stats-orbit-trace {
+    stroke: url('#stats-orbit-light');
+    stroke-width: 1.3px;
+    stroke-dasharray: 18 82;
+    stroke-dashoffset: 0;
+    opacity: 0;
+    animation: stats-orbit-drift 12s linear infinite;
+    animation-play-state: paused;
+    transition: opacity 300ms;
+}
+
+.stats-scene:focus-within .stats-orbit-trace {
+    opacity: 0.85;
+    animation-play-state: running;
+}
+
+.stats-chart-bloom {
+    fill: none;
+    stroke: url('#stats-line-colors');
+    stroke-width: 9px;
+    opacity: 0.16;
+    filter: blur(5px);
+    pointer-events: none;
+    transition: opacity 350ms;
+}
+
+.stats-trend:focus-within .stats-chart-stem {
+    opacity: 0.7;
+}
+
+.stats-panel:focus-within {
+    border-color: color-mix(in srgb, var(--border) 55%, var(--stats-color-0));
+}
+
+.stats-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0 18px auto;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        color-mix(in srgb, var(--foreground) 18%, transparent),
+        transparent
+    );
+    pointer-events: none;
+}
+
+.stats-identity a,
+.stats-history-track a,
+.stats-legend a,
+.stats-first-listen a {
+    transition:
+        color 160ms,
+        text-decoration-color 160ms;
+}
+
+.stats-identity a:hover,
+.stats-history-track a:hover,
+.stats-legend a:hover {
+    color: var(--stats-color-0);
+}
+
+.stats-stage-metrics > div:nth-child(2) {
+    animation-delay: 65ms;
+}
+
+.stats-stage-metrics > div:nth-child(3) {
+    animation-delay: 130ms;
+}
+
+.stats-entry :is(.stats-footnote, .stats-history-footer) {
+    animation: stats-row-enter 380ms var(--stats-ease) 280ms backwards;
+}
+
+.stats-update :is(.stats-stage-metrics > div, .stats-stage-detail, .stats-footnote, .stats-history-footer) {
+    animation: none;
+}
+
+.stats-header-actions .stats-icon-button {
+    width: auto;
+    padding-inline: 12px;
+    gap: 8px;
+    border: 1px solid var(--border);
+    font-size: 0.75rem;
+}
+
+.stats-empty-icon svg {
+    animation: stats-empty-arrive 600ms var(--stats-ease) both;
+}
+
+#page-stats.stats-document-hidden *,
+.stats-document-hidden .stats-ambience::before {
+    animation-play-state: paused !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .stats-scene:hover .stats-art-light {
+        opacity: 0.43;
+        transform: scale(1.04);
+    }
+
+    .stats-scene:hover .stats-ambience::before {
+        opacity: 1;
+    }
+
+    .stats-cover-fan:hover .stats-orbit-trace {
+        opacity: 0.85;
+        animation-play-state: running;
+    }
+
+    .stats-cover-card:hover::after {
+        opacity: 0.6;
+    }
+
+    .stats-panel:hover {
+        border-color: color-mix(in srgb, var(--border) 55%, var(--stats-color-0));
+    }
+
+    .stats-table tbody tr:hover .stats-artwork,
+    .stats-history-items li:hover .stats-artwork {
+        transform: scale(1.07) rotate(-2deg);
+    }
+
+    .stats-trend:hover .stats-chart-stem {
+        opacity: 0.7;
+    }
+}
+
+@keyframes stats-orbit-drift {
+    to {
+        stroke-dashoffset: -100;
+    }
+}
+
+@keyframes stats-empty-arrive {
+    from {
+        transform: scale(0.85);
+        filter: blur(3px);
+    }
+
+    to {
+        transform: scale(1);
+        filter: blur(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #page-stats *,
+    #page-stats *::before,
+    #page-stats *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* The activity curve is the light horizon of the artwork stage. */
+.stats-trend .stats-section-header > div:first-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+}
+
+.stats-trend .stats-segments {
+    pointer-events: auto;
+    background: color-mix(in srgb, var(--card) 75%, transparent);
+}
+
+.stats-trend .stats-segments button {
+    min-height: 28px;
+    padding-block: 0.35rem;
+    font-size: 0.7rem;
+}
+
+.stats-scene:focus-within .stats-chart-bloom {
+    opacity: 0.32;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .stats-scene:hover .stats-chart-bloom {
+        opacity: 0.32;
+    }
+}
+
+@container (max-width: 560px) {
+    .stats-trend {
+        margin-top: 22px;
+    }
+
+    .stats-trend .stats-section-header {
+        inset-block-start: -15px;
+    }
+
+    .stats-header-actions .stats-icon-button span {
+        display: none;
+    }
+
+    .stats-art-light > span {
+        width: 60%;
+        left: calc(5% + var(--stats-order) * 20%);
+        top: 28%;
+        height: 45%;
+        filter: blur(34px) saturate(1.5);
+    }
+}
+
+.stats-scene:not(.stats-in-view) .stats-orbit-trace {
+    animation-play-state: paused;
+}
+
+@container (max-width: 560px) {
+    .stats-stage {
+        grid-template-columns: minmax(0, 1fr);
+        min-height: 0;
+    }
+
+    .stats-headline h2 {
+        white-space: normal;
+    }
+
+    .stats-showcase {
+        margin-top: 6px;
+    }
+
+    .stats-showcase-caption {
+        margin-top: 18px;
+    }
+}
+
+/* Keep every tilted cover inside the fan's vertical footprint. */
+#page-stats .stats-cover-fan {
+    --stats-fan-height: clamp(250px, 28cqi, 330px);
+
+    height: var(--stats-fan-height);
+}
+
+#page-stats .stats-cover-card {
+    max-width: min(230px, calc(var(--stats-fan-height) * 0.72));
+}
+
+#page-stats .stats-orbit {
+    z-index: 5;
+}
+
+@container (max-width: 560px) {
+    #page-stats .stats-cover-fan {
+        --stats-fan-height: 245px;
+    }
+}
+
+.stats-panel:not(.stats-in-view) .stats-donut-segment,
+.stats-panel:not(.stats-in-view) .stats-hour > span,
+.stats-trend:not(.stats-in-view) .stats-chart-line,
+.stats-trend:not(.stats-in-view) .stats-chart-area {
+    animation-play-state: paused;
+}
+
+/* One opening phrase: settle the number, fan the sleeves, draw the horizon. */
+.stats-entry .stats-headline {
+    animation: none;
+}
+
+.stats-entry .stats-total {
+    animation: stats-number-arrive 580ms var(--stats-ease) backwards;
+}
+
+.stats-entry .stats-headline :is(h2, .stats-comparison) {
+    animation: stats-row-enter 420ms var(--stats-ease) 70ms backwards;
+}
+
+.stats-entry .stats-stage-metrics > div {
+    animation: stats-row-enter 380ms var(--stats-ease) 160ms backwards;
+}
+
+.stats-entry .stats-stage-metrics > div:nth-child(2) {
+    animation-delay: 210ms;
+}
+
+.stats-entry .stats-stage-metrics > div:nth-child(3) {
+    animation-delay: 260ms;
+}
+
+.stats-entry .stats-stage-detail {
+    animation: stats-row-enter 380ms var(--stats-ease) 280ms backwards;
+}
+
+.stats-entry .stats-cover-card {
+    animation: stats-sleeve-unfold 640ms var(--stats-ease) backwards;
+    animation-delay: calc(40ms + var(--stats-order) * 60ms);
+}
+
+.stats-entry .stats-orbit {
+    animation: stats-orbit-enter 620ms var(--stats-ease) 180ms backwards;
+}
+
+.stats-entry .stats-ambience {
+    animation: stats-light-arrive 760ms var(--stats-ease) backwards;
+}
+
+.stats-entry .stats-showcase-caption {
+    animation: stats-row-enter 420ms var(--stats-ease) 220ms backwards;
+}
+
+.stats-entry .stats-chart-line {
+    animation-duration: 600ms;
+    animation-delay: 160ms;
+}
+
+.stats-entry :is(.stats-chart-area, .stats-chart-bloom) {
+    animation: stats-reveal 600ms var(--stats-ease) 160ms both;
+}
+
+.stats-entry .stats-chart-stem {
+    animation: stats-light-arrive 500ms var(--stats-ease) 220ms backwards;
+}
+
+.stats-entry .stats-panel {
+    animation: stats-analysis-arrive 460ms var(--stats-ease) 240ms backwards;
+}
+
+@keyframes stats-number-arrive {
+    from {
+        opacity: 0.5;
+        translate: -12px 0;
+    }
+
+    to {
+        opacity: 1;
+        translate: 0 0;
+    }
+}
+
+@keyframes stats-sleeve-unfold {
+    from {
+        opacity: 0.35;
+        translate: calc((1 - var(--stats-order)) * 30px) 24px;
+        rotate: calc((var(--stats-order) - 1) * 7deg);
+        scale: 0.9;
+    }
+
+    to {
+        opacity: 1;
+        translate: 0 0;
+        rotate: 0deg;
+        scale: 1;
+    }
+}
+
+@keyframes stats-light-arrive {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes stats-analysis-arrive {
+    from {
+        opacity: 0.55;
+        translate: 0 7px;
+    }
+
+    to {
+        opacity: 1;
+        translate: 0 0;
+    }
 }

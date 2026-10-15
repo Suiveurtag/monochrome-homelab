@@ -331,13 +331,23 @@
             },
             {
                 "name": "stats-reveal-durations",
-                "value": "count-up 850ms; headline 700ms; caption 800ms; covers 950ms + 90ms stagger; orbit 1200ms; stroke 700ms; area/donut 650ms; bars 500ms + 12ms stagger; rows 450ms; in-view ambience 10s loop",
-                "purpose": "Finite Stats B entrances; quiet updates suppress count-up and scene/chart/row reveals. Loading pulse and refresh spin represent active state."
+                "value": "entry chrome 420ms + 55ms toolbar delay; data composition 800ms; count-up 760ms; number arrival 580ms; covers 640ms + 40ms + 60ms stagger; orbit 620ms + 180ms; curve/area/bloom 600ms + 160ms; metrics from160ms; caption420ms + 220ms; panels460ms + 240ms; navigation count450ms; donut650ms; bars500ms + 12ms stagger; rows450ms; intersection380ms + 24ms stagger capped168ms",
+                "purpose": "Finite Stats B entrances; graph/ring/hour reveals pause until in view. Quiet updates suppress count-up, scene/chart/row reveals and intersection arrivals."
             },
             {
                 "name": "stats-reduced-motion",
                 "value": "prefers-reduced-motion: reduce -> animation: none; transition: none",
-                "purpose": "Stats descendants and pseudo-elements disable CSS motion; JavaScript skips count-up and pointer tilt, retaining static cover rotations. Social/Admin remain unchanged."
+                "purpose": "Stats descendants and pseudo-elements disable CSS motion; JavaScript skips count-up and pointer tilt, cancels chrome and intersection Web Animations, clears entry state and retains static cover rotations. Social/Admin remain unchanged."
+            },
+            {
+                "name": "stats-artwork-response",
+                "value": "artwork field opacity 0.2 idle -> 0.43 hover/focus over 600ms; pointer reflection 250ms; in-view ambience 10s alternate; active in-view orbit trace 12s linear",
+                "purpose": "Stats B only: quiet idle with richer exploration. Actual blurred covers, 70% artwork/foreground color mix, foreground orbit and curve bloom retain the approved stage; document visibility pauses CSS animations."
+            },
+            {
+                "name": "stats-navigation",
+                "value": "sliding selectors 280ms; cancelable date/content transition 320ms; pointer light and tilt RAF-batched",
+                "purpose": "Stats selectors remain native pressed-state controls. Navigation retains dim/inert scene, quiet refresh waits for navigation and skips unchanged payloads, and reduced motion skips effects."
             }
         ],
         "breakpoints": [
@@ -374,12 +384,12 @@
             {
                 "name": "stats-analysis-stack",
                 "value": "@container (max-width: 900px)",
-                "purpose": "Stats B analysis stacks and rotation/hour rail becomes two columns; donut 100px, cover fan 280px."
+                "purpose": "Stats B analysis stacks and rotation/hour rail becomes two columns; donut 100px. Fan retains clamp(250px, 28cqi, 330px), with covers capped at min(230px, 72% of fan height)."
             },
             {
                 "name": "stats-phone",
                 "value": "@container (max-width: 560px)",
-                "purpose": "Stats B stage and rail stack vertically; fan 245px, donut 120px, panels 16px; controls wrap, secondary times hide. ResizeObserver rebuilds compact chart geometry at 560px."
+                "purpose": "Stats B stage and rail stack vertically; fan 245px, donut 120px, panels 16px; controls wrap, secondary times hide. Integrated curve gains a 22px top gap; ResizeObserver selects 400x240 geometry at 560px (210px display height)."
             }
         ],
         "patterns": [
@@ -474,7 +484,9 @@
                     "segmentMs": 280,
                     "replacementMs": 320,
                     "countMs": 450,
-                    "initialCountMs": 850,
+                    "initialCountMs": 760,
+                    "entryCompositionMs": 800,
+                    "entryReplay": "Each tab visit; chrome responds before data; period and quiet updates do not replay.",
                     "interruptible": true,
                     "quietRefresh": "No supersession of navigation; unchanged payloads retain inspected DOM."
                 },
@@ -575,7 +587,7 @@
             "name": "Stats Period Segments",
             "kind": "custom",
             "refersTo": null,
-            "description": "Stats B native pill period buttons with foreground selected fill, explicit pressed state, visible focus and press feedback; local to Stats.",
+            "description": "Stats B native pill period buttons with foreground selected fill, explicit pressed state, visible focus and press feedback. Runtime positions a 280ms sliding indicator; this standalone snippet presents the selected state. Local to Stats.",
             "html": "<div class=\"ds-stats-periods\" role=\"group\" aria-label=\"Listening period\"><button type=\"button\" aria-pressed=\"false\">Day</button><button type=\"button\" aria-pressed=\"true\">Week</button><button type=\"button\" aria-pressed=\"false\">Month</button><button type=\"button\" aria-pressed=\"false\">Year</button><button type=\"button\" aria-pressed=\"false\">Lifetime</button></div>",
             "css": ".ds-stats-periods { display: inline-flex; gap: 2px; padding: 4px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 70%, transparent); font-family: var(--font-family,Inter,sans-serif); } .ds-stats-periods button { display: flex; align-items: center; justify-content: center; min-height: 32px; min-width: 66px; padding: 0.45rem 0.8rem; border: 0; border-radius: 999px; background: transparent; color: var(--muted-foreground); font: inherit; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: color 180ms, background 180ms, opacity 180ms, transform 240ms cubic-bezier(0.16,1,0.3,1); } .ds-stats-periods button:hover { color: var(--foreground); background: rgb(var(--highlight-rgb), 0.06); } .ds-stats-periods button[aria-pressed=\"true\"] { background: var(--foreground); color: var(--background); box-shadow: 0 3px 10px rgb(0 0 0 / 12%); } .ds-stats-periods button:focus-visible { outline: 2px solid var(--foreground); outline-offset: 3px; } .ds-stats-periods button:active:not(:disabled) { transform: scale(0.95); } @media (prefers-reduced-motion: reduce) { .ds-stats-periods button { animation: none; transition: none; } }"
         }

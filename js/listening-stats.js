@@ -4,7 +4,12 @@ import I_LOCK from '!lucide/lock-keyhole.svg?svg&icon';
 import I_PLAY from '!lucide/play.svg?svg&icon';
 import I_MUSIC from '!lucide/audio-lines.svg?svg&icon';
 import I_REFRESH from '!lucide/refresh-cw.svg?svg&icon';
-import { animateStatsScene, syncStatsSegments, transitionStatsContent } from './listening-stats-scene.js';
+import {
+    animateStatsScene,
+    beginStatsEntrance,
+    syncStatsSegments,
+    transitionStatsContent,
+} from './listening-stats-scene.js';
 import { pb } from './accounts/config.js';
 import { listeningTimezoneOffsets } from './listening-timezone.js';
 
@@ -147,6 +152,8 @@ class ListeningStats {
         window.history.replaceState({}, '', `/stats?period=${this.period}&date=${this.anchor}`);
     }
     async open() {
+        this.entryPending = true;
+        beginStatsEntrance(this.root);
         const url = new URL(window.location.href);
         this.period = periods[url.searchParams.get('period')] ? url.searchParams.get('period') : 'week';
         this.anchor = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get('date') || '')
@@ -228,12 +235,17 @@ class ListeningStats {
                 focused &&
                 ['data-chart-point', 'data-hour', 'data-play-track'].find((attr) => focused.hasAttribute(attr));
             const focusValue = focusAttr ? focused.getAttribute(focusAttr) : null;
-            content.classList.toggle('stats-update', quiet || retained);
+            const entering = Boolean(this.entryPending);
+            this.entryPending = false;
+            content.classList.toggle('stats-entry', entering);
+            content.classList.toggle('stats-update', !entering && (quiet || retained));
             const previousMetric = content.querySelector('[data-count]');
             this.render(
-                retained ? Number(previousMetric?.dataset.displayCount ?? previousMetric?.dataset.count) : undefined
+                retained && !entering
+                    ? Number(previousMetric?.dataset.displayCount ?? previousMetric?.dataset.count)
+                    : undefined
             );
-            if (retained) transitionStatsContent(content);
+            if (retained && !entering) transitionStatsContent(content);
             if (quiet && focusAttr)
                 this.root.querySelector(`[${focusAttr}="${CSS.escape(focusValue)}"]`)?.focus({ preventScroll: true });
         } catch (error) {
@@ -297,13 +309,13 @@ class ListeningStats {
         const most = d.top.tracks[0];
         this.root.querySelector('#stats-content').innerHTML = `
             <section class="stats-scene" aria-label="Your listening in this period">
-                <div class="stats-ambience" aria-hidden="true"></div>
+                <div class="stats-ambience" aria-hidden="true"><div class="stats-art-light">${favorites.map((track, i) => `<span style="--stats-order:${i}">${cover(track)}</span>`).join('')}</div></div>
                 <div class="stats-stage">
                     <div class="stats-headline"><div class="stats-total" data-count="${Math.round(s.seconds / 60)}">${minutes(s.seconds)}</div><h2>minutes listened</h2><p class="stats-comparison">${this.period === 'lifetime' ? 'Across your listening history' : comparison}</p>
                     <dl class="stats-stage-metrics"><div><dd>${count(s.streams)}</dd><dt>streams</dt></div><div><dd>${count(s.artists)}</dd><dt>artists</dt></div><div><dd>${count(s.activeDays)}</dd><dt>active days</dt></div></dl>
                     <p class="stats-stage-detail">${count(s.tracks)} tracks · ${count(s.albums)} albums · ${count(s.longestStreak)} day longest streak</p></div>
                     <div class="stats-showcase">
-                        <div class="stats-cover-fan" data-cover-count="${favorites.length}"><svg class="stats-orbit" viewBox="0 0 600 350" aria-hidden="true"><ellipse cx="300" cy="175" rx="284" ry="63" transform="rotate(-19 300 175)"/></svg>
+                        <div class="stats-cover-fan" data-cover-count="${favorites.length}"><svg class="stats-orbit" viewBox="0 0 600 350" aria-hidden="true"><defs><linearGradient id="stats-orbit-light"><stop stop-color="var(--stats-color-0)" stop-opacity="0"/><stop offset=".6" stop-color="var(--stats-color-1)"/><stop offset="1" stop-color="var(--foreground)"/></linearGradient></defs><ellipse cx="300" cy="175" rx="284" ry="63" transform="rotate(-19 300 175)"/><ellipse class="stats-orbit-trace" cx="300" cy="175" rx="284" ry="63" pathLength="100" transform="rotate(-19 300 175)"/></svg>
                         ${favorites.map((track, i) => `<button type="button" class="stats-cover-card stats-cover-${i}" data-play-track="${escape(track.id)}" aria-label="Play ${escape(track.title)}" style="--stats-order:${i}">${cover(track)}<span class="stats-cover-play">${I_PLAY(24)}</span></button>`).join('')}
                         ${!most ? `<div class="stats-no-cover">${I_MUSIC(48)}<span>Your next favorite starts with a listen.</span></div>` : ''}</div>
                         ${most ? `<div class="stats-showcase-caption"><span><strong><span class="stats-most-label">Your most played ·&nbsp;</span>${escape(most.title)}</strong><span>${escape((most.artists || []).map((a) => a.name).join(', '))}</span></span><button type="button" class="stats-hero-play" data-play-track="${escape(most.id)}" aria-label="Play ${escape(most.title)}">${I_PLAY(22)}</button></div>` : ''}
@@ -363,9 +375,9 @@ class ListeningStats {
             ]),
         ];
         return `<figure class="stats-chart-figure"><div class="stats-chart-tooltip" hidden aria-hidden="true"></div><svg class="stats-chart-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="group" aria-labelledby="stats-chart-caption">
-            <defs><linearGradient id="stats-line-colors"><stop stop-color="var(--stats-color-0)"/><stop offset=".5" stop-color="var(--stats-color-1)"/><stop offset="1" stop-color="var(--stats-color-2)"/></linearGradient><linearGradient id="stats-area-color" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--stats-color-0)" stop-opacity=".22"/><stop offset="1" stop-color="var(--stats-color-1)" stop-opacity="0"/></linearGradient></defs>
+            <defs><linearGradient id="stats-line-colors"><stop stop-color="var(--stats-color-0)"/><stop offset=".5" stop-color="var(--stats-color-1)"/><stop offset="1" stop-color="var(--stats-color-2)"/></linearGradient><linearGradient id="stats-area-color" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--stats-color-0)" stop-opacity=".34"/><stop offset="1" stop-color="var(--stats-color-1)" stop-opacity="0"/></linearGradient></defs>
             ${[0, 2, 4].map((i) => `<line class="stats-gridline" x1="48" x2="${right}" y1="${y((ceiling * i) / 4)}" y2="${y((ceiling * i) / 4)}"/><text x="32" y="${y((ceiling * i) / 4) + 4}" text-anchor="end">${count((ceiling * i) / 4)}</text>`).join('')}
-            ${values.some((v) => v > 0) ? `${stems}<path class="stats-chart-area" d="${curve} L ${x(items.length - 1)},${baseline} L ${x(0)},${baseline} Z"/><path class="stats-chart-line" d="${curve}" pathLength="1"/>${values.map((v, i) => `<circle class="stats-chart-dot" data-point-dot="${i}" cx="${x(i)}" cy="${y(v)}" r="3"/>`).join('')}` : `<text class="stats-no-activity" x="${width / 2}" y="${height / 2}" text-anchor="middle">No listening activity in this period</text>`}
+            ${values.some((v) => v > 0) ? `${stems}<path class="stats-chart-area" d="${curve} L ${x(items.length - 1)},${baseline} L ${x(0)},${baseline} Z"/><path class="stats-chart-bloom" d="${curve}" aria-hidden="true"/><path class="stats-chart-line" d="${curve}" pathLength="1"/>${values.map((v, i) => `<circle class="stats-chart-dot" data-point-dot="${i}" cx="${x(i)}" cy="${y(v)}" r="3"/>`).join('')}` : `<text class="stats-no-activity" x="${width / 2}" y="${height / 2}" text-anchor="middle">No listening activity in this period</text>`}
             ${ticks
                 .filter((i) => i >= 0)
                 .map(
@@ -440,7 +452,7 @@ class ListeningStats {
         const items = this.data.top[this.rank];
         if (!items.length) return '<p class="stats-table-empty">No music to rank in this period yet.</p>';
         const artist = this.rank === 'artists';
-        return `<table class="stats-table"><caption class="sr-only">Top ${this.rank} by streams</caption><thead><tr><th scope="col" class="stats-position">#</th><th scope="col">${artist ? 'Artist' : this.rank === 'tracks' ? 'Track' : 'Album'}</th>${this.rank === 'tracks' ? '<th scope="col" class="stats-album-column">Album</th>' : ''}<th scope="col" class="stats-number">Streams</th><th scope="col" class="stats-number stats-time-column">Minutes</th><th scope="col"><span class="sr-only">Open or play</span></th></tr></thead><tbody>${items.map((item, i) => `<tr><td class="stats-position">${String(i + 1).padStart(2, '0')}</td><td><div class="stats-identity"><span class="stats-artwork ${artist ? 'is-artist' : ''}">${cover(item)}</span><span><a href="/${artist ? 'artist' : this.rank === 'albums' ? 'album' : 'track'}/${encodeURIComponent(item.id)}">${escape(item.title || item.name)}</a>${!artist ? `<small>${escape((item.artists || []).map((a) => a.name).join(', '))}</small>` : ''}</span></div></td>${this.rank === 'tracks' ? `<td class="stats-album-column">${escape(item.album?.title || 'Single')}</td>` : ''}<td class="stats-number"><strong>${count(item.streams)}</strong></td><td class="stats-number stats-time-column">${minutes(item.seconds)}</td><td class="stats-row-action">${this.rank === 'tracks' ? `<button type="button" class="stats-icon-button" data-play-track="${escape(item.id)}" aria-label="Play ${escape(item.title)}">${I_PLAY(16)}</button>` : `<a class="stats-icon-button" href="/${artist ? 'artist' : 'album'}/${encodeURIComponent(item.id)}" aria-label="Open ${escape(item.name || item.title)}">${I_CHEVRON_RIGHT(16)}</a>`}</td></tr>`).join('')}</tbody></table>`;
+        return `<table class="stats-table"><caption class="sr-only">Top ${this.rank} by streams</caption><thead><tr><th scope="col" class="stats-position">#</th><th scope="col">${artist ? 'Artist' : this.rank === 'tracks' ? 'Track' : 'Album'}</th>${this.rank === 'tracks' ? '<th scope="col" class="stats-album-column">Album</th>' : ''}<th scope="col" class="stats-number">Streams</th><th scope="col" class="stats-number stats-time-column">Minutes</th><th scope="col"><span class="sr-only">Open or play</span></th></tr></thead><tbody>${items.map((item, i) => `<tr style="--stats-order:${Math.min(i, 7)}"><td class="stats-position">${String(i + 1).padStart(2, '0')}</td><td><div class="stats-identity"><span class="stats-artwork ${artist ? 'is-artist' : ''}">${cover(item)}</span><span><a href="/${artist ? 'artist' : this.rank === 'albums' ? 'album' : 'track'}/${encodeURIComponent(item.id)}">${escape(item.title || item.name)}</a>${!artist ? `<small>${escape((item.artists || []).map((a) => a.name).join(', '))}</small>` : ''}</span></div></td>${this.rank === 'tracks' ? `<td class="stats-album-column">${escape(item.album?.title || 'Single')}</td>` : ''}<td class="stats-number"><strong>${count(item.streams)}</strong></td><td class="stats-number stats-time-column">${minutes(item.seconds)}</td><td class="stats-row-action">${this.rank === 'tracks' ? `<button type="button" class="stats-icon-button" data-play-track="${escape(item.id)}" aria-label="Play ${escape(item.title)}">${I_PLAY(16)}</button>` : `<a class="stats-icon-button" href="/${artist ? 'artist' : 'album'}/${encodeURIComponent(item.id)}" aria-label="Open ${escape(item.name || item.title)}">${I_CHEVRON_RIGHT(16)}</a>`}</td></tr>`).join('')}</tbody></table>`;
     }
     history() {
         if (!this.data.history.length)

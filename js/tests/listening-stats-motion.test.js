@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { animateStatsScene } from '../listening-stats-scene.js';
+import { animateStatsScene, beginStatsEntrance } from '../listening-stats-scene.js';
 
 let clock;
 let frames;
@@ -32,12 +32,13 @@ function fixture(total) {
     const root = {
         metric: { dataset: { count: String(total) }, textContent: String(total) },
         style: { removeProperty() {} },
+        classList: { toggle() {} },
         querySelectorAll: () => [],
         querySelector: (selector) =>
             selector === '[data-count]'
                 ? root.metric
                 : selector === '#stats-content'
-                  ? { classList: { contains: () => false } }
+                  ? { classList: { contains: () => false, remove() {} } }
                   : null,
     };
     return root;
@@ -80,4 +81,36 @@ test('reduced motion preserves the final total without scheduling frames', () =>
     animateStatsScene(root, 80);
     expect(root.metric.textContent).toBe('200');
     expect(frames.size).toBe(0);
+});
+
+test('reopening replaces the chrome entrance and reduced motion cancels it', () => {
+    const root = document.createElement('section');
+    root.innerHTML = '<header class="stats-header"></header><div class="stats-toolbar"></div>';
+    document.body.append(root);
+    try {
+        const header = root.querySelector('header');
+        beginStatsEntrance(root);
+        const previous = header.getAnimations()[0];
+        expect(previous).toBeDefined();
+        beginStatsEntrance(root);
+        expect(previous.playState).toBe('idle');
+        expect(header.getAnimations()).toHaveLength(1);
+        reduced = true;
+        beginStatsEntrance(root);
+        expect(header.getAnimations()).toHaveLength(0);
+    } finally {
+        root.remove();
+    }
+});
+
+test('the orbit settles the entry state, while unrelated animations do not', () => {
+    const root = document.createElement('section');
+    root.innerHTML = '<div id="stats-content" class="stats-entry"><svg class="stats-orbit"></svg></div>';
+    const content = root.firstElementChild;
+    const orbit = content.firstElementChild;
+    animateStatsScene(root);
+    orbit.dispatchEvent(new AnimationEvent('animationend', { animationName: 'stats-row-enter', bubbles: true }));
+    expect(content.classList.contains('stats-entry')).toBe(true);
+    orbit.dispatchEvent(new AnimationEvent('animationend', { animationName: 'stats-orbit-enter', bubbles: true }));
+    expect(content.classList.contains('stats-entry')).toBe(false);
 });
