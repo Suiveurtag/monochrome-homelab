@@ -2888,7 +2888,7 @@ body .now-playing-panel.is-queue-view.is-queue-closing {
     pointer-events: none;
     object-fit: cover;
     transform-origin: top left;
-    will-change: transform, opacity, border-radius, filter;
+    will-change: opacity, filter;
 }
 
 @keyframes queue-artwork-sheen {

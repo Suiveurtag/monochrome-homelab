@@ -2352,8 +2352,6 @@ export class NowPlayingPanel {
         const fromY = source.rect.top - rootRect.top;
         const toX = target.rect.left - rootRect.left;
         const toY = target.rect.top - rootRect.top;
-        const scaleX = target.rect.width / source.rect.width;
-        const scaleY = target.rect.height / source.rect.height;
         const morph = document.createElement('img');
         morph.className = 'now-playing-panel-queue-cover-morph';
         morph.src = source.src;
@@ -2368,36 +2366,36 @@ export class NowPlayingPanel {
         morph.style.filter = source.filter;
         this.root.append(morph);
         this.queueCoverMorph = morph;
-        const destination = `translate3d(${toX - fromX}px, ${toY - fromY}px, 0) scale(${scaleX}, ${scaleY})`;
-        const sourceMorphBorderRadius = scaleMorphBorderRadius(source.borderRadius, 1, 1);
-        const targetMorphBorderRadius = scaleMorphBorderRadius(target.borderRadius, scaleX, scaleY);
         const hasCanvasTransition = Boolean(this.queueCanvasStage);
         const morphFromOpacity = direction === 'opening' && hasCanvasTransition ? 0 : 1;
         const morphToOpacity = direction === 'closing' && hasCanvasTransition ? 0 : 1;
         const duration = direction === 'closing' ? QUEUE_CLOSE_DURATION : QUEUE_COVER_DURATION;
+        // Animate the box itself: Chrome keeps a scaled <img> rasterized at its starting size, which looks tiny mid-flight.
+        const morphFrom = {
+            left: `${fromX}px`,
+            top: `${fromY}px`,
+            width: `${source.rect.width}px`,
+            height: `${source.rect.height}px`,
+            opacity: morphFromOpacity,
+            borderRadius: source.borderRadius,
+            filter: source.filter,
+        };
+        const morphTo = {
+            left: `${toX}px`,
+            top: `${toY}px`,
+            width: `${target.rect.width}px`,
+            height: `${target.rect.height}px`,
+            opacity: morphToOpacity,
+            borderRadius: target.borderRadius,
+            filter: target.filter,
+        };
         if (typeof morph.animate !== 'function') {
-            morph.style.transform = destination;
-            morph.style.borderRadius = targetMorphBorderRadius;
-            morph.style.opacity = String(morphToOpacity);
-            morph.style.filter = target.filter;
+            Object.assign(morph.style, morphTo);
             window.setTimeout(finish, duration);
             return;
         }
         this.queueCoverAnimation = morph.animate(
-            [
-                {
-                    transform: 'translate3d(0, 0, 0) scale(1, 1)',
-                    opacity: morphFromOpacity,
-                    borderRadius: sourceMorphBorderRadius,
-                    filter: source.filter,
-                },
-                {
-                    transform: destination,
-                    opacity: morphToOpacity,
-                    borderRadius: targetMorphBorderRadius,
-                    filter: target.filter,
-                },
-            ],
+            [morphFrom, morphTo],
             {
                 duration,
                 easing: 'cubic-bezier(0.77, 0, 0.175, 1)',
