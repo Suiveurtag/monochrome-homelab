@@ -144,6 +144,9 @@ export async function mountAmllLyrics({
 
     signal?.addEventListener('abort', cleanup, { once: true });
     container.lyricsCleanup = cleanup;
+    // Same sync contract as <spicy-lyrics>; scrollState is protected in the typings only.
+    lyricElement.isOffSync = () => Boolean(lyricPlayer.scrollState?.isScrolled);
+    lyricElement.resync = () => lyricPlayer.resetScroll();
     return lyricElement;
 }
 

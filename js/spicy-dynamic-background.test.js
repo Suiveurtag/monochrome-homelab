@@ -13,6 +13,8 @@ vi.mock('@kawarp/core', () => ({
             this.renderFrame = vi.fn();
             this.setOptions = vi.fn();
             this.dispose = vi.fn();
+            this.loadVideo = vi.fn();
+            this.unloadVideo = vi.fn();
             kawarpInstances.push(this);
         }
     },
@@ -55,6 +57,36 @@ describe('Spicy dynamic background', () => {
         controller.dispose();
         expect(kawarpInstances[0].dispose).toHaveBeenCalledOnce();
         expect(host.querySelector('[data-spicy-background]')).toBeNull();
+    });
+
+    test('follows the Canvas video and returns to the cover when it goes away', async () => {
+        const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const controller = mountSpicyDynamicBackground(host);
+        const video = document.createElement('video');
+
+        // Ready before the cover finished loading: attaches once Kawarp exists.
+        const loading = controller.setSource('/covers/first.jpg');
+        controller.followVideo(video);
+        await loading;
+        const kawarp = kawarpInstances[0];
+        expect(kawarp.loadVideo).toHaveBeenCalledWith(video, expect.objectContaining({ sampleWidth: 72 }));
+
+        controller.followVideo(null);
+        expect(kawarp.unloadVideo).toHaveBeenCalledOnce();
+        expect(kawarp.loadImage).toHaveBeenLastCalledWith('/covers/first.jpg');
+
+        // An unreadable frame falls back to the cover the same way.
+        controller.followVideo(video);
+        kawarp.loadVideo.mock.lastCall[1].onError(new Error('tainted'));
+        expect(kawarp.unloadVideo).toHaveBeenCalledTimes(2);
+
+        // Another cover load on the shared host keeps following the Canvas.
+        controller.followVideo(video);
+        await controller.setSource('/covers/second.jpg');
+        expect(kawarp.loadImage).toHaveBeenLastCalledWith('/covers/second.jpg');
+        expect(kawarp.loadVideo).toHaveBeenCalledTimes(4);
     });
 
     test('rejects animated sources instead of assigning an invalid CSS background image', async () => {

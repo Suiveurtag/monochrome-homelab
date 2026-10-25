@@ -79,7 +79,7 @@
         "@ffmpeg/core": "^0.12.10",
         "@ffmpeg/ffmpeg": "^0.12.15",
         "@ffmpeg/util": "^0.12.2",
-        "@kawarp/core": "^1.2.0",
+        "@kawarp/core": "^1.3.1",
         "@pixi/app": "^7.4.3",
         "@pixi/core": "^7.4.3",
         "@pixi/display": "^7.4.3",

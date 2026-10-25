@@ -16,16 +16,12 @@ import { getTrackDisplayAlbum, getTrackPlayerArtwork } from './track-versions.js
 import { crossfadeSettings, gaplessPlaybackSettings } from './storage.js';
 import { keyboardShortcuts, matchesShortcut } from './keyboard-shortcuts.js';
 import ICON_CHEVRON_RIGHT from '!lucide/chevron-right.svg?svg&icon';
-import ICON_CHEVRON_UP from '!lucide/chevron-up.svg?svg&icon';
 import ICON_ELLIPSIS from '!lucide/ellipsis.svg?svg&icon';
 import ICON_GRIP_VERTICAL from '!lucide/grip-vertical.svg?svg&icon';
 import ICON_HEART from '!lucide/heart.svg?svg&icon';
 import ICON_HISTORY from '!lucide/history.svg?svg&icon';
 import ICON_INFINITY from '!lucide/infinity.svg?svg&icon';
 import ICON_LIST_MUSIC from '!lucide/list-music.svg?svg&icon';
-import ICON_MAXIMIZE from '!lucide/maximize-2.svg?svg&icon';
-import ICON_MONITOR_UP from '!lucide/monitor-up.svg?svg&icon';
-import FULLSCREEN_EXIT_SVG from '../assets/fullscreen-exit-svgrepo-com.svg?raw';
 import ICON_PAUSE from '!lucide/pause.svg?svg&icon';
 import ICON_PLAY from '!lucide/play.svg?svg&icon';
 import ICON_REPEAT from '!lucide/repeat.svg?svg&icon';
@@ -59,8 +55,22 @@ const HISTORY_RENDER_BATCH = 24;
 const QUEUE_EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
 const QUEUE_EASE_IN_OUT = 'cubic-bezier(0.77, 0, 0.175, 1)';
 const MISSING_BIOGRAPHY = 'No biography is available for this artist yet.';
-const ICON_FULLSCREEN_EXIT = (size = 20) =>
-    FULLSCREEN_EXIT_SVG.replace('width="800px" height="800px"', `width="${size}" height="${size}"`);
+// Lyrics card controls from Spicy Lyrics' Icons.ts (OpenPage, CardExpand, CardToggle).
+const spicyIcon = (body) => (size) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const ICON_LYRICS_OPEN_PAGE = spicyIcon(
+    '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/><path class="spicy-icon-nudge" d="M11.5 12H6.5m2.5-2.5L6.5 12 9 14.5"/>'
+);
+const ICON_LYRICS_CARD_EXPAND = (size) =>
+    `<span class="spicy-icon-stack">${spicyIcon(
+        '<path d="M6 3.5h12"/><path d="M6 20.5h12"/><path d="M12 10.5v-4m-2.5 2.5L12 6.5l2.5 2.5"/><path d="M12 13.5v4m-2.5-2.5 2.5 2.5 2.5-2.5"/>'
+    )(size)}${spicyIcon(
+        '<path d="M6 3.5h12"/><path d="M6 20.5h12"/><path d="M12 6.5v4m-2.5-2.5 2.5 2.5 2.5-2.5"/><path d="M12 17.5v-4m-2.5 2.5 2.5-2.5 2.5 2.5"/>'
+    )(size)}</span>`;
+const ICON_LYRICS_SYNC = spicyIcon(
+    '<path d="M20 11a8 8 0 0 0-14.3-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.5L20 16"/><path d="M20 20v-4h-4"/>'
+);
+const ICON_LYRICS_CARD_TOGGLE = spicyIcon('<path d="m6 15 6-6 6 6"/>');
 
 function scaleMorphBorderRadius(borderRadius, scaleX, scaleY) {
     const value = String(borderRadius || '').trim();
@@ -83,16 +93,12 @@ function scaleMorphBorderRadius(borderRadius, scaleX, scaleY) {
 function icon(name, size = 20) {
     const icons = {
         'chevron-right': ICON_CHEVRON_RIGHT,
-        'chevron-up': ICON_CHEVRON_UP,
         ellipsis: ICON_ELLIPSIS,
         grip: ICON_GRIP_VERTICAL,
         heart: ICON_HEART,
         history: ICON_HISTORY,
         infinity: ICON_INFINITY,
         'list-music': ICON_LIST_MUSIC,
-        'maximize-2': ICON_MAXIMIZE,
-        'monitor-up': ICON_MONITOR_UP,
-        'fullscreen-exit': ICON_FULLSCREEN_EXIT,
         pause: ICON_PAUSE,
         play: ICON_PLAY,
         repeat: ICON_REPEAT,
@@ -104,6 +110,10 @@ function icon(name, size = 20) {
         sliders: ICON_SLIDERS_HORIZONTAL,
         trash: ICON_TRASH,
         x: ICON_CLOSE,
+        'lyrics-open-page': ICON_LYRICS_OPEN_PAGE,
+        'lyrics-card-expand': ICON_LYRICS_CARD_EXPAND,
+        'lyrics-card-toggle': ICON_LYRICS_CARD_TOGGLE,
+        'lyrics-sync': ICON_LYRICS_SYNC,
     };
     return icons[name]?.(size) || '';
 }
@@ -1286,12 +1296,13 @@ export class NowPlayingPanel {
                     <header>
                         <h3 id="now-playing-panel-lyrics-title">Lyrics</h3>
                         <div class="now-playing-panel-lyrics-actions">
-                            <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-fullscreen" aria-label="Open fullscreen lyrics">${icon('monitor-up')}</button>
-                            <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-expand" aria-label="Expand lyrics in panel">${icon('maximize-2')}</button>
-                            <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-collapse" aria-label="Collapse lyrics preview">${this.expandedLyrics ? icon('fullscreen-exit') : icon('chevron-up')}</button>
+                            <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-fullscreen" aria-label="Open fullscreen lyrics">${icon('lyrics-open-page')}</button>
+                            <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-expand" aria-label="Expand lyrics in panel">${icon('lyrics-card-expand')}</button>
+                            <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-collapse" aria-label="Collapse lyrics preview">${icon('lyrics-card-toggle')}</button>
                         </div>
                     </header>
                     <div class="now-playing-panel-lyrics-host"></div>
+                    <button type="button" class="now-playing-panel-lyrics-sync" hidden>${icon('lyrics-sync', 18)}<span>Sync lyrics</span></button>
                 </section>
                 ${this.renderRelatedVideos(model)}
                 ${this.renderArtist(model)}
@@ -2616,6 +2627,7 @@ export class NowPlayingPanel {
                 this.canvasLoadTimer = null;
                 this.canvasLoadRetryCount = 0;
                 video.dataset.canvasReady = 'true';
+                this.background?.followVideo?.(video);
                 this.syncCanvasPlayback();
             });
         };
@@ -2717,6 +2729,7 @@ export class NowPlayingPanel {
         this.canvasExpanded = false;
         this.canvasVisibilityObserver?.disconnect();
         this.canvasVisibilityObserver = null;
+        this.background?.followVideo?.(null);
         video.removeEventListener('play', this.boundCanvasPlaybackStarted);
         video.removeEventListener('pause', this.boundCanvasPlaybackInterrupted);
         video.removeEventListener('stalled', this.boundCanvasPlaybackInterrupted);
@@ -2781,6 +2794,7 @@ export class NowPlayingPanel {
         this.canvasRetryTimer = null;
         this.canvasVisibilityObserver?.disconnect();
         this.canvasVisibilityObserver = null;
+        this.background?.followVideo?.(null);
         this.content?.querySelectorAll('video').forEach((video) => {
             video.removeEventListener('play', this.boundCanvasPlaybackStarted);
             video.removeEventListener('pause', this.boundCanvasPlaybackInterrupted);
@@ -2805,6 +2819,18 @@ export class NowPlayingPanel {
         });
         if (!element && !signal.aborted)
             host.innerHTML = '<p class="now-playing-panel-lyrics-empty">Lyrics are not available.</p>';
+        if (element?.isOffSync) this.watchLyricsSync(element);
+    }
+
+    // Polled: the lyric players expose no scroll event, and 250ms is plenty for a button.
+    watchLyricsSync(element) {
+        window.clearInterval(this.lyricsSyncTimer);
+        this.lyricsSyncTimer = window.setInterval(() => {
+            const button = this.root.querySelector('.now-playing-panel-lyrics-sync');
+            if (!element.isConnected || !button) return window.clearInterval(this.lyricsSyncTimer);
+            button.hidden = this.collapsedLyrics || !element.isOffSync();
+        }, 250);
+        this.lyricsSyncElement = element;
     }
 
     applyLyricsMode() {
@@ -2930,6 +2956,11 @@ export class NowPlayingPanel {
         if (button.matches('.now-playing-panel-share')) return void this.shareTrack();
         if (button.matches('.now-playing-panel-save')) {
             document.getElementById('now-playing-like-btn')?.click();
+            return;
+        }
+        if (button.matches('.now-playing-panel-lyrics-sync')) {
+            this.lyricsSyncElement?.resync?.();
+            button.hidden = true;
             return;
         }
         if (button.matches('.now-playing-panel-lyrics-fullscreen')) {

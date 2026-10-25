@@ -17,6 +17,8 @@ const BEAT_SPEED = 0.55;
 const BEAT_SCALE = 1.008;
 const ANALYSIS_INTERVAL = 100;
 const FALLBACK_TRANSITION_DURATION = 850;
+// Upstream NpvCanvasBackground: Canvas loops are 9:16, and smoothing eases hard cuts.
+const VIDEO_OPTIONS = { sampleWidth: 72, sampleHeight: 128, smoothing: 100 };
 
 function safeBackgroundUrl(source) {
     return String(source || '').replaceAll('"', '%22');
@@ -43,6 +45,7 @@ export class SpicyDynamicBackground {
         this.transitionTimer = null;
         this.disposed = false;
         this.loadQueue = Promise.resolve(false);
+        this.video = null;
         this.playbackElement = null;
         this.getPlaybackElement = null;
         this.getAnalyser = null;
@@ -173,6 +176,48 @@ export class SpicyDynamicBackground {
         this.syncMotion(true);
     }
 
+    // Drive the fluid background from the playing Canvas video instead of the cover.
+    // Only the Canvas owner detaches it: the lyrics renderer also calls setSource on this host.
+    followVideo(video) {
+        const nextVideo = video || null;
+        if (nextVideo === this.video) return;
+        const wasFollowing = this.video && this.root.classList.contains('has-kawarp-background');
+        this.video = nextVideo;
+        if (!this.kawarp || this.disposed) return;
+        if (nextVideo) {
+            this.loadVideo();
+        } else if (wasFollowing) {
+            this.kawarp.unloadVideo();
+            // The last video frame stays until something replaces it.
+            const generation = this.generation;
+            void this.kawarp
+                .loadImage(this.source)
+                .then(() => {
+                    if (!this.disposed && generation === this.generation && !this.kawarp.isPlaying) {
+                        this.kawarp.renderFrame?.();
+                    }
+                })
+                .catch(() => {});
+        }
+    }
+
+    loadVideo() {
+        const video = this.video;
+        if (!video || !this.kawarp || !this.root.classList.contains('has-kawarp-background')) return;
+        try {
+            this.kawarp.loadVideo(video, {
+                ...VIDEO_OPTIONS,
+                // Cross-origin or undecodable frames: Kawarp has already unloaded the video.
+                onError: () => {
+                    if (this.video === video) this.followVideo(null);
+                },
+            });
+        } catch (error) {
+            console.warn('Spicy Lyrics Canvas background fell back to cover:', error);
+            this.followVideo(null);
+        }
+    }
+
     setFallbackSource(source) {
         const nextSource = String(source || '');
         if (nextSource === this.fallbackSource) return;
@@ -236,6 +281,7 @@ export class SpicyDynamicBackground {
                     else this.kawarp.renderFrame?.();
                     this.syncMotion(true);
                     this.root.classList.add('has-kawarp-background');
+                    this.loadVideo();
                     this.loadingSource = '';
                     window.clearTimeout(this.transitionTimer);
                     this.transitionTimer = window.setTimeout(() => {
@@ -272,6 +318,7 @@ export class SpicyDynamicBackground {
         this.playbackElement = null;
         this.getPlaybackElement = null;
         this.getAnalyser = null;
+        this.video = null;
         this.resizeObserver?.disconnect();
         this.resizeObserver = null;
         this.kawarp?.dispose();

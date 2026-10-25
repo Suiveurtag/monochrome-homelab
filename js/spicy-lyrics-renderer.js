@@ -328,6 +328,23 @@ export class SpicyLyricsElement extends HTMLElement {
         this.render();
     }
 
+    /** True when the user scrolled away and the playing line is outside the visible area. */
+    isOffSync() {
+        const line = this._lineStates[getScrollLineIndex(this._lineStates, this._currentTime)]?.element;
+        if (!line || !this._scrollElement) return false;
+        if (!line.isConnected) return true;
+        const view = this._scrollElement.getBoundingClientRect();
+        const rect = line.getBoundingClientRect();
+        return rect.bottom < view.top || rect.top > view.bottom;
+    }
+
+    resync() {
+        this._manualScrollUntil = 0;
+        this._lyricsContent?.classList.remove('HideLineBlur');
+        const index = getScrollLineIndex(this._lineStates, this._currentTime);
+        if (index >= 0) this._virtualizer.scrollToIndex(index, 'center', true, 30);
+    }
+
     disconnectedCallback() {
         this._connected = false;
         this.removeEventListener('wheel', this._suspendAutoScroll);

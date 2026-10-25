@@ -37,3 +37,10 @@ speed during playback, slowing it to `0.1` while paused, and holding a still
 frame for reduced motion. Monochrome's existing audio analyser supplies the
 optional beat-speed and scale modulation; it does not replace or redraw the
 Kawarp background.
+
+The Canvas-driven background (Kawarp `loadVideo` following the playing Canvas
+video, from `NpvCanvasBackground.ts`) and the Now Playing lyrics card icons
+(`OpenPage`, `CardExpand`, `CardToggle` from `Icons.ts`, with their
+`NPVLyrics.css` transitions) are adapted from Spicy Lyrics revision
+`ebcb1f0`, available at
+<https://github.com/spikerko/spicy-lyrics/tree/ebcb1f0>.
