@@ -62,6 +62,9 @@ function rectSnapshot(element) {
 function animateDiscBetween(source, target, { duration = 500 } = {}) {
     const from = rectSnapshot(source);
     const to = rectSnapshot(target);
+    // The list slides up into place while the disc flies; aim for where it settles, not where it starts.
+    const list = target?.closest('.track-version-list');
+    if (to && list) to.top -= new DOMMatrix(getComputedStyle(list).transform).m42;
     if (!from || !to || matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
     const clone = source.cloneNode(true);
     clone.classList.add('version-disc-flight');

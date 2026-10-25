@@ -633,7 +633,7 @@
     transition: opacity 400ms;
 }
 
-.stats-cover-fan.is-lit .stats-cover-card::after {
+.stats-cover-card.is-lit::after {
     opacity: 1;
 }
 

@@ -56,31 +56,30 @@ export function animateStatsScene(root) {
         frame = requestAnimationFrame(tick);
         signal.addEventListener('abort', () => cancelAnimationFrame(frame), { once: true });
     }
-    const fan = root.querySelector('.stats-cover-fan');
-    if (fan) {
+    root.querySelectorAll('.stats-cover-card').forEach((card) => {
         const reset = () => {
-            fan.classList.remove('is-lit');
-            fan.style.removeProperty('--stats-tilt-x');
-            fan.style.removeProperty('--stats-tilt-y');
+            card.classList.remove('is-lit');
+            card.style.removeProperty('--stats-tilt-x');
+            card.style.removeProperty('--stats-tilt-y');
         };
         let tiltFrame;
         let pointer;
-        fan.addEventListener(
+        card.addEventListener(
             'pointermove',
             (event) => {
                 if (reduced.matches || event.pointerType !== 'mouse') return;
                 pointer = { x: event.clientX, y: event.clientY };
-                fan.classList.add('is-lit');
+                card.classList.add('is-lit');
                 if (tiltFrame) return;
                 tiltFrame = requestAnimationFrame(() => {
                     tiltFrame = null;
-                    const rect = fan.getBoundingClientRect();
-                    fan.style.setProperty('--stats-glare', `${((pointer.x - rect.left) / rect.width) * 100}%`);
-                    fan.style.setProperty(
+                    const rect = card.getBoundingClientRect();
+                    card.style.setProperty('--stats-glare', `${((pointer.x - rect.left) / rect.width) * 100}%`);
+                    card.style.setProperty(
                         '--stats-tilt-x',
                         `${((pointer.y - rect.top - rect.height / 2) / rect.height) * -7}deg`
                     );
-                    fan.style.setProperty(
+                    card.style.setProperty(
                         '--stats-tilt-y',
                         `${((pointer.x - rect.left - rect.width / 2) / rect.width) * 9}deg`
                     );
@@ -89,7 +88,7 @@ export function animateStatsScene(root) {
             { signal }
         );
         signal.addEventListener('abort', () => cancelAnimationFrame(tiltFrame), { once: true });
-        fan.addEventListener(
+        card.addEventListener(
             'pointerleave',
             () => {
                 cancelAnimationFrame(tiltFrame);
@@ -99,7 +98,7 @@ export function animateStatsScene(root) {
             { signal }
         );
         reduced.addEventListener('change', reset, { signal });
-    }
+    });
     const observer = new IntersectionObserver((entries) => {
         for (const entry of entries) {
             entry.target.classList.toggle('stats-in-view', entry.isIntersecting);
