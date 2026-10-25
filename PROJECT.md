@@ -103,3 +103,4 @@ Dev PocketBase superuser: `admin@example.com` / `changeme` (override via `PB_ADM
 - UI work is heavily design-reviewed: hooks in `.codex/hooks.json` / `.claude/settings.local.json` run the **impeccable** design-check skill (`/.agents/skills/impeccable/`) after edits. Follow existing design language when touching UI.
 - Vite proxies require the Docker infra running (`./monochrome dev`); backend-dependent features won't work from plain `bun run dev`.
 - Tests live next to source (`js/*.test.js`) plus `js/tests/`. Use `vitest` browser mode.
+- **Desktop first:** the mobile layout is low priority. Keep it from breaking (no horizontal overflow, controls reachable), but don't spend design or verification time polishing phone widths unless asked.

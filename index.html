@@ -2705,11 +2705,12 @@
                 </div>
 
                 <div id="page-stats" class="page">
+                    <div class="stats-ambience" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
                     <header class="stats-header">
                         <div><h1>Listening stats</h1></div>
                         <div class="stats-header-actions">
-                            <button type="button" class="stats-icon-button" data-stats-action="refresh" aria-label="Refresh listening stats"><use svg="!lucide/refresh-cw.svg" size="17" /><span>Refresh</span></button>
-                            <button type="button" id="stats-export" class="btn-secondary" data-stats-action="export" disabled><use svg="!lucide/download.svg" size="16" /><span>Export</span></button>
+                            <button type="button" class="stats-pill" data-stats-action="refresh" aria-label="Refresh listening stats"><use svg="!lucide/refresh-cw.svg" size="16" /><span>Refresh</span></button>
+                            <button type="button" id="stats-export" class="stats-pill is-primary" data-stats-action="export" aria-haspopup="dialog" disabled><use svg="!lucide/share.svg" size="16" /><span>Share</span></button>
                         </div>
                     </header>
                     <div class="stats-toolbar">
@@ -2723,7 +2724,7 @@
                         <div class="stats-date-controls">
                             <button type="button" class="stats-icon-button" data-stats-action="previous" aria-label="Previous listening period"><use svg="!lucide/chevron-left.svg" size="18" /></button>
                             <span id="stats-period-label">This week</span>
-                            <label class="stats-date-picker" title="Choose a listening date"><use svg="!lucide/calendar-days.svg" size="16" /><span class="sr-only">Choose a listening date</span><input type="date" id="stats-date" /></label>
+                            <span class="stats-date-picker"><input type="date" id="stats-date" tabindex="-1" aria-hidden="true" /><button type="button" class="stats-icon-button" data-stats-action="pick-date" aria-label="Choose a listening date" title="Choose a listening date"><use svg="!lucide/calendar-days.svg" size="16" /></button></span>
                             <button type="button" class="stats-icon-button" data-stats-action="next" aria-label="Next listening period"><use svg="!lucide/chevron-right.svg" size="18" /></button>
                             <button type="button" class="stats-today" data-stats-action="today">Today</button>
                         </div>

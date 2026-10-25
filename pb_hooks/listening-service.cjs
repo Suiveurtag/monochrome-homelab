@@ -200,6 +200,29 @@ function stats(e) {
     } catch (error) {
         throw new BadRequestError(error.message);
     }
+    const historyPage = Math.max(1, Math.min(100000, Math.floor(Number(query.page) || 1)));
+    // Infinite history pages read one slice directly instead of re-aggregating the whole period.
+    if (query.view === 'history') {
+        const records = e.app.findRecordsByFilter(
+            'listening_sessions',
+            'user = {:uid} && qualified = true && started_at >= {:start} && started_at < {:end}',
+            '-started_at,id',
+            30,
+            (historyPage - 1) * 30,
+            { uid: e.auth.id, start: range.start, end: range.end }
+        );
+        return {
+            historyPage,
+            policy,
+            history: records.map((record) => ({
+                sessionId: record.getString('session_id'),
+                track: json(record, 'track', {}),
+                startedAt: record.getFloat('started_at'),
+                seconds: record.getFloat('seconds'),
+                ended: record.getBool('ended'),
+            })),
+        };
+    }
     // Query in bounded batches. Includes sessions crossing the beginning of a period.
     const filter = 'user = {:uid} && qualified = true && last_at >= {:start} && started_at < {:end}';
     const rows = [];
@@ -222,7 +245,6 @@ function stats(e) {
         if (batch.length < 1000) break;
     }
     const result = aggregate(rows, range);
-    const historyPage = Math.max(1, Math.min(100000, Math.floor(Number(query.page) || 1)));
     result.historyTotal = result.history.length;
     result.historyPage = historyPage;
     if (query.export !== 'true') {

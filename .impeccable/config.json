@@ -1,0 +1,32 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "listening-stats.css"
+        ],
+        "createdAt": "2026-10-23T19:24:35.370Z",
+        "reason": "Claude triage: DESIGN.md's Boundary section scopes its type ramp to the Social surface only; Listening Stats follows .impeccable/surfaces/listening-stats.md and the approved scene-b comp (prior Stats validation noted the same scoped advisories)"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          "listening-stats.css"
+        ],
+        "createdAt": "2026-10-23T19:36:14.405Z",
+        "reason": "Claude triage: DESIGN.md's Boundary section scopes its rounded scale to the Social surface only; Listening Stats radii follow the approved scene-b comp and .impeccable/surfaces/listening-stats.md"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#f3f1ec",
+        "createdAt": "2026-10-25T20:03:13.616Z",
+        "reason": "agent: Paper share-card style swatch mirrors the exported canvas paper background, not UI chrome"
+      }
+    ]
+  }
+}
