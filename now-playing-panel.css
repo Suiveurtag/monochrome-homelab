@@ -149,12 +149,9 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
         --now-playing-wrapper-fade 500ms ease;
 }
 
-/* Scrolled: the content fades in over the first 10% of the view, 20% (and 2rem lower) over a Canvas. */
+/* Scrolled, the background covers the content under the header: the scroller gives up 2rem and fades
+   in over its first 20% (Spotify's Canvas values, used here with or without a Canvas). */
 .now-playing-panel.is-scrolled .now-playing-panel-scroll {
-    --now-playing-wrapper-fade: 10%;
-}
-
-.now-playing-panel.is-scrolled:has(.has-video-artwork) .now-playing-panel-scroll {
     --now-playing-wrapper-fade: 20%;
     --now-playing-push: 2rem;
 }
