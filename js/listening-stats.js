@@ -433,7 +433,7 @@ class ListeningStats {
         // The orbit is drawn twice: its far half behind the covers, its near half in front of them.
         // Its viewBox matches the orbit box's aspect, so the ring reaches past the outer covers.
         const orbit = (front) =>
-            `<svg class="stats-orbit${front ? ' is-front' : ''}" viewBox="0 0 740 320" aria-hidden="true"><clipPath id="stats-orbit-${front ? 'near' : 'far'}"><rect x="-20" y="${front ? 160 : -60}" width="780" height="220"/></clipPath><g transform="rotate(-8 370 160)" clip-path="url(#stats-orbit-${front ? 'near' : 'far'})"><ellipse class="stats-orbit-ring" cx="370" cy="160" rx="352" ry="84" pathLength="1"/>${[0, 1, 2].map((i) => `<ellipse class="stats-orbit-comet stats-comet-${i}" cx="370" cy="160" rx="352" ry="84" pathLength="1"/>`).join('')}</g></svg>`;
+            `<svg class="stats-orbit${front ? ' is-front' : ''}" viewBox="0 0 740 320" aria-hidden="true"><clipPath id="stats-orbit-${front ? 'near' : 'far'}"><rect x="-20" y="${front ? 160 : -60}" width="780" height="${front ? 220 : 221}"/></clipPath><linearGradient id="stats-spark-fade-${front ? 'near' : 'far'}" gradientUnits="userSpaceOnUse" gradientTransform="rotate(-8 370 160)" x1="0" y1="130" x2="0" y2="160"><stop offset="0" stop-color="${front ? 'black' : 'white'}"/><stop offset="1" stop-color="${front ? 'white' : 'black'}"/></linearGradient><mask id="stats-spark-${front ? 'near' : 'far'}" maskUnits="userSpaceOnUse" x="-200" y="-200" width="1140" height="720"><rect x="-200" y="-200" width="1140" height="720" fill="url(#stats-spark-fade-${front ? 'near' : 'far'})"/></mask><g transform="rotate(-8 370 160)" clip-path="url(#stats-orbit-${front ? 'near' : 'far'})"><ellipse class="stats-orbit-ring" cx="370" cy="160" rx="352" ry="84" pathLength="1"/></g><g mask="url(#stats-spark-${front ? 'near' : 'far'})"><g transform="rotate(-8 370 160)"><ellipse class="stats-orbit-spark" cx="370" cy="160" rx="352" ry="84" pathLength="1"/></g></g></svg>`;
         const by = {
             hour: 'hour by hour',
             day: 'day by day',
@@ -477,6 +477,9 @@ class ListeningStats {
         const values = items.map((p) => (this.unit === 'minutes' ? p.seconds / 60 : p.streams));
         const max = Math.max(1, ...values);
         const step = Math.max(2, 10 ** Math.floor(Math.log10(max)) / 5);
+        // The light comes out from behind the covers on the far half, crosses the near half and slips behind them again.
+        // The far clip overlaps the near one by a unit so no hairline shows where they meet;
+        // the light is masked with a soft cross-fade instead, so its glow is not cut along that line.
         const ceiling = Math.ceil((max * 1.05) / step) * step;
         const compact = this.root.clientWidth <= 560;
         // The SVG stretches to its box, so text, dots and the tooltip live in HTML and strokes don't scale.

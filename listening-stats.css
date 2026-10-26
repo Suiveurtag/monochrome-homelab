@@ -665,33 +665,14 @@
     stroke-dasharray: 1;
 }
 
-/* A comet of three tapered dashes shares one head and travels the orbit. */
-.stats-orbit-comet {
-    --stats-length: 0.1;
-
-    stroke: var(--stats-glow-0);
-    stroke-linecap: round;
-    stroke-dasharray: var(--stats-length) calc(1 - var(--stats-length));
-    stroke-dashoffset: var(--stats-length);
-    opacity: 0;
-}
-
-.stats-comet-0 {
-    stroke-width: 1px;
-}
-
-.stats-comet-1 {
-    --stats-length: 0.05;
-
-    stroke-width: 1.8px;
-}
-
-.stats-comet-2 {
-    --stats-length: 0.008;
-
+.stats-orbit-spark {
     stroke: white;
-    stroke-width: 3.2px;
-    filter: drop-shadow(0 0 4px white) drop-shadow(0 0 10px var(--stats-glow-0));
+    stroke-width: 6px;
+    stroke-linecap: round;
+    stroke-dasharray: 0.02 0.98;
+    stroke-dashoffset: -0.92px;
+    opacity: 0;
+    filter: drop-shadow(0 0 6px white) drop-shadow(0 0 16px var(--stats-glow-1)) drop-shadow(0 0 30px var(--stats-glow-0));
 }
 
 .stats-cover-card {
@@ -1865,12 +1846,12 @@
     animation: stats-draw 1600ms var(--stats-ease) 300ms both;
 }
 
-#page-stats .stats-orbit-comet {
-    animation: stats-comet 13s linear 1.6s infinite;
+#page-stats .stats-orbit-spark {
+    animation: stats-spark 9s linear 3s infinite;
     animation-play-state: paused;
 }
 
-#page-stats .stats-scene.stats-in-view .stats-orbit-comet {
+#page-stats .stats-scene.stats-in-view .stats-orbit-spark {
     animation-play-state: running;
 }
 
@@ -1980,20 +1961,28 @@
     }
 }
 
-@keyframes stats-comet {
+/* The light comes out from behind the right cover, crosses the front arc and dives behind the left cover.
+   It stays dark until it has cleared the right cover, so its glow never shows behind it, and eases out at the end. */
+@keyframes stats-spark {
     0% {
         opacity: 0;
-        stroke-dashoffset: var(--stats-length);
+        stroke-dashoffset: -0.92px;
+        animation-timing-function: cubic-bezier(0.65, 0, 0.2, 1);
     }
 
-    6%,
-    90% {
+    6% {
+        opacity: 0;
+    }
+
+    14%,
+    44% {
         opacity: 1;
     }
 
+    47%,
     100% {
         opacity: 0;
-        stroke-dashoffset: calc(var(--stats-length) - 1);
+        stroke-dashoffset: -1.64px;
     }
 }
 
@@ -2874,7 +2863,7 @@
         transition: none !important;
     }
 
-    .stats-orbit-comet {
+    .stats-orbit-spark {
         display: none;
     }
 }
