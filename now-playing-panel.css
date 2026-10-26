@@ -184,6 +184,32 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
         transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.now-playing-panel-header::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    top: 0;
+    right: -14px;
+    left: -14px;
+    height: 84px;
+    pointer-events: none;
+    background: linear-gradient(
+        180deg,
+        rgb(0 0 0 / 0.38) 0%,
+        rgb(0 0 0 / 0.34) 18%,
+        rgb(0 0 0 / 0.24) 38%,
+        rgb(0 0 0 / 0.12) 60%,
+        rgb(0 0 0 / 0.04) 82%,
+        transparent 100%
+    );
+    transition: opacity 500ms ease;
+}
+
+/* Scrolled, the content fades out under the header instead, so nothing darkens the background. */
+.now-playing-panel.is-scrolled .now-playing-panel-header::before {
+    opacity: 0;
+}
+
 .now-playing-panel.is-scrolled .now-playing-panel-body {
     --now-playing-scroll-fade: 1;
 }
@@ -396,11 +422,13 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 }
 
 /* As upstream Spicy Lyrics: the artwork melts into the background through an eased mask whose
-   stop animates, wide and soft for the cover (25%) and tight once the Canvas plays (80%). The
+   stop animates, wide and soft for the cover and tight once the Canvas plays. The
    Canvas stays slightly translucent so the background shows through it. */
 .now-playing-panel-body.has-video-artwork
     .now-playing-panel-media
     :is(.now-playing-panel-poster, .now-playing-panel-canvas) {
+    /* The blend ends just above the title (as on Spotify), not under it. */
+    --now-playing-canvas-fade-end: calc(100% - 72px);
     --sl-videocanvas-mask-stop: 25%;
 
     position: absolute;
@@ -412,23 +440,17 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     opacity: 0.9;
     mask-image: linear-gradient(
         to bottom,
-        transparent 0,
-        rgb(0 0 0 / 0.104) 26px,
-        rgb(0 0 0 / 0.352) 51px,
-        rgb(0 0 0 / 0.648) 77px,
-        rgb(0 0 0 / 0.896) 102px,
-        black 128px,
         black var(--sl-videocanvas-mask-stop),
-        rgb(0 0 0 / 0.976) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.1),
-        rgb(0 0 0 / 0.905) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.2),
-        rgb(0 0 0 / 0.794) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.3),
-        rgb(0 0 0 / 0.655) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.4),
-        rgb(0 0 0 / 0.5) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.5),
-        rgb(0 0 0 / 0.345) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.6),
-        rgb(0 0 0 / 0.206) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.7),
-        rgb(0 0 0 / 0.095) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.8),
-        rgb(0 0 0 / 0.024) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.9),
-        transparent 100%
+        rgb(0 0 0 / 0.976) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.1),
+        rgb(0 0 0 / 0.905) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.2),
+        rgb(0 0 0 / 0.794) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.3),
+        rgb(0 0 0 / 0.655) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.4),
+        rgb(0 0 0 / 0.5) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.5),
+        rgb(0 0 0 / 0.345) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.6),
+        rgb(0 0 0 / 0.206) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.7),
+        rgb(0 0 0 / 0.095) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.8),
+        rgb(0 0 0 / 0.024) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.9),
+        transparent var(--now-playing-canvas-fade-end)
     );
     transition:
         --sl-videocanvas-mask-stop 1s cubic-bezier(0, 0, 0, 1),
@@ -442,8 +464,8 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 }
 
 .now-playing-panel-body.has-video-artwork .now-playing-panel-media.is-canvas-playing .now-playing-panel-canvas {
-    /* Fully visible down to the title; the blend only starts there and runs under it. */
-    --sl-videocanvas-mask-stop: calc(100% - 130px);
+    /* Fully visible, then a ~110px blend that ends right above the title. */
+    --sl-videocanvas-mask-stop: calc(100% - 182px);
 
     opacity: 0.9;
 }
