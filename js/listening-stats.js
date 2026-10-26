@@ -204,7 +204,11 @@ class ListeningStats {
             this.generation++;
             this.data = null;
             this.root.querySelector('#stats-content').innerHTML = '';
-            if (this.active()) void this.load();
+            this.root.querySelector('#stats-recaps').replaceChildren();
+            if (this.active()) {
+                void this.load();
+                void this.showRecaps();
+            }
         });
         void pb
             .collection('app_config')
@@ -239,6 +243,7 @@ class ListeningStats {
         this.anchor = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get('date') || '')
             ? url.searchParams.get('date')
             : dateKey();
+        void this.showRecaps();
         // Coming back replays the entrance from the last result, then refreshes quietly.
         if (this.data?.summary && this.loadedKey === `${this.period}:${this.anchor}`) {
             this.updateControls();
@@ -247,18 +252,31 @@ class ListeningStats {
         } else await this.load();
     }
     async request(extra = {}) {
-        const date = new Date(`${this.anchor}T12:00:00`);
+        const { period = this.period, anchor = this.anchor } = extra;
+        const date = new Date(`${anchor}T12:00:00`);
         return pb.send('/api/monochrome/listening/stats', {
             method: 'GET',
             query: {
-                period: this.period,
-                anchor: this.anchor,
                 offset: -date.getTimezoneOffset(),
-                offsets: listeningTimezoneOffsets(date.getFullYear(), this.period === 'lifetime'),
+                offsets: listeningTimezoneOffsets(date.getFullYear(), period === 'lifetime'),
                 ...extra,
+                period,
+                anchor,
             },
             requestKey: null,
         });
+    }
+    // Weekly and monthly recaps announce themselves above the period controls.
+    async showRecaps() {
+        try {
+            const { showRecapNotices } = await import('./listening-recap.js');
+            await showRecapNotices(this.root.querySelector('#stats-recaps'), {
+                request: (period, anchor) => this.request({ period, anchor }),
+                ui: this.ui,
+            });
+        } catch {
+            /* Recaps are an extra; the stats stay usable without them. */
+        }
     }
     async load(quiet = false) {
         if (quiet && this.root.hasAttribute('aria-busy')) return;
@@ -368,6 +386,8 @@ class ListeningStats {
             if (this.period === 'week') date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
             return dateKey(date).slice(0, this.period === 'year' ? 4 : this.period === 'month' ? 7 : 10);
         };
+        this.root.querySelector('.stats-share-cta-label').textContent =
+            this.period === 'lifetime' ? 'Share all time' : `Share your ${this.period}`;
         const current = lifetime || periodOf(this.anchor) >= periodOf(dateKey());
         this.root.querySelector('[data-stats-action="next"]').disabled = current;
         this.root.querySelector('[data-stats-action="today"]').hidden = current;
@@ -444,6 +464,9 @@ class ListeningStats {
             </div></div>
             <section class="stats-history" aria-labelledby="stats-history-title"><div class="stats-section-header"><div><h2 id="stats-history-title">Listening history</h2><p>Every stream, including repeats</p></div><span>${count(d.historyTotal)} ${d.historyTotal === 1 ? 'stream' : 'streams'}</span></div>${d.historyTotal ? '<div id="stats-history-list"></div><div class="stats-history-footer"></div>' : '<p class="stats-table-empty">Qualified listens will appear here, grouped by day.</p>'}</section>
             <p class="stats-footnote">A playback session counts once after 30 seconds of heard audio. Pauses and seeks do not add listening time. Only new listens are included; earlier device history cannot be reconstructed reliably. Hours use ${escape(Intl.DateTimeFormat().resolvedOptions().timeZone)} time. Updated ${new Date(d.generatedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}.</p>`;
+        this.root.querySelector('.stats-share-cta-covers').innerHTML = favorites
+            .map((track, i) => `<img src="${escape(imageUrl(track.cover))}" alt="" style="--i:${i}" />`)
+            .join('');
         this.showHour();
         this.setupHistory();
         animateStatsScene(this.root);

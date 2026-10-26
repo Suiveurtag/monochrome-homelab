@@ -26,6 +26,105 @@
         "value": "#f3f1ec",
         "createdAt": "2026-10-25T20:03:13.616Z",
         "reason": "agent: Paper share-card style swatch mirrors the exported canvas paper background, not UI chrome"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          "js/listening-recap-editions.js"
+        ],
+        "createdAt": "2026-10-26T01:07:36.443Z",
+        "reason": "Claude triage: DESIGN.md boundary scopes its type to the Social surface; recap editions are collectible share-card styles that each need their own typeface per the user's brief (#100)"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "js/listening-share-themes.js"
+        ],
+        "createdAt": "2026-10-26T01:10:04.454Z",
+        "reason": "Claude triage: share-card edition palettes/typefaces are the collectible styles requested in #100; DESIGN.md boundary covers only the Social surface"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          "js/listening-share-themes.js"
+        ],
+        "createdAt": "2026-10-26T01:10:04.484Z",
+        "reason": "Claude triage: share-card edition palettes/typefaces are the collectible styles requested in #100; DESIGN.md boundary covers only the Social surface"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "listening-recap.css"
+        ],
+        "createdAt": "2026-10-26T01:26:28.995Z",
+        "reason": "Claude triage: recap edition skins are the collectible styles requested in #100 (each owns palette, type, radii); DESIGN.md boundary covers only the Social surface"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          "listening-recap.css"
+        ],
+        "createdAt": "2026-10-26T01:26:29.029Z",
+        "reason": "Claude triage: recap edition skins are the collectible styles requested in #100 (each owns palette, type, radii); DESIGN.md boundary covers only the Social surface"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          "listening-recap.css"
+        ],
+        "createdAt": "2026-10-26T01:26:29.061Z",
+        "reason": "Claude triage: recap edition skins are the collectible styles requested in #100 (each owns palette, type, radii); DESIGN.md boundary covers only the Social surface"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "listening-recap.css"
+        ],
+        "createdAt": "2026-10-26T01:26:29.090Z",
+        "reason": "Claude triage: recap edition skins are the collectible styles requested in #100 (each owns palette, type, radii); DESIGN.md boundary covers only the Social surface"
+      },
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "listening-recap.css"
+        ],
+        "createdAt": "2026-10-26T01:26:29.122Z",
+        "reason": "Claude triage: only the Gold Record edition uses it, as gold-foil plaque lettering mirroring its share card; subject-driven, not decoration"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.2, 0.9, 0.25, 1.25)",
+        "files": [
+          "listening-recap.css"
+        ],
+        "createdAt": "2026-10-26T01:50:37.775Z",
+        "reason": "Claude triage: domain-appropriate motion; overshoot is the edition's physical metaphor (Riso drum press, Gig Flyer stamp slam, Lava Lamp wax wobble), scoped to those three skins"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.3, 1.4, 0.5, 1)",
+        "files": [
+          "listening-recap.css"
+        ],
+        "createdAt": "2026-10-26T01:50:37.805Z",
+        "reason": "Claude triage: domain-appropriate motion; overshoot is the edition's physical metaphor (Riso drum press, Gig Flyer stamp slam, Lava Lamp wax wobble), scoped to those three skins"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "files": [
+          "listening-recap.css"
+        ],
+        "createdAt": "2026-10-26T01:50:37.834Z",
+        "reason": "Claude triage: domain-appropriate motion; overshoot is the edition's physical metaphor (Riso drum press, Gig Flyer stamp slam, Lava Lamp wax wobble), scoped to those three skins"
       }
     ]
   }

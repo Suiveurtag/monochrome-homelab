@@ -242,15 +242,128 @@
     cursor: default;
 }
 
-.stats-pill.is-primary {
-    border-color: transparent;
-    background: var(--foreground);
+/* Share leads the page: the period's own covers inside an ink pill, ringed by their turning light. */
+.stats-share-cta {
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 46px;
+    padding: 0 20px 0 7px;
+    border: 0;
+    border-radius: 999px;
+    background:
+        linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 30%) 50%, transparent 60%) -200% 0 / 250% 100%
+            no-repeat,
+        var(--foreground);
     color: var(--background);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 650;
+    cursor: pointer;
+    box-shadow: 0 12px 36px -10px color-mix(in srgb, var(--stats-glow-0) 75%, transparent);
+    transition:
+        transform 450ms var(--stats-ease),
+        box-shadow 450ms,
+        opacity 200ms;
+    animation: stats-cta-sheen 5.5s ease-in-out 1.5s infinite;
 }
 
-.stats-pill.is-primary:hover:not(:disabled) {
-    border-color: transparent;
-    background: color-mix(in srgb, var(--foreground) 86%, var(--stats-glow-0));
+.stats-share-cta:has(.stats-share-cta-covers:empty) {
+    padding-left: 18px;
+}
+
+.stats-share-cta::before,
+.stats-share-cta::after {
+    content: '';
+    position: absolute;
+    border-radius: inherit;
+    background: conic-gradient(
+        from var(--stats-cta-angle),
+        var(--stats-glow-0),
+        var(--stats-glow-1),
+        var(--stats-glow-2),
+        var(--stats-glow-0)
+    );
+    animation: stats-cta-turn 4s linear infinite;
+}
+
+.stats-share-cta::before {
+    z-index: -1;
+    inset: -2px;
+}
+
+.stats-share-cta::after {
+    z-index: -2;
+    inset: -8px;
+    opacity: 0.5;
+    filter: blur(16px);
+    transition: opacity 450ms;
+}
+
+.stats-share-cta:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.03);
+}
+
+.stats-share-cta:hover:not(:disabled)::after {
+    opacity: 0.9;
+}
+
+.stats-share-cta:disabled {
+    opacity: 0.45;
+    cursor: default;
+    animation: none;
+}
+
+.stats-share-cta:disabled::before,
+.stats-share-cta:disabled::after {
+    animation-play-state: paused;
+}
+
+.stats-share-cta-covers {
+    display: flex;
+}
+
+.stats-share-cta-covers img {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    object-fit: cover;
+    box-shadow: 0 0 0 2px var(--foreground);
+    rotate: calc((var(--i) - 1) * 8deg);
+    transition: transform 450ms var(--stats-ease);
+}
+
+.stats-share-cta-covers img + img {
+    margin-left: -14px;
+}
+
+.stats-share-cta:hover:not(:disabled) .stats-share-cta-covers img {
+    transform: translateX(calc((var(--i) - 1) * 5px)) translateY(-2px) rotate(calc((var(--i) - 1) * 6deg));
+}
+
+@property --stats-cta-angle {
+    syntax: '<angle>';
+    inherits: false;
+    initial-value: 0deg;
+}
+
+@keyframes stats-cta-turn {
+    to {
+        --stats-cta-angle: 360deg;
+    }
+}
+
+@keyframes stats-cta-sheen {
+    0%,
+    60% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 300% 0;
+    }
 }
 
 #page-stats[aria-busy='true'] [data-stats-action='refresh'] svg {
@@ -2133,6 +2246,7 @@
 }
 
 .stats-share-styles button {
+    position: relative;
     display: grid;
     justify-items: center;
     gap: 8px;
@@ -2166,24 +2280,73 @@
     transform: scale(0.96);
 }
 
-.stats-share-styles i {
+.stats-share-styles .stats-ed-swatch {
     width: 100%;
     height: 50px;
     border-radius: 9px;
     box-shadow: inset 0 0 0 1px rgb(255 255 255 / 8%);
+    transition: filter 200ms;
 }
 
-.stats-share-styles i.is-aura {
+/* Editions not yet found stay dark behind a lock until a recap brings them. */
+.stats-share-styles button.is-locked {
+    cursor: not-allowed;
+}
+
+.stats-share-styles button.is-locked .stats-ed-swatch {
+    filter: grayscale(1) brightness(0.4);
+}
+
+.stats-share-styles button.is-locked:hover {
+    color: var(--muted-foreground);
+}
+
+.stats-share-lock {
+    position: absolute;
+    top: 21px;
+    left: 50%;
+    display: none;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border-radius: 50%;
+    background: rgb(0 0 0 / 55%);
+    color: #fff;
+    translate: -50% 0;
+}
+
+.stats-share-styles button.is-locked .stats-share-lock {
+    display: grid;
+}
+
+.stats-share-group {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 8px 0 -2px;
+    color: var(--foreground);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.stats-share-group small {
+    color: var(--muted-foreground);
+    font-size: 0.72rem;
+    font-weight: 500;
+}
+
+.stats-share-styles i.stats-ed-aura {
     background:
         radial-gradient(circle at 82% 12%, var(--share-c0, #888), transparent 60%),
         radial-gradient(circle at 10% 60%, var(--share-c1, #666), transparent 60%), #0b0b0d;
 }
 
-.stats-share-styles i.is-vivid {
+.stats-share-styles i.stats-ed-vivid {
     background: linear-gradient(160deg, var(--share-c0, #888), color-mix(in srgb, var(--share-c1, #666) 30%, black));
 }
 
-.stats-share-styles i.is-ink {
+.stats-share-styles i.stats-ed-ink {
     background: radial-gradient(
         circle at 50% -10%,
         color-mix(in srgb, var(--share-c0, #888) 30%, transparent),
@@ -2191,7 +2354,7 @@
     );
 }
 
-.stats-share-styles i.is-paper {
+.stats-share-styles i.stats-ed-paper {
     background: radial-gradient(circle at 85% 8%, color-mix(in srgb, var(--share-c0, #888) 30%, #f3f1ec), #f3f1ec 65%);
     box-shadow: inset 0 0 0 1px rgb(0 0 0 / 8%);
 }

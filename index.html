@@ -78,6 +78,7 @@
         <link rel="icon" href="/assets/logo.svg" type="image/svg+xml" />
         <link rel="stylesheet" href="/styles.css" />
         <link rel="stylesheet" href="/listening-stats.css" />
+        <link rel="stylesheet" href="/listening-recap.css" />
         <link rel="stylesheet" href="/player-refined.css" />
         <link rel="stylesheet" href="/now-playing-panel.css" />
         <link rel="stylesheet" href="/soggy-easter-egg.css" />
@@ -2710,9 +2711,10 @@
                         <div><h1>Listening stats</h1></div>
                         <div class="stats-header-actions">
                             <button type="button" class="stats-pill" data-stats-action="refresh" aria-label="Refresh listening stats"><use svg="!lucide/refresh-cw.svg" size="16" /><span>Refresh</span></button>
-                            <button type="button" id="stats-export" class="stats-pill is-primary" data-stats-action="export" aria-haspopup="dialog" disabled><use svg="!lucide/share.svg" size="16" /><span>Share</span></button>
+                            <button type="button" id="stats-export" class="stats-share-cta" data-stats-action="export" aria-haspopup="dialog" disabled><span class="stats-share-cta-covers" aria-hidden="true"></span><span class="stats-share-cta-label">Share your week</span><use svg="!lucide/share.svg" size="17" /></button>
                         </div>
                     </header>
+                    <div id="stats-recaps" class="stats-recaps"></div>
                     <div class="stats-toolbar">
                         <div class="stats-segments stats-periods" role="group" aria-label="Listening period">
                             <button type="button" data-period="day" aria-pressed="false">Day</button>

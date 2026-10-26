@@ -1,0 +1,3484 @@
+/* stylelint-disable no-descending-specificity, declaration-no-important -- Edition skins deliberately layer over the shared recap components; paused and reduced-motion states must beat every skin's animation. */
+
+/* Listening recaps: a story pressed in a collectible edition. The shell stays Monochrome; inside the
+   frame each edition owns its paper, ink, type and motion. Scenes are sized in cqmin so the same skin
+   reads in a 9:16 story, a wide notice and a 50px swatch. */
+
+/* ---------- Edition tokens ---------- */
+
+.stats-recap,
+.stats-recap-notice,
+.stats-recap-unlock,
+.stats-recap-toast,
+.stats-ed-swatch {
+    --recap-bg: #0b0b0d;
+    --recap-ink: #fff;
+    --recap-muted: rgb(255 255 255 / 64%);
+    --recap-accent: #fff;
+    --recap-accent-2: #fff;
+    --recap-on-accent: #000;
+    --recap-surface: rgb(255 255 255 / 10%);
+    --recap-line: rgb(255 255 255 / 22%);
+    --recap-display: switzer, inter, system-ui, sans-serif;
+    --recap-display-weight: 700;
+    --recap-display-style: normal;
+    --recap-display-case: none;
+    --recap-display-tracking: -0.04em;
+    --recap-body: switzer, inter, system-ui, sans-serif;
+    --recap-body-case: none;
+    --recap-enter: stats-recap-rise;
+    --recap-enter-big: stats-recap-rise;
+    --recap-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --recap-align: start;
+    --recap-text-align: left;
+    --recap-art-radius: 18px;
+    --recap-chip-radius: 999px;
+    --recap-bar-radius: 1.4cqw;
+    --recap-top-shade: 26%;
+    --recap-grain: 0.08;
+    --recap-grain-blend: overlay;
+}
+
+.stats-ed-vinyl {
+    --recap-bg: #16110d;
+    --recap-ink: #f4e9dc;
+    --recap-muted: rgb(244 233 220 / 62%);
+    --recap-accent: #e2483d;
+    --recap-accent-2: #d9a441;
+    --recap-on-accent: #f4e9dc;
+    --recap-surface: rgb(244 233 220 / 9%);
+    --recap-line: rgb(244 233 220 / 20%);
+    --recap-display: 'Fraunces', georgia, serif;
+    --recap-display-weight: 900;
+    --recap-display-style: italic;
+    --recap-display-tracking: -0.035em;
+    --recap-enter: stats-recap-groove;
+    --recap-enter-big: stats-recap-drop;
+    --recap-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --recap-art-radius: 50%;
+    --recap-grain: 0.1;
+}
+
+.stats-ed-riso {
+    --recap-bg: #f2ede4;
+    --recap-ink: #0078bf;
+    --recap-muted: rgb(0 120 191 / 74%);
+    --recap-accent: #ff48b0;
+    --recap-accent-2: #ffe800;
+    --recap-on-accent: #f2ede4;
+    --recap-surface: rgb(255 72 176 / 14%);
+    --recap-line: rgb(0 120 191 / 30%);
+    --recap-display: 'Bricolage Grotesque', switzer, sans-serif;
+    --recap-display-weight: 800;
+    --recap-display-tracking: -0.045em;
+    --recap-body: 'Bricolage Grotesque', switzer, sans-serif;
+    --recap-enter: stats-recap-press;
+    --recap-enter-big: stats-recap-press;
+    --recap-ease: cubic-bezier(0.2, 0.9, 0.25, 1.25);
+    --recap-art-radius: 0;
+    --recap-chip-radius: 0;
+    --recap-bar-radius: 0;
+    --recap-top-shade: 0%;
+    --recap-grain: 0.14;
+    --recap-grain-blend: multiply;
+}
+
+.stats-ed-flyer {
+    --recap-bg: #ecebe5;
+    --recap-ink: #111;
+    --recap-muted: rgb(17 17 17 / 70%);
+    --recap-accent: #ff4f1a;
+    --recap-accent-2: #111;
+    --recap-on-accent: #111;
+    --recap-surface: rgb(17 17 17 / 8%);
+    --recap-line: rgb(17 17 17 / 38%);
+    --recap-display: 'Anton', impact, sans-serif;
+    --recap-display-weight: 400;
+    --recap-display-case: uppercase;
+    --recap-display-tracking: 0;
+    --recap-body: 'Anton', impact, sans-serif;
+    --recap-body-case: uppercase;
+    --recap-enter: stats-recap-slam;
+    --recap-enter-big: stats-recap-slam;
+    --recap-ease: cubic-bezier(0.3, 1.4, 0.5, 1);
+    --recap-art-radius: 0;
+    --recap-chip-radius: 0;
+    --recap-bar-radius: 0;
+    --recap-top-shade: 0%;
+    --recap-grain: 0.34;
+    --recap-grain-blend: multiply;
+}
+
+.stats-ed-led {
+    --recap-bg: #090806;
+    --recap-ink: #ffb000;
+    --recap-muted: rgb(255 176 0 / 64%);
+    --recap-accent: #ffb000;
+    --recap-accent-2: #ff6a00;
+    --recap-on-accent: #0b0702;
+    --recap-surface: rgb(255 176 0 / 8%);
+    --recap-line: rgb(255 176 0 / 26%);
+    --recap-display: 'DotGothic16', monospace;
+    --recap-display-weight: 400;
+    --recap-display-case: uppercase;
+    --recap-display-tracking: 0.02em;
+    --recap-body: 'DotGothic16', monospace;
+    --recap-body-case: uppercase;
+    --recap-enter: stats-recap-flicker;
+    --recap-enter-big: stats-recap-scan;
+    --recap-ease: steps(14, end);
+    --recap-art-radius: 0;
+    --recap-chip-radius: 0;
+    --recap-bar-radius: 0;
+    --recap-grain: 0.05;
+}
+
+.stats-ed-vhs {
+    --recap-bg: #0d0d14;
+    --recap-ink: #f4f4f4;
+    --recap-muted: rgb(244 244 244 / 68%);
+    --recap-accent: #f4f4f4;
+    --recap-accent-2: #1ee6ff;
+    --recap-on-accent: #101018;
+    --recap-surface: rgb(255 255 255 / 9%);
+    --recap-line: rgb(255 255 255 / 24%);
+    --recap-display: 'VT323', monospace;
+    --recap-display-weight: 400;
+    --recap-display-case: uppercase;
+    --recap-display-tracking: 0.01em;
+    --recap-body: 'VT323', monospace;
+    --recap-body-case: uppercase;
+    --recap-enter: stats-recap-glitch;
+    --recap-enter-big: stats-recap-glitch;
+    --recap-ease: linear;
+    --recap-art-radius: 0;
+    --recap-chip-radius: 0;
+    --recap-bar-radius: 0;
+    --recap-grain: 0.12;
+    --recap-grain-blend: screen;
+}
+
+.stats-ed-ticket {
+    --recap-bg: #f3e7cf;
+    --recap-ink: #23201b;
+    --recap-muted: rgb(35 32 27 / 66%);
+    --recap-accent: #c8322b;
+    --recap-accent-2: #2a5c8a;
+    --recap-on-accent: #f3e7cf;
+    --recap-surface: rgb(42 92 138 / 10%);
+    --recap-line: rgb(35 32 27 / 26%);
+    --recap-display: 'Barlow Condensed', switzer, sans-serif;
+    --recap-display-weight: 800;
+    --recap-display-case: uppercase;
+    --recap-display-tracking: -0.01em;
+    --recap-body: 'Barlow Condensed', switzer, sans-serif;
+    --recap-body-case: uppercase;
+    --recap-enter: stats-recap-print;
+    --recap-enter-big: stats-recap-print;
+    --recap-ease: cubic-bezier(0.45, 0, 0.2, 1);
+    --recap-align: center;
+    --recap-text-align: center;
+    --recap-art-radius: 4px;
+    --recap-chip-radius: 3px;
+    --recap-bar-radius: 2px;
+    --recap-top-shade: 0%;
+    --recap-grain: 0.1;
+    --recap-grain-blend: multiply;
+}
+
+.stats-ed-swiss {
+    --recap-bg: #e3271b;
+    --recap-ink: #fff;
+    --recap-muted: rgb(255 255 255 / 82%);
+    --recap-accent: #111;
+    --recap-accent-2: #fff;
+    --recap-on-accent: #fff;
+    --recap-surface: rgb(0 0 0 / 16%);
+    --recap-line: rgb(255 255 255 / 42%);
+    --recap-display-tracking: -0.065em;
+    --recap-enter: stats-recap-wipe;
+    --recap-enter-big: stats-recap-wipe;
+    --recap-ease: cubic-bezier(0.7, 0, 0.2, 1);
+    --recap-art-radius: 0;
+    --recap-chip-radius: 0;
+    --recap-bar-radius: 0;
+    --recap-top-shade: 0%;
+    --recap-grain: 0.06;
+}
+
+.stats-ed-lava {
+    --recap-bg: #24083a;
+    --recap-ink: #fff4e0;
+    --recap-muted: rgb(255 244 224 / 74%);
+    --recap-accent: #ffd23f;
+    --recap-accent-2: #ff7a18;
+    --recap-on-accent: #2a0a3d;
+    --recap-surface: rgb(255 244 224 / 12%);
+    --recap-line: rgb(255 244 224 / 24%);
+    --recap-display: 'Shrikhand', georgia, serif;
+    --recap-display-weight: 400;
+    --recap-display-tracking: 0;
+    --recap-enter: stats-recap-melt;
+    --recap-enter-big: stats-recap-melt;
+    --recap-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --recap-art-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+    --recap-bar-radius: 99px;
+    --recap-grain: 0.1;
+}
+
+.stats-ed-holo {
+    --recap-bg: #e6e2ff;
+    --recap-ink: #11111f;
+    --recap-muted: rgb(17 17 31 / 66%);
+    --recap-accent: #11111f;
+    --recap-accent-2: #7a5cff;
+    --recap-on-accent: #fff;
+    --recap-surface: rgb(255 255 255 / 52%);
+    --recap-line: rgb(17 17 31 / 18%);
+    --recap-display: 'Unbounded', switzer, sans-serif;
+    --recap-display-weight: 800;
+    --recap-display-tracking: -0.045em;
+    --recap-enter: stats-recap-flip;
+    --recap-enter-big: stats-recap-flip;
+    --recap-art-radius: 7%;
+    --recap-top-shade: 0%;
+    --recap-grain: 0.18;
+    --recap-grain-blend: soft-light;
+}
+
+.stats-ed-gold {
+    --recap-bg: #0b0a08;
+    --recap-ink: #f5ecd6;
+    --recap-muted: rgb(245 236 214 / 64%);
+    --recap-accent: #d4af37;
+    --recap-accent-2: #f9e08b;
+    --recap-on-accent: #0b0a08;
+    --recap-surface: rgb(212 175 55 / 10%);
+    --recap-line: rgb(212 175 55 / 40%);
+    --recap-display: 'Cinzel', georgia, serif;
+    --recap-display-weight: 800;
+    --recap-display-case: uppercase;
+    --recap-display-tracking: 0.02em;
+    --recap-body: 'Cinzel', georgia, serif;
+    --recap-enter: stats-recap-gild;
+    --recap-enter-big: stats-recap-gild;
+    --recap-align: center;
+    --recap-text-align: center;
+    --recap-art-radius: 50%;
+    --recap-chip-radius: 2px;
+    --recap-bar-radius: 1px;
+    --recap-grain: 0.12;
+}
+
+.stats-ed-aurora {
+    --recap-bg: #03101a;
+    --recap-ink: #eafff6;
+    --recap-muted: rgb(234 255 246 / 68%);
+    --recap-accent: #45f0a5;
+    --recap-accent-2: #8f6bff;
+    --recap-on-accent: #03101a;
+    --recap-surface: rgb(234 255 246 / 9%);
+    --recap-line: rgb(69 240 165 / 30%);
+    --recap-display: 'Instrument Serif', georgia, serif;
+    --recap-display-weight: 400;
+    --recap-display-style: italic;
+    --recap-display-tracking: -0.02em;
+    --recap-enter: stats-recap-drift;
+    --recap-enter-big: stats-recap-drift;
+    --recap-ease: cubic-bezier(0.25, 1, 0.3, 1);
+    --recap-art-radius: 12%;
+    --recap-bar-radius: 99px;
+    --recap-grain: 0.06;
+}
+
+.stats-ed-cosmos {
+    --recap-bg: #05040f;
+    --recap-ink: #f1edff;
+    --recap-muted: rgb(241 237 255 / 66%);
+    --recap-accent: #b9a6ff;
+    --recap-accent-2: #ff4fa3;
+    --recap-on-accent: #05040f;
+    --recap-surface: rgb(185 166 255 / 10%);
+    --recap-line: rgb(185 166 255 / 26%);
+    --recap-display: 'Syne', switzer, sans-serif;
+    --recap-display-weight: 800;
+    --recap-display-tracking: -0.03em;
+    --recap-enter: stats-recap-warp;
+    --recap-enter-big: stats-recap-orbit-in;
+    --recap-art-radius: 50%;
+    --recap-bar-radius: 99px;
+}
+
+.stats-ed-marquee {
+    --recap-bg: #1a0606;
+    --recap-ink: #fff3dc;
+    --recap-muted: rgb(255 243 220 / 70%);
+    --recap-accent: #ffd27a;
+    --recap-accent-2: #ff6b4a;
+    --recap-on-accent: #1a0606;
+    --recap-surface: rgb(255 210 122 / 10%);
+    --recap-line: rgb(255 210 122 / 34%);
+    --recap-display: 'Limelight', georgia, serif;
+    --recap-display-weight: 400;
+    --recap-display-tracking: 0.01em;
+    --recap-enter: stats-recap-spot;
+    --recap-enter-big: stats-recap-curtain;
+    --recap-ease: cubic-bezier(0.65, 0, 0.35, 1);
+    --recap-align: center;
+    --recap-text-align: center;
+    --recap-art-radius: 4%;
+    --recap-grain: 0.1;
+}
+
+.stats-ed-eclipse {
+    --recap-bg: #000;
+    --recap-ink: #f7f3ea;
+    --recap-muted: rgb(247 243 234 / 60%);
+    --recap-accent: #ffcf8a;
+    --recap-accent-2: #ff5a3c;
+    --recap-on-accent: #000;
+    --recap-surface: rgb(255 207 138 / 8%);
+    --recap-line: rgb(255 207 138 / 24%);
+    --recap-display: 'Bodoni Moda', didot, georgia, serif;
+    --recap-display-weight: 800;
+    --recap-display-style: italic;
+    --recap-display-tracking: -0.02em;
+    --recap-enter: stats-recap-drift;
+    --recap-enter-big: stats-recap-totality;
+    --recap-art-radius: 50%;
+    --recap-bar-radius: 99px;
+    --recap-grain: 0.06;
+}
+
+/* The app sets its chosen family on every element with !important; an edition keeps its own type
+   inside the story, the notice and the reveal, the way its share card does. */
+.stats-recap-frame *,
+.stats-recap-frame *::before,
+.stats-recap-notice *,
+.stats-recap-notice *::before {
+    font-family: var(--recap-body) !important;
+}
+
+.stats-recap-frame
+    :is(
+        .stats-recap-title,
+        .stats-recap-number,
+        .stats-recap-unit,
+        .stats-recap-name,
+        .stats-recap-list b,
+        .stats-recap-list em,
+        .stats-recap-lineup p,
+        .stats-recap-figures dd
+    ),
+.stats-recap-notice-text strong,
+.stats-recap-unlock-name {
+    font-family: var(--recap-display) !important;
+}
+
+/* ---------- Scenes ---------- */
+
+.stats-recap-scene {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: var(--recap-bg);
+    pointer-events: none;
+}
+
+.stats-recap-scene i {
+    position: absolute;
+    display: block;
+}
+
+.stats-recap-scene::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: var(--recap-grain);
+    mix-blend-mode: var(--recap-grain-blend);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Vinyl: a record turning in the corner, its sheen standing still. */
+.stats-ed-vinyl .stats-recap-scene {
+    background:
+        radial-gradient(110% 60% at 0% 0%, rgb(226 72 61 / 30%), transparent 62%),
+        radial-gradient(90% 55% at 100% 100%, rgb(217 164 65 / 18%), transparent 60%), #16110d;
+}
+
+.stats-ed-vinyl .stats-recap-scene i:nth-child(-n + 2) {
+    right: -34cqmin;
+    bottom: -30cqmin;
+    width: 96cqmin;
+    aspect-ratio: 1;
+    border-radius: 50%;
+}
+
+.stats-ed-vinyl .stats-recap-scene i:nth-child(1) {
+    background:
+        radial-gradient(circle at 50% 41%, rgb(255 236 210 / 55%) 0 1%, transparent 1.3%),
+        radial-gradient(circle, #16110d 0 2.2%, #e2483d 2.4% 15%, rgb(0 0 0 / 40%) 15.2% 15.8%, transparent 16%),
+        repeating-radial-gradient(circle, #0b0907 0 1.5px, #1b1511 1.5px 3px);
+    box-shadow:
+        0 0 0 1px rgb(255 240 220 / 6%),
+        0 30px 80px rgb(0 0 0 / 60%);
+    animation: stats-recap-turn 3.6s linear infinite;
+}
+
+.stats-ed-vinyl .stats-recap-scene i:nth-child(2) {
+    background: conic-gradient(
+        from 200deg,
+        transparent 0 4%,
+        rgb(255 236 210 / 16%) 9%,
+        transparent 14% 50%,
+        rgb(255 236 210 / 10%) 56%,
+        transparent 62%
+    );
+}
+
+/* Riso: three inks of halftone, slightly out of register and breathing. */
+.stats-ed-riso .stats-recap-scene i {
+    aspect-ratio: 1;
+    mix-blend-mode: multiply;
+    mask-image: radial-gradient(closest-side, #000 18%, transparent);
+    animation: stats-recap-register 5s ease-in-out infinite alternate;
+}
+
+.stats-ed-riso .stats-recap-scene i:nth-child(1) {
+    top: -24cqmin;
+    right: -28cqmin;
+    width: 92cqmin;
+    background: radial-gradient(circle, #ff48b0 0 42%, transparent 46%) 0 0 / 3.2cqmin 3.2cqmin;
+    rotate: 15deg;
+}
+
+.stats-ed-riso .stats-recap-scene i:nth-child(2) {
+    bottom: -48cqmin;
+    left: -44cqmin;
+    width: 104cqmin;
+    background: radial-gradient(circle, #0078bf 0 42%, transparent 46%) 0 0 / 3cqmin 3cqmin;
+    rotate: 45deg;
+    animation-delay: -2.5s;
+}
+
+.stats-ed-riso .stats-recap-scene i:nth-child(3) {
+    top: 4%;
+    left: -14cqmin;
+    width: 46cqmin;
+    background: radial-gradient(circle, #ffe800 0 44%, transparent 48%) 0 0 / 2.6cqmin 2.6cqmin;
+    animation-delay: -1s;
+}
+
+.stats-ed-riso .stats-recap-scene i:nth-child(4) {
+    right: -10%;
+    bottom: 7%;
+    left: -10%;
+    height: 5cqmin;
+    aspect-ratio: auto;
+    background: #ff48b0;
+    opacity: 0.8;
+    mask-image: none;
+    rotate: -5deg;
+}
+
+/* Gig flyer: a photocopy, taped to the wall, with a fluoro sticker. */
+.stats-ed-flyer .stats-recap-scene {
+    background:
+        radial-gradient(ellipse at center, transparent 45%, rgb(0 0 0 / 30%)),
+        repeating-linear-gradient(
+            90deg,
+            transparent 0 13%,
+            rgb(0 0 0 / 4%) 13% 13.4%,
+            transparent 13.4% 37%,
+            rgb(0 0 0 / 6%) 37% 37.3%,
+            transparent 37.3% 71%
+        ),
+        #ecebe5;
+}
+
+.stats-ed-flyer .stats-recap-scene i:nth-child(-n + 2) {
+    top: 1.6cqmin;
+    width: 34cqmin;
+    height: 7cqmin;
+    background: rgb(235 228 200 / 78%);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 18%);
+}
+
+.stats-ed-flyer .stats-recap-scene i:nth-child(1) {
+    left: -5cqmin;
+    rotate: -14deg;
+}
+
+.stats-ed-flyer .stats-recap-scene i:nth-child(2) {
+    right: -5cqmin;
+    rotate: 17deg;
+}
+
+.stats-ed-flyer .stats-recap-scene i:nth-child(3) {
+    right: -9cqmin;
+    bottom: 6%;
+    width: 36cqmin;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: #ff4f1a;
+    mix-blend-mode: multiply;
+    rotate: -12deg;
+}
+
+.stats-ed-flyer .stats-recap-scene i:nth-child(4) {
+    inset: 0 0 auto;
+    height: 7%;
+    background: linear-gradient(rgb(0 0 0 / 34%), transparent);
+}
+
+/* Scoreboard: a wall of amber LEDs with a scanning line. */
+.stats-ed-led .stats-recap-scene {
+    background:
+        radial-gradient(circle, rgb(255 176 0 / 11%) 0 1.1px, transparent 1.6px) 0 0 / 6px 6px,
+        radial-gradient(80% 40% at 50% 0%, rgb(255 140 0 / 16%), transparent 70%),
+        #090806;
+}
+
+.stats-ed-led .stats-recap-scene i:nth-child(1) {
+    inset: 0 0 auto;
+    height: 20%;
+    background: linear-gradient(transparent, rgb(255 176 0 / 8%), transparent);
+    animation: stats-recap-sweep-y 3.2s linear infinite;
+}
+
+.stats-ed-led .stats-recap-scene i:nth-child(2) {
+    right: 0;
+    bottom: 4%;
+    left: 0;
+    height: 5cqmin;
+    border-block: 1px solid rgb(255 176 0 / 30%);
+    background: repeating-linear-gradient(90deg, rgb(255 176 0 / 40%) 0 1.2cqmin, transparent 1.2cqmin 2.4cqmin);
+    mask-image: radial-gradient(circle, #000 0 40%, transparent 45%);
+    mask-size: 1.2cqmin 1.2cqmin;
+    animation: stats-recap-ticker 2s linear infinite;
+}
+
+/* VHS: tape noise, a rolling tracking band and the deck's on-screen display. */
+.stats-ed-vhs .stats-recap-scene {
+    background:
+        radial-gradient(90% 50% at 20% 0%, rgb(40 60 255 / 30%), transparent 70%),
+        radial-gradient(80% 50% at 100% 100%, rgb(200 40 180 / 20%), transparent 70%), #0d0d14;
+}
+
+.stats-ed-vhs .stats-recap-scene::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(transparent 0 2px, rgb(0 0 0 / 24%) 2px 4px);
+}
+
+.stats-ed-vhs .stats-recap-scene i:nth-child(1) {
+    inset: 0 0 auto;
+    height: 8%;
+    background: linear-gradient(transparent, rgb(255 255 255 / 10%) 40%, rgb(255 255 255 / 4%) 60%, transparent);
+    animation: stats-recap-sweep-y 6s linear infinite;
+}
+
+.stats-ed-vhs .stats-recap-scene i:nth-child(2)::before,
+.stats-ed-vhs .stats-recap-scene i:nth-child(3)::before {
+    color: #f4f4f4;
+    font:
+        7cqmin/1 'VT323',
+        monospace;
+    text-shadow:
+        -0.05em 0 rgb(255 30 70 / 80%),
+        0.05em 0 rgb(30 230 255 / 80%);
+}
+
+.stats-ed-vhs .stats-recap-scene i:nth-child(2) {
+    right: 7%;
+    bottom: 5%;
+}
+
+.stats-ed-vhs .stats-recap-scene i:nth-child(2)::before {
+    content: 'CH 03';
+}
+
+.stats-ed-vhs .stats-recap-scene i:nth-child(3) {
+    bottom: 5%;
+    left: 7%;
+    animation: stats-recap-blink 1.6s steps(1) infinite;
+}
+
+.stats-ed-vhs .stats-recap-scene i:nth-child(3)::before {
+    content: 'SP';
+}
+
+/* Ticket stub: guilloche paper, a perforation, the stamp and a barcode. */
+.stats-ed-ticket .stats-recap-scene {
+    background:
+        repeating-radial-gradient(circle at 0% 0%, transparent 0 1.6cqmin, rgb(42 92 138 / 9%) 1.6cqmin 1.8cqmin),
+        repeating-radial-gradient(circle at 100% 30%, transparent 0 1.4cqmin, rgb(200 50 43 / 7%) 1.4cqmin 1.6cqmin),
+        #f3e7cf;
+}
+
+.stats-ed-ticket .stats-recap-scene i:nth-child(1) {
+    top: 84%;
+    right: 5%;
+    left: 5%;
+    border-top: 0.6cqmin dashed rgb(35 32 27 / 45%);
+}
+
+.stats-ed-ticket .stats-recap-scene i:nth-child(2) {
+    top: 84%;
+    left: -6cqmin;
+    width: 12cqmin;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: #1b1814;
+    translate: 0 -50%;
+    box-shadow: 100cqw 0 0 #1b1814;
+}
+
+.stats-ed-ticket .stats-recap-scene i:nth-child(3) {
+    top: 50%;
+    right: 3.4%;
+    translate: 0 -50%;
+    color: #c8322b;
+    font:
+        800 4.4cqmin/1 'Barlow Condensed',
+        sans-serif;
+    letter-spacing: 0.3em;
+    opacity: 0.85;
+    writing-mode: vertical-rl;
+}
+
+.stats-ed-ticket .stats-recap-scene i:nth-child(3)::before {
+    content: 'ADMIT ONE';
+}
+
+.stats-ed-ticket .stats-recap-scene i:nth-child(4) {
+    bottom: 4.5%;
+    left: 50%;
+    width: 46cqmin;
+    height: 6cqmin;
+    translate: -50% 0;
+    background: repeating-linear-gradient(
+        90deg,
+        #23201b 0 2px,
+        transparent 2px 4px,
+        #23201b 4px 7px,
+        transparent 7px 9px,
+        #23201b 9px 10px,
+        transparent 10px 14px
+    );
+}
+
+/* Swiss: a concert poster's black sun, its sound rings and one diagonal. */
+.stats-ed-swiss .stats-recap-scene i:nth-child(1) {
+    top: -40cqmin;
+    right: -44cqmin;
+    width: 122cqmin;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: repeating-radial-gradient(circle, transparent 0 3.4cqmin, #fff 3.4cqmin 4cqmin);
+    mask-image: conic-gradient(from 190deg, #000 0 120deg, transparent 120deg);
+    animation: stats-recap-turn 48s linear infinite reverse;
+}
+
+.stats-ed-swiss .stats-recap-scene i:nth-child(2) {
+    top: -14cqmin;
+    right: -18cqmin;
+    width: 70cqmin;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: #111;
+}
+
+.stats-ed-swiss .stats-recap-scene i:nth-child(3) {
+    right: -20%;
+    bottom: 13%;
+    left: -20%;
+    height: 4cqmin;
+    background: #111;
+    rotate: -24deg;
+}
+
+.stats-ed-swiss .stats-recap-scene i:nth-child(4) {
+    inset: 0;
+    background: linear-gradient(90deg, rgb(255 255 255 / 16%) 1px, transparent 1px) 0 0 / 25% 100%;
+}
+
+/* Lava lamp: warm wax rising through violet glass. */
+.stats-ed-lava .stats-recap-scene {
+    background:
+        repeating-radial-gradient(
+            circle at 50% 110%,
+            transparent 0 4cqmin,
+            rgb(255 122 24 / 8%) 4cqmin 6cqmin,
+            transparent 6cqmin 9cqmin,
+            rgb(224 33 138 / 8%) 9cqmin 11cqmin
+        ),
+        linear-gradient(170deg, #3b0d52, #24083a 50%, #14051f);
+}
+
+.stats-ed-lava .stats-recap-scene i {
+    aspect-ratio: 1;
+    border-radius: 50%;
+    filter: blur(3.6cqmin);
+    mix-blend-mode: screen;
+    animation:
+        stats-recap-lava 11s ease-in-out infinite alternate,
+        stats-recap-morph 7s ease-in-out infinite;
+}
+
+.stats-ed-lava .stats-recap-scene i:nth-child(1) {
+    top: 62%;
+    left: -10cqmin;
+    width: 48cqmin;
+    background: #ff7a18;
+}
+
+.stats-ed-lava .stats-recap-scene i:nth-child(2) {
+    top: 30%;
+    right: -8cqmin;
+    width: 40cqmin;
+    background: #e0218a;
+    animation-duration: 14s, 9s;
+    animation-delay: -5s;
+}
+
+.stats-ed-lava .stats-recap-scene i:nth-child(3) {
+    top: 78%;
+    left: 42%;
+    width: 24cqmin;
+    background: #ffd23f;
+    animation-duration: 9s, 6s;
+    animation-delay: -2s;
+}
+
+.stats-ed-lava .stats-recap-scene i:nth-child(4) {
+    top: 4%;
+    left: 8%;
+    width: 30cqmin;
+    background: #ff5a6e;
+    animation-duration: 13s, 8s;
+    animation-delay: -8s;
+}
+
+/* Holo foil: iridescent stock under moving light, sparkles and a card frame. */
+.stats-ed-holo .stats-recap-scene {
+    background: linear-gradient(135deg, #d9e4ff, #f7d9f3 25%, #d8fbe8 50%, #fdf3cf 75%, #e2dcff) 0 0 / 300% 300%;
+    animation: stats-recap-holo 10s ease-in-out infinite alternate;
+}
+
+.stats-ed-holo .stats-recap-scene::before {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    inset: 2.6cqmin;
+    border: 1.1cqmin solid transparent;
+    border-radius: 4cqmin;
+    background: linear-gradient(135deg, #fff, #a9a9c8, #fff, #8f8fb3, #fff) border-box;
+    mask:
+        linear-gradient(#000 0 0) padding-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+}
+
+.stats-ed-holo .stats-recap-scene i:nth-child(1) {
+    inset: -30%;
+    background: repeating-linear-gradient(
+        115deg,
+        rgb(255 122 217 / 55%) 0,
+        rgb(122 240 255 / 55%) 6%,
+        rgb(182 255 122 / 55%) 12%,
+        rgb(255 224 122 / 55%) 18%,
+        rgb(255 122 217 / 55%) 24%
+    );
+    mix-blend-mode: overlay;
+    animation: stats-recap-foil 7s linear infinite;
+}
+
+.stats-ed-holo .stats-recap-scene i:nth-child(n + 2) {
+    width: 6cqmin;
+    aspect-ratio: 1;
+    background: #fff;
+    clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+    animation: stats-recap-twinkle 2.4s ease-in-out infinite;
+}
+
+.stats-ed-holo .stats-recap-scene i:nth-child(2) {
+    top: 18%;
+    right: 14%;
+}
+
+.stats-ed-holo .stats-recap-scene i:nth-child(3) {
+    bottom: 22%;
+    left: 10%;
+    width: 4cqmin;
+    animation-delay: -0.8s;
+}
+
+.stats-ed-holo .stats-recap-scene i:nth-child(4) {
+    right: 22%;
+    bottom: 12%;
+    width: 8cqmin;
+    animation-delay: -1.6s;
+}
+
+/* Gold record: velvet black, a spotlight and a gold disc turning beneath a double frame. */
+.stats-ed-gold .stats-recap-scene {
+    background: radial-gradient(70% 55% at 50% -8%, rgb(120 92 36 / 60%), transparent 70%), #0b0a08;
+}
+
+.stats-ed-gold .stats-recap-scene::before {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    inset: 2.6cqmin;
+    border: 0.5cqmin solid #c7972f;
+    outline: 1px solid rgb(212 175 55 / 55%);
+    outline-offset: -1.8cqmin;
+}
+
+.stats-ed-gold .stats-recap-scene i:nth-child(1) {
+    top: -10%;
+    left: 50%;
+    width: 130cqmin;
+    height: 120%;
+    translate: -50% 0;
+    background: conic-gradient(
+        from 160deg at 50% 0%,
+        transparent 0deg,
+        rgb(255 230 160 / 10%) 14deg,
+        rgb(255 230 160 / 18%) 20deg,
+        rgb(255 230 160 / 10%) 26deg,
+        transparent 40deg
+    );
+}
+
+.stats-ed-gold .stats-recap-scene i:nth-child(2) {
+    bottom: -78cqmin;
+    left: 50%;
+    width: 108cqmin;
+    aspect-ratio: 1;
+    translate: -50% 0;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle, #0b0a08 0 3%, transparent 3.2%),
+        radial-gradient(circle, transparent 0 15%, rgb(0 0 0 / 28%) 15.5% 16%, transparent 16.5%),
+        repeating-radial-gradient(circle, rgb(0 0 0 / 12%) 0 1px, transparent 1px 3px),
+        conic-gradient(#f9e08b, #a87922, #fff1b8, #c7972f, #f3d272, #a87922, #f9e08b);
+    box-shadow: 0 0 80px rgb(212 175 55 / 25%);
+    animation: stats-recap-turn 9s linear infinite;
+}
+
+.stats-ed-gold .stats-recap-scene i:nth-child(3) {
+    inset: 0;
+    background: linear-gradient(105deg, transparent 40%, rgb(255 241 184 / 16%) 50%, transparent 60%);
+    animation: stats-recap-glint 4.5s ease-in-out infinite;
+}
+
+/* Aurora: stars, curtains of light and a mountain line. */
+.stats-ed-aurora .stats-recap-scene {
+    background: linear-gradient(#020b14, #05182a 60%, #08263a);
+}
+
+.stats-ed-aurora .stats-recap-scene::before,
+.stats-ed-cosmos .stats-recap-scene::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle, #fff 0 0.6px, transparent 1px) 0 0 / 37px 41px,
+        radial-gradient(circle, rgb(255 255 255 / 70%) 0 0.8px, transparent 1.2px) 13px 19px / 53px 47px,
+        radial-gradient(circle, rgb(255 255 255 / 50%) 0 1px, transparent 1.4px) 7px 31px / 71px 83px;
+    animation: stats-recap-starlight 5s ease-in-out infinite alternate;
+}
+
+.stats-ed-aurora .stats-recap-scene::before {
+    bottom: 30%;
+}
+
+.stats-ed-aurora .stats-recap-scene i:nth-child(-n + 3) {
+    top: 2%;
+    right: -25%;
+    left: -25%;
+    height: 72%;
+    border-radius: 50% 50% 40% 60% / 30% 40% 60% 70%;
+    filter: blur(1.4cqmin);
+    mix-blend-mode: screen;
+    mask-image: repeating-linear-gradient(90deg, #000 0 2px, rgb(0 0 0 / 45%) 2px 5px);
+    transform-origin: top;
+    animation: stats-recap-curtain-wave 9s ease-in-out infinite alternate;
+}
+
+.stats-ed-aurora .stats-recap-scene i:nth-child(1) {
+    background: linear-gradient(transparent, rgb(69 240 165 / 50%) 35%, transparent 80%);
+}
+
+.stats-ed-aurora .stats-recap-scene i:nth-child(2) {
+    top: 10%;
+    background: linear-gradient(transparent, rgb(43 208 208 / 38%) 40%, transparent 80%);
+    animation-duration: 12s;
+    animation-delay: -4s;
+}
+
+.stats-ed-aurora .stats-recap-scene i:nth-child(3) {
+    top: -4%;
+    background: linear-gradient(transparent, rgb(143 107 255 / 34%) 30%, transparent 70%);
+    animation-duration: 15s;
+    animation-delay: -7s;
+}
+
+.stats-ed-aurora .stats-recap-scene i:nth-child(4) {
+    inset: auto 0 0;
+    height: 16%;
+    background: #020a10;
+    clip-path: polygon(
+        0 60%,
+        12% 30%,
+        22% 52%,
+        35% 18%,
+        48% 48%,
+        60% 26%,
+        72% 55%,
+        85% 22%,
+        100% 46%,
+        100% 100%,
+        0 100%
+    );
+}
+
+/* Cosmos: nebulae, a drifting starfield, orbits and one travelling planet. */
+.stats-ed-cosmos .stats-recap-scene {
+    background:
+        radial-gradient(60% 40% at 18% 24%, rgb(107 60 255 / 38%), transparent 70%),
+        radial-gradient(50% 35% at 90% 55%, rgb(255 79 163 / 22%), transparent 70%),
+        radial-gradient(70% 40% at 50% 100%, rgb(60 140 255 / 22%), transparent 70%), #05040f;
+}
+
+.stats-ed-cosmos .stats-recap-scene i:nth-child(-n + 2) {
+    top: 22%;
+    left: 50%;
+    border: 1px solid rgb(255 255 255 / 16%);
+    border-radius: 50%;
+    translate: -50% -50%;
+    rotate: -12deg;
+}
+
+.stats-ed-cosmos .stats-recap-scene i:nth-child(1) {
+    width: 130cqmin;
+    height: 36cqmin;
+}
+
+.stats-ed-cosmos .stats-recap-scene i:nth-child(2) {
+    width: 176cqmin;
+    height: 52cqmin;
+    opacity: 0.6;
+}
+
+.stats-ed-cosmos .stats-recap-scene i:nth-child(3) {
+    top: 22%;
+    left: 50%;
+    width: 7cqmin;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff, #b9a6ff 45%, #3a2a7a);
+    box-shadow: 0 0 3cqmin rgb(185 166 255 / 60%);
+    animation: stats-recap-planet 12s linear infinite;
+}
+
+.stats-ed-cosmos .stats-recap-scene i:nth-child(4) {
+    top: 12%;
+    left: 70%;
+    width: 22cqmin;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #fff);
+    rotate: 150deg;
+    opacity: 0;
+    animation: stats-recap-meteor 7s ease-in 2s infinite;
+}
+
+/* Marquee: velvet folds, two sweeping beams and a chasing bulb frame. */
+.stats-ed-marquee .stats-recap-scene {
+    background:
+        radial-gradient(60% 40% at 50% 0%, rgb(255 210 122 / 22%), transparent 70%),
+        repeating-linear-gradient(90deg, rgb(0 0 0 / 38%) 0, rgb(140 24 24 / 55%) 3.5cqmin, rgb(0 0 0 / 38%) 7cqmin),
+        #1a0606;
+}
+
+.stats-ed-marquee .stats-recap-scene::before {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    inset: 1.4cqmin;
+    padding: 3cqmin;
+    background: radial-gradient(circle, #fff1c9 0 0.8cqmin, rgb(255 214 130 / 55%) 1.1cqmin, transparent 2.4cqmin) 0 0 /
+        5.4cqmin 5.4cqmin;
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: stats-recap-chase 0.9s steps(1) infinite;
+}
+
+.stats-ed-marquee .stats-recap-scene i:nth-child(-n + 2) {
+    top: -10%;
+    width: 64cqmin;
+    height: 140%;
+    background: linear-gradient(rgb(255 230 170 / 20%), transparent 75%);
+    clip-path: polygon(45% 0, 55% 0, 100% 100%, 0 100%);
+    mix-blend-mode: screen;
+    transform-origin: top center;
+    animation: stats-recap-beam 6s ease-in-out infinite alternate;
+}
+
+.stats-ed-marquee .stats-recap-scene i:nth-child(1) {
+    left: -16cqmin;
+}
+
+.stats-ed-marquee .stats-recap-scene i:nth-child(2) {
+    right: -16cqmin;
+    animation-delay: -3s;
+    animation-direction: alternate-reverse;
+}
+
+.stats-ed-marquee .stats-recap-scene i:nth-child(3) {
+    inset: auto 0 0;
+    height: 22%;
+    background: radial-gradient(60% 100% at 50% 100%, rgb(255 180 90 / 24%), transparent);
+}
+
+/* Eclipse: totality, its corona and rays, and the diamond ring. */
+.stats-ed-eclipse .stats-recap-scene i:nth-child(1) {
+    top: 5%;
+    right: -6%;
+    width: 64cqmin;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle,
+        rgb(255 244 222 / 95%) 0 34%,
+        rgb(255 214 160 / 52%) 36%,
+        rgb(255 160 90 / 14%) 52%,
+        transparent 70%
+    );
+    filter: blur(0.6cqmin);
+    animation: stats-recap-breathe 5s ease-in-out infinite alternate;
+}
+
+.stats-ed-eclipse .stats-recap-scene i:nth-child(2) {
+    top: calc(5% - 23cqmin);
+    right: calc(-6% - 23cqmin);
+    width: 110cqmin;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: repeating-conic-gradient(rgb(255 230 190 / 10%) 0 1.5deg, transparent 1.5deg 8deg);
+    mask-image: radial-gradient(circle, transparent 0 22%, #000 26%, transparent 70%);
+    animation: stats-recap-turn 80s linear infinite;
+}
+
+.stats-ed-eclipse .stats-recap-scene i:nth-child(3) {
+    top: calc(5% + 10.5cqmin);
+    right: calc(-6% + 10.5cqmin);
+    width: 43cqmin;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: #000;
+    box-shadow: 0 0 0 0.3cqmin rgb(255 90 60 / 35%);
+}
+
+.stats-ed-eclipse .stats-recap-scene i:nth-child(4) {
+    top: calc(5% + 9cqmin);
+    right: calc(-6% + 36cqmin);
+    width: 10cqmin;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0 12%, rgb(255 250 235 / 60%) 25%, transparent 65%);
+    animation: stats-recap-flare 3s ease-in-out infinite;
+}
+
+/* ---------- Artwork treatments ---------- */
+
+.stats-recap-art {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border-radius: var(--recap-art-radius);
+    background: var(--recap-surface);
+    box-shadow: 0 3cqw 9cqw rgb(0 0 0 / 34%);
+}
+
+.stats-recap-art img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.stats-recap-art-empty {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+    color: var(--recap-muted);
+}
+
+.stats-ed-vinyl .stats-recap-art::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle, #16110d 0 5%, transparent 5.4%),
+        repeating-radial-gradient(circle, transparent 0 2px, rgb(10 8 7 / 30%) 2px 3px);
+    mask-image: radial-gradient(circle, #000 0 6%, transparent 6.2% 70%, #000 71%);
+}
+
+.stats-ed-riso .stats-recap-art {
+    overflow: visible;
+    background: #ff48b0;
+    box-shadow: none;
+}
+
+.stats-ed-riso .stats-recap-art::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background: #0078bf;
+    mix-blend-mode: multiply;
+    translate: 5% 4%;
+}
+
+.stats-ed-riso .stats-recap-art img {
+    filter: grayscale(1) contrast(1.35) brightness(1.08);
+    mix-blend-mode: multiply;
+}
+
+.stats-ed-flyer .stats-recap-art {
+    overflow: visible;
+    box-shadow: 0 2cqw 4cqw rgb(0 0 0 / 22%);
+    rotate: -2deg;
+}
+
+.stats-ed-flyer .stats-recap-art img {
+    filter: grayscale(1) contrast(1.9) brightness(1.05);
+}
+
+.stats-ed-flyer .stats-recap-art::after {
+    content: '';
+    position: absolute;
+    top: -6%;
+    left: 30%;
+    width: 40%;
+    height: 12%;
+    background: rgb(235 228 200 / 80%);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+    rotate: 4deg;
+}
+
+.stats-ed-led .stats-recap-art {
+    background: #110c03;
+    box-shadow: 0 0 6cqw rgb(255 150 0 / 22%);
+}
+
+.stats-ed-led .stats-recap-art img {
+    filter: grayscale(1) sepia(1) saturate(4.5) hue-rotate(-14deg) brightness(1.2) contrast(1.15);
+    mask-image: radial-gradient(circle, #000 0 52%, transparent 58%);
+    mask-size: 2.2cqmin 2.2cqmin;
+}
+
+.stats-ed-vhs .stats-recap-art {
+    overflow: visible;
+    background: none;
+    box-shadow: none;
+}
+
+.stats-ed-vhs .stats-recap-art img {
+    filter: drop-shadow(-1.2cqw 0 rgb(255 30 70 / 75%)) drop-shadow(1.2cqw 0 rgb(30 230 255 / 75%));
+}
+
+.stats-ed-vhs .stats-recap-art::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(transparent 0 2px, rgb(0 0 0 / 30%) 2px 4px);
+}
+
+.stats-ed-ticket .stats-recap-art {
+    padding: 2.4%;
+    background: #fbf4e4;
+    box-shadow:
+        0 0 0 1px rgb(35 32 27 / 18%),
+        0 2cqw 5cqw rgb(60 40 10 / 22%);
+}
+
+.stats-ed-ticket .stats-recap-art img {
+    border-radius: 2px;
+    filter: sepia(0.25) contrast(1.05);
+}
+
+.stats-ed-swiss .stats-recap-art {
+    box-shadow: none;
+}
+
+.stats-ed-lava .stats-recap-art {
+    animation: stats-recap-morph 8s ease-in-out infinite;
+}
+
+.stats-ed-holo .stats-recap-art::after,
+.stats-recap-unlock-sheen {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(115deg, transparent 30%, rgb(255 255 255 / 50%) 45%, transparent 60%),
+        linear-gradient(135deg, #ff7ad9, #7af0ff, #ffe07a, #b47aff);
+    background-size:
+        250% 100%,
+        100% 100%;
+    mix-blend-mode: overlay;
+    opacity: 0.75;
+    animation: stats-recap-sheen 3.2s ease-in-out infinite;
+}
+
+.stats-ed-gold .stats-recap-art {
+    padding: 3.5%;
+    background: conic-gradient(#f9e08b, #a87922, #fff1b8, #c7972f, #f3d272, #a87922, #f9e08b);
+    box-shadow: 0 0 10cqw rgb(212 175 55 / 30%);
+}
+
+.stats-ed-gold .stats-recap-art img {
+    border-radius: 50%;
+}
+
+.stats-ed-aurora .stats-recap-art {
+    box-shadow:
+        0 0 12cqw rgb(69 240 165 / 35%),
+        0 3cqw 9cqw rgb(0 0 0 / 40%);
+}
+
+.stats-ed-cosmos .stats-recap-art {
+    overflow: visible;
+    background: none;
+    box-shadow: none;
+}
+
+.stats-ed-cosmos .stats-recap-art img {
+    border-radius: 50%;
+    box-shadow:
+        0 0 10cqw rgb(185 166 255 / 45%),
+        inset -4cqw -4cqw 8cqw rgb(0 0 0 / 50%);
+}
+
+.stats-ed-cosmos .stats-recap-art::after {
+    content: '';
+    position: absolute;
+    inset: 38% -24%;
+    border: 0.8cqw solid rgb(241 237 255 / 55%);
+    border-radius: 50%;
+    mask-image: linear-gradient(transparent 46%, #000 50%);
+    rotate: -16deg;
+}
+
+.stats-ed-marquee .stats-recap-art {
+    box-shadow:
+        0 0 0 1cqw #ffd27a,
+        0 0 10cqw rgb(255 210 122 / 40%);
+}
+
+.stats-ed-eclipse .stats-recap-art {
+    box-shadow:
+        0 0 0 0.3cqw rgb(255 207 138 / 50%),
+        0 0 14cqw rgb(255 200 140 / 45%);
+}
+
+/* ---------- Shell ---------- */
+
+.stats-recap {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    background: #000;
+    color: var(--recap-ink);
+}
+
+.stats-recap[open] {
+    display: grid;
+    place-items: center;
+    animation: stats-recap-open 520ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stats-recap::backdrop {
+    background: #000;
+}
+
+.stats-recap.is-closing {
+    animation: stats-recap-close 280ms ease-in forwards;
+}
+
+/* The edition's own scene, blurred, surrounds the story on wide screens. */
+.stats-recap-surround {
+    position: absolute;
+    inset: -8%;
+    container-type: size;
+    filter: blur(56px) saturate(1.25) brightness(0.5);
+}
+
+.stats-recap-frame {
+    position: relative;
+    isolation: isolate;
+    height: min(calc(100dvh - 40px), 920px);
+    max-width: calc(100vw - 32px);
+    aspect-ratio: 9 / 16;
+    overflow: hidden;
+    border-radius: 24px;
+    container-type: size;
+    color: var(--recap-ink);
+    font-family: var(--recap-body);
+    box-shadow:
+        0 40px 140px rgb(0 0 0 / 60%),
+        0 0 0 1px rgb(255 255 255 / 9%);
+}
+
+.stats-ed-vhs .stats-recap-frame::after {
+    content: '';
+    position: absolute;
+    z-index: 4;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(transparent 0 2px, rgb(0 0 0 / 20%) 2px 4px);
+}
+
+.stats-recap-top {
+    position: absolute;
+    z-index: 5;
+    inset: 0 0 auto;
+    display: grid;
+    gap: 1.6cqh;
+    padding: 2.2cqh 4cqw 3cqh;
+    pointer-events: none;
+    background: linear-gradient(rgb(0 0 0 / var(--recap-top-shade)), transparent);
+}
+
+.stats-recap-progress {
+    display: flex;
+    gap: 1cqw;
+}
+
+.stats-recap-progress i {
+    flex: 1;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--recap-ink) 26%, transparent);
+}
+
+.stats-recap-progress b {
+    display: block;
+    height: 100%;
+    background: var(--recap-ink);
+    transform: scaleX(var(--p, 0));
+    transform-origin: left;
+}
+
+.stats-recap-bar {
+    display: flex;
+    align-items: center;
+    gap: 1.6cqw;
+    pointer-events: auto;
+}
+
+.stats-recap-edition {
+    display: inline-flex;
+    align-items: center;
+    gap: 2cqw;
+    margin-right: auto;
+    color: var(--recap-ink);
+    font: 650 3.3cqw/1 var(--recap-body);
+    text-transform: var(--recap-body-case);
+}
+
+.stats-recap-edition .stats-ed-swatch {
+    width: 6.4cqw;
+    height: 6.4cqw;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--recap-ink) 40%, transparent);
+}
+
+.stats-recap-control {
+    display: grid;
+    width: min(9.4cqw, 42px);
+    height: min(9.4cqw, 42px);
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--recap-bg) 45%, transparent);
+    backdrop-filter: blur(10px);
+    color: var(--recap-ink);
+    cursor: pointer;
+    transition:
+        background 180ms,
+        transform 240ms var(--recap-ease);
+}
+
+.stats-recap-control:hover {
+    background: color-mix(in srgb, var(--recap-ink) 16%, transparent);
+}
+
+.stats-recap-control:active {
+    transform: scale(0.92);
+}
+
+.stats-recap :is(button, a):focus-visible {
+    outline: 2px solid var(--recap-ink);
+    outline-offset: 3px;
+}
+
+/* Tap the left third to go back, anywhere else to go on; hold to pause. */
+.stats-recap-zone {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    bottom: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.stats-recap-zone.is-prev {
+    left: 0;
+    width: 30%;
+}
+
+.stats-recap-zone.is-next {
+    right: 0;
+    width: 70%;
+}
+
+/* A focused tap zone marks its edge rather than outlining most of the story. */
+.stats-recap .stats-recap-zone:focus-visible {
+    outline: none;
+}
+
+.stats-recap-zone.is-prev:focus-visible {
+    box-shadow: inset 3px 0 0 var(--recap-ink);
+}
+
+.stats-recap-zone.is-next:focus-visible {
+    box-shadow: inset -3px 0 0 var(--recap-ink);
+}
+
+.stats-recap-frame:focus {
+    outline: none;
+}
+
+.stats-recap-slides {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    pointer-events: none;
+}
+
+.stats-recap.is-paused .stats-recap-frame *,
+.stats-recap.is-paused .stats-recap-frame *::before,
+.stats-recap.is-paused .stats-recap-frame *::after {
+    animation-play-state: paused !important;
+}
+
+/* ---------- Slides ---------- */
+
+.stats-recap-slide {
+    position: absolute;
+    isolation: isolate;
+    inset: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+    justify-items: var(--recap-align);
+    gap: 2.2cqh;
+    padding: 15cqh 8cqw 9cqh;
+    text-align: var(--recap-text-align);
+}
+
+.stats-recap-slide :is(button, a) {
+    pointer-events: auto;
+}
+
+.stats-recap-slide.is-leaving {
+    animation: stats-recap-leave 480ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+.stats-recap-slide.is-leaving.is-back,
+.stats-recap-slide.is-active.is-back ~ .stats-recap-slide.is-leaving {
+    animation-name: stats-recap-leave-back;
+}
+
+.stats-recap-in {
+    animation: var(--recap-enter) 900ms var(--recap-ease) var(--d, 0ms) both;
+}
+
+.stats-recap-big {
+    animation: var(--recap-enter-big) 1150ms var(--recap-ease) var(--d, 0ms) both;
+}
+
+.stats-recap-kicker {
+    max-width: 30ch;
+    margin: 0;
+    color: var(--recap-muted);
+    font: 600 4.4cqw/1.25 var(--recap-body);
+    text-transform: var(--recap-body-case);
+    text-wrap: balance;
+}
+
+.stats-recap-title,
+.stats-recap-number,
+.stats-recap-unit,
+.stats-recap-name,
+.stats-recap-list b,
+.stats-recap-list em,
+.stats-recap-lineup p,
+.stats-recap-figures dd {
+    color: var(--recap-ink);
+    font-family: var(--recap-display);
+    font-style: var(--recap-display-style);
+    font-weight: var(--recap-display-weight);
+    letter-spacing: var(--recap-display-tracking);
+    text-transform: var(--recap-display-case);
+}
+
+.stats-recap-title {
+    max-width: 100%;
+    margin: 0;
+    font-size: 14cqw;
+    line-height: 0.95;
+    overflow-wrap: normal;
+    text-wrap: balance;
+}
+
+.stats-recap-number {
+    margin: 0;
+    font-size: 34cqw;
+    font-variant-numeric: tabular-nums;
+    line-height: 0.82;
+}
+
+.stats-recap-unit {
+    margin: -1cqh 0 0;
+    font-size: 9cqw;
+    line-height: 1;
+}
+
+.stats-recap-note {
+    max-width: 30ch;
+    margin: 0;
+    color: var(--recap-muted);
+    font: 500 4.2cqw/1.4 var(--recap-body);
+    text-transform: var(--recap-body-case);
+    text-wrap: pretty;
+}
+
+.stats-recap-chip {
+    display: inline-flex;
+    justify-self: var(--recap-align);
+    margin: 0.6cqh 0 0;
+    padding: 1.2cqh 4cqw;
+    border-radius: var(--recap-chip-radius);
+    background: var(--recap-accent);
+    color: var(--recap-on-accent);
+    font: 700 3.8cqw/1.1 var(--recap-body);
+    text-transform: var(--recap-body-case);
+}
+
+.stats-recap-hero {
+    width: 62cqw;
+    aspect-ratio: 1;
+    margin-bottom: 1cqh;
+}
+
+.stats-recap-hero .stats-recap-art {
+    width: 100%;
+    height: 100%;
+}
+
+.stats-recap-name {
+    max-width: 100%;
+    margin: 0;
+    font-size: 10cqw;
+    line-height: 1;
+    overflow-wrap: normal;
+    text-wrap: balance;
+}
+
+.stats-recap-by {
+    margin: -1cqh 0 0;
+    color: var(--recap-muted);
+    font: 600 4.6cqw/1.2 var(--recap-body);
+    text-transform: var(--recap-body-case);
+}
+
+.stats-recap-list {
+    display: grid;
+    width: 100%;
+    gap: 1.8cqh;
+    margin: 1cqh 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.stats-recap-list li {
+    display: grid;
+    grid-template-columns: 6cqw 14cqw minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 3cqw;
+    text-align: left;
+}
+
+.stats-recap-list b {
+    font-size: 6.4cqw;
+    line-height: 1;
+}
+
+.stats-recap-list .stats-recap-art {
+    width: 14cqw;
+    height: 14cqw;
+    box-shadow: 0 1.4cqw 4cqw rgb(0 0 0 / 30%);
+}
+
+.stats-recap-list strong,
+.stats-recap-list small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.stats-recap-list strong {
+    font: 700 4.4cqw/1.2 var(--recap-body);
+    text-transform: var(--recap-body-case);
+}
+
+.stats-recap-list small {
+    color: var(--recap-muted);
+    font: 500 3.5cqw/1.3 var(--recap-body);
+    text-transform: var(--recap-body-case);
+}
+
+.stats-recap-list em {
+    font-size: 5.4cqw;
+}
+
+.stats-recap-list li:first-child em {
+    color: var(--recap-accent);
+}
+
+.stats-recap-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    align-items: end;
+    gap: 2.4cqw;
+    width: 100%;
+    height: 30cqh;
+    margin-top: 2cqh;
+}
+
+.stats-recap-week span {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 1.2cqh;
+    height: 100%;
+}
+
+.stats-recap-week i {
+    align-self: end;
+    height: max(1.4cqh, calc(var(--h) * 100%));
+    border-radius: var(--recap-bar-radius);
+    background: var(--recap-line);
+    transform-origin: bottom;
+    animation: stats-recap-grow 1s var(--recap-ease) calc(700ms + var(--i) * 90ms) both;
+}
+
+.stats-recap-week .is-peak i {
+    background: var(--recap-accent);
+}
+
+.stats-recap-week small {
+    color: var(--recap-muted);
+    font: 600 3.4cqw/1 var(--recap-body);
+    text-align: center;
+}
+
+.stats-recap-streak {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2.6cqw;
+    margin-top: 1cqh;
+}
+
+.stats-recap-streak i {
+    width: 9cqw;
+    aspect-ratio: 1;
+    border: 0.7cqw solid var(--recap-line);
+    border-radius: var(--recap-chip-radius);
+    animation: stats-recap-pop 600ms var(--recap-ease) calc(900ms + var(--i) * 120ms) both;
+}
+
+.stats-recap-streak i.is-on {
+    border-color: transparent;
+    background: var(--recap-accent);
+    box-shadow: 0 0 5cqw color-mix(in srgb, var(--recap-accent) 45%, transparent);
+}
+
+.stats-recap-calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1.5cqw;
+    width: 100%;
+    margin-top: 1cqh;
+}
+
+.stats-recap-calendar b {
+    color: var(--recap-muted);
+    font: 600 3cqw/1.6 var(--recap-body);
+    text-align: center;
+}
+
+.stats-recap-calendar i {
+    aspect-ratio: 1;
+    border-radius: min(var(--recap-bar-radius), 1.6cqw);
+    background: var(--recap-surface);
+    animation: stats-recap-pop 500ms var(--recap-ease) calc(800ms + var(--i) * 45ms) both;
+}
+
+.stats-recap-calendar i.is-on {
+    background: color-mix(in srgb, var(--recap-accent) calc(var(--a) * 100%), transparent);
+}
+
+.stats-recap-lineup {
+    display: grid;
+    justify-items: var(--recap-align);
+    gap: 1.6cqh;
+    width: 100%;
+}
+
+.stats-recap-lineup p {
+    max-width: 100%;
+    margin: 0;
+    font-size: 8cqw;
+    line-height: 1;
+    overflow-wrap: normal;
+}
+
+.stats-recap-lineup .is-headliner {
+    color: var(--recap-accent);
+    font-size: 15cqw;
+}
+
+.stats-ed-riso .stats-recap-lineup .is-headliner,
+.stats-ed-holo .stats-recap-lineup .is-headliner,
+.stats-ed-swiss .stats-recap-lineup .is-headliner,
+.stats-ed-flyer .stats-recap-lineup .is-headliner {
+    color: var(--recap-ink);
+}
+
+.stats-recap-lineup p:nth-child(n + 3) {
+    color: var(--recap-muted);
+    font-size: 6.4cqw;
+}
+
+.stats-recap-clock {
+    width: 74cqw;
+    margin-top: 2cqh;
+    overflow: visible;
+}
+
+.stats-recap-clock circle {
+    fill: none;
+    stroke: var(--recap-line);
+    stroke-width: 1;
+}
+
+.stats-recap-clock line {
+    stroke: var(--recap-line);
+    stroke-linecap: round;
+    stroke-width: 5;
+    transform-box: view-box;
+    transform-origin: 100px 100px;
+    animation: stats-recap-spoke 800ms var(--recap-ease) calc(700ms + var(--i) * 40ms) both;
+}
+
+.stats-recap-clock line.is-peak {
+    stroke: var(--recap-accent);
+    filter: drop-shadow(0 0 4px var(--recap-accent));
+}
+
+.stats-recap-figures {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3.4cqh 6cqw;
+    width: 100%;
+    margin: 1cqh 0 0;
+}
+
+.stats-recap-figures div {
+    display: grid;
+    gap: 0.4cqh;
+}
+
+.stats-recap-figures dd {
+    margin: 0;
+    font-size: 15cqw;
+    font-variant-numeric: tabular-nums;
+    line-height: 0.9;
+}
+
+.stats-recap-figures dt {
+    color: var(--recap-muted);
+    font: 600 4cqw/1.2 var(--recap-body);
+    text-transform: var(--recap-body-case);
+}
+
+.stats-recap-slide-outro {
+    justify-items: center;
+    text-align: center;
+}
+
+.stats-recap-card {
+    height: 58cqh;
+    aspect-ratio: 9 / 16;
+}
+
+.stats-recap-card canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 3cqw;
+    box-shadow:
+        0 4cqw 12cqw rgb(0 0 0 / 50%),
+        0 0 0 1px color-mix(in srgb, var(--recap-ink) 14%, transparent);
+}
+
+.stats-recap-actions,
+.stats-recap-unlock-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2.6cqw;
+}
+
+.stats-recap-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: 2cqw;
+    min-height: max(44px, 6.4cqh);
+    padding: 0 5.4cqw;
+    border: 1px solid var(--recap-line);
+    border-radius: var(--recap-chip-radius);
+    background: color-mix(in srgb, var(--recap-bg) 50%, transparent);
+    backdrop-filter: blur(10px);
+    color: var(--recap-ink);
+    font: 650 4cqw/1 var(--recap-body);
+    text-transform: var(--recap-body-case);
+    cursor: pointer;
+    transition: transform 240ms var(--recap-ease);
+}
+
+.stats-recap-actions button:active,
+.stats-recap-unlock-actions button:active {
+    transform: scale(0.96);
+}
+
+.stats-recap-actions .stats-recap-primary {
+    border-color: transparent;
+    background: var(--recap-accent);
+    color: var(--recap-on-accent);
+}
+
+/* ---------- Intro props: each edition's opening moment ---------- */
+
+.stats-recap-slide-intro {
+    align-content: end;
+    padding-bottom: 12cqh;
+}
+
+.stats-recap-prop {
+    position: absolute;
+    z-index: -1;
+    top: 15cqh;
+    left: 50%;
+    width: 64cqw;
+    aspect-ratio: 1;
+    translate: -50% 0;
+    animation: stats-recap-rise 1.2s var(--recap-ease) both;
+}
+
+.stats-recap-prop > i {
+    position: absolute;
+    display: block;
+}
+
+.stats-recap-prop .stats-recap-art {
+    position: absolute;
+    inset: 0;
+}
+
+/* Vinyl: the record slides out of its sleeve and starts to turn. */
+.stats-ed-vinyl .stats-recap-prop {
+    left: auto;
+    right: -14cqw;
+    width: 84cqw;
+    translate: none;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle, transparent 0 21%, rgb(0 0 0 / 50%) 21.5% 22%, transparent 22.5%),
+        repeating-radial-gradient(circle, #0b0907 0 1.5px, #1d1712 1.5px 3px);
+    box-shadow: 0 6cqw 16cqw rgb(0 0 0 / 60%);
+    animation:
+        stats-recap-record-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) 150ms both,
+        stats-recap-spin 2.4s linear 1.5s infinite;
+}
+
+.stats-ed-vinyl .stats-recap-prop .stats-recap-art {
+    inset: 29%;
+    box-shadow: none;
+}
+
+.stats-ed-vinyl .stats-recap-prop > i:nth-child(1) {
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(
+        from 200deg,
+        transparent 0 4%,
+        rgb(255 236 210 / 18%) 9%,
+        transparent 14% 50%,
+        rgb(255 236 210 / 12%) 56%,
+        transparent 62%
+    );
+}
+
+/* Riso: the cover is pulled through two drums, pink then blue. */
+.stats-ed-riso .stats-recap-prop {
+    top: 14cqh;
+    left: auto;
+    right: 8cqw;
+    width: 60cqw;
+    translate: none;
+    rotate: 4deg;
+    animation: stats-recap-press 1.1s cubic-bezier(0.2, 0.9, 0.25, 1.25) 150ms both;
+}
+
+/* Flyer: a photocopy slapped on the wall. */
+.stats-ed-flyer .stats-recap-prop {
+    top: 13cqh;
+    width: 66cqw;
+    rotate: -5deg;
+    animation: stats-recap-slam 900ms cubic-bezier(0.3, 1.4, 0.5, 1) 150ms both;
+}
+
+/* Scoreboard: the cover lights up dot by dot. */
+.stats-ed-led .stats-recap-prop {
+    width: 74cqw;
+    padding: 3cqw;
+    border: 1px solid rgb(255 176 0 / 30%);
+    background: #050402;
+    animation: stats-recap-scan 1.6s steps(16, end) 200ms both;
+}
+
+.stats-ed-led .stats-recap-prop .stats-recap-art {
+    inset: 3cqw;
+}
+
+/* VHS: the tape catches, rolls and settles. */
+.stats-ed-vhs .stats-recap-prop {
+    width: 80cqw;
+    aspect-ratio: 4 / 3;
+    animation: stats-recap-tape 1.6s linear 150ms both;
+}
+
+.stats-ed-vhs .stats-recap-prop > i:nth-child(1) {
+    z-index: 2;
+    top: 4cqw;
+    left: 4cqw;
+    color: #f4f4f4;
+    font:
+        7cqw/1 'VT323',
+        monospace;
+    text-shadow:
+        -0.05em 0 rgb(255 30 70 / 80%),
+        0.05em 0 rgb(30 230 255 / 80%);
+}
+
+.stats-ed-vhs .stats-recap-prop > i:nth-child(1)::before {
+    content: '▶ PLAY';
+}
+
+/* Ticket: a stub feeds out of the printer. */
+.stats-ed-ticket .stats-recap-prop {
+    top: 13cqh;
+    width: 70cqw;
+    aspect-ratio: 5 / 4;
+    padding: 4cqw 4cqw 14cqw;
+    background: #fbf4e4;
+    box-shadow:
+        0 0 0 1px rgb(35 32 27 / 16%),
+        0 4cqw 10cqw rgb(60 40 10 / 22%);
+    animation: stats-recap-print 1.6s steps(12, end) 200ms both;
+}
+
+.stats-ed-ticket .stats-recap-prop .stats-recap-art {
+    inset: 4cqw 4cqw 14cqw;
+}
+
+.stats-ed-ticket .stats-recap-prop > i:nth-child(1) {
+    right: 4cqw;
+    bottom: 4cqw;
+    left: 4cqw;
+    color: #c8322b;
+    font:
+        800 5.4cqw/1 'Barlow Condensed',
+        sans-serif;
+    letter-spacing: 0.12em;
+}
+
+.stats-ed-ticket .stats-recap-prop > i:nth-child(1)::before {
+    content: 'ADMIT ONE';
+}
+
+.stats-ed-ticket .stats-recap-prop > i:nth-child(2) {
+    right: 4cqw;
+    bottom: 3.8cqw;
+    width: 20cqw;
+    height: 5.4cqw;
+    background: repeating-linear-gradient(
+        90deg,
+        #23201b 0 2px,
+        transparent 2px 4px,
+        #23201b 4px 7px,
+        transparent 7px 9px
+    );
+}
+
+/* Swiss: the cover is cut onto the grid. */
+.stats-ed-swiss .stats-recap-prop {
+    top: 18cqh;
+    left: 8cqw;
+    width: 56cqw;
+    translate: none;
+    animation: stats-recap-wipe 1.1s cubic-bezier(0.7, 0, 0.2, 1) 200ms both;
+}
+
+/* Lava: the cover melts into a blob and floats. */
+.stats-ed-lava .stats-recap-prop {
+    width: 66cqw;
+    animation:
+        stats-recap-melt 1.3s cubic-bezier(0.34, 1.56, 0.64, 1) 150ms both,
+        stats-recap-float 6s ease-in-out 1.5s infinite alternate;
+}
+
+/* Holo: a trading card flips into the light. */
+.stats-ed-holo .stats-recap-prop {
+    width: 58cqw;
+    aspect-ratio: 5 / 7;
+    padding: 3cqw;
+    border-radius: 4cqw;
+    background: linear-gradient(135deg, #fff, #c9c9e6, #fff, #b0b0d4);
+    box-shadow: 0 6cqw 16cqw rgb(60 40 120 / 30%);
+    animation:
+        stats-recap-flip 1.4s cubic-bezier(0.2, 1, 0.3, 1) 150ms both,
+        stats-recap-tilt 5s ease-in-out 1.6s infinite alternate;
+}
+
+.stats-ed-holo .stats-recap-prop .stats-recap-art {
+    inset: 3cqw 3cqw 18cqw;
+    border-radius: 2.4cqw;
+}
+
+.stats-ed-holo .stats-recap-prop > i:nth-child(1) {
+    right: 4cqw;
+    bottom: 5cqw;
+    left: 4cqw;
+    height: 3cqw;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #ff7ad9, #7af0ff, #ffe07a, #b47aff);
+}
+
+.stats-ed-holo .stats-recap-prop > i:nth-child(2) {
+    bottom: 10cqw;
+    left: 4cqw;
+    width: 30cqw;
+    height: 2.4cqw;
+    border-radius: 99px;
+    background: #11111f;
+}
+
+/* Gold: the record rises on its plinth with a glint. */
+.stats-ed-gold .stats-recap-prop {
+    width: 62cqw;
+    border-radius: 50%;
+    background:
+        repeating-radial-gradient(circle, rgb(0 0 0 / 14%) 0 1px, transparent 1px 3px),
+        conic-gradient(#f9e08b, #a87922, #fff1b8, #c7972f, #f3d272, #a87922, #f9e08b);
+    box-shadow: 0 0 16cqw rgb(212 175 55 / 40%);
+    animation:
+        stats-recap-gild 1.6s cubic-bezier(0.16, 1, 0.3, 1) 150ms both,
+        stats-recap-spin 6s linear 1.7s infinite;
+}
+
+.stats-ed-gold .stats-recap-prop .stats-recap-art {
+    inset: 30%;
+    padding: 0;
+    background: none;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 40%);
+}
+
+.stats-ed-gold .stats-recap-slide-intro {
+    padding-bottom: 24cqh;
+}
+
+/* Aurora: the cover hangs in the sky above its reflection. */
+.stats-ed-aurora .stats-recap-prop {
+    width: 56cqw;
+    animation:
+        stats-recap-drift 1.8s cubic-bezier(0.25, 1, 0.3, 1) 150ms both,
+        stats-recap-float 7s ease-in-out 2s infinite alternate;
+}
+
+.stats-ed-aurora .stats-recap-prop .stats-recap-art {
+    -webkit-box-reflect: below 3cqw linear-gradient(transparent 55%, rgb(0 0 0 / 35%));
+}
+
+/* Cosmos: the cover becomes a planet with its moon. */
+.stats-ed-cosmos .stats-recap-prop {
+    width: 52cqw;
+    animation: stats-recap-orbit-in 1.6s cubic-bezier(0.16, 1, 0.3, 1) 150ms both;
+}
+
+.stats-ed-cosmos .stats-recap-prop > i:nth-child(1) {
+    z-index: 2;
+    top: 50%;
+    left: 50%;
+    width: 7cqw;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff, #ff9fd0 50%, #6a2a5a);
+    animation: stats-recap-moon-orbit 5s linear infinite;
+}
+
+/* Marquee: the sign's bulbs light around the title. */
+.stats-ed-marquee .stats-recap-slide-intro {
+    align-content: center;
+    padding-bottom: 9cqh;
+}
+
+.stats-ed-marquee .stats-recap-prop {
+    top: 50%;
+    width: 88cqw;
+    height: 40cqh;
+    aspect-ratio: auto;
+    translate: -50% -48%;
+    padding: 3cqw;
+    border-radius: 3cqw;
+    background:
+        radial-gradient(circle, #fff1c9 0 1cqw, rgb(255 214 130 / 55%) 1.4cqw, transparent 2.8cqw) 0 0 / 6cqw 6cqw,
+        #2a0909;
+    box-shadow:
+        0 0 12cqw rgb(255 180 90 / 30%),
+        inset 0 0 0 1px rgb(255 210 122 / 40%);
+    animation:
+        stats-recap-curtain 1.2s cubic-bezier(0.65, 0, 0.35, 1) 100ms both,
+        stats-recap-chase 0.9s steps(1) 1.3s infinite;
+}
+
+.stats-ed-marquee .stats-recap-prop::before {
+    content: '';
+    position: absolute;
+    inset: 4cqw;
+    border-radius: 1.4cqw;
+    background: linear-gradient(#3a0c0c, #1a0606);
+    box-shadow: inset 0 0 6cqw rgb(0 0 0 / 60%);
+}
+
+.stats-ed-marquee .stats-recap-prop .stats-recap-art {
+    display: none;
+}
+
+/* Eclipse: the moon slides across the cover until only the corona remains. */
+.stats-ed-eclipse .stats-recap-prop {
+    width: 54cqw;
+    animation: stats-recap-drift 1.2s ease 100ms both;
+}
+
+.stats-ed-eclipse .stats-recap-prop > i:nth-child(1) {
+    z-index: -1;
+    inset: -30%;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle,
+        rgb(255 244 222 / 90%) 0 38%,
+        rgb(255 200 140 / 40%) 42%,
+        rgb(255 160 90 / 10%) 58%,
+        transparent 70%
+    );
+    animation: stats-recap-corona 3s ease 1.8s both;
+}
+
+.stats-ed-eclipse .stats-recap-prop > i:nth-child(2) {
+    z-index: 2;
+    inset: -1%;
+    border-radius: 50%;
+    background: #000;
+    box-shadow: 0 0 0 0.5cqw rgb(255 90 60 / 40%);
+    animation: stats-recap-moon 2.4s cubic-bezier(0.45, 0, 0.2, 1) 400ms both;
+}
+
+/* The scene's eclipse waits until the intro's own totality has passed. */
+.stats-ed-eclipse .stats-recap-frame > .stats-recap-scene {
+    transition: opacity 900ms ease;
+}
+
+.stats-ed-eclipse .stats-recap-frame:has(.stats-recap-slide-intro.is-active) > .stats-recap-scene {
+    opacity: 0;
+}
+
+/* Edition type details. */
+.stats-ed-riso .stats-recap-slide :is(.stats-recap-title, .stats-recap-number, .stats-recap-name, .stats-recap-unit) {
+    text-shadow: 0.05em 0.04em 0 rgb(255 72 176 / 85%);
+}
+
+.stats-ed-led .stats-recap-slide {
+    text-shadow: 0 0 0.35em rgb(255 150 0 / 70%);
+}
+
+.stats-ed-vhs .stats-recap-slide :is(.stats-recap-title, .stats-recap-number, .stats-recap-name, .stats-recap-unit) {
+    text-shadow:
+        -0.035em 0 rgb(255 30 70 / 75%),
+        0.035em 0 rgb(30 230 255 / 75%);
+}
+
+.stats-ed-gold :is(.stats-recap-title, .stats-recap-number, .stats-recap-figures dd, .stats-recap-unlock-name) {
+    background: linear-gradient(170deg, #f9e08b, #c7972f 40%, #fff1b8 55%, #a87922 80%, #f3d272);
+    background-clip: text;
+    color: transparent;
+}
+
+.stats-ed-eclipse .stats-recap-number {
+    text-shadow: 0 0 0.3em rgb(255 200 140 / 35%);
+}
+
+.stats-ed-flyer .stats-recap-chip {
+    rotate: -2deg;
+}
+
+/* ---------- Edition motion ---------- */
+
+@keyframes stats-recap-rise {
+    from {
+        opacity: 0;
+        filter: blur(8px);
+        transform: translateY(5cqh);
+    }
+}
+
+@keyframes stats-recap-groove {
+    from {
+        opacity: 0;
+        filter: blur(4px);
+        transform: translateX(-6cqw) rotate(-4deg);
+    }
+}
+
+@keyframes stats-recap-drop {
+    0% {
+        opacity: 0;
+        transform: translateY(-14cqh) rotate(-8deg);
+    }
+
+    60% {
+        opacity: 1;
+        transform: translateY(1.2cqh) rotate(1deg);
+    }
+
+    80% {
+        transform: translateY(-0.4cqh);
+    }
+
+    100% {
+        transform: none;
+    }
+}
+
+@keyframes stats-recap-press {
+    0% {
+        opacity: 0;
+        text-shadow: 2.4cqw 2cqw 0 #ff48b0;
+        transform: scale(1.18);
+    }
+
+    55% {
+        opacity: 1;
+        transform: scale(0.98);
+    }
+
+    100% {
+        transform: none;
+    }
+}
+
+@keyframes stats-recap-slam {
+    0% {
+        opacity: 0;
+        transform: scale(2.4) rotate(-9deg);
+    }
+
+    55% {
+        opacity: 1;
+        transform: scale(0.92) rotate(1.5deg);
+    }
+
+    72% {
+        transform: scale(1.04) rotate(-0.6deg);
+    }
+
+    100% {
+        transform: none;
+    }
+}
+
+@keyframes stats-recap-flicker {
+    0%,
+    8% {
+        opacity: 0;
+    }
+
+    9% {
+        opacity: 1;
+    }
+
+    14% {
+        opacity: 0.1;
+    }
+
+    22% {
+        opacity: 1;
+    }
+
+    30% {
+        opacity: 0.3;
+    }
+
+    38%,
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes stats-recap-scan {
+    from {
+        clip-path: inset(0 0 100% 0);
+        filter: brightness(2.2);
+    }
+
+    to {
+        clip-path: inset(-30%);
+        filter: none;
+    }
+}
+
+@keyframes stats-recap-glitch {
+    0% {
+        opacity: 0;
+        clip-path: inset(40% 0 45% 0);
+        transform: translateX(-4cqw);
+    }
+
+    15% {
+        opacity: 1;
+        clip-path: inset(10% 0 60% 0);
+        transform: translateX(3cqw);
+    }
+
+    30% {
+        clip-path: inset(70% 0 5% 0);
+        transform: translateX(-2cqw);
+    }
+
+    45% {
+        clip-path: inset(0 0 80% 0);
+        transform: translateX(1.5cqw);
+    }
+
+    60% {
+        clip-path: inset(30% 0 30% 0);
+        transform: none;
+    }
+
+    75% {
+        clip-path: inset(0);
+        transform: translateX(-0.6cqw);
+    }
+
+    100% {
+        clip-path: inset(-50%);
+        transform: none;
+    }
+}
+
+@keyframes stats-recap-print {
+    from {
+        clip-path: inset(0 0 100% 0);
+        transform: translateY(-3cqh);
+    }
+
+    to {
+        clip-path: inset(-30%);
+        transform: none;
+    }
+}
+
+@keyframes stats-recap-wipe {
+    from {
+        clip-path: inset(0 100% 0 0);
+        transform: translateX(-3cqw);
+    }
+
+    to {
+        clip-path: inset(-30%);
+        transform: none;
+    }
+}
+
+@keyframes stats-recap-melt {
+    0% {
+        opacity: 0;
+        transform: translateY(4cqh) scale(0.6, 1.5) skewX(14deg);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.12, 0.86);
+    }
+
+    75% {
+        transform: scale(0.95, 1.06);
+    }
+
+    100% {
+        transform: none;
+    }
+}
+
+@keyframes stats-recap-flip {
+    from {
+        opacity: 0;
+        filter: hue-rotate(140deg) brightness(1.4);
+        transform: perspective(600px) rotateY(80deg) translateX(6cqw);
+    }
+
+    to {
+        filter: none;
+        transform: none;
+    }
+}
+
+@keyframes stats-recap-gild {
+    from {
+        opacity: 0;
+        filter: blur(6px) brightness(1.8);
+        letter-spacing: 0.4em;
+        transform: translateY(3cqh);
+    }
+}
+
+@keyframes stats-recap-drift {
+    from {
+        opacity: 0;
+        filter: blur(18px);
+        transform: translateY(4cqh);
+    }
+}
+
+@keyframes stats-recap-warp {
+    from {
+        opacity: 0;
+        filter: blur(10px);
+        transform: scale(0.3) translateY(10cqh);
+    }
+}
+
+@keyframes stats-recap-orbit-in {
+    0% {
+        opacity: 0;
+        transform: translate(-40cqw, 10cqh) scale(0.4) rotate(-30deg);
+    }
+
+    60% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: none;
+    }
+}
+
+@keyframes stats-recap-spot {
+    from {
+        opacity: 0;
+        filter: brightness(3) blur(4px);
+        transform: scale(1.06);
+    }
+}
+
+@keyframes stats-recap-curtain {
+    from {
+        opacity: 0.2;
+        clip-path: inset(0 50% 0 50%);
+    }
+
+    to {
+        opacity: 1;
+        clip-path: inset(-30%);
+    }
+}
+
+@keyframes stats-recap-totality {
+    0% {
+        opacity: 0;
+        filter: brightness(0);
+        transform: scale(0.88);
+    }
+
+    55% {
+        opacity: 1;
+        filter: brightness(0);
+    }
+
+    100% {
+        filter: none;
+        transform: none;
+    }
+}
+
+/* ---------- Scene and prop motion ---------- */
+
+@keyframes stats-recap-turn {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes stats-recap-spin {
+    to {
+        rotate: 360deg;
+    }
+}
+
+@keyframes stats-recap-record-in {
+    from {
+        opacity: 0;
+        translate: 70cqw 0;
+    }
+}
+
+@keyframes stats-recap-register {
+    to {
+        translate: 1.2cqmin 0.8cqmin;
+    }
+}
+
+@keyframes stats-recap-sweep-y {
+    from {
+        top: -20%;
+    }
+
+    to {
+        top: 110%;
+    }
+}
+
+@keyframes stats-recap-ticker {
+    to {
+        background-position: -4.8cqmin 0;
+    }
+}
+
+@keyframes stats-recap-blink {
+    50% {
+        opacity: 0;
+    }
+}
+
+@keyframes stats-recap-lava {
+    to {
+        translate: 0 -38cqmin;
+    }
+}
+
+@keyframes stats-recap-morph {
+    0%,
+    100% {
+        border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+    }
+
+    33% {
+        border-radius: 61% 39% 45% 55% / 56% 62% 38% 44%;
+    }
+
+    66% {
+        border-radius: 38% 62% 56% 44% / 63% 37%;
+    }
+}
+
+@keyframes stats-recap-float {
+    to {
+        transform: translateY(-2.4cqh) rotate(2deg);
+    }
+}
+
+@keyframes stats-recap-holo {
+    to {
+        background-position: 100% 100%;
+    }
+}
+
+@keyframes stats-recap-foil {
+    to {
+        transform: translateX(16%);
+    }
+}
+
+@keyframes stats-recap-twinkle {
+    0%,
+    100% {
+        opacity: 0.2;
+        transform: scale(0.5) rotate(0deg);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1) rotate(45deg);
+    }
+}
+
+@keyframes stats-recap-tilt {
+    from {
+        transform: perspective(700px) rotateY(-10deg) rotateX(4deg);
+    }
+
+    to {
+        transform: perspective(700px) rotateY(10deg) rotateX(-3deg);
+    }
+}
+
+@keyframes stats-recap-glint {
+    0%,
+    100% {
+        transform: translateX(-60%);
+    }
+
+    50% {
+        transform: translateX(60%);
+    }
+}
+
+@keyframes stats-recap-starlight {
+    to {
+        opacity: 0.55;
+    }
+}
+
+@keyframes stats-recap-curtain-wave {
+    from {
+        transform: skewX(-8deg) scaleY(0.92);
+    }
+
+    to {
+        transform: skewX(10deg) scaleY(1.08) translateX(6%);
+    }
+}
+
+@keyframes stats-recap-planet {
+    0% {
+        transform: translate(-62cqmin, 4cqmin) scale(0.7);
+    }
+
+    50% {
+        transform: translate(62cqmin, -4cqmin) scale(1.2);
+    }
+
+    100% {
+        transform: translate(-62cqmin, 4cqmin) scale(0.7);
+    }
+}
+
+@keyframes stats-recap-meteor {
+    0% {
+        opacity: 0;
+        translate: 0 0;
+    }
+
+    6% {
+        opacity: 1;
+    }
+
+    18%,
+    100% {
+        opacity: 0;
+        translate: -40cqmin 22cqmin;
+    }
+}
+
+@keyframes stats-recap-moon-orbit {
+    from {
+        transform: rotate(0deg) translateX(34cqw) rotate(0deg) scale(1);
+    }
+
+    to {
+        transform: rotate(360deg) translateX(34cqw) rotate(-360deg) scale(1);
+    }
+}
+
+@keyframes stats-recap-chase {
+    50% {
+        background-position: 2.7cqmin 0;
+    }
+}
+
+@keyframes stats-recap-beam {
+    from {
+        rotate: -16deg;
+    }
+
+    to {
+        rotate: 18deg;
+    }
+}
+
+@keyframes stats-recap-breathe {
+    to {
+        opacity: 0.8;
+        transform: scale(1.06);
+    }
+}
+
+@keyframes stats-recap-flare {
+    0%,
+    100% {
+        opacity: 0.7;
+        transform: scale(0.8);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.3);
+    }
+}
+
+@keyframes stats-recap-tape {
+    0% {
+        opacity: 0;
+        filter: brightness(2) saturate(0);
+        transform: translateY(-14%) skewX(8deg);
+    }
+
+    20% {
+        opacity: 1;
+        transform: translateY(6%) skewX(-6deg);
+    }
+
+    35% {
+        transform: translateY(-3%) skewX(3deg);
+    }
+
+    50% {
+        filter: none;
+        transform: translateY(1%);
+    }
+
+    100% {
+        transform: none;
+    }
+}
+
+@keyframes stats-recap-moon {
+    from {
+        transform: translateX(-130%);
+    }
+}
+
+@keyframes stats-recap-corona {
+    from {
+        opacity: 0;
+        transform: scale(0.7);
+    }
+}
+
+@keyframes stats-recap-grow {
+    from {
+        transform: scaleY(0);
+    }
+}
+
+@keyframes stats-recap-pop {
+    0% {
+        opacity: 0;
+        transform: scale(0.2);
+    }
+
+    70% {
+        opacity: 1;
+        transform: scale(1.15);
+    }
+
+    100% {
+        transform: none;
+    }
+}
+
+@keyframes stats-recap-spoke {
+    from {
+        opacity: 0;
+        transform: scale(0.4);
+    }
+}
+
+@keyframes stats-recap-sheen {
+    0% {
+        background-position:
+            120% 0,
+            0 0;
+    }
+
+    100% {
+        background-position:
+            -120% 0,
+            0 0;
+    }
+}
+
+@keyframes stats-recap-leave {
+    to {
+        opacity: 0;
+        filter: blur(10px);
+        transform: scale(1.06);
+    }
+}
+
+@keyframes stats-recap-leave-back {
+    to {
+        opacity: 0;
+        filter: blur(10px);
+        transform: scale(0.94);
+    }
+}
+
+@keyframes stats-recap-open {
+    from {
+        opacity: 0;
+        transform: scale(1.04);
+    }
+}
+
+@keyframes stats-recap-close {
+    to {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+}
+
+/* ---------- Unlock: a first find takes the whole screen ---------- */
+
+.stats-recap-unlock {
+    position: fixed;
+    z-index: 20;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: rgb(0 0 0 / 82%);
+    backdrop-filter: blur(16px) saturate(1.2);
+    color: #fff;
+    animation: stats-recap-dim 700ms ease both;
+}
+
+.stats-recap-unlock.is-leaving {
+    animation: stats-recap-fade 420ms ease forwards;
+}
+
+.stats-recap-unlock-rays {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 180vmax;
+    aspect-ratio: 1;
+    translate: -50% -50%;
+    background: repeating-conic-gradient(
+        color-mix(in srgb, var(--recap-accent) 26%, transparent) 0 5deg,
+        transparent 5deg 15deg
+    );
+    mask-image: radial-gradient(circle, #000 0 6%, transparent 50%);
+    animation:
+        stats-recap-turn 40s linear infinite,
+        stats-recap-rays 1.4s ease 300ms both;
+}
+
+.stats-recap-unlock-burst i {
+    position: absolute;
+    top: 46%;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    background: var(--recap-accent);
+    opacity: 0;
+    animation: stats-recap-burst 1.6s cubic-bezier(0.1, 0.8, 0.3, 1) calc(900ms + var(--i) * 12ms) both;
+}
+
+.stats-recap-unlock-burst i:nth-child(odd) {
+    border-radius: 50%;
+    background: var(--recap-accent-2);
+}
+
+.stats-recap-unlock-stage {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 14px;
+    max-width: 540px;
+    padding: 24px;
+    text-align: center;
+}
+
+.stats-recap-unlock-kicker {
+    margin: 0;
+    padding: 7px 15px;
+    border: 1px solid rgb(255 255 255 / 20%);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 10%);
+    color: rgb(255 255 255 / 86%);
+    font:
+        650 0.84rem/1.2 switzer,
+        inter,
+        system-ui,
+        sans-serif;
+    animation: stats-recap-rise 700ms cubic-bezier(0.16, 1, 0.3, 1) 300ms both;
+}
+
+.stats-recap-unlock-card {
+    position: relative;
+    width: min(44vmin, 290px);
+    aspect-ratio: 9 / 16;
+    overflow: hidden;
+    border-radius: 18px;
+    container-type: size;
+    box-shadow:
+        0 30px 90px rgb(0 0 0 / 60%),
+        0 0 0 1px rgb(255 255 255 / 16%),
+        0 0 140px color-mix(in srgb, var(--recap-accent) 45%, transparent);
+    transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+    transition: transform 300ms ease-out;
+    animation: stats-recap-card-in 1.7s cubic-bezier(0.16, 1, 0.3, 1) 200ms backwards;
+}
+
+.stats-recap-unlock-card canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.stats-recap-unlock-sheen {
+    opacity: 0.55;
+    animation-delay: 1.6s;
+}
+
+.stats-recap-unlock-name {
+    margin: 6px 0 0;
+    color: #fff;
+    font-family: var(--recap-display);
+    font-size: clamp(2.6rem, 9vmin, 4.8rem);
+    font-style: var(--recap-display-style);
+    font-weight: var(--recap-display-weight);
+    letter-spacing: var(--recap-display-tracking);
+    line-height: 0.95;
+    text-transform: var(--recap-display-case);
+    animation: var(--recap-enter-big) 1.2s var(--recap-ease) 1.2s both;
+}
+
+.stats-recap-unlock-meta {
+    max-width: 36ch;
+    margin: 0;
+    color: rgb(255 255 255 / 72%);
+    font:
+        0.92rem/1.5 switzer,
+        inter,
+        system-ui,
+        sans-serif;
+    text-wrap: pretty;
+    animation: stats-recap-rise 700ms cubic-bezier(0.16, 1, 0.3, 1) 1.6s both;
+}
+
+.stats-recap-unlock-actions {
+    margin-top: 6px;
+    animation: stats-recap-rise 700ms cubic-bezier(0.16, 1, 0.3, 1) 1.9s both;
+}
+
+.stats-recap-unlock-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 0 20px;
+    border: 1px solid rgb(255 255 255 / 24%);
+    border-radius: 999px;
+    background: transparent;
+    color: #fff;
+    font:
+        650 0.9rem/1 switzer,
+        inter,
+        system-ui,
+        sans-serif;
+    cursor: pointer;
+    transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stats-recap-unlock-actions .stats-recap-primary {
+    border-color: transparent;
+    background: #fff;
+    color: #000;
+}
+
+@keyframes stats-recap-dim {
+    from {
+        opacity: 0;
+        backdrop-filter: blur(0) saturate(1);
+    }
+}
+
+@keyframes stats-recap-fade {
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes stats-recap-rays {
+    from {
+        opacity: 0;
+        scale: 0.2;
+    }
+}
+
+@keyframes stats-recap-burst {
+    0% {
+        opacity: 0;
+        transform: rotate(var(--a)) translateY(0) scale(0.2);
+    }
+
+    15% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        transform: rotate(var(--a)) translateY(calc(-46vmin * var(--r))) scale(1) rotate(220deg);
+    }
+}
+
+@keyframes stats-recap-card-in {
+    0% {
+        opacity: 0;
+        transform: perspective(900px) translateY(40vh) rotateY(-540deg) scale(0.3);
+    }
+
+    60% {
+        opacity: 1;
+        transform: perspective(900px) rotateY(-16deg) scale(1.08);
+    }
+
+    100% {
+        transform: perspective(900px) rotateX(0deg) rotateY(0deg);
+    }
+}
+
+/* An edition already collected gets a quiet note instead. */
+.stats-recap-toast {
+    position: absolute;
+    z-index: 6;
+    top: 12cqh;
+    right: 6cqw;
+    left: 6cqw;
+    display: flex;
+    align-items: center;
+    gap: 3cqw;
+    margin: 0;
+    padding: 1.6cqh 4cqw;
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 4cqw;
+    background: rgb(10 10 12 / 78%);
+    backdrop-filter: blur(16px);
+    color: #fff;
+    font:
+        3.5cqw/1.3 switzer,
+        inter,
+        system-ui,
+        sans-serif;
+    box-shadow: 0 3cqw 10cqw rgb(0 0 0 / 40%);
+    animation: stats-recap-toast-in 650ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.stats-recap-toast.is-leaving {
+    animation: stats-recap-toast-out 500ms ease forwards;
+}
+
+.stats-recap-toast .stats-ed-swatch {
+    flex: none;
+    width: 11cqw;
+    height: 11cqw;
+    border-radius: 2.4cqw;
+}
+
+.stats-recap-toast strong,
+.stats-recap-toast small {
+    display: block;
+}
+
+.stats-recap-toast small {
+    color: rgb(255 255 255 / 70%);
+}
+
+@keyframes stats-recap-toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(-3cqh) scale(0.96);
+    }
+}
+
+@keyframes stats-recap-toast-out {
+    to {
+        opacity: 0;
+        transform: translateY(-2cqh);
+    }
+}
+
+/* ---------- Notices on the stats page ---------- */
+
+.stats-recaps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+    gap: 14px;
+    margin: 0 0 22px;
+}
+
+.stats-recaps:empty {
+    display: none;
+}
+
+.stats-recap-notice {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 18px;
+    height: 132px;
+    padding: 0 22px 0 20px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 22px;
+    background: var(--recap-bg);
+    container-type: size;
+    color: var(--recap-ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    box-shadow:
+        0 22px 60px -22px color-mix(in srgb, var(--recap-accent) 55%, transparent),
+        0 0 0 1px rgb(255 255 255 / 8%);
+    transition:
+        transform 450ms cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 450ms;
+}
+
+.stats-recap-notice.is-new {
+    animation: stats-recap-notice-in 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.stats-recap-notice:nth-child(2).is-new {
+    animation-delay: 120ms;
+}
+
+.stats-recap-notice .stats-recap-scene {
+    z-index: -1;
+}
+
+/* A light sweep invites the first watch; the pointer carries a glare. */
+.stats-recap-notice::before,
+.stats-recap-notice::after {
+    content: '';
+    position: absolute;
+    z-index: 3;
+    inset: 0;
+    pointer-events: none;
+}
+
+.stats-recap-notice::before {
+    background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 34%) 50%, transparent 65%);
+    mix-blend-mode: overlay;
+    transform: translateX(-120%);
+    animation: stats-recap-notice-sheen 5s ease-in-out 1.4s infinite;
+}
+
+.stats-recap-notice::after {
+    background: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgb(255 255 255 / 22%), transparent 45%);
+    opacity: 0;
+    transition: opacity 300ms;
+}
+
+.stats-recap-notice:hover {
+    transform: translateY(-3px);
+    box-shadow:
+        0 30px 70px -22px color-mix(in srgb, var(--recap-accent) 70%, transparent),
+        0 0 0 1px rgb(255 255 255 / 12%);
+}
+
+.stats-recap-notice:hover::after {
+    opacity: 1;
+}
+
+.stats-recap-notice:active {
+    transform: scale(0.985);
+}
+
+.stats-recap-notice:focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: 3px;
+}
+
+.stats-recap-notice:disabled {
+    cursor: progress;
+}
+
+.stats-recap-notice-covers {
+    position: relative;
+    width: 112px;
+    height: 84px;
+}
+
+.stats-recap-notice-covers img {
+    position: absolute;
+    top: 10px;
+    left: calc(var(--i) * 22px);
+    width: 64px;
+    height: 64px;
+    border-radius: min(var(--recap-art-radius), 14px);
+    object-fit: cover;
+    box-shadow: 0 10px 26px rgb(0 0 0 / 40%);
+    rotate: calc((var(--i) - 1) * 9deg);
+    transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stats-recap-notice-covers img:nth-child(1) {
+    z-index: 3;
+}
+
+.stats-recap-notice-covers img:nth-child(2) {
+    z-index: 2;
+}
+
+.stats-recap-notice:hover .stats-recap-notice-covers img {
+    transform: translateX(calc((var(--i) - 1) * 10px)) translateY(-4px) rotate(calc((var(--i) - 1) * 5deg));
+}
+
+.stats-recap-notice-text {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+
+.stats-recap-notice-kicker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--recap-muted);
+    font: 650 0.74rem/1.2 var(--recap-body);
+    text-transform: var(--recap-body-case);
+}
+
+.stats-recap-notice-kicker b {
+    padding: 3px 8px;
+    border-radius: var(--recap-chip-radius);
+    background: var(--recap-accent);
+    color: var(--recap-on-accent);
+    font-weight: 750;
+}
+
+.stats-recap-notice-text strong {
+    overflow: hidden;
+    font-family: var(--recap-display);
+    font-size: 1.6rem;
+    font-style: var(--recap-display-style);
+    font-weight: var(--recap-display-weight);
+    letter-spacing: var(--recap-display-tracking);
+    line-height: 1.05;
+    text-overflow: ellipsis;
+    text-transform: var(--recap-display-case);
+    white-space: nowrap;
+}
+
+.stats-recap-notice-text small {
+    color: var(--recap-muted);
+    font: 550 0.8rem/1.2 var(--recap-body);
+    text-transform: var(--recap-body-case);
+}
+
+.stats-recap-notice-play {
+    display: grid;
+    width: 54px;
+    height: 54px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--recap-accent);
+    color: var(--recap-on-accent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--recap-accent) 50%, transparent);
+    animation: stats-recap-pulse 2.4s ease-out infinite;
+}
+
+.stats-recap-notice-play svg {
+    margin-left: 2px;
+}
+
+.stats-recap-notice.is-seen {
+    height: 100px;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 8%);
+}
+
+.stats-recap-notice.is-seen::before,
+.stats-recap-notice.is-seen .stats-recap-notice-play {
+    animation: none;
+}
+
+.stats-recap-notice.is-seen .stats-recap-notice-text strong {
+    font-size: 1.3rem;
+}
+
+.stats-recap-notice.is-seen .stats-recap-notice-covers {
+    width: 92px;
+    height: 64px;
+}
+
+.stats-recap-notice.is-seen .stats-recap-notice-covers img {
+    top: 6px;
+    width: 52px;
+    height: 52px;
+    left: calc(var(--i) * 18px);
+}
+
+.stats-recap-notice.is-seen .stats-recap-notice-play {
+    width: 44px;
+    height: 44px;
+}
+
+@keyframes stats-recap-notice-in {
+    from {
+        opacity: 0;
+        clip-path: inset(0 100% 0 0 round 22px);
+        transform: translateY(10px);
+    }
+
+    to {
+        clip-path: inset(0 0 0 0 round 22px);
+    }
+}
+
+@keyframes stats-recap-notice-sheen {
+    0%,
+    55% {
+        transform: translateX(-120%);
+    }
+
+    100% {
+        transform: translateX(120%);
+    }
+}
+
+@keyframes stats-recap-pulse {
+    0% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--recap-accent) 55%, transparent);
+    }
+
+    100% {
+        box-shadow: 0 0 0 18px transparent;
+    }
+}
+
+/* ---------- Swatches: the same scene at the size of a chip ---------- */
+
+.stats-ed-swatch {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    background: var(--recap-bg);
+    container-type: size;
+}
+
+.stats-ed-swatch .stats-recap-scene,
+.stats-ed-swatch .stats-recap-scene i,
+.stats-ed-swatch .stats-recap-scene::before {
+    animation-play-state: paused !important;
+}
+
+/* ---------- Small screens: the story fills the phone ---------- */
+
+@media (max-width: 560px) {
+    .stats-recap-frame {
+        width: 100vw;
+        max-width: none;
+        height: 100dvh;
+        aspect-ratio: auto;
+        border-radius: 0;
+    }
+
+    .stats-recap-top {
+        padding-top: calc(2.2cqh + env(safe-area-inset-top));
+    }
+
+    .stats-recap-notice {
+        gap: 12px;
+        height: 116px;
+        padding: 0 16px 0 14px;
+    }
+
+    .stats-recap-notice-covers {
+        display: none;
+    }
+
+    .stats-recap-notice-text strong {
+        font-size: 1.3rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .stats-recap,
+    .stats-recap *,
+    .stats-recap *::before,
+    .stats-recap *::after,
+    .stats-recap-notice,
+    .stats-recap-notice *,
+    .stats-recap-notice::before,
+    .stats-recap-notice::after,
+    .stats-ed-swatch * {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .stats-recap-notice::before {
+        display: none;
+    }
+}

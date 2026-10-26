@@ -3,28 +3,51 @@ import I_SHARE from '!lucide/share.svg?svg&icon';
 import I_DOWNLOAD from '!lucide/download.svg?svg&icon';
 import I_COPY from '!lucide/copy.svg?svg&icon';
 import I_DATA from '!lucide/file-json.svg?svg&icon';
+import I_LOCK from '!lucide/lock-keyhole.svg?svg&icon';
 import { syncStatsSegments } from './listening-stats-scene.js';
+import { artwork, badge, css, font, lift, rgb, themeFor, write } from './listening-share-themes.js';
+import { CLASSICS, EDITIONS, POOLS, loadCollection, loadEditionFont } from './listening-recap-editions.js';
 
 // A share card drawn on canvas: the same numbers as the page, composed for stories and posts.
-const FORMATS = { story: [1080, 1920, 'Story', '9:16'], post: [1080, 1350, 'Post', '4:5'] };
-const STYLES = { aura: 'Aura', vivid: 'Vivid', ink: 'Ink', paper: 'Paper' };
-const PARTS = { artists: 'Top artists', tracks: 'On repeat', totals: 'Totals', handle: 'Your name' };
+const FORMATS = {
+    story: [1080, 1920, 'Story', '9:16'],
+    post: [1080, 1350, 'Post', '4:5'],
+    square: [1080, 1080, 'Square', '1:1'],
+};
+const PARTS = {
+    artists: 'Top artists',
+    tracks: 'On repeat',
+    totals: 'Totals',
+    clock: 'Listening clock',
+    handle: 'Your name',
+};
+const HEADLINES = { minutes: 'Minutes', streams: 'Streams' };
 const PERIOD_KICKER = { day: 'My day', week: 'My week', month: 'My month', year: 'My year', lifetime: 'All time' };
-const FONT = 'Switzer, Inter, system-ui, sans-serif';
+const BRAND = 'Switzer, Inter, system-ui, sans-serif';
 const STORE = 'monochrome-stats-share';
 const PAD = 84;
 
 const imageUrl = (url) =>
     url && /^(https?:\/\/|\/api\/files\/|\/assets\/)/i.test(url) && !/\/assets\/appicon\.png/.test(url) ? url : '';
 
-let options = { format: 'story', style: 'aura', artists: true, tracks: true, totals: true, handle: true };
+let options = {
+    format: 'story',
+    style: 'aura',
+    headline: 'minutes',
+    artists: true,
+    tracks: true,
+    totals: true,
+    clock: false,
+    handle: true,
+};
 try {
     options = { ...options, ...JSON.parse(localStorage.getItem(STORE) || '{}') };
 } catch {
     /* Storage can be unavailable; defaults still work. */
 }
 if (!FORMATS[options.format]) options.format = 'story';
-if (!STYLES[options.style]) options.style = 'aura';
+if (!CLASSICS[options.style] && !EDITIONS[options.style]) options.style = 'aura';
+if (!HEADLINES[options.headline]) options.headline = 'minutes';
 
 const images = new Map();
 function loadImage(url) {
@@ -47,15 +70,19 @@ function loadImage(url) {
     return images.get(url);
 }
 
-export function buildShareModel({ data, period, label, colors, user }) {
+export function buildShareModel({ data, period, anchor, label, colors, user }) {
     const n = new Intl.NumberFormat();
     const s = data.summary;
     const coverFor = (artist) =>
         imageUrl(artist.cover) ||
         imageUrl(data.top.tracks.find((track) => track.artists?.some((a) => a.id === artist.id))?.cover);
+    const clock = Math.round(s.seconds);
     return {
         kicker: `${PERIOD_KICKER[period]} · ${label}`,
-        minutes: n.format(Math.round(s.seconds / 60)),
+        headlines: {
+            minutes: [n.format(Math.round(s.seconds / 60)), 'minutes of music'],
+            streams: [n.format(s.streams), s.streams === 1 ? 'stream' : 'streams'],
+        },
         artists: data.top.artists.slice(0, 3).map((artist) => ({ name: artist.name, image: coverFor(artist) })),
         tracks: data.top.tracks.slice(0, 3).map((track) => ({
             title: track.title,
@@ -68,180 +95,33 @@ export function buildShareModel({ data, period, label, colors, user }) {
             [s.artists, 'artists'],
             [s.tracks, 'tracks'],
         ].map(([value, noun]) => [n.format(value), value === 1 ? noun.slice(0, -1) : noun]),
+        hours: data.hours || Array(24).fill(0),
         handle: user?.username ? `@${user.username}` : user?.name || '',
+        // Edition props: the VHS counter and the ticket serial come from the period itself.
+        timecode: `${Math.floor(clock / 3600)}:${String(Math.floor((clock % 3600) / 60)).padStart(2, '0')}:${String(clock % 60).padStart(2, '0')}`,
+        serial: `ADMIT ONE  Nº ${String(anchor || '')
+            .replaceAll('-', '')
+            .slice(2)}`,
         colors,
-    };
-}
-
-// ---------- Color ----------
-
-const scratch = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
-function rgb(color, fallback = '#8a8a8a') {
-    scratch.clearRect(0, 0, 1, 1);
-    scratch.fillStyle = fallback;
-    scratch.fillStyle = color || fallback;
-    scratch.fillRect(0, 0, 1, 1);
-    return [...scratch.getImageData(0, 0, 1, 1).data.slice(0, 3)];
-}
-const mix = (a, b, t) => a.map((value, i) => Math.round(value + (b[i] - value) * t));
-const css = (c, alpha = 1) => `rgb(${c[0]} ${c[1]} ${c[2]} / ${alpha})`;
-const luminance = (c) => (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
-// Cover colors are lifted into light on dark styles, the way the page's ambience is.
-const lift = (c) => mix(c, [255, 255, 255], Math.max(0, 0.62 - luminance(c)));
-const BLACK = [0, 0, 0];
-
-let grain;
-function paintGrain(ctx, width, height, mode, alpha) {
-    if (!grain) {
-        grain = document.createElement('canvas');
-        grain.width = grain.height = 256;
-        const g = grain.getContext('2d');
-        const noise = g.createImageData(256, 256);
-        for (let i = 0; i < noise.data.length; i += 4) {
-            const v = Math.random() * 255;
-            noise.data.set([v, v, v, 255], i);
-        }
-        g.putImageData(noise, 0, 0);
-    }
-    ctx.save();
-    ctx.globalCompositeOperation = mode;
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = ctx.createPattern(grain, 'repeat');
-    ctx.fillRect(0, 0, width, height);
-    ctx.restore();
-}
-function glow(ctx, x, y, radius, color, alpha) {
-    const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-    gradient.addColorStop(0, css(color, alpha));
-    gradient.addColorStop(1, css(color, 0));
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-}
-
-function themeFor(style, colors) {
-    const [c0, c1, c2] = colors.map((color) => rgb(color));
-    const dark = {
-        text: '#ffffff',
-        muted: 'rgb(255 255 255 / 0.62)',
-        surface: 'rgb(255 255 255 / 0.09)',
-        line: 'rgb(255 255 255 / 0.16)',
-        shadow: 'rgb(0 0 0 / 0.5)',
-        accent: css(lift(c0)),
-        onAccent: '#0b0b0c',
-    };
-    if (style === 'paper')
-        return {
-            text: '#141414',
-            muted: 'rgb(20 20 20 / 0.58)',
-            surface: 'rgb(20 20 20 / 0.06)',
-            line: 'rgb(20 20 20 / 0.16)',
-            shadow: 'rgb(40 30 20 / 0.22)',
-            accent: '#141414',
-            onAccent: '#f3f1ec',
-            paint(ctx, w, h) {
-                ctx.fillStyle = '#f3f1ec';
-                ctx.fillRect(0, 0, w, h);
-                glow(ctx, w * 0.85, h * 0.08, w * 0.7, mix(c0, [243, 241, 236], 0.35), 0.28);
-                paintGrain(ctx, w, h, 'multiply', 0.06);
-            },
-        };
-    if (style === 'ink')
-        return {
-            ...dark,
-            accent: '#ffffff',
-            paint(ctx, w, h) {
-                ctx.fillStyle = '#000000';
-                ctx.fillRect(0, 0, w, h);
-                glow(ctx, w * 0.5, -h * 0.05, w * 0.9, lift(c0), 0.14);
-                paintGrain(ctx, w, h, 'overlay', 0.08);
-            },
-        };
-    if (style === 'vivid')
-        return {
-            ...dark,
-            accent: '#ffffff',
-            paint(ctx, w, h) {
-                const gradient = ctx.createLinearGradient(0, 0, w * 0.3, h);
-                gradient.addColorStop(0, css(mix(c0, BLACK, 0.2)));
-                gradient.addColorStop(0.55, css(mix(mix(c0, c1, 0.5), BLACK, 0.55)));
-                gradient.addColorStop(1, css(mix(c1, BLACK, 0.82)));
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, w, h);
-                glow(ctx, w * 0.9, h * 0.05, w * 0.8, lift(c2), 0.3);
-                paintGrain(ctx, w, h, 'overlay', 0.1);
-            },
-        };
-    return {
-        ...dark,
-        paint(ctx, w, h) {
-            ctx.fillStyle = '#0b0b0d';
-            ctx.fillRect(0, 0, w, h);
-            glow(ctx, w * 0.82, h * 0.1, w * 0.75, lift(c0), 0.5);
-            glow(ctx, w * 0.08, h * 0.38, w * 0.7, lift(c1), 0.34);
-            glow(ctx, w * 0.9, h * 0.72, w * 0.65, lift(c2), 0.3);
-            glow(ctx, w * 0.25, h * 1.02, w * 0.6, lift(c0), 0.22);
-            paintGrain(ctx, w, h, 'overlay', 0.09);
-        },
     };
 }
 
 // ---------- Drawing ----------
 
-function fit(ctx, value, max) {
-    if (ctx.measureText(value).width <= max) return value;
-    let cut = value;
-    while (cut.length > 1 && ctx.measureText(`${cut}…`).width > max) cut = cut.slice(0, -1);
-    return `${cut.trimEnd()}…`;
-}
-function write(ctx, value, x, top, { size, weight = 600, color, align = 'left', max = Infinity, tracking = 0 }) {
-    ctx.font = `${weight} ${size}px ${FONT}`;
-    if ('letterSpacing' in ctx) ctx.letterSpacing = `${tracking}px`;
-    ctx.fillStyle = color;
-    ctx.textAlign = align;
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillText(fit(ctx, String(value), max), x, top + size * 0.76);
-    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
-}
-function artwork(ctx, img, x, y, size, radius, theme, initial) {
-    ctx.save();
-    ctx.shadowColor = theme.shadow;
-    ctx.shadowBlur = 56;
-    ctx.shadowOffsetY = 22;
-    ctx.beginPath();
-    ctx.roundRect(x, y, size, size, radius);
-    ctx.fillStyle = theme.surface;
-    ctx.fill();
-    ctx.restore();
-    ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(x, y, size, size, radius);
-    ctx.clip();
-    if (img) {
-        const scale = Math.max(size / img.naturalWidth, size / img.naturalHeight);
-        const w = img.naturalWidth * scale,
-            h = img.naturalHeight * scale;
-        ctx.drawImage(img, x + (size - w) / 2, y + (size - h) / 2, w, h);
-    } else {
-        ctx.fillStyle = theme.surface;
-        ctx.fillRect(x, y, size, size);
-        write(ctx, initial.toUpperCase(), x + size / 2, y + size / 2 - size * 0.2, {
-            size: size * 0.4,
-            weight: 700,
-            color: theme.muted,
-            align: 'center',
-        });
-    }
-    ctx.restore();
-}
+const cased = (theme, value) => (theme.upper ? String(value).toUpperCase() : String(value));
+const body = (theme, extra) => ({ ...theme.body, ...extra });
+const display = (theme, extra) => ({
+    ...theme.display,
+    tracking: (theme.display.tracking || 0) * (extra.size || 0),
+    echo: theme.echo,
+    glowText: theme.glowText,
+    ...extra,
+});
+
 function kicker(ctx, label, y, width, theme) {
-    write(ctx, label.toUpperCase(), PAD, y, {
-        size: 28,
-        weight: 600,
-        color: theme.muted,
-        tracking: 4,
-        max: width - PAD * 2,
-    });
-    ctx.font = `600 28px ${FONT}`;
+    const style = body(theme, { size: 28, color: theme.muted, tracking: 4, max: width - PAD * 2 });
+    write(ctx, label.toUpperCase(), PAD, y, style);
+    ctx.font = font(style, 28);
     if ('letterSpacing' in ctx) ctx.letterSpacing = '4px';
     const end = PAD + Math.min(ctx.measureText(label.toUpperCase()).width, width - PAD * 2) + 24;
     if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
@@ -255,132 +135,215 @@ const columns = (count, width) => {
     const column = (width - PAD * 2) / 3;
     return Array.from({ length: count }, (_, i) => width / 2 + (i - (count - 1) / 2) * column);
 };
+const hourLabel = (hour) =>
+    new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).format(new Date(2000, 0, 1, hour)).replace(/\s/g, '');
 
-function sections(model, picks, width) {
+function sections(model, picks, width, theme) {
     const inner = width - PAD * 2;
     const column = inner / 3;
+    const [headline, unit] = model.headlines[picks.headline];
     const list = [
         {
             height: 0,
             measure(ctx) {
-                ctx.font = `700 100px ${FONT}`;
-                this.size = Math.min(290, (inner / ctx.measureText(model.minutes).width) * 98);
-                this.height = 34 + 34 + this.size * 0.74 + 30 + 54;
+                ctx.font = font(theme.display, 100);
+                const metrics = ctx.measureText(headline);
+                this.size = Math.min(290, (inner / metrics.width) * 98);
+                // Old-style figures (Syne, Fraunces) hang below the baseline; the label clears them.
+                this.drop = (Math.max(0, metrics.actualBoundingBoxDescent || 0) * this.size) / 100;
+                this.height = 34 + 34 + this.size * 0.74 + this.drop + 30 + 54;
             },
-            draw(ctx, y, theme) {
-                write(ctx, model.kicker.toUpperCase(), PAD, y, {
-                    size: 28,
-                    weight: 600,
-                    color: theme.muted,
-                    tracking: 4,
-                    max: inner,
-                });
+            draw(ctx, y) {
+                write(
+                    ctx,
+                    model.kicker.toUpperCase(),
+                    PAD,
+                    y,
+                    body(theme, {
+                        size: 28,
+                        color: theme.muted,
+                        tracking: 4,
+                        max: inner,
+                    })
+                );
                 const top = y + 68;
-                ctx.font = `700 ${this.size}px ${FONT}`;
-                if ('letterSpacing' in ctx) ctx.letterSpacing = `${-this.size * 0.04}px`;
-                ctx.fillStyle = theme.text;
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'alphabetic';
-                ctx.fillText(model.minutes, PAD - this.size * 0.03, top + this.size * 0.74);
-                if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
-                write(ctx, 'minutes of music', PAD, top + this.size * 0.74 + 30, {
-                    size: 50,
-                    weight: 500,
-                    color: theme.text,
-                });
+                ctx.font = font(theme.display, this.size);
+                const measured = ctx.measureText(headline).width;
+                write(
+                    ctx,
+                    headline,
+                    PAD - this.size * 0.03,
+                    top - this.size * 0.02,
+                    display(theme, {
+                        size: this.size,
+                        color: theme.text,
+                        tracking: (theme.display.tracking ?? -0.04) * this.size,
+                        fillStyle: theme.numberFill?.(ctx, PAD, top, measured, this.size),
+                    })
+                );
+                write(
+                    ctx,
+                    cased(theme, unit),
+                    PAD,
+                    top + this.size * 0.74 + this.drop + 30,
+                    body(theme, {
+                        size: 50,
+                        weight: theme.body.weight - 100,
+                        color: theme.text,
+                    })
+                );
             },
         },
     ];
     if (picks.artists && model.artists.length)
         list.push({
             height: 34 + 40 + 232 + 30 + 44,
-            draw(ctx, y, theme, art) {
+            draw(ctx, y, art) {
                 kicker(ctx, 'Top artists', y, width, theme);
                 const top = y + 74;
                 columns(model.artists.length, width).forEach((cx, i) => {
                     const artist = model.artists[i];
-                    artwork(ctx, art.artists[i], cx - 116, top, 232, 116, theme, artist.name[0] || '?');
-                    const bx = cx + 82,
-                        by = top + 198;
-                    ctx.beginPath();
-                    ctx.arc(bx, by, 34, 0, Math.PI * 2);
-                    ctx.fillStyle = theme.accent;
-                    ctx.fill();
-                    write(ctx, i + 1, bx, by - 17, { size: 34, weight: 700, color: theme.onAccent, align: 'center' });
-                    write(ctx, artist.name, cx, top + 262, {
-                        size: 40,
-                        weight: 600,
-                        color: theme.text,
-                        align: 'center',
-                        max: column - 24,
-                    });
+                    artwork(ctx, art.artists[i], cx - 116, top, 232, theme, artist.name[0] || '?', 'artist');
+                    badge(ctx, theme, cx + 82, top + 198, i + 1);
+                    write(
+                        ctx,
+                        cased(theme, artist.name),
+                        cx,
+                        top + 262,
+                        body(theme, {
+                            size: 40,
+                            color: theme.text,
+                            align: 'center',
+                            max: column - 24,
+                        })
+                    );
                 });
             },
         });
     if (picks.tracks && model.tracks.length)
         list.push({
             height: 34 + 40 + 236 + 28 + 54 + 26 + 42 + 10 + 36,
-            draw(ctx, y, theme, art) {
+            draw(ctx, y, art) {
                 kicker(ctx, 'On repeat', y, width, theme);
                 const top = y + 74;
                 columns(model.tracks.length, width).forEach((cx, i) => {
                     const track = model.tracks[i];
-                    artwork(ctx, art.tracks[i], cx - 118, top, 236, 18, theme, track.title[0] || '?');
+                    artwork(ctx, art.tracks[i], cx - 118, top, 236, theme, track.title[0] || '?', 'track');
                     const pill = top + 264;
                     ctx.beginPath();
-                    ctx.roundRect(cx - 118, pill, 236, 54, 27);
+                    ctx.roundRect(cx - 118, pill, 236, 54, Math.min(27, theme.tile));
                     ctx.fillStyle = theme.surface;
                     ctx.fill();
-                    write(ctx, track.streams, cx, pill + 13, {
-                        size: 28,
-                        weight: 600,
-                        color: theme.text,
-                        align: 'center',
-                        max: 210,
-                    });
-                    write(ctx, track.title, cx, pill + 80, {
-                        size: 38,
-                        weight: 600,
-                        color: theme.text,
-                        align: 'center',
-                        max: column - 24,
-                    });
-                    write(ctx, track.artist, cx, pill + 132, {
-                        size: 32,
-                        weight: 500,
-                        color: theme.muted,
-                        align: 'center',
-                        max: column - 24,
-                    });
+                    write(
+                        ctx,
+                        cased(theme, track.streams),
+                        cx,
+                        pill + 13,
+                        body(theme, {
+                            size: 28,
+                            color: theme.text,
+                            align: 'center',
+                            max: 210,
+                        })
+                    );
+                    write(
+                        ctx,
+                        cased(theme, track.title),
+                        cx,
+                        pill + 80,
+                        body(theme, {
+                            size: 38,
+                            color: theme.text,
+                            align: 'center',
+                            max: column - 24,
+                        })
+                    );
+                    write(
+                        ctx,
+                        cased(theme, track.artist),
+                        cx,
+                        pill + 132,
+                        body(theme, {
+                            size: 32,
+                            weight: theme.body.weight - 100,
+                            color: theme.muted,
+                            align: 'center',
+                            max: column - 24,
+                        })
+                    );
                 });
+            },
+        });
+    if (picks.clock)
+        list.push({
+            height: 34 + 40 + 170 + 18 + 30,
+            draw(ctx, y) {
+                kicker(ctx, 'When I listen', y, width, theme);
+                const top = y + 74,
+                    base = top + 170;
+                const gap = 10,
+                    bar = (inner - gap * 23) / 24;
+                const max = Math.max(1, ...model.hours);
+                const peak = model.hours.indexOf(Math.max(...model.hours));
+                model.hours.forEach((seconds, hour) => {
+                    const height = Math.max(8, (seconds / max) * 170);
+                    ctx.beginPath();
+                    ctx.roundRect(PAD + hour * (bar + gap), base - height, bar, height, Math.min(bar / 2, theme.tile));
+                    ctx.fillStyle = seconds && hour === peak ? theme.accent : theme.line;
+                    ctx.fill();
+                });
+                [0, 6, 12, 18].forEach((hour) =>
+                    write(
+                        ctx,
+                        cased(theme, hourLabel(hour)),
+                        PAD + hour * (bar + gap),
+                        base + 18,
+                        body(theme, {
+                            size: 26,
+                            color: theme.muted,
+                        })
+                    )
+                );
             },
         });
     if (picks.totals)
         list.push({
             height: 176,
-            draw(ctx, y, theme) {
+            draw(ctx, y) {
                 const gap = 24,
                     tile = (inner - gap * 2) / 3;
                 model.totals.forEach(([value, label], i) => {
                     const x = PAD + i * (tile + gap);
                     ctx.beginPath();
-                    ctx.roundRect(x, y, tile, 176, 30);
+                    ctx.roundRect(x, y, tile, 176, theme.tile);
                     ctx.fillStyle = theme.surface;
                     ctx.fill();
-                    write(ctx, value, x + tile / 2, y + 34, {
-                        size: 72,
-                        weight: 700,
-                        color: theme.text,
-                        align: 'center',
-                        max: tile - 32,
-                        tracking: -2,
-                    });
-                    write(ctx, label, x + tile / 2, y + 118, {
-                        size: 30,
-                        weight: 500,
-                        color: theme.muted,
-                        align: 'center',
-                    });
+                    write(
+                        ctx,
+                        value,
+                        x + tile / 2,
+                        y + 34,
+                        display(theme, {
+                            size: 72,
+                            color: theme.text,
+                            align: 'center',
+                            max: tile - 32,
+                            tracking: -2,
+                            fillStyle: theme.numberFill?.(ctx, x, y + 34, tile, 72),
+                        })
+                    );
+                    write(
+                        ctx,
+                        cased(theme, label),
+                        x + tile / 2,
+                        y + 118,
+                        body(theme, {
+                            size: 30,
+                            weight: theme.body.weight - 100,
+                            color: theme.muted,
+                            align: 'center',
+                        })
+                    );
                 });
             },
         });
@@ -389,9 +352,20 @@ function sections(model, picks, width) {
 function footer(ctx, model, picks, width, height, theme) {
     const y = height - 84 - 44;
     if (picks.handle && model.handle)
-        write(ctx, model.handle, PAD, y + 4, { size: 34, weight: 500, color: theme.muted, max: width / 2 - PAD });
+        write(
+            ctx,
+            model.handle,
+            PAD,
+            y + 4,
+            body(theme, {
+                size: 34,
+                weight: theme.body.weight - 100,
+                color: theme.muted,
+                max: width / 2 - PAD,
+            })
+        );
     // The Monochrome mark: two offset squares, then the wordmark.
-    ctx.font = `700 40px ${FONT}`;
+    ctx.font = `700 40px ${BRAND}`;
     const word = ctx.measureText('monochrome').width;
     const mark = width - PAD - word - 58;
     ctx.fillStyle = theme.text;
@@ -403,20 +377,22 @@ function footer(ctx, model, picks, width, height, theme) {
     write(ctx, 'monochrome', width - PAD, y + 2, {
         size: 40,
         weight: 700,
+        family: BRAND,
         color: theme.text,
         align: 'right',
         tracking: -1,
     });
 }
 
-let fontsReady;
+let switzer;
 export async function drawShareCard(canvas, model, picks) {
     const [width, height] = FORMATS[picks.format];
-    fontsReady ||= Promise.all(
-        ['500', '600', '700'].map((weight) => document.fonts.load(`${weight} 40px Switzer`))
-    ).catch(() => {});
-    const [, artists, tracks] = await Promise.all([
-        fontsReady,
+    switzer ||= Promise.all(['500', '600', '700'].map((weight) => document.fonts.load(`${weight} 40px Switzer`))).catch(
+        () => {}
+    );
+    const [, , artists, tracks] = await Promise.all([
+        switzer,
+        loadEditionFont(picks.style),
         Promise.all(model.artists.map((artist) => loadImage(artist.image))),
         Promise.all(model.tracks.map((track) => loadImage(track.image))),
     ]);
@@ -426,10 +402,12 @@ export async function drawShareCard(canvas, model, picks) {
     }
     const ctx = canvas.getContext('2d');
     const theme = themeFor(picks.style, model.colors);
+    ctx.save();
     theme.paint(ctx, width, height);
-    const parts = sections(model, picks, width);
+    ctx.restore();
+    const parts = sections(model, picks, width, theme);
     parts[0].measure(ctx);
-    // Sections share the space above the footer; gaps grow first, and only a crowded post scales down.
+    // Sections share the space above the footer; gaps grow first, and only a crowded card scales down.
     const top = picks.format === 'story' ? 150 : 100,
         bottom = height - 84 - 44 - 70;
     const natural = parts.reduce((sum, part) => sum + part.height, 0);
@@ -443,14 +421,22 @@ export async function drawShareCard(canvas, model, picks) {
     ctx.scale(scale, scale);
     ctx.translate(-width / 2, 0);
     for (const part of parts) {
-        part.draw(ctx, y, theme, { artists, tracks });
+        part.draw(ctx, y, { artists, tracks });
         y += part.height + gap;
     }
+    ctx.restore();
+    ctx.save();
+    theme.overlay?.(ctx, width, height, model);
     ctx.restore();
     footer(ctx, model, picks, width, height, theme);
 }
 
 // ---------- Sheet ----------
+
+// Edition swatches carry the edition's own scene, the same one its recap plays in.
+const scene = '<span class="stats-recap-scene" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
+const styleTile = (key, name) =>
+    `<button type="button" data-share-style="${key}" aria-pressed="false"><i class="stats-ed-swatch stats-ed-${key}">${EDITIONS[key] ? scene : ''}</i><span>${name}</span><b class="stats-share-lock" aria-hidden="true">${I_LOCK(13)}</b></button>`;
 
 let dialog;
 function sheet() {
@@ -470,12 +456,29 @@ function sheet() {
                         `<button type="button" data-share-format="${key}" aria-pressed="false">${name}<small>${ratio}</small></button>`
                 )
                 .join('')}</div></div>
-            <div class="stats-share-field"><span class="stats-share-label" id="stats-share-style">Style</span><div class="stats-share-styles" role="group" aria-labelledby="stats-share-style">${Object.entries(
-                STYLES
+            <div class="stats-share-field"><span class="stats-share-label" id="stats-share-style">Style</span>
+                <div class="stats-share-styles" role="group" aria-labelledby="stats-share-style">${Object.entries(
+                    CLASSICS
+                )
+                    .map(([key, name]) => styleTile(key, name))
+                    .join('')}</div>
+                ${['week', 'month']
+                    .map(
+                        (period) =>
+                            `<p class="stats-share-group" id="stats-share-${period}"><span>${period === 'week' ? 'Weekly' : 'Monthly'} editions</span><small data-share-owned="${period}"></small></p><div class="stats-share-styles" role="group" aria-labelledby="stats-share-${period}">${POOLS[
+                                period
+                            ]
+                                .map((key) => styleTile(key, EDITIONS[key].name))
+                                .join('')}</div>`
+                    )
+                    .join('')}
+            </div>
+            <div class="stats-share-field"><span class="stats-share-label" id="stats-share-headline">Big number</span><div class="stats-segments" role="group" aria-labelledby="stats-share-headline">${Object.entries(
+                HEADLINES
             )
                 .map(
                     ([key, name]) =>
-                        `<button type="button" data-share-style="${key}" aria-pressed="false"><i class="is-${key}"></i><span>${name}</span></button>`
+                        `<button type="button" data-share-headline="${key}" aria-pressed="false">${name}</button>`
                 )
                 .join('')}</div></div>
             <div class="stats-share-field"><span class="stats-share-label" id="stats-share-parts">Show</span><div class="stats-share-parts" role="group" aria-labelledby="stats-share-parts">${Object.entries(
@@ -495,6 +498,7 @@ function sheet() {
     return dialog;
 }
 
+// context.edition preselects a collected edition, as the end of a recap does.
 export function openStatsShare(context) {
     const root = sheet();
     const canvas = root.querySelector('canvas');
@@ -503,6 +507,8 @@ export function openStatsShare(context) {
     const controller = new AbortController();
     const { signal } = controller;
     const fileName = `monochrome-${context.period}-${context.anchor}.png`;
+    let owned = new Set(context.edition ? [context.edition] : []);
+    if (context.edition) options.style = context.edition;
     let image;
     let token = 0;
     let statusTimer;
@@ -511,6 +517,7 @@ export function openStatsShare(context) {
         clearTimeout(statusTimer);
         statusTimer = setTimeout(() => (status.textContent = ''), 4000);
     };
+    const available = (style) => Boolean(CLASSICS[style] || owned.has(style));
     // The image is prepared after every change, so Share runs inside the click's activation.
     const redraw = () => {
         const current = ++token;
@@ -531,8 +538,23 @@ export function openStatsShare(context) {
     const sync = () => {
         for (const button of root.querySelectorAll('[data-share-format]'))
             button.setAttribute('aria-pressed', String(button.dataset.shareFormat === options.format));
-        for (const button of root.querySelectorAll('[data-share-style]'))
-            button.setAttribute('aria-pressed', String(button.dataset.shareStyle === options.style));
+        for (const button of root.querySelectorAll('[data-share-headline]'))
+            button.setAttribute('aria-pressed', String(button.dataset.shareHeadline === options.headline));
+        for (const button of root.querySelectorAll('[data-share-style]')) {
+            const key = button.dataset.shareStyle;
+            const locked = !available(key);
+            button.setAttribute('aria-pressed', String(key === options.style));
+            button.classList.toggle('is-locked', locked);
+            if (locked) button.setAttribute('aria-disabled', 'true');
+            else button.removeAttribute('aria-disabled');
+            button.title = locked
+                ? `Find ${EDITIONS[key].name} in a ${EDITIONS[key].period === 'week' ? 'weekly' : 'monthly'} recap to unlock it`
+                : '';
+        }
+        for (const counter of root.querySelectorAll('[data-share-owned]')) {
+            const pool = POOLS[counter.dataset.shareOwned];
+            counter.textContent = `${pool.filter((key) => owned.has(key)).length} of ${pool.length} collected`;
+        }
         for (const input of root.querySelectorAll('[data-share-part]'))
             input.checked = Boolean(options[input.dataset.sharePart]);
         root.querySelector('[data-share-part="handle"]').closest('label').hidden = !model.handle;
@@ -547,16 +569,28 @@ export function openStatsShare(context) {
     const probe = typeof File === 'function' ? new File([''], 'probe.png', { type: 'image/png' }) : null;
     root.querySelector('[data-share-action="share"]').hidden = !(probe && navigator.canShare?.({ files: [probe] }));
     root.querySelector('[data-share-action="copy"]').hidden = !(window.ClipboardItem && navigator.clipboard?.write);
+    root.querySelector('[data-share-action="data"]').hidden = !context.exportData;
     root.querySelector('.stats-share-period').textContent = model.kicker;
     canvas.setAttribute(
         'aria-label',
-        `${model.kicker}: ${model.minutes} minutes of music. ${model.artists.length ? `Top artists ${model.artists.map((a) => a.name).join(', ')}.` : ''}`
+        `${model.kicker}: ${model.headlines.minutes[0]} minutes of music. ${model.artists.length ? `Top artists ${model.artists.map((a) => a.name).join(', ')}.` : ''}`
     );
     root.style.setProperty('--share-accent', css(lift(rgb(context.colors[0]))));
     context.colors.forEach((color, i) => root.style.setProperty(`--share-c${i}`, color));
     status.textContent = '';
+    // A remembered edition from another account falls back until the collection says it is owned.
+    const remembered = options.style;
+    if (!available(options.style)) options.style = 'aura';
     sync();
     redraw();
+    void loadCollection().then((state) => {
+        if (signal.aborted) return;
+        owned = new Set([...owned, ...Object.keys(state.editions)]);
+        const restore = options.style === 'aura' && remembered !== 'aura' && available(remembered);
+        if (restore) options.style = remembered;
+        sync();
+        if (restore) redraw();
+    });
 
     const close = () => {
         if (!root.open || root.classList.contains('is-closing')) return;
@@ -572,10 +606,16 @@ export function openStatsShare(context) {
         'click',
         async (event) => {
             if (event.target === root || event.target.closest('[data-share-close]')) return close();
-            const choice = event.target.closest('[data-share-format], [data-share-style]');
+            const choice = event.target.closest('[data-share-format], [data-share-style], [data-share-headline]');
             if (choice) {
+                const style = choice.dataset.shareStyle;
+                if (style && !available(style)) {
+                    say(choice.title);
+                    return;
+                }
                 if (choice.dataset.shareFormat) options.format = choice.dataset.shareFormat;
-                else options.style = choice.dataset.shareStyle;
+                else if (choice.dataset.shareHeadline) options.headline = choice.dataset.shareHeadline;
+                else options.style = style;
                 sync();
                 redraw();
                 return;
