@@ -51,13 +51,14 @@ export class SpicyDynamicBackground {
         this.timeDomainData = null;
         this.active = true;
         this.keepAnimating = false;
+        this.resizeTimer = null;
         this.onPlay = () => {
             if (this.active && this.root.classList.contains('has-kawarp-background')) this.kawarp?.start?.();
             this.syncMotion();
         };
         this.onPause = () => this.syncMotion();
         this.resizeObserver =
-            typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => this.resizeKawarp());
+            typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => this.scheduleResize());
         this.resizeObserver?.observe(root);
     }
 
@@ -69,21 +70,40 @@ export class SpicyDynamicBackground {
         return this.kawarp;
     }
 
+    scheduleResize() {
+        if (!this.kawarp || this.disposed) return;
+        window.clearTimeout(this.resizeTimer);
+        // CSS stretches the live frame during a drag; avoid reallocating GPU buffers at every pixel.
+        this.resizeTimer = window.setTimeout(() => {
+            this.resizeTimer = null;
+            this.resizeKawarp();
+        }, 120);
+        this.copyForeground();
+    }
+
     resizeKawarp() {
-        if (!this.kawarp) return;
+        if (!this.kawarp || this.disposed) return;
         const ratio = window.devicePixelRatio || 1;
         const width = Math.max(1, Math.round(this.root.clientWidth * ratio));
         const height = Math.max(1, Math.round(this.root.clientHeight * ratio));
+        if (this.canvas.width === width && this.canvas.height === height) return;
         if (this.canvas.width !== width) this.canvas.width = width;
         if (this.canvas.height !== height) this.canvas.height = height;
         this.kawarp.resize?.();
-        if (!this.kawarp.isPlaying) this.kawarp.renderFrame?.();
+        // Changing either canvas dimension clears it, even while its animation loop is running.
+        this.kawarp.renderFrame?.();
         this.copyForeground();
     }
 
     // Mirror the actual WebGL frame above the content, without a second renderer or source.
     copyForeground() {
-        if (!this.foregroundContext || this.disposed || !this.root.classList.contains('has-kawarp-background')) return;
+        if (
+            !this.foregroundContext ||
+            this.disposed ||
+            (!this.foregroundActive && performance.now() > this.foregroundUntil) ||
+            !this.root.classList.contains('has-kawarp-background')
+        )
+            return;
         const height = Math.max(
             1,
             Math.round((this.canvas.height * this.foreground.clientHeight) / Math.max(1, this.root.clientHeight))
@@ -338,6 +358,8 @@ export class SpicyDynamicBackground {
 
     dispose() {
         this.disposed = true;
+        window.clearTimeout(this.resizeTimer);
+        this.resizeTimer = null;
         this.generation += 1;
         this.loadingSource = '';
         window.cancelAnimationFrame?.(this.analysisFrame);

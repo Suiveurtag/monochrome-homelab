@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import { page } from 'vitest/browser';
 
 vi.mock('./lyrics.js', () => ({
     clearLyricsContainerSync: vi.fn(),
@@ -68,6 +69,22 @@ const spicyMask = (stop) =>
     `linear-gradient(rgba(0, 0, 0, 0) -5%, rgb(0, 0, 0) 15%, rgb(0, 0, 0) ${stop}%, rgba(0, 0, 0, 0) 100%)`;
 
 describe('Now Playing Canvas compositing', () => {
+    test('follows the resize handle without restarting the drawer grid transition', async () => {
+        const viewport = [window.innerWidth, window.innerHeight];
+        await page.viewport(1440, 960);
+        panelFixture();
+        const layout = document.createElement('div');
+        layout.className = 'app-container';
+        document.body.append(layout);
+        document.body.classList.add('now-playing-panel-resizing');
+        try {
+            expect(getComputedStyle(layout).transitionDuration).toBe('0s');
+        } finally {
+            document.body.classList.remove('now-playing-panel-resizing');
+            await page.viewport(...viewport);
+        }
+    });
+
     test('uses the complete upstream mask, including its upper blend', () => {
         const { video } = panelFixture();
         expect(getComputedStyle(video).maskImage).toBe(spicyMask(25));
@@ -123,7 +140,8 @@ describe('Now Playing Canvas compositing', () => {
         expect(panel.root.classList.contains('is-scrolled')).toBe(true);
         const style = getComputedStyle(panel.viewport);
         expect(style.maskImage).not.toContain('rgba(0, 0, 0, 0)');
-        expect(style.top).toBe('32px');
+        // Moving the viewport exposes a hard video edge before the foreground fades in.
+        expect(style.top).toBe('0px');
         expect(style.backdropFilter).toBe('none');
         panel.content.scrollTop = 0;
         panel.syncScrolled();

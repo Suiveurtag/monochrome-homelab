@@ -15,14 +15,6 @@
     initial-value: 25%;
 }
 
-/* The scroller fades in from its top edge and gives up some height while scrolled, as in Spotify's
-   Now Playing view (Spicy Lyrics default.scss: --sl_rsb-wrapperFade and --push). */
-@property --now-playing-push {
-    syntax: '<length>';
-    inherits: false;
-    initial-value: 0px;
-}
-
 .now-playing-panel {
     position: fixed;
     z-index: 2040;
@@ -111,21 +103,14 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 }
 
 .now-playing-panel-viewport {
-    --now-playing-push: 0px;
-
     position: relative;
     z-index: 1;
-    top: var(--now-playing-push);
+    top: 0;
     width: 100%;
-    height: calc(100% - var(--now-playing-push));
+    height: 100%;
     overflow: hidden;
     isolation: isolate;
     mask-image: linear-gradient(black, black);
-    transition: --now-playing-push 500ms ease;
-}
-
-.now-playing-panel.is-scrolled .now-playing-panel-viewport {
-    --now-playing-push: 2rem;
 }
 
 /* The actual background frame paints over every card, while the fixed header remains above it. */
@@ -1206,6 +1191,10 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 body.now-playing-panel-resizing {
     cursor: ew-resize;
     user-select: none;
+}
+
+body.now-playing-panel-resizing .app-container {
+    transition: none;
 }
 
 .now-playing-panel.lyrics-transitioning .now-playing-panel-body > :not(.now-playing-panel-lyrics) {

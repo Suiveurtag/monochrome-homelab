@@ -216,11 +216,52 @@ describe('Spicy dynamic background', () => {
 
         controller.kawarp.renderFrame.mockClear();
         controller.kawarp.resize.mockClear();
+        controller.root.style.width = '460px';
         controller.resizeKawarp();
 
         expect(controller.kawarp.resize).toHaveBeenCalledOnce();
         expect(controller.kawarp.renderFrame).toHaveBeenCalledOnce();
         controller.dispose();
+    });
+
+    test('keeps the animated frame during a resize burst and redraws once when it settles', async () => {
+        const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
+        const host = document.createElement('div');
+        document.body.append(host);
+        const controller = mountSpicyDynamicBackground(host);
+        await controller.setSource('/covers/first.jpg');
+        const kawarp = controller.kawarp;
+        kawarp.isPlaying = true;
+        const context = controller.canvas.getContext('2d');
+        const paint = () => {
+            context.fillStyle = 'rgb(36, 87, 143)';
+            context.fillRect(0, 0, controller.canvas.width, controller.canvas.height);
+        };
+        paint();
+        kawarp.renderFrame.mockImplementation(paint);
+        kawarp.renderFrame.mockClear();
+        kawarp.resize.mockClear();
+        const initialWidth = controller.canvas.width;
+        vi.useFakeTimers();
+        try {
+            for (const width of [440, 480, 520]) {
+                controller.root.style.width = `${width}px`;
+                controller.scheduleResize();
+                await vi.advanceTimersByTimeAsync(30);
+                expect(controller.canvas.width).toBe(initialWidth);
+                expect([...context.getImageData(20, 20, 1, 1).data]).toEqual([36, 87, 143, 255]);
+            }
+            await vi.advanceTimersByTimeAsync(150);
+            expect(controller.canvas.width).toBe(Math.round(520 * window.devicePixelRatio));
+            expect(kawarp.resize).toHaveBeenCalledOnce();
+            expect(kawarp.renderFrame).toHaveBeenCalledOnce();
+            expect([...context.getImageData(20, 20, 1, 1).data]).toEqual([36, 87, 143, 255]);
+            controller.resizeKawarp();
+            expect(kawarp.resize).toHaveBeenCalledOnce();
+        } finally {
+            controller.dispose();
+            vi.useRealTimers();
+        }
     });
 
     test('rejects a stale load before replacing the current artwork', async () => {
