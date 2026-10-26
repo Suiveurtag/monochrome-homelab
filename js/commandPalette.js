@@ -440,6 +440,14 @@ class CommandPalette {
                 action: () => this.setTheme('monochrome'),
             },
             {
+                id: 'theme-cover',
+                group: 'Theme',
+                icon: 'disc',
+                label: 'Theme: Cover',
+                keywords: ['theme', 'cover', 'album', 'artwork', 'background', 'blur'],
+                action: () => this.setTheme('cover'),
+            },
+            {
                 id: 'theme-dark',
                 group: 'Theme',
                 icon: 'moon',

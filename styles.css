@@ -99,6 +99,9 @@
     --radius-2xl: 24px;
     --radius-full: 9999px;
     --radius: var(--radius-md);
+    --shell-gap: 8px;
+    --shell-radius: var(--radius);
+    --shell-border: color-mix(in srgb, var(--foreground) 8%, transparent);
     --player-bar-height-desktop: 90px;
     --player-bar-height-mobile: 130px;
     --sidebar-width: 240px;
@@ -202,6 +205,30 @@
     --highlight-rgb: 245, 245, 245;
     --active-highlight: var(--highlight);
     --explicit-badge: #f5f5f5;
+}
+
+/* Black, with the playing cover blurred behind frosted shell blocks (see body::before below). */
+:root[data-theme='cover'] {
+    color-scheme: dark;
+
+    --background: #0a0a0a;
+    --foreground: #f5f5f5;
+    --card: #141414;
+    --card-foreground: #f5f5f5;
+    --primary: #f5f5f5;
+    --primary-foreground: #0a0a0a;
+    --secondary: #1f1f1f;
+    --secondary-foreground: #e0e0e0;
+    --muted: #1f1f1f;
+    --muted-foreground: #b4b4b4;
+    --border: #2a2a2a;
+    --input: #1f1f1f;
+    --ring: #f5f5f5;
+    --highlight: #f5f5f5;
+    --highlight-rgb: 245, 245, 245;
+    --active-highlight: var(--highlight);
+    --explicit-badge: #f5f5f5;
+    --shell-border: rgb(255 255 255 / 0.12);
 }
 
 :root[data-theme='dark'] {
@@ -2272,9 +2299,50 @@ body.site-intro-active {
     padding: var(--spacing-xl);
     scroll-behavior: smooth;
     position: relative;
+}
 
-    /* Context for background */
-    padding-bottom: 160px !important;
+/* Desktop shell: sidebar, content, Now Playing and player are separate blocks on a darker gutter. */
+@media (min-width: 769px) {
+    .app-container {
+        gap: var(--shell-gap);
+        padding: var(--shell-gap);
+        background-color: color-mix(in srgb, var(--background) 85%, #000);
+    }
+
+    .sidebar,
+    .main-content {
+        background-color: var(--background);
+        border: 1px solid var(--shell-border);
+        border-radius: var(--shell-radius);
+    }
+
+    :root[data-theme='cover'] .app-container {
+        background-color: transparent;
+    }
+
+    :root[data-theme='cover'] .sidebar,
+    :root[data-theme='cover'] .main-content,
+    :root[data-theme='cover'] .now-playing-bar {
+        background-color: rgb(10 10 10 / 0.5);
+        backdrop-filter: blur(28px) saturate(1.2);
+    }
+
+    :root[data-theme='cover'] .sidebar-nav-bottom {
+        background: transparent;
+    }
+}
+
+/* --now-playing-cover is set by UIRenderer.setCurrentTrack. */
+:root[data-theme='cover'] body::before {
+    content: '';
+    position: fixed;
+    z-index: -1;
+    inset: 0;
+    background: var(--now-playing-cover, none) center / cover no-repeat;
+    filter: blur(24px) brightness(0.6);
+    transform: scale(1.1);
+    transition: background-image 600ms ease;
+    pointer-events: none;
 }
 
 .server-disruption-sidebar {
@@ -2354,15 +2422,8 @@ body.site-intro-active {
     align-items: center;
     gap: var(--spacing-sm);
     z-index: 2100;
-
-    /* Floating bar overrides */
-    width: calc(96% - 190px) !important;
-    left: calc(190px + 2%);
-    bottom: max(15px, env(safe-area-inset-bottom)) !important;
-    border-radius: var(--radius);
-
-    /* Standardized radius */
-    position: fixed !important;
+    border-radius: var(--shell-radius);
+    position: relative;
     background-color: color-mix(in srgb, var(--card) 85%, transparent);
     backdrop-filter: blur(20px);
     border: 1px solid var(--border);
@@ -12902,11 +12963,6 @@ img[src=''] {
     .main-content {
         padding: var(--spacing-lg);
     }
-
-    .now-playing-bar {
-        width: calc(96% - 160px) !important;
-        left: calc(160px + 2%);
-    }
 }
 
 @media (max-width: 768px) {
@@ -12964,6 +13020,7 @@ img[src=''] {
 
     .main-content {
         padding: var(--spacing-md);
+        padding-bottom: 160px !important;
         grid-area: main;
         overflow-y: visible;
         overflow-x: hidden;
@@ -13642,15 +13699,12 @@ img[src=''] {
     }
 }
 
-body:has(#fullscreen-cover-overlay:not([style*='display: none'])) .now-playing-bar {
-    width: 96% !important;
-    left: 2% !important;
-}
-
 @media (max-width: 768px) {
     .now-playing-bar {
+        position: fixed !important;
         width: 96% !important;
         left: 2%;
+        bottom: max(15px, env(safe-area-inset-bottom)) !important;
     }
 }
 
@@ -13807,11 +13861,6 @@ body:has(#fullscreen-cover-overlay:not([style*='display: none'])) .now-playing-b
 
     body.sidebar-collapsed #pinned-items-list .nav-item a {
         justify-content: center;
-    }
-
-    body.sidebar-collapsed .now-playing-bar {
-        width: calc(96% - 80px) !important;
-        left: calc(80px + 2%);
     }
 
     body.sidebar-collapsed #sidebar-toggle {

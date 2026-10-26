@@ -5,7 +5,7 @@
     --now-playing-panel-width: 420px;
     --now-playing-panel-gutter: 16px;
     --now-playing-panel-rail: 42px;
-    --now-playing-player-clearance: calc(var(--player-bar-height-desktop) + 30px);
+    --now-playing-player-clearance: calc(var(--player-bar-height-desktop) + 2 * var(--shell-gap));
 }
 
 /* Animatable Canvas reveal and scroll fade, as in upstream Spicy Lyrics (spicy-dynamic-bg.css). */
@@ -18,13 +18,14 @@
 .now-playing-panel {
     position: fixed;
     z-index: 2040;
-    top: 8px;
-    right: 8px;
+    top: var(--shell-gap);
+    right: var(--shell-gap);
     bottom: var(--now-playing-player-clearance);
-    width: min(var(--now-playing-panel-width), calc(100vw - 16px));
+    width: min(var(--now-playing-panel-width), calc(100vw - 2 * var(--shell-gap)));
     min-width: 0;
     overflow: hidden;
-    border-radius: 10px;
+    border-radius: var(--shell-radius);
+    border: 1px solid var(--shell-border);
     background: #0c0c0c;
     color: #fff;
     box-shadow: 0 10px 36px rgb(0 0 0 / 0.36);
@@ -1122,8 +1123,8 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 .now-playing-panel-reopen {
     position: fixed;
     z-index: 2042;
-    top: 8px;
-    right: 8px;
+    top: var(--shell-gap);
+    right: var(--shell-gap);
     bottom: var(--now-playing-player-clearance);
     display: grid;
     width: var(--now-playing-panel-rail);
@@ -1408,19 +1409,19 @@ body.now-playing-panel-resizing .app-container {
     .now-playing-panel {
         position: relative;
         grid-area: nowplaying;
-        top: 8px;
+        top: 0;
         right: auto;
         bottom: auto;
-        width: calc(100% - 8px);
-        height: calc(100dvh - var(--now-playing-player-clearance) - 8px);
+        width: auto;
+        height: auto;
     }
 
     .now-playing-panel.is-closed {
         position: fixed;
-        top: 8px;
-        right: 8px;
+        top: var(--shell-gap);
+        right: var(--shell-gap);
         bottom: var(--now-playing-player-clearance);
-        width: calc(var(--now-playing-panel-width) - 8px);
+        width: var(--now-playing-panel-width);
         height: auto;
         transform: translateX(calc(100% - var(--now-playing-panel-rail)));
     }

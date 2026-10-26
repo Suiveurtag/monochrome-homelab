@@ -563,6 +563,11 @@ export class UIRenderer {
 
     async setCurrentTrack(track) {
         this.currentTrack = track;
+        const cover = track && getTrackDisplayAlbum(track)?.cover;
+        document.documentElement.style.setProperty(
+            '--now-playing-cover',
+            cover ? `url("${this.api.getCoverUrl(cover, '640')}")` : 'none'
+        );
         await this.updateGlobalTheme();
 
         const likeBtn = document.getElementById('now-playing-like-btn');
