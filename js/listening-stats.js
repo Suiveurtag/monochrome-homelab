@@ -573,6 +573,37 @@ class ListeningStats {
                   ? `Peak hour · ${hourLabel(peak)}`
                   : 'Your rhythm will appear here';
     }
+    // Each click adds its own glow and hop, so overlapping clicks all play.
+    pulseHour(hour) {
+        for (const bar of this.root.querySelectorAll('[data-hour]')) {
+            const distance = Math.abs(Number(bar.dataset.hour) - hour);
+            if (distance > 4) continue;
+            const delay = distance * 70,
+                column = bar.querySelector('i'),
+                glow = document.createElement('b');
+            glow.className = 'stats-hour-glow';
+            column.prepend(glow);
+            // The clicked bar gets a short, small glow pop and no hop.
+            glow.animate(
+                [
+                    { opacity: 0.6, transform: 'scale(1, 1)' },
+                    { opacity: 0, transform: distance ? 'scale(1.35, 1.12)' : 'scale(1.12, 1.04)' },
+                ],
+                { duration: distance ? 1000 : 500, delay, easing: 'ease-out' }
+            ).onfinish = () => glow.remove();
+            if (!distance) continue;
+            // composite: 'add' stacks this hop on top of any hop still running.
+            column.animate(
+                [
+                    { transform: 'translateY(0)' },
+                    { transform: 'translateY(-3px)', offset: 0.35 },
+                    { transform: 'translateY(0.5px)', offset: 0.7 },
+                    { transform: 'translateY(0)' },
+                ],
+                { duration: 700, delay, easing: 'ease-out', composite: 'add' }
+            );
+        }
+    }
     highlightSlice(slice) {
         const rotation = this.root.querySelector('.stats-rotation');
         if (!rotation) return;
@@ -787,7 +818,10 @@ class ListeningStats {
         }
         syncStatsSegments(this.root);
         if (button.dataset.chartPoint !== undefined) this.showPoint(Number(button.dataset.chartPoint));
-        if (button.dataset.hour !== undefined) this.showHour(Number(button.dataset.hour));
+        if (button.dataset.hour !== undefined) {
+            this.showHour(Number(button.dataset.hour));
+            this.pulseHour(Number(button.dataset.hour));
+        }
         if (button.dataset.playTrack) {
             button.disabled = true;
             try {

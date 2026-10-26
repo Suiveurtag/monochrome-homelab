@@ -89,7 +89,7 @@
     outline-offset: 3px;
 }
 
-#page-stats button:not(.stats-cover-card):active:not(:disabled) {
+#page-stats button:not(.stats-cover-card, .stats-hour):active:not(:disabled) {
     transform: scale(0.96);
 }
 
@@ -1546,6 +1546,24 @@
     opacity: 1;
     filter: brightness(1.2);
     box-shadow: 0 0 16px color-mix(in srgb, var(--stats-tone) 70%, transparent);
+}
+
+/* Press only squeezes the bar column, not its hour label. */
+.stats-hour:active:not(:disabled) i {
+    transform: scale(0.96);
+}
+
+/* Glow zone behind the bars next to a clicked hour; pulseHour adds one per click and removes it when done. */
+.stats-hour-glow {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: max(3px, calc(var(--stats-bar-ratio) * 100%));
+    border-radius: 3px;
+    background: var(--stats-tone);
+    opacity: 0;
+    pointer-events: none;
 }
 
 .stats-hour small {
