@@ -7,13 +7,6 @@
     --now-playing-player-clearance: calc(var(--player-bar-height-desktop) + 30px);
 }
 
-/* Matches the animatable Canvas reveal used by upstream Spicy Lyrics. */
-@property --sl-videocanvas-mask-stop {
-    syntax: '<percentage>';
-    inherits: false;
-    initial-value: 80%;
-}
-
 .now-playing-panel {
     position: fixed;
     z-index: 2040;
@@ -396,49 +389,49 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     object-fit: cover;
 }
 
+/* Poster and Canvas share one geometry, so a pause is a plain crossfade between them. The mask
+   melts the artwork into the fluid background with a cosine ease instead of a linear ramp. */
 .now-playing-panel-body.has-video-artwork
     .now-playing-panel-media
     :is(.now-playing-panel-poster, .now-playing-panel-canvas) {
-    --sl-videocanvas-mask-stop: 80%;
-
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     object-position: center center;
-    filter: brightness(0.65);
-    opacity: 0.95;
+    filter: brightness(0.68) saturate(1.3);
     mask-image: linear-gradient(
         to bottom,
-        transparent -5%,
-        black 15%,
-        black var(--sl-videocanvas-mask-stop),
+        transparent 0%,
+        rgb(0 0 0 / 0.06) 4%,
+        rgb(0 0 0 / 0.22) 9%,
+        rgb(0 0 0 / 0.55) 15%,
+        rgb(0 0 0 / 0.86) 21%,
+        black 27%,
+        black 58%,
+        rgb(0 0 0 / 0.976) 62.2%,
+        rgb(0 0 0 / 0.905) 66.4%,
+        rgb(0 0 0 / 0.794) 70.6%,
+        rgb(0 0 0 / 0.655) 74.8%,
+        rgb(0 0 0 / 0.5) 79%,
+        rgb(0 0 0 / 0.345) 83.2%,
+        rgb(0 0 0 / 0.206) 87.4%,
+        rgb(0 0 0 / 0.095) 91.6%,
+        rgb(0 0 0 / 0.024) 95.8%,
         transparent 100%
     );
     transition:
-        --sl-videocanvas-mask-stop 1800ms cubic-bezier(0.16, 1, 0.3, 1),
         opacity 900ms cubic-bezier(0.16, 1, 0.3, 1),
         filter 500ms ease;
 }
 
-.now-playing-panel-body.has-video-artwork.is-canvas-cover-overlay-disabled
-    .now-playing-panel-media
-    .now-playing-panel-canvas {
-    filter: none;
-    opacity: 1;
-}
-
 .now-playing-panel-canvas {
-    --sl-videocanvas-mask-stop: 25%;
-
     z-index: 1;
     opacity: 0;
 }
 
 .now-playing-panel-media.is-canvas-playing .now-playing-panel-canvas {
-    --sl-videocanvas-mask-stop: 80%;
-
-    opacity: 0.95;
+    opacity: 1;
 }
 
 .now-playing-panel-body.has-video-artwork .now-playing-panel-media.is-canvas-playing .now-playing-panel-poster {
@@ -449,8 +442,24 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     .now-playing-panel-body.has-video-artwork
         .now-playing-panel-media:hover
         :is(.now-playing-panel-poster, .now-playing-panel-canvas) {
-        filter: brightness(0.9);
+        filter: brightness(0.9) saturate(1.3);
     }
+}
+
+/* Over Canvas the header scrim only has to keep the controls legible, so it fades out smoothly. */
+.now-playing-panel:has(.has-video-artwork) .now-playing-panel-header::before {
+    height: 96px;
+    background: linear-gradient(
+        180deg,
+        rgb(0 0 0 / 0.34) 0%,
+        rgb(0 0 0 / 0.31) 15%,
+        rgb(0 0 0 / 0.24) 30%,
+        rgb(0 0 0 / 0.15) 48%,
+        rgb(0 0 0 / 0.07) 66%,
+        rgb(0 0 0 / 0.02) 84%,
+        transparent 100%
+    );
+    mask-image: none;
 }
 
 .now-playing-panel-metadata {

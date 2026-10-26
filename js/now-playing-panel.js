@@ -164,7 +164,8 @@ export class NowPlayingPanel {
         this.lyricsTransitionToken = 0;
         this.canvasExpanded = false;
         this.canvasEnabled = canvasSettings.isEnabled();
-        this.canvasCoverOverlayEnabled = canvasSettings.isCoverOverlayEnabled();
+        this.canvasBackgroundSource = canvasSettings.getBackgroundSource();
+        this.canvasPauseBehavior = canvasSettings.getPauseBehavior();
         this.scrollByTrack = new Map();
         this.activeView = 'now-playing';
         this.queueView = 'up-next';
@@ -413,9 +414,13 @@ export class NowPlayingPanel {
             this.canvasExpanded = false;
             void this.render({ preserveScroll: true });
         };
-        this.boundCanvasCoverOverlayPreferenceChanged = (event) => {
-            this.canvasCoverOverlayEnabled = event.detail?.enabled ?? canvasSettings.isCoverOverlayEnabled();
-            void this.render({ preserveScroll: true });
+        this.boundCanvasBackgroundSourceChanged = () => {
+            this.canvasBackgroundSource = canvasSettings.getBackgroundSource();
+            this.syncCanvasPlayback();
+        };
+        this.boundCanvasPauseBehaviorChanged = () => {
+            this.canvasPauseBehavior = canvasSettings.getPauseBehavior();
+            this.syncCanvasPlayback();
         };
         this.init();
     }
@@ -481,10 +486,8 @@ export class NowPlayingPanel {
         window.addEventListener('player-track-changed', this.boundTrackChanged);
         window.addEventListener('player-canvas-changed', this.boundCanvasChanged);
         window.addEventListener('canvas-playback-preference-changed', this.boundCanvasPreferenceChanged);
-        window.addEventListener(
-            'canvas-cover-overlay-preference-changed',
-            this.boundCanvasCoverOverlayPreferenceChanged
-        );
+        window.addEventListener('canvas-background-source-changed', this.boundCanvasBackgroundSourceChanged);
+        window.addEventListener('canvas-pause-behavior-changed', this.boundCanvasPauseBehaviorChanged);
         window.addEventListener('player-queue-changed', this.boundQueueChanged);
         window.addEventListener('player-repeat-changed', this.boundRepeatChanged);
         window.addEventListener('autoplay-state-changed', this.boundTransitionChanged);
@@ -1276,7 +1279,7 @@ export class NowPlayingPanel {
                     <button type="button" class="now-playing-panel-icon now-playing-panel-fullscreen" aria-label="Open fullscreen player">${icon('maximize-2')}</button>
                 </div>
             </header>
-            <div class="now-playing-panel-body${canvasLayout ? ' has-video-artwork' : ''}${canvasLayout && !this.canvasCoverOverlayEnabled ? ' is-canvas-cover-overlay-disabled' : ''}${this.canvasExpanded ? ' is-canvas-expanded' : ''}${model.empty ? ' is-empty' : ''}">
+            <div class="now-playing-panel-body${canvasLayout ? ' has-video-artwork' : ''}${this.canvasExpanded ? ' is-canvas-expanded' : ''}${model.empty ? ' is-empty' : ''}">
                 <div class="now-playing-panel-media-row">
                     <${canvasLayout ? `button type="button" data-canvas-toggle aria-expanded="${String(this.canvasExpanded)}"` : 'div'} class="now-playing-panel-media" aria-label="${escapeHtml(canvasLayout ? `${this.canvasExpanded ? 'Collapse' : 'Expand'} ${model.title} Canvas artwork` : `${model.title} artwork`)}">
                         <img class="now-playing-panel-poster" src="${escapeHtml(model.artwork.staticSrc)}" alt="" fetchpriority="high" />
@@ -2627,7 +2630,6 @@ export class NowPlayingPanel {
                 this.canvasLoadTimer = null;
                 this.canvasLoadRetryCount = 0;
                 video.dataset.canvasReady = 'true';
-                this.background?.followVideo?.(video);
                 this.syncCanvasPlayback();
             });
         };
@@ -2762,28 +2764,42 @@ export class NowPlayingPanel {
             'is-canvas-ready',
             this.canvasEnabled && video.dataset.canvasReady === 'true' && !reducedMotion
         );
-        stage.classList.toggle(
-            'is-canvas-playing',
-            this.canvasEnabled && video.dataset.canvasReady === 'true' && !reducedMotion && !video.paused
-        );
+        const ready = this.canvasEnabled && video.dataset.canvasReady === 'true' && !reducedMotion;
+        // A frozen frame stays on screen only when the user chose to pause Canvas; otherwise the cover returns.
+        const keepFrame = ready && this.canvasPauseBehavior === 'pause';
+        stage.classList.toggle('is-canvas-playing', keepFrame || (ready && shouldPlay && !video.paused));
         if (shouldPlay) {
             void video
                 .play()
                 .then(() => {
-                    if (video === this.canvasMedia && video.isConnected) stage.classList.add('is-canvas-playing');
+                    if (video === this.canvasMedia && video.isConnected) {
+                        stage.classList.toggle('is-canvas-playing', ready);
+                        this.syncCanvasBackground();
+                    }
                 })
                 .catch(() => this.boundCanvasPlaybackInterrupted());
         } else {
             video.pause();
-            stage.classList.remove('is-canvas-playing');
+            stage.classList.toggle('is-canvas-playing', keepFrame);
         }
+        this.syncCanvasBackground();
+    }
+
+    // The fluid background follows Canvas only while Canvas is what the panel shows.
+    syncCanvasBackground() {
+        const video = this.canvasMedia;
+        const shown = Boolean(this.canvasStage?.classList.contains('is-canvas-playing'));
+        const follow = shown && this.canvasBackgroundSource === 'canvas';
+        this.background?.followVideo?.(follow ? video : null);
+        this.background?.setKeepAnimating?.(follow && this.canvasPauseBehavior === 'play');
     }
 
     shouldCanvasPlay() {
         this.syncPlaybackElement();
         const audioPlaying = Boolean(this.canvasPlaybackElement && !this.canvasPlaybackElement.paused);
         const visible = this.isOpen && !this.fullscreenVisible && !this.expandedLyrics && !document.hidden;
-        return this.canvasEnabled && visible && audioPlaying && !this.reducedMotionMedia.matches;
+        const mayPlay = audioPlaying || this.canvasPauseBehavior === 'play';
+        return this.canvasEnabled && visible && mayPlay && !this.reducedMotionMedia.matches;
     }
 
     cleanupMedia() {
@@ -3365,10 +3381,8 @@ export class NowPlayingPanel {
         window.removeEventListener('player-track-changed', this.boundTrackChanged);
         window.removeEventListener('player-canvas-changed', this.boundCanvasChanged);
         window.removeEventListener('canvas-playback-preference-changed', this.boundCanvasPreferenceChanged);
-        window.removeEventListener(
-            'canvas-cover-overlay-preference-changed',
-            this.boundCanvasCoverOverlayPreferenceChanged
-        );
+        window.removeEventListener('canvas-background-source-changed', this.boundCanvasBackgroundSourceChanged);
+        window.removeEventListener('canvas-pause-behavior-changed', this.boundCanvasPauseBehaviorChanged);
         window.removeEventListener('player-queue-changed', this.boundQueueChanged);
         window.removeEventListener('player-repeat-changed', this.boundRepeatChanged);
         window.removeEventListener('autoplay-state-changed', this.boundTransitionChanged);

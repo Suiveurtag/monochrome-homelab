@@ -21,4 +21,18 @@ describe('Canvas settings', () => {
         expect(changed).toHaveBeenCalledOnce();
         expect(changed.mock.calls[0][0].detail).toEqual({ enabled: false });
     });
+
+    test('background source and pause behavior fall back to their defaults', async () => {
+        const { canvasSettings } = await import('./canvas-settings.js');
+        expect(canvasSettings.getBackgroundSource()).toBe('canvas');
+        expect(canvasSettings.getPauseBehavior()).toBe('cover');
+
+        canvasSettings.setBackgroundSource('cover');
+        canvasSettings.setPauseBehavior('play');
+        expect(canvasSettings.getBackgroundSource()).toBe('cover');
+        expect(canvasSettings.getPauseBehavior()).toBe('play');
+
+        canvasSettings.setPauseBehavior('bogus');
+        expect(canvasSettings.getPauseBehavior()).toBe('cover');
+    });
 });

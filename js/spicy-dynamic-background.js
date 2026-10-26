@@ -54,6 +54,7 @@ export class SpicyDynamicBackground {
         this.lastMotionOptions = {};
         this.timeDomainData = null;
         this.active = true;
+        this.keepAnimating = false;
         this.onPlay = () => {
             if (this.active && this.root.classList.contains('has-kawarp-background')) this.kawarp?.start?.();
             this.syncMotion();
@@ -116,7 +117,7 @@ export class SpicyDynamicBackground {
             return;
         }
 
-        const paused = Boolean(this.playbackElement?.paused);
+        const paused = Boolean(this.playbackElement?.paused) && !this.keepAnimating;
         if (paused) {
             // Keep the exact current frame. Reconfiguring Kawarp here restarts its
             // transition and makes the entire panel appear to refresh on pause.
@@ -125,7 +126,16 @@ export class SpicyDynamicBackground {
         }
 
         this.applyMotionOptions(PLAYING_SPEED, 1, force);
-        if (this.playbackElement) this.scheduleAudioReaction();
+        if (this.keepAnimating && this.root.classList.contains('has-kawarp-background')) this.kawarp.start?.();
+        if (this.playbackElement && !this.playbackElement.paused) this.scheduleAudioReaction();
+    }
+
+    // Lets the background keep moving while the music is paused (Canvas set to keep playing).
+    setKeepAnimating(keep) {
+        const next = Boolean(keep);
+        if (next === this.keepAnimating) return;
+        this.keepAnimating = next;
+        this.syncMotion(true);
     }
 
     scheduleAudioReaction() {

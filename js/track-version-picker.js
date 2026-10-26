@@ -108,6 +108,12 @@ function animateDiscBetween(source, target, { duration = 500 } = {}) {
               ],
         { duration, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
     );
+    // The player disc carries a shade where the cover overlaps it; fade it with the flight instead of popping at the end.
+    clone.classList.add('version-disc-player');
+    clone.animate(
+        { opacity: movingIntoPlayer ? [0, 1] : [1, 0] },
+        { duration, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both', pseudoElement: '::after' }
+    );
     return animation.finished.catch(() => {}).finally(() => clone.remove());
 }
 

@@ -97,12 +97,23 @@ export async function initializeSettings(scrobbler, player, api, ui) {
             playerBarEffectsSettings.setMagicRingsEnabled(event.target.checked);
         });
     }
-    const canvasCoverOverlayToggle = document.getElementById('canvas-cover-overlay-toggle');
-    if (canvasCoverOverlayToggle) {
-        canvasCoverOverlayToggle.checked = canvasSettings.isCoverOverlayEnabled();
-        canvasCoverOverlayToggle.addEventListener('change', (event) => {
-            canvasSettings.setCoverOverlayEnabled(event.target.checked);
+    const canvasEnabledToggle = document.getElementById('canvas-enabled-toggle');
+    if (canvasEnabledToggle) {
+        canvasEnabledToggle.checked = canvasSettings.isEnabled();
+        canvasEnabledToggle.addEventListener('change', (event) => canvasSettings.setEnabled(event.target.checked));
+        window.addEventListener('canvas-playback-preference-changed', (event) => {
+            canvasEnabledToggle.checked = event.detail.enabled;
         });
+    }
+    const canvasBackgroundSelect = document.getElementById('canvas-background-source-select');
+    if (canvasBackgroundSelect) {
+        canvasBackgroundSelect.value = canvasSettings.getBackgroundSource();
+        canvasBackgroundSelect.addEventListener('change', (event) => canvasSettings.setBackgroundSource(event.target.value));
+    }
+    const canvasPauseSelect = document.getElementById('canvas-pause-behavior-select');
+    if (canvasPauseSelect) {
+        canvasPauseSelect.value = canvasSettings.getPauseBehavior();
+        canvasPauseSelect.addEventListener('change', (event) => canvasSettings.setPauseBehavior(event.target.value));
     }
     initializePlayerLayoutEditor();
 

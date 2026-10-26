@@ -4035,6 +4035,7 @@
                     <div class="settings-tabs">
                         <button class="settings-tab active" data-tab="appearance">Appearance</button>
                         <button class="settings-tab" data-tab="player">Player</button>
+                        <button class="settings-tab" data-tab="canvas">Canvas</button>
                         <button class="settings-tab" data-tab="interface">Interface</button>
                         <button class="settings-tab" data-tab="scrobbling">Scrobbling</button>
                         <button class="settings-tab" data-tab="audio">Audio</button>
@@ -4515,18 +4516,6 @@
                                         <span class="slider"></span>
                                     </label>
                                 </div>
-                                <div class="setting-item">
-                                    <div class="info">
-                                        <span class="label">Translucent Canvas Cover</span>
-                                        <span class="description"
-                                            >Dim and fade the artwork at the edges of the Canvas</span
-                                        >
-                                    </div>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="canvas-cover-overlay-toggle" checked />
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
                             </div>
                             <div class="settings-group player-layout-settings-group">
                                 <div class="player-layout-heading">
@@ -4551,6 +4540,44 @@
                                         </div>
                                         <div class="player-action-zone" data-player-action-zone="hidden"></div>
                                     </section>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-tab-content" id="settings-tab-canvas">
+                        <div class="settings-list">
+                            <div class="settings-group">
+                                <h3>Canvas</h3>
+                                <div class="setting-item">
+                                    <div class="info">
+                                        <span class="label">Show Canvas</span>
+                                        <span class="description">Play the animated artwork in the Now Playing panel</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="canvas-enabled-toggle" checked />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="info">
+                                        <span class="label">Spicy Lyrics Background Color</span>
+                                        <span class="description">Artwork the fluid lyrics background takes its colors from</span>
+                                    </div>
+                                    <select id="canvas-background-source-select">
+                                        <option value="canvas">Canvas</option>
+                                        <option value="cover">Cover</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="info">
+                                        <span class="label">When Paused</span>
+                                        <span class="description">What Canvas does while the music is paused</span>
+                                    </div>
+                                    <select id="canvas-pause-behavior-select">
+                                        <option value="cover">Back to the cover</option>
+                                        <option value="pause">Pause the Canvas</option>
+                                        <option value="play">Keep the Canvas playing</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
