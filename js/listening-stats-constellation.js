@@ -1,5 +1,5 @@
 // Constellation design: a starfield with tilted orbits, glossy orbs and a comet drawn around the covers.
-// Two canvases give depth: the far half of every orbit sits behind the covers, the near half in front.
+// Two canvases give depth, and both sit behind the covers: the sky, then the near canvas for the moving light.
 
 const runs = new WeakMap();
 const TAU = Math.PI * 2;
@@ -10,28 +10,39 @@ const RINGS = [
     { rx: 0.31, ry: 0.335, tilt: -8, width: 1, alpha: 0.38, dash: [1.5, 7] },
     { rx: 0.205, ry: 0.25, tilt: -3, width: 1, alpha: 0.42 },
 ];
-// Colors around the orbit, from its right end clockwise: pink right, cyan left, as in the reference.
-const HUES = [
-    [0, '255,92,214', 0.95],
-    [0.13, '170,96,255', 0.55],
-    [0.3, '255,84,170', 0.75],
-    [0.43, '86,124,255', 0.95],
-    [0.5, '70,214,255', 1],
-    [0.58, '96,140,255', 0.95],
-    [0.67, '255,98,208', 0.7],
-    [0.77, '160,124,255', 0.3],
-    [0.9, '255,80,216', 0.75],
-    [1, '255,92,214', 0.95],
+// Stops run around the orbit from its right end clockwise; each takes one slot of the period's palette.
+const HUE_SLOTS = [
+    [0, 2, 0.95],
+    [0.13, 1, 0.55],
+    [0.3, 2, 0.75],
+    [0.43, 0, 0.95],
+    [0.5, 0, 1],
+    [0.58, 1, 0.95],
+    [0.67, 2, 0.7],
+    [0.77, 1, 0.3],
+    [0.9, 2, 0.75],
+    [1, 2, 0.95],
 ];
-// Glossy spheres: [highlight, body, rim].
-const ORB_TONES = {
-    ice: ['#ffffff', '#8fb4ff', '#1a2768'],
-    violet: ['#e6dcff', '#6f5ce0', '#140c45'],
-    pink: ['#ffe3f6', '#ff58c6', '#4a0838'],
-    blue: ['#dff3ff', '#3f8dff', '#0a1d5a'],
-    pearl: ['#ffffff', '#b9bfd6', '#2b2f45'],
-    cyan: ['#e9fdff', '#3fd2ff', '#063a52'],
-};
+const mix = (rgb, to, k) => rgb.map((v, i) => Math.round(v + (to[i] - v) * k));
+// Canvas parses any CSS color, so a palette color comes out as numbers without a color parser.
+function rgbOf(css) {
+    const ctx = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+    ctx.fillStyle = css;
+    ctx.fillRect(0, 0, 1, 1);
+    return [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3);
+}
+// Glossy spheres: [highlight, body, rim] as rgb triplets. Ice and pearl stay white; the rest follow the palette.
+function orbTones([p0, p1, p2]) {
+    const glossy = (c) => [mix(c, [255, 255, 255], 0.75), c, mix(c, [0, 0, 0], 0.8)];
+    return {
+        ice: [[255, 255, 255], [143, 180, 255], [26, 39, 104]],
+        pearl: [[255, 255, 255], [185, 191, 214], [43, 47, 69]],
+        violet: glossy(p1),
+        pink: glossy(p2),
+        blue: glossy(mix(p0, p1, 0.5)),
+        cyan: glossy(p0),
+    };
+}
 // The outer ring turns as one body, like the reference; inner rings run faster.
 const ORBS = [
     { ring: 0, angle: 3.6, speed: 0.045, size: 13, tone: 'ice' },
@@ -55,36 +66,29 @@ function random(seed) {
 }
 const smooth = (t) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3);
 
-function hueAt(fraction) {
-    const f = ((fraction % 1) + 1) % 1;
-    const next = HUES.findIndex(([at]) => at >= f);
-    return HUES[Math.max(0, next)][1];
-}
-
-function orbSprite(tone, scale) {
-    const [hi, body, rim] = ORB_TONES[tone];
+function orbSprite([hi, body, rim], scale) {
     const size = Math.ceil(64 * scale);
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = size;
     const ctx = canvas.getContext('2d');
     const c = size / 2;
     const halo = ctx.createRadialGradient(c, c, 0, c, c, c);
-    halo.addColorStop(0, `${body}aa`);
-    halo.addColorStop(0.35, `${body}33`);
-    halo.addColorStop(1, `${body}00`);
+    halo.addColorStop(0, `rgba(${body},0.67)`);
+    halo.addColorStop(0.35, `rgba(${body},0.2)`);
+    halo.addColorStop(1, `rgba(${body},0)`);
     ctx.fillStyle = halo;
     ctx.fillRect(0, 0, size, size);
     const r = size * 0.19;
     const ball = ctx.createRadialGradient(c - r * 0.4, c - r * 0.45, r * 0.05, c, c, r);
-    ball.addColorStop(0, hi);
-    ball.addColorStop(0.35, body);
-    ball.addColorStop(1, rim);
+    ball.addColorStop(0, `rgb(${hi})`);
+    ball.addColorStop(0.35, `rgb(${body})`);
+    ball.addColorStop(1, `rgb(${rim})`);
     ctx.fillStyle = ball;
     ctx.beginPath();
     ctx.arc(c, c, r, 0, TAU);
     ctx.fill();
     // A thin lit rim on the side facing away from the highlight.
-    ctx.strokeStyle = `${hi}55`;
+    ctx.strokeStyle = `rgba(${hi},0.33)`;
     ctx.lineWidth = Math.max(1, r * 0.08);
     ctx.beginPath();
     ctx.arc(c, c, r * 0.92, 0.1 * Math.PI, 0.75 * Math.PI);
@@ -124,6 +128,39 @@ export function animateConstellation(root, entrance) {
     const start = performance.now() - (entrance ? 0 : 60000);
     let nextMeteor = (entrance ? 0 : 60) + 4 + Math.random() * 5;
     const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
+    // The palette follows the covers' colors; the orbit, dust and orbs are rebuilt when it changes.
+    let paletteKey = '',
+        hues = [],
+        tones = {},
+        orbScale = 1;
+
+    function hueAt(fraction) {
+        const f = ((fraction % 1) + 1) % 1;
+        const next = hues.findIndex(([at]) => at >= f);
+        return hues[Math.max(0, next)][1];
+    }
+
+    function syncPalette(force = false) {
+        const style = getComputedStyle(scene);
+        const css = [0, 1, 2].map((i) => style.getPropertyValue(`--stats-color-${i}`).trim());
+        const key = css.join('|');
+        if (!force && key === paletteKey) return false;
+        paletteKey = key;
+        const glows = css.map((c) => mix(rgbOf(c), [255, 255, 255], 0.3));
+        hues = HUE_SLOTS.map(([at, slot, alpha]) => [at, glows[slot].join(','), alpha]);
+        tones = orbTones(glows);
+        sprites = Object.fromEntries(
+            Object.entries(tones).map(([tone, colors]) => [
+                tone,
+                orbSprite(
+                    colors.map((c) => c.join(',')),
+                    orbScale * dpr
+                ),
+            ])
+        );
+        drawRings();
+        return true;
+    }
 
     const center = () => ({ x: width * 0.5, y: height * 0.5 });
     const point = (ring, angle, offset = 0) => {
@@ -150,7 +187,7 @@ export function animateConstellation(root, entrance) {
         const blur = 'filter' in ctx;
         RINGS.forEach((ring, index) => {
             const gradient = ctx.createConicGradient(0, cx, cy);
-            for (const [at, rgb, alpha] of HUES) gradient.addColorStop(at, `rgba(${rgb},${alpha * ring.alpha})`);
+            for (const [at, rgb, alpha] of hues) gradient.addColorStop(at, `rgba(${rgb},${alpha * ring.alpha})`);
             const passes = index
                 ? [[ring.width, 0, 1]]
                 : [
@@ -234,9 +271,8 @@ export function animateConstellation(root, entrance) {
                 phase: rand() * TAU,
             };
         });
-        const scale = Math.min(1.4, Math.max(0.75, width / 1200));
-        sprites = Object.fromEntries(Object.keys(ORB_TONES).map((tone) => [tone, orbSprite(tone, scale * dpr)]));
-        drawRings();
+        orbScale = Math.min(1.4, Math.max(0.75, width / 1200));
+        syncPalette(true);
         return true;
     }
 
@@ -272,6 +308,7 @@ export function animateConstellation(root, entrance) {
     }
 
     function draw(now) {
+        syncPalette();
         const t = (now - start) / 1000;
         const dt = Math.min(0.05, last ? (now - last) / 1000 : 0);
         last = now;
@@ -581,6 +618,16 @@ export function animateConstellation(root, entrance) {
         return;
     }
     resize();
+    // Artwork that loads after the first frame recolors the scene; a still scene has no loop to pick that up.
+    scene.querySelectorAll('.stats-cosmos-halo').forEach((img) =>
+        img.addEventListener(
+            'load',
+            () => {
+                if (syncPalette() && !running && width) draw(reduced.matches ? start + 60000 : performance.now());
+            },
+            { signal }
+        )
+    );
     // Each cover lands with a small burst of light, in step with its CSS entrance.
     if (entrance) {
         covers.forEach((cover, i) => {

@@ -5,10 +5,6 @@
    The orbits, orbs and starfield are drawn by js/listening-stats-constellation.js. */
 
 #page-stats[data-stats-design='constellation'] {
-    /* A fixed night palette: cyan, violet and pink, lifted into glows by listening-stats.css. */
-    --stats-color-0: #3fd2ff;
-    --stats-color-1: #9b63ff;
-    --stats-color-2: #ff4fc8;
     --stats-chart-0: var(--stats-glow-0);
     --stats-chart-1: color-mix(in oklch, var(--stats-glow-0) 45%, var(--stats-glow-1));
     --stats-chart-2: color-mix(in oklch, var(--stats-glow-1) 55%, var(--stats-glow-2));
@@ -149,15 +145,16 @@
     mask-composite: intersect;
 }
 
+/* Moving light sits behind the covers (z 2) and above the sky, so orbs and comets pass under the art. */
 .stats-cosmos-near {
-    z-index: 3;
+    z-index: 1;
 }
 
 /* The total at the center */
 
 .stats-cosmos-core {
     position: absolute;
-    z-index: 1;
+    z-index: 2;
     inset: 29% 0 auto;
     display: grid;
     justify-items: center;

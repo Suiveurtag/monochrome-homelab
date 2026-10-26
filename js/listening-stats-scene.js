@@ -11,7 +11,8 @@ export function animateStatsScene(root) {
     const { signal } = controller;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
     const content = root.querySelector('#stats-content');
-    const images = [...root.querySelectorAll('.stats-cover-card img')];
+    // Constellation covers carry their artwork in a halo image; it reads the same palette as the cover cards.
+    const images = [...root.querySelectorAll('.stats-cover-card img, .stats-cosmos-halo')];
     // Colors stay until the new artwork is read, so the registered properties crossfade instead of flashing.
     images.forEach((img, index) => {
         const cached = colors.get(img.src);
