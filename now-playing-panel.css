@@ -314,21 +314,22 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     flex-direction: column;
     gap: 16px;
 
+    /* The body reaches up under the header and out to the panel edges, so a Canvas bleeding past the
+       content box is still inside the mask's border box (no seam where the mask ends). */
+    margin: -66px -14px 0;
+    padding: 66px 14px 0;
+
     /* Nothing hides the background at rest. Once scrolled, the content fades out under the header
        (no blur, no scrim) so the background shows behind it; the mask is fixed to the viewport. */
     mask-image: linear-gradient(
         to bottom,
-        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade))) 0,
-        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.896)) 14px,
-        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.648)) 28px,
-        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.352)) 42px,
-        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.104)) 56px,
-        black 70px
+        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade))) var(--now-playing-mask-y),
+        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.896)) calc(var(--now-playing-mask-y) + 14px),
+        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.648)) calc(var(--now-playing-mask-y) + 28px),
+        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.352)) calc(var(--now-playing-mask-y) + 42px),
+        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.104)) calc(var(--now-playing-mask-y) + 56px),
+        black calc(var(--now-playing-mask-y) + 70px)
     );
-    mask-repeat: no-repeat;
-    mask-size: calc(100% + 200px) 100000px;
-    mask-position: -100px var(--now-playing-mask-y);
-    mask-clip: no-clip;
     transition:
         --now-playing-scroll-fade 500ms ease,
         opacity 220ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -435,12 +436,12 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
         filter 200ms linear;
 }
 
-.now-playing-panel-canvas {
+.now-playing-panel-body.has-video-artwork .now-playing-panel-media .now-playing-panel-canvas {
     z-index: 1;
     opacity: 0;
 }
 
-.now-playing-panel-media.is-canvas-playing .now-playing-panel-canvas {
+.now-playing-panel-body.has-video-artwork .now-playing-panel-media.is-canvas-playing .now-playing-panel-canvas {
     /* Fully visible down to the title; the blend only starts there and runs under it. */
     --sl-videocanvas-mask-stop: calc(100% - 130px);
 
@@ -1250,6 +1251,9 @@ body.now-playing-panel-resizing {
 
 .now-playing-panel.lyrics-expanded .now-playing-panel-body {
     position: relative;
+    margin: 0;
+    padding: 0;
+    mask-image: none;
     height: 100%;
     gap: 0;
     background: transparent;
