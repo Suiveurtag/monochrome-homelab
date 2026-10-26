@@ -5,6 +5,9 @@
     --now-playing-panel-width: 420px;
     --now-playing-panel-rail: 42px;
     --now-playing-player-clearance: calc(var(--player-bar-height-desktop) + 30px);
+
+    /* Shared by the Canvas and the ambient layer under it, so they match where they overlap. */
+    --now-playing-canvas-grade: brightness(0.64) saturate(1.5);
 }
 
 .now-playing-panel {
@@ -106,6 +109,37 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 
 .now-playing-panel-spicy-bg .spicy-dynamic-bg-shade {
     display: none;
+}
+
+/* The Canvas video, blurred and smeared below its bottom edge. It is graded like the Canvas
+   itself and fades out to the fluid background, so the video melts into a matching surface. */
+.now-playing-panel-spicy-bg .spicy-dynamic-bg-ambient {
+    --ambient-from: 0px;
+
+    inset: -24px;
+    width: calc(100% + 48px);
+    height: calc(100% + 48px);
+    filter: blur(9px) var(--now-playing-canvas-grade);
+    opacity: 0;
+    mask-image: linear-gradient(
+        to bottom,
+        black var(--ambient-from),
+        rgb(0 0 0 / 0.976) calc(var(--ambient-from) + 28px),
+        rgb(0 0 0 / 0.905) calc(var(--ambient-from) + 56px),
+        rgb(0 0 0 / 0.794) calc(var(--ambient-from) + 84px),
+        rgb(0 0 0 / 0.655) calc(var(--ambient-from) + 112px),
+        rgb(0 0 0 / 0.5) calc(var(--ambient-from) + 140px),
+        rgb(0 0 0 / 0.345) calc(var(--ambient-from) + 168px),
+        rgb(0 0 0 / 0.206) calc(var(--ambient-from) + 196px),
+        rgb(0 0 0 / 0.095) calc(var(--ambient-from) + 224px),
+        rgb(0 0 0 / 0.024) calc(var(--ambient-from) + 252px),
+        transparent calc(var(--ambient-from) + 280px)
+    );
+    transition: opacity 700ms ease;
+}
+
+.now-playing-panel-spicy-bg.is-following-video .spicy-dynamic-bg-ambient {
+    opacity: 1;
 }
 
 .now-playing-panel-scroll {
@@ -399,7 +433,7 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     width: 100%;
     height: 100%;
     object-position: center center;
-    filter: brightness(0.68) saturate(1.3);
+    filter: var(--now-playing-canvas-grade);
     mask-image: linear-gradient(
         to bottom,
         transparent 0%,
@@ -438,13 +472,6 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     opacity: 0;
 }
 
-@media (hover: hover) {
-    .now-playing-panel-body.has-video-artwork
-        .now-playing-panel-media:hover
-        :is(.now-playing-panel-poster, .now-playing-panel-canvas) {
-        filter: brightness(0.9) saturate(1.3);
-    }
-}
 
 /* Over Canvas the header scrim only has to keep the controls legible, so it fades out smoothly. */
 .now-playing-panel:has(.has-video-artwork) .now-playing-panel-header::before {
