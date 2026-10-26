@@ -3,7 +3,7 @@ const CANVAS_BACKGROUND_KEY = 'now-playing-canvas-background-source';
 const CANVAS_PAUSE_KEY = 'now-playing-canvas-pause-behavior';
 
 export const CANVAS_BACKGROUND_SOURCES = ['canvas', 'cover'];
-export const CANVAS_PAUSE_BEHAVIORS = ['cover', 'pause', 'play'];
+export const CANVAS_PAUSE_BEHAVIORS = ['pause', 'play'];
 
 function readChoice(key, choices) {
     try {
@@ -54,7 +54,7 @@ export const canvasSettings = {
         writeChoice(CANVAS_BACKGROUND_KEY, CANVAS_BACKGROUND_SOURCES, value, 'canvas-background-source-changed');
     },
 
-    /** What Canvas does while music is paused: 'cover' (plain cover), 'pause' (frozen frame) or 'play'. */
+    /** While paused, show the decoded Canvas frame or keep the video playing. */
     getPauseBehavior() {
         return readChoice(CANVAS_PAUSE_KEY, CANVAS_PAUSE_BEHAVIORS);
     },

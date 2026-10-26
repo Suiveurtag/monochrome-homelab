@@ -4,8 +4,9 @@ const { kawarpInstances } = vi.hoisted(() => ({ kawarpInstances: [] }));
 
 vi.mock('@kawarp/core', () => ({
     default: class KawarpMock {
-        constructor(canvas) {
+        constructor(canvas, options) {
             this.canvas = canvas;
+            this.options = options;
             this.loadImage = vi.fn(async () => {});
             this.start = vi.fn();
             this.stop = vi.fn();
@@ -21,7 +22,8 @@ vi.mock('@kawarp/core', () => ({
 }));
 
 beforeEach(() => {
-    document.body.innerHTML = '';
+    document.body.innerHTML =
+        '<style>[data-spicy-background]{position:absolute;width:400px;height:800px}[data-spicy-background]>canvas{position:absolute;width:100%;height:100%}</style>';
     kawarpInstances.length = 0;
     vi.stubGlobal(
         'requestAnimationFrame',
@@ -52,7 +54,7 @@ describe('Spicy dynamic background', () => {
         expect(kawarpInstances[0].loadImage).toHaveBeenNthCalledWith(1, '/covers/first.jpg');
         expect(kawarpInstances[0].loadImage).toHaveBeenNthCalledWith(2, '/covers/second.jpg');
         expect(controller.root.classList.contains('has-kawarp-background')).toBe(true);
-        expect(controller.fallback.style.backgroundImage).toContain('/covers/second.jpg');
+        expect(host.querySelector('.spicy-dynamic-bg-fallback')).toBeNull();
 
         controller.dispose();
         expect(kawarpInstances[0].dispose).toHaveBeenCalledOnce();
@@ -77,16 +79,32 @@ describe('Spicy dynamic background', () => {
         expect(kawarp.unloadVideo).toHaveBeenCalledOnce();
         expect(kawarp.loadImage).toHaveBeenLastCalledWith('/covers/first.jpg');
 
-        // An unreadable frame falls back to the cover the same way.
-        controller.followVideo(video);
-        kawarp.loadVideo.mock.lastCall[1].onError(new Error('tainted'));
-        expect(kawarp.unloadVideo).toHaveBeenCalledTimes(2);
-
         // Another cover load on the shared host keeps following the Canvas.
         controller.followVideo(video);
         await controller.setSource('/covers/second.jpg');
         expect(kawarp.loadImage).toHaveBeenLastCalledWith('/covers/second.jpg');
         expect(kawarp.loadVideo).toHaveBeenCalledTimes(4);
+    });
+
+    test('copies the real rendered canvas into the foreground instead of loading a second background', async () => {
+        const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
+        const host = document.createElement('div');
+        document.body.append(host);
+        const controller = mountSpicyDynamicBackground(host, { foregroundClassName: 'test-foreground' });
+        expect(controller.foreground).toBeTruthy();
+        controller.foreground.style.cssText = 'position:absolute;width:400px;height:160px';
+        await controller.setSource('/cover.jpg');
+        const source = controller.canvas.getContext('2d');
+        source.fillStyle = 'rgb(36, 87, 143)';
+        source.fillRect(0, 0, controller.canvas.width, controller.canvas.height);
+        controller.setForegroundActive(true);
+        const pixels = controller.foreground.getContext('2d').getImageData(20, 20, 1, 1).data;
+        expect([...pixels]).toEqual([36, 87, 143, 255]);
+        expect(kawarpInstances).toHaveLength(1);
+        expect(controller.foreground.parentElement).toBe(host);
+        expect(controller.foreground.parentElement).not.toBe(controller.root);
+        controller.dispose();
+        expect(host.querySelector('.test-foreground')).toBeNull();
     });
 
     test('rejects animated sources instead of assigning an invalid CSS background image', async () => {
@@ -98,31 +116,29 @@ describe('Spicy dynamic background', () => {
         expect(await controller.setSource('/covers/animated.mp4')).toBe(false);
         expect(kawarpInstances).toHaveLength(0);
         expect(controller.canvas.style.display).toBe('none');
-        expect(controller.fallback.style.backgroundImage).toBe('');
+        expect(host.querySelector('.spicy-dynamic-bg-fallback')).toBeNull();
     });
 
-    test('crossfades between two static fallback layers', async () => {
+    test('draws the first real frame without a transition or a fallback layer', async () => {
         const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
         const host = document.createElement('div');
-        document.body.appendChild(host);
+        document.body.append(host);
         const controller = mountSpicyDynamicBackground(host);
-
+        expect(host.querySelectorAll('.spicy-dynamic-bg-fallback')).toHaveLength(0);
         await controller.setSource('/covers/first.jpg');
-        await controller.setSource('/covers/second.jpg');
-
-        const fallbacks = host.querySelectorAll('.spicy-dynamic-bg-fallback');
-        expect(fallbacks).toHaveLength(2);
-        expect(host.querySelectorAll('.spicy-dynamic-bg-fallback.is-visible')).toHaveLength(1);
-        expect(controller.fallback.style.backgroundImage).toContain('/covers/second.jpg');
+        const kawarp = kawarpInstances[0];
+        expect(kawarp.options.transitionDuration).toBe(0);
+        expect(kawarp.renderFrame).toHaveBeenCalled();
+        expect(controller.root.classList.contains('has-kawarp-background')).toBe(true);
+        controller.dispose();
     });
 
-    test('keeps the fallback visible while Kawarp loads a new source', async () => {
+    test('keeps the real shader visible while another image loads', async () => {
         const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
         const host = document.createElement('div');
-        document.body.appendChild(host);
+        document.body.append(host);
         const controller = mountSpicyDynamicBackground(host);
         await controller.setSource('/covers/first.jpg');
-
         let resolveLoad;
         kawarpInstances[0].loadImage.mockImplementationOnce(
             () =>
@@ -132,12 +148,35 @@ describe('Spicy dynamic background', () => {
         );
         const pending = controller.setSource('/covers/second.jpg');
         await vi.waitFor(() => expect(resolveLoad).toEqual(expect.any(Function)));
-        expect(controller.root.classList.contains('has-kawarp-background')).toBe(false);
-        expect(host.querySelector('.spicy-dynamic-bg-fallback.is-visible')).toBeTruthy();
-
+        expect(controller.root.classList.contains('has-kawarp-background')).toBe(true);
+        expect(host.querySelector('.spicy-dynamic-bg-fallback')).toBeNull();
         resolveLoad();
         await pending;
+        controller.dispose();
+    });
+
+    test('uses the first decoded Canvas frame directly, without loading a cover first', async () => {
+        const { mountSpicyDynamicBackground } = await import('./spicy-dynamic-background.js');
+        const host = document.createElement('div');
+        document.body.append(host);
+        const controller = mountSpicyDynamicBackground(host);
+        await controller.setSource('/cover.jpg', { deferToVideo: true });
+        expect(kawarpInstances).toHaveLength(0);
+        const video = document.createElement('video');
+        Object.defineProperty(video, 'readyState', { value: 2 });
+        controller.followVideo(video);
+        const kawarp = kawarpInstances[0];
+        expect(kawarp.loadImage).not.toHaveBeenCalled();
+        expect(kawarp.loadVideo).toHaveBeenCalledWith(video, expect.objectContaining({ sampleWidth: 72 }));
+        expect(kawarp.renderFrame).toHaveBeenCalled();
         expect(controller.root.classList.contains('has-kawarp-background')).toBe(true);
+        // The shared lyrics renderer may repeat this without overriding the Canvas owner.
+        await controller.setSource('/cover.jpg');
+        expect(kawarp.loadImage).not.toHaveBeenCalled();
+        kawarp.loadVideo.mock.lastCall[1].onError(new Error('unreadable'));
+        expect(kawarp.loadImage).not.toHaveBeenCalled();
+        expect(host.querySelector('.spicy-dynamic-bg-fallback')).toBeNull();
+        controller.dispose();
     });
 
     test('stops hidden backgrounds and resumes their existing Kawarp instance', async () => {
@@ -162,7 +201,7 @@ describe('Spicy dynamic background', () => {
 
         await controller.setSource('/covers/collapsed-track.jpg');
 
-        expect(kawarpInstances[0].renderFrame).toHaveBeenCalledOnce();
+        expect(kawarpInstances[0].renderFrame).toHaveBeenCalled();
         expect(controller.root.classList.contains('has-kawarp-background')).toBe(true);
         controller.dispose();
     });
@@ -175,6 +214,8 @@ describe('Spicy dynamic background', () => {
         await controller.setSource('/covers/first.jpg');
         controller.kawarp.isPlaying = false;
 
+        controller.kawarp.renderFrame.mockClear();
+        controller.kawarp.resize.mockClear();
         controller.resizeKawarp();
 
         expect(controller.kawarp.resize).toHaveBeenCalledOnce();
@@ -197,7 +238,7 @@ describe('Spicy dynamic background', () => {
         expect(kawarpInstances[0].loadImage).not.toHaveBeenCalledWith('/covers/stale.jpg');
         expect(kawarpInstances[0].loadImage).toHaveBeenLastCalledWith('/covers/current.jpg');
         expect(controller.source).toBe('/covers/current.jpg');
-        expect(controller.fallback.style.backgroundImage).toContain('/covers/current.jpg');
+        expect(host.querySelector('.spicy-dynamic-bg-fallback')).toBeNull();
     });
 
     test('uses restrained playback motion and freezes the current frame while paused', async () => {

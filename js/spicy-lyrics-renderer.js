@@ -149,7 +149,6 @@ const SHADOW_BRIDGE_CSS = `
     margin-right: 0;
 }
 .spicy-dynamic-bg,
-.spicy-dynamic-bg-fallback,
 .spicy-dynamic-bg-shade {
     position: absolute;
     inset: 0;
@@ -157,27 +156,18 @@ const SHADOW_BRIDGE_CSS = `
     height: 100%;
     pointer-events: none;
 }
-.spicy-dynamic-bg-fallback {
-    z-index: -3;
-    background-position: center;
-    background-size: cover;
-    filter: saturate(2.25) brightness(0.48) blur(42px);
-    transform: scale(1.18);
-    transition: background-image 850ms cubic-bezier(0.66, 0, 0.34, 1);
-}
 .spicy-dynamic-bg {
     z-index: -2;
     display: block;
     filter: saturate(2.5) brightness(0.65);
     opacity: 0;
-    transition: opacity 800ms ease;
 }
 #SpicyLyricsPage.has-kawarp-background .spicy-dynamic-bg { opacity: 1; }
-#SpicyLyricsPage.Fullscreen > :is(.spicy-dynamic-bg, .spicy-dynamic-bg-fallback, .spicy-dynamic-bg-shade) {
+#SpicyLyricsPage.Fullscreen > :is(.spicy-dynamic-bg, .spicy-dynamic-bg-shade) {
     opacity: 0;
 }
 :host([data-external-background='true'])
-    #SpicyLyricsPage > :is(.spicy-dynamic-bg, .spicy-dynamic-bg-fallback, .spicy-dynamic-bg-shade) {
+    #SpicyLyricsPage > :is(.spicy-dynamic-bg, .spicy-dynamic-bg-shade) {
     opacity: 0;
 }
 .spicy-dynamic-bg-shade {
@@ -415,8 +405,6 @@ export class SpicyLyricsElement extends HTMLElement {
         page.classList.toggle('Fullscreen', fullscreen);
         page.classList.toggle('CardMode', !fullscreen);
 
-        const background = document.createElement('div');
-        background.className = 'spicy-dynamic-bg-fallback';
         const canvas = document.createElement('canvas');
         canvas.className = 'spicy-dynamic-bg';
         const shade = document.createElement('div');
@@ -595,7 +583,7 @@ export class SpicyLyricsElement extends HTMLElement {
         contentBox.append(nowBar, lyricsContainer);
         const sharedBackgroundHost = this.closest('[data-spicy-background-host]');
         if (sharedBackgroundHost) page.append(contentBox);
-        else page.append(background, canvas, shade, contentBox);
+        else page.append(canvas, shade, contentBox);
         this._root.append(styles, page);
         this._simpleBar = new SimpleBar(content, { autoHide: false });
         this._simpleBar.recalculate();
@@ -604,10 +592,7 @@ export class SpicyLyricsElement extends HTMLElement {
         this._lyricsContent = content;
         this._page = page;
         this._canvas = sharedBackgroundHost ? null : canvas;
-        this._fallback = sharedBackgroundHost ? null : background;
-        this._dynamicBackground = sharedBackgroundHost
-            ? null
-            : new SpicyDynamicBackground({ root: page, canvas, fallback: background });
+        this._dynamicBackground = sharedBackgroundHost ? null : new SpicyDynamicBackground({ root: page, canvas });
         this._activeLineIndex = -1;
         this._lastPosition = 0;
         this._virtualizer.setOnNewElementMounted(notifyNewElementMounted);
@@ -622,7 +607,7 @@ export class SpicyLyricsElement extends HTMLElement {
 
     async applyDynamicBackground() {
         const sharedHost = this.closest('[data-spicy-background-host]');
-        if (!sharedHost && (!this._canvas || !this._fallback)) return;
+        if (!sharedHost && !this._canvas) return;
         const fullscreenOverlay = this.closest('#fullscreen-cover-overlay');
         if (sharedHost) {
             this.setAttribute('data-external-background', 'true');

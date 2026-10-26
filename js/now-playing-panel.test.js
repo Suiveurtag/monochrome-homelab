@@ -5,7 +5,6 @@ const intersectionObservers = [];
 vi.mock('./spicy-dynamic-background.js', () => ({
     mountSpicyDynamicBackground: () => ({
         setSource: vi.fn(async () => true),
-        setFallbackSource: vi.fn(),
         connectPlayback: vi.fn(),
         dispose: vi.fn(),
     }),
@@ -546,7 +545,7 @@ describe('Now Playing panel interactions', () => {
         panel.destroy();
     });
 
-    test('keeps the static poster mounted beneath a deferred Canvas video', async () => {
+    test('mounts Canvas without a poster and preserves its decoded frame while paused', async () => {
         const { NowPlayingPanel } = await import('./now-playing-panel.js');
         const deps = dependencies();
         const audio = document.createElement('audio');
@@ -581,16 +580,17 @@ describe('Now Playing panel interactions', () => {
         const stage = panel.content.querySelector('.now-playing-panel-media');
         expect(stage.tagName).toBe('BUTTON');
         expect(stage.getAttribute('aria-expanded')).toBe('false');
-        expect(stage.querySelector('.now-playing-panel-poster')).toBeTruthy();
+        expect(stage.querySelector('.now-playing-panel-poster')).toBeNull();
         const canvas = stage.querySelector('video.now-playing-panel-canvas');
         expect(canvas).toBeTruthy();
-        expect(stage.querySelectorAll('img, video')).toHaveLength(2);
+        expect(stage.querySelectorAll('img, video')).toHaveLength(1);
+        expect(canvas.getAttribute('poster')).toBeNull();
         let canvasPaused = true;
         Object.defineProperty(canvas, 'paused', { configurable: true, get: () => canvasPaused });
 
         canvas.dispatchEvent(new Event('loadeddata'));
         await vi.waitFor(() => expect(stage.classList.contains('is-canvas-ready')).toBe(true));
-        expect(stage.classList.contains('is-canvas-playing')).toBe(false);
+        expect(stage.classList.contains('is-canvas-playing')).toBe(true);
 
         const play = vi.spyOn(canvas, 'play').mockResolvedValue();
         const replacementAudio = document.createElement('audio');
@@ -628,12 +628,28 @@ describe('Now Playing panel interactions', () => {
         canvasPaused = true;
         replacementAudio.dispatchEvent(new Event('pause'));
         expect(stage.classList.contains('is-canvas-ready')).toBe(true);
-        expect(stage.classList.contains('is-canvas-playing')).toBe(false);
+        expect(stage.classList.contains('is-canvas-playing')).toBe(true);
         expect(pause).toHaveBeenCalled();
         expect(render).not.toHaveBeenCalled();
 
         panel.reducedMotionMedia.matches = true;
         expect(panel.renderMarkup(model)).not.toContain('has-video-artwork');
+        panel.destroy();
+    });
+
+    test('starts Canvas without waiting for background loading', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const panel = new NowPlayingPanel(dependencies());
+        await waitForPanel(panel);
+        panel.background.setSource.mockImplementation(() => new Promise(() => {}));
+        panel.currentTrack = { id: 'parallel-canvas', title: 'Canvas', videoCoverUrl: '/canvas.mp4' };
+        await panel.render({});
+        expect(panel.canvasMedia).toBeTruthy();
+        expect(panel.canvasMedia.getAttribute('poster')).toBeNull();
+        expect(panel.content.querySelector('.now-playing-panel-cover')).toBeNull();
+        panel.failCanvasMedia();
+        expect(panel.content.querySelector('[role="status"]').textContent).toBe('Canvas unavailable');
+        expect(panel.content.querySelector('.now-playing-panel-cover')).toBeNull();
         panel.destroy();
     });
 
@@ -704,7 +720,6 @@ describe('Now Playing panel interactions', () => {
 
         deps.player.currentTrack = next;
         const renderPanel = vi.spyOn(panel, 'render');
-        const updateBackground = vi.spyOn(panel.background, 'setFallbackSource');
         const updateBackgroundSource = vi.spyOn(panel.background, 'setSource');
         updateBackgroundSource.mockClear();
         panel.boundTrackChanged(new CustomEvent('player-track-changed', { detail: { track: next } }));
@@ -720,7 +735,6 @@ describe('Now Playing panel interactions', () => {
         );
 
         expect(renderPanel).not.toHaveBeenCalled();
-        expect(updateBackground).not.toHaveBeenCalled();
         expect(updateBackgroundSource).not.toHaveBeenCalled();
         expect(renderQueueLayer).toHaveBeenCalledTimes(1);
         expect(panel.nowPlayingNeedsRender).toBe(true);

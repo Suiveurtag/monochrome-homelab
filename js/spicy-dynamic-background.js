@@ -6,7 +6,7 @@ const KAWARP_OPTIONS = {
     animationSpeed: 0.04,
     saturation: 1.5,
     dithering: 0.008,
-    transitionDuration: 1200,
+    transitionDuration: 0,
     tintIntensity: 0,
     scale: 1,
 };
@@ -16,33 +16,29 @@ const BEAT_THRESHOLD = 0.75;
 const BEAT_SPEED = 0.55;
 const BEAT_SCALE = 1.008;
 const ANALYSIS_INTERVAL = 100;
-const FALLBACK_TRANSITION_DURATION = 850;
 // Upstream NpvCanvasBackground: Canvas loops are 9:16, and smoothing eases hard cuts.
 const VIDEO_OPTIONS = { sampleWidth: 72, sampleHeight: 128, smoothing: 100 };
-
-function safeBackgroundUrl(source) {
-    return String(source || '').replaceAll('"', '%22');
-}
 
 function isAnimatedSource(source) {
     return /^(?:data:video\/)|\.(?:m3u8|mp4)(?:$|[?#])/i.test(String(source || ''));
 }
 
 export class SpicyDynamicBackground {
-    constructor({ root, canvas, fallback, fallbacks, removeOnDispose = false }) {
+    constructor({ root, canvas, foreground = null, removeOnDispose = false }) {
         this.root = root;
         this.canvas = canvas;
-        this.fallback = fallback;
-        this.fallbacks = fallbacks?.length ? fallbacks : [fallback];
-        this.activeFallbackIndex = 0;
-        this.fallbackSource = '';
-        this.fallbackTransitionTimer = null;
+        this.foreground = foreground;
+        this.foregroundContext = foreground?.getContext('2d');
+        this.foregroundFrame = 0;
+        this.foregroundActive = false;
+        this.foregroundUntil = 0;
+        this.deferToVideo = false;
+        this.failedVideo = null;
         this.removeOnDispose = removeOnDispose;
         this.kawarp = null;
         this.generation = 0;
         this.source = '';
         this.loadingSource = '';
-        this.transitionTimer = null;
         this.disposed = false;
         this.loadQueue = Promise.resolve(false);
         this.video = null;
@@ -65,12 +61,71 @@ export class SpicyDynamicBackground {
         this.resizeObserver?.observe(root);
     }
 
+    ensureKawarp() {
+        if (!this.kawarp) {
+            this.kawarp = new Kawarp(this.canvas, KAWARP_OPTIONS);
+            this.resizeKawarp();
+        }
+        return this.kawarp;
+    }
+
     resizeKawarp() {
-        this.kawarp?.resize?.();
-        // resize() reallocates Kawarp's output framebuffer. When playback is
-        // paused the animation loop is stopped, so draw the preserved frame
-        // immediately instead of briefly exposing the static cover fallback.
-        if (this.kawarp && !this.kawarp.isPlaying) this.kawarp.renderFrame?.();
+        if (!this.kawarp) return;
+        const ratio = window.devicePixelRatio || 1;
+        const width = Math.max(1, Math.round(this.root.clientWidth * ratio));
+        const height = Math.max(1, Math.round(this.root.clientHeight * ratio));
+        if (this.canvas.width !== width) this.canvas.width = width;
+        if (this.canvas.height !== height) this.canvas.height = height;
+        this.kawarp.resize?.();
+        if (!this.kawarp.isPlaying) this.kawarp.renderFrame?.();
+        this.copyForeground();
+    }
+
+    // Mirror the actual WebGL frame above the content, without a second renderer or source.
+    copyForeground() {
+        if (!this.foregroundContext || this.disposed || !this.root.classList.contains('has-kawarp-background')) return;
+        const height = Math.max(
+            1,
+            Math.round((this.canvas.height * this.foreground.clientHeight) / Math.max(1, this.root.clientHeight))
+        );
+        if (this.foreground.width !== this.canvas.width) this.foreground.width = this.canvas.width;
+        if (this.foreground.height !== height) this.foreground.height = height;
+        this.foregroundContext.clearRect(0, 0, this.foreground.width, height);
+        this.foregroundContext.drawImage(this.canvas, 0, 0, this.canvas.width, height, 0, 0, this.canvas.width, height);
+    }
+
+    setForegroundActive(active) {
+        if (!this.foreground || active === this.foregroundActive) return;
+        this.foregroundActive = active;
+        this.foregroundUntil = active ? Infinity : performance.now() + 500;
+        this.copyForeground();
+        this.scheduleForeground();
+    }
+
+    scheduleForeground() {
+        if (
+            this.foregroundFrame ||
+            !this.foreground ||
+            this.disposed ||
+            !this.active ||
+            !this.kawarp?.isPlaying ||
+            performance.now() > this.foregroundUntil
+        )
+            return;
+        this.foregroundFrame = window.requestAnimationFrame(() => {
+            this.foregroundFrame = 0;
+            this.copyForeground();
+            this.scheduleForeground();
+        });
+    }
+
+    showFrame() {
+        this.canvas.style.display = '';
+        this.kawarp.renderFrame?.();
+        this.root.classList.add('has-kawarp-background');
+        if (this.active) this.kawarp.start();
+        this.syncMotion(true);
+        this.kawarp.setOptions({ transitionDuration: this.prefersReducedMotion() ? 0 : 1000 });
     }
 
     connectPlayback({ getElement, getAnalyser } = {}) {
@@ -109,6 +164,9 @@ export class SpicyDynamicBackground {
         this.syncPlaybackElement();
         window.cancelAnimationFrame?.(this.analysisFrame);
         this.analysisFrame = 0;
+        window.cancelAnimationFrame?.(this.foregroundFrame);
+        this.foregroundFrame = 0;
+        this.copyForeground();
         if (!this.kawarp || this.disposed || !this.active) return;
 
         if (this.prefersReducedMotion()) {
@@ -127,6 +185,7 @@ export class SpicyDynamicBackground {
 
         this.applyMotionOptions(PLAYING_SPEED, 1, force);
         if (this.keepAnimating && this.root.classList.contains('has-kawarp-background')) this.kawarp.start?.();
+        this.scheduleForeground();
         if (this.playbackElement && !this.playbackElement.paused) this.scheduleAudioReaction();
     }
 
@@ -179,6 +238,8 @@ export class SpicyDynamicBackground {
         this.analysisFrame = 0;
         if (!this.kawarp) return;
         if (!nextActive) {
+            window.cancelAnimationFrame?.(this.foregroundFrame);
+            this.foregroundFrame = 0;
             this.kawarp.stop?.();
             return;
         }
@@ -186,126 +247,88 @@ export class SpicyDynamicBackground {
         this.syncMotion(true);
     }
 
-    // Drive the fluid background from the playing Canvas video instead of the cover.
-    // Only the Canvas owner detaches it: the lyrics renderer also calls setSource on this host.
+    // The Canvas owner controls the source; the shared lyrics renderer only supplies its cover URL.
     followVideo(video) {
         const nextVideo = video || null;
         if (nextVideo === this.video) return;
-        const wasFollowing = this.video && this.root.classList.contains('has-kawarp-background');
+        const wasFollowing = Boolean(this.video);
         this.video = nextVideo;
-        if (!this.kawarp || this.disposed) return;
+        if (this.disposed) return;
         if (nextVideo) {
             this.loadVideo();
-        } else if (wasFollowing) {
+        } else if (wasFollowing && this.kawarp) {
             this.kawarp.unloadVideo();
-            // The last video frame stays until something replaces it.
+            if (this.deferToVideo || !this.source) {
+                this.root.classList.remove('has-kawarp-background');
+                return;
+            }
+            if (this.loadingSource) return;
             const generation = this.generation;
             void this.kawarp
                 .loadImage(this.source)
                 .then(() => {
-                    if (!this.disposed && generation === this.generation && !this.kawarp.isPlaying) {
-                        this.kawarp.renderFrame?.();
-                    }
+                    if (!this.disposed && generation === this.generation && !this.video) this.showFrame();
                 })
-                .catch(() => {});
+                .catch((error) => console.warn('Spicy Lyrics cover background could not load:', error));
         }
     }
 
     loadVideo() {
         const video = this.video;
-        if (!video || !this.kawarp || !this.root.classList.contains('has-kawarp-background')) return;
+        if (!video || video === this.failedVideo || this.disposed) return;
+        const onError = (error) => {
+            if (this.video !== video) return;
+            this.failedVideo = video;
+            this.root.classList.remove('has-kawarp-background');
+            console.warn('Spicy Lyrics Canvas background could not read the video:', error);
+        };
         try {
-            this.kawarp.loadVideo(video, {
-                ...VIDEO_OPTIONS,
-                // Cross-origin or undecodable frames: Kawarp has already unloaded the video.
-                onError: () => {
-                    if (this.video === video) this.followVideo(null);
-                },
-            });
+            this.ensureKawarp().loadVideo(video, { ...VIDEO_OPTIONS, onError });
+            if (video.readyState >= 2 && this.failedVideo !== video) this.showFrame();
         } catch (error) {
-            console.warn('Spicy Lyrics Canvas background fell back to cover:', error);
-            this.followVideo(null);
+            onError(error);
         }
     }
 
-    setFallbackSource(source) {
+    setSource(source, { deferToVideo = this.deferToVideo } = {}) {
         const nextSource = String(source || '');
-        if (nextSource === this.fallbackSource) return;
-        this.fallbackSource = nextSource;
-        const safeUrl = safeBackgroundUrl(nextSource);
-        const current = this.fallbacks[this.activeFallbackIndex];
-
-        if (this.fallbacks.length < 2 || !current?.style.backgroundImage) {
-            const fallback = current || this.fallbacks[0];
-            fallback.style.backgroundImage = safeUrl ? `url("${safeUrl}")` : '';
-            fallback.classList.add('is-visible');
-            this.fallback = fallback;
-            return;
-        }
-
-        const nextIndex = (this.activeFallbackIndex + 1) % this.fallbacks.length;
-        const incoming = this.fallbacks[nextIndex];
-        incoming.style.backgroundImage = safeUrl ? `url("${safeUrl}")` : '';
-        incoming.classList.add('is-visible');
-        current.classList.remove('is-visible');
-        this.activeFallbackIndex = nextIndex;
-        this.fallback = incoming;
-
-        window.clearTimeout(this.fallbackTransitionTimer);
-        this.fallbackTransitionTimer = window.setTimeout(() => {
-            if (current !== this.fallback) current.style.backgroundImage = '';
-        }, FALLBACK_TRANSITION_DURATION + 50);
-    }
-
-    setSource(source) {
-        const nextSource = String(source || '');
-        if (!this.disposed && nextSource === this.source) {
+        const modeChanged = deferToVideo !== this.deferToVideo;
+        this.deferToVideo = deferToVideo;
+        if (!modeChanged && !this.disposed && nextSource === this.source) {
             if (this.root.classList.contains('has-kawarp-background')) return Promise.resolve(true);
             if (this.loadingSource === nextSource) return this.loadQueue;
         }
         const generation = ++this.generation;
         this.source = nextSource;
         this.disposed = false;
-
-        this.setFallbackSource(isAnimatedSource(nextSource) ? '' : nextSource);
-
+        // When Canvas supplies the background, its first decoded frame initializes Kawarp directly.
+        if (deferToVideo) {
+            this.loadingSource = '';
+            return Promise.resolve(false);
+        }
         if (!nextSource || isAnimatedSource(nextSource)) {
             this.loadingSource = '';
             this.root.classList.remove('has-kawarp-background');
             this.canvas.style.display = 'none';
             return Promise.resolve(false);
         }
-
         this.loadingSource = nextSource;
-        this.root.classList.remove('has-kawarp-background');
-        this.canvas.style.display = '';
         this.loadQueue = this.loadQueue
             .catch(() => false)
             .then(async () => {
                 if (this.disposed || generation !== this.generation) return false;
                 try {
-                    if (!this.kawarp) this.kawarp = new Kawarp(this.canvas, KAWARP_OPTIONS);
-                    await this.kawarp.loadImage(nextSource);
+                    await this.ensureKawarp().loadImage(nextSource);
                     if (this.disposed || generation !== this.generation) return false;
-                    if (this.active) this.kawarp.start();
-                    else this.kawarp.renderFrame?.();
-                    this.syncMotion(true);
-                    this.root.classList.add('has-kawarp-background');
+                    this.showFrame();
                     this.loadVideo();
                     this.loadingSource = '';
-                    window.clearTimeout(this.transitionTimer);
-                    this.transitionTimer = window.setTimeout(() => {
-                        if (!this.disposed && generation === this.generation) {
-                            this.kawarp?.setOptions({ transitionDuration: this.prefersReducedMotion() ? 0 : 1000 });
-                        }
-                    }, 1000);
                     return true;
                 } catch (error) {
                     if (!this.disposed && generation === this.generation) {
                         this.loadingSource = '';
                         this.root.classList.remove('has-kawarp-background');
-                        this.canvas.style.display = 'none';
-                        console.warn('Spicy Lyrics dynamic background fell back to cover blur:', error);
+                        console.warn('Spicy Lyrics dynamic background could not load:', error);
                     }
                     return false;
                 }
@@ -317,12 +340,10 @@ export class SpicyDynamicBackground {
         this.disposed = true;
         this.generation += 1;
         this.loadingSource = '';
-        window.clearTimeout(this.transitionTimer);
-        this.transitionTimer = null;
-        window.clearTimeout(this.fallbackTransitionTimer);
-        this.fallbackTransitionTimer = null;
         window.cancelAnimationFrame?.(this.analysisFrame);
         this.analysisFrame = 0;
+        window.cancelAnimationFrame?.(this.foregroundFrame);
+        this.foregroundFrame = 0;
         this.playbackElement?.removeEventListener('play', this.onPlay);
         this.playbackElement?.removeEventListener('pause', this.onPause);
         this.playbackElement = null;
@@ -334,11 +355,17 @@ export class SpicyDynamicBackground {
         this.kawarp?.dispose();
         this.kawarp = null;
         this.root.classList.remove('has-kawarp-background');
-        if (this.removeOnDispose) this.root.remove();
+        if (this.removeOnDispose) {
+            this.root.remove();
+            this.foreground?.remove();
+        }
     }
 }
 
-export function mountSpicyDynamicBackground(target, { className = 'spicy-lyrics-external-bg' } = {}) {
+export function mountSpicyDynamicBackground(
+    target,
+    { className = 'spicy-lyrics-external-bg', foregroundClassName } = {}
+) {
     const existing = Array.from(target.children).find((child) => child.hasAttribute('data-spicy-background'));
     if (existing?.spicyDynamicBackground) return existing.spicyDynamicBackground;
 
@@ -346,22 +373,23 @@ export function mountSpicyDynamicBackground(target, { className = 'spicy-lyrics-
     root.className = className;
     root.dataset.spicyBackground = '';
     root.setAttribute('aria-hidden', 'true');
-    const fallback = document.createElement('div');
-    fallback.className = 'spicy-dynamic-bg-fallback is-visible';
-    const alternateFallback = document.createElement('div');
-    alternateFallback.className = 'spicy-dynamic-bg-fallback';
     const canvas = document.createElement('canvas');
     canvas.className = 'spicy-dynamic-bg';
     const shade = document.createElement('div');
     shade.className = 'spicy-dynamic-bg-shade';
-    root.append(fallback, alternateFallback, canvas, shade);
+    root.append(canvas, shade);
     target.prepend(root);
 
+    const foreground = foregroundClassName ? document.createElement('canvas') : null;
+    if (foreground) {
+        foreground.className = foregroundClassName;
+        foreground.setAttribute('aria-hidden', 'true');
+        target.append(foreground);
+    }
     const controller = new SpicyDynamicBackground({
         root,
         canvas,
-        fallback,
-        fallbacks: [fallback, alternateFallback],
+        foreground,
         removeOnDispose: true,
     });
     root.spicyDynamicBackground = controller;

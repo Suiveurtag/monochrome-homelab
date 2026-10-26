@@ -25,7 +25,10 @@ describe('Canvas settings', () => {
     test('background source and pause behavior fall back to their defaults', async () => {
         const { canvasSettings } = await import('./canvas-settings.js');
         expect(canvasSettings.getBackgroundSource()).toBe('canvas');
-        expect(canvasSettings.getPauseBehavior()).toBe('cover');
+        expect(canvasSettings.getPauseBehavior()).toBe('pause');
+
+        localStorage.setItem('now-playing-canvas-pause-behavior', 'cover');
+        expect(canvasSettings.getPauseBehavior()).toBe('pause');
 
         canvasSettings.setBackgroundSource('cover');
         canvasSettings.setPauseBehavior('play');
@@ -33,6 +36,6 @@ describe('Canvas settings', () => {
         expect(canvasSettings.getPauseBehavior()).toBe('play');
 
         canvasSettings.setPauseBehavior('bogus');
-        expect(canvasSettings.getPauseBehavior()).toBe('cover');
+        expect(canvasSettings.getPauseBehavior()).toBe('pause');
     });
 });

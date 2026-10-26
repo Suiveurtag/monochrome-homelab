@@ -631,6 +631,7 @@
 }
 
 .stats-showcase {
+    position: relative;
     min-width: 0;
 }
 
@@ -793,6 +794,110 @@
     opacity: 1;
 }
 
+/* Hover tip: a line draws down out of the cover, a node lands on its end, then the title and count rise into place. */
+.stats-cover-tip {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    pointer-events: none;
+    transform: rotate(calc(-1 * var(--stats-angle)));
+    transform-origin: 50% 0;
+}
+
+.stats-cover-tip-line {
+    position: relative;
+    flex: none;
+    width: 1px;
+    height: 52px;
+    background: linear-gradient(to bottom, var(--foreground), color-mix(in srgb, var(--foreground) 15%, transparent));
+    transform: scaleY(0);
+    transform-origin: 50% 0;
+    transition: transform 480ms var(--stats-ease);
+}
+
+.stats-cover-tip-text {
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+    padding-block: 3px;
+    text-align: center;
+}
+
+.stats-cover-tip-text strong,
+.stats-cover-tip-text small {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0;
+    transition:
+        opacity 420ms,
+        transform 520ms var(--stats-ease),
+        filter 520ms var(--stats-ease);
+}
+
+.stats-cover-tip-text strong {
+    font-size: 0.92rem;
+    font-weight: 650;
+    text-shadow: 0 1px 10px rgb(0 0 0 / 60%);
+    transform: translateY(14px);
+    filter: blur(6px);
+}
+
+.stats-cover-tip-text small {
+    color: var(--muted-foreground);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    transform: translateY(10px);
+    filter: blur(4px);
+}
+
+.stats-cover-card:is(:hover, :focus-visible) .stats-cover-tip-line {
+    transform: scaleY(1);
+    transition-delay: 60ms;
+}
+
+.stats-cover-card:is(:hover, :focus-visible) .stats-cover-tip-text strong {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition-delay: 520ms;
+}
+
+.stats-cover-card:is(:hover, :focus-visible) .stats-cover-tip-text small {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition-delay: 620ms;
+}
+
+/* Touch taps play the track and leave hover stuck, and the phone layout has no room under the covers. */
+@media (max-width: 760px), (hover: none) {
+    .stats-cover-tip {
+        display: none;
+    }
+}
+
+/* The tip takes over the bottom-left spot while a side cover is hovered. */
+@media (hover: hover) {
+    .stats-showcase:has(.stats-cover-1:is(:hover, :focus-visible), .stats-cover-2:is(:hover, :focus-visible))
+        .stats-showcase-caption p {
+        opacity: 0;
+    }
+}
+
+.stats-showcase-caption p {
+    transition: opacity 240ms;
+}
+
 .stats-no-cover {
     position: absolute;
     inset: 0;
@@ -806,21 +911,22 @@
 }
 
 .stats-showcase-caption {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 22px;
-    margin-top: 14px;
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    max-width: 52%;
+    text-align: left;
+    text-shadow: 0 1px 12px rgb(0 0 0 / 60%);
 }
 
 .stats-showcase-caption p {
     display: flex;
     flex-wrap: wrap;
+    justify-content: flex-start;
     align-items: baseline;
     column-gap: 0.45em;
     row-gap: 3px;
     min-width: 0;
-    max-width: 78%;
     margin: 0;
     font-size: clamp(0.95rem, 1.45cqi, 1.15rem);
 }
@@ -847,37 +953,6 @@
     flex-basis: 100%;
     color: var(--muted-foreground);
     font-size: 0.78rem;
-}
-
-.stats-hero-play {
-    display: grid;
-    place-items: center;
-    width: 50px;
-    height: 50px;
-    flex: none;
-    border: 0;
-    border-radius: 50%;
-    background: var(--foreground);
-    color: var(--background);
-    cursor: pointer;
-    box-shadow:
-        0 8px 24px rgb(0 0 0 / 30%),
-        0 0 0 6px color-mix(in srgb, var(--stats-glow-0) 14%, transparent);
-    transition:
-        transform 300ms var(--stats-ease),
-        box-shadow 300ms var(--stats-ease);
-}
-
-.stats-hero-play svg {
-    margin-left: 3px;
-    fill: currentcolor;
-}
-
-.stats-hero-play:hover {
-    transform: scale(1.07);
-    box-shadow:
-        0 10px 30px rgb(0 0 0 / 35%),
-        0 0 0 10px color-mix(in srgb, var(--stats-glow-0) 20%, transparent);
 }
 
 /* ---------- Activity chart ---------- */
@@ -2742,9 +2817,12 @@
     }
 
     .stats-showcase-caption {
+        position: static;
+        max-width: none;
         justify-content: space-between;
         gap: 14px;
         margin-top: 18px;
+        text-shadow: none;
     }
 
     .stats-showcase-caption p {

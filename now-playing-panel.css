@@ -3,25 +3,20 @@
 
 :root {
     --now-playing-panel-width: 420px;
+    --now-playing-panel-gutter: 16px;
     --now-playing-panel-rail: 42px;
     --now-playing-player-clearance: calc(var(--player-bar-height-desktop) + 30px);
 }
 
 /* Animatable Canvas reveal and scroll fade, as in upstream Spicy Lyrics (spicy-dynamic-bg.css). */
 @property --sl-videocanvas-mask-stop {
-    syntax: '<length-percentage>';
+    syntax: '<percentage>';
     inherits: false;
     initial-value: 25%;
 }
 
 /* The scroller fades in from its top edge and gives up some height while scrolled, as in Spotify's
    Now Playing view (Spicy Lyrics default.scss: --sl_rsb-wrapperFade and --push). */
-@property --now-playing-wrapper-fade {
-    syntax: '<percentage>';
-    inherits: false;
-    initial-value: 0%;
-}
-
 @property --now-playing-push {
     syntax: '<length>';
     inherits: false;
@@ -42,7 +37,7 @@
     color: #fff;
     box-shadow: 0 10px 36px rgb(0 0 0 / 0.36);
     isolation: isolate;
-    container: nowplaying / inline-size;
+    container: nowplaying / size;
     transform: none;
     transition:
         transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -101,24 +96,10 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     background: rgb(0 0 0 / 0.06);
 }
 
-.now-playing-panel-spicy-bg .spicy-dynamic-bg-fallback {
-    background-position: center;
-    background-size: cover;
-    filter: brightness(0.52) contrast(1.05) saturate(1.9) blur(var(--static-background-blur, 38px));
-    opacity: 0;
-    transform: scale(1.25);
-    transition: opacity 850ms cubic-bezier(0.66, 0, 0.34, 1);
-}
-
-.now-playing-panel-spicy-bg .spicy-dynamic-bg-fallback.is-visible {
-    opacity: 1;
-}
-
 .now-playing-panel-spicy-bg .spicy-dynamic-bg {
     display: block;
     opacity: 0;
     filter: brightness(0.6) saturate(2.65);
-    transition: opacity 800ms ease;
 }
 
 .now-playing-panel-spicy-bg.has-kawarp-background .spicy-dynamic-bg {
@@ -129,8 +110,7 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     display: none;
 }
 
-.now-playing-panel-scroll {
-    --now-playing-wrapper-fade: 0%;
+.now-playing-panel-viewport {
     --now-playing-push: 0px;
 
     position: relative;
@@ -138,26 +118,49 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     top: var(--now-playing-push);
     width: 100%;
     height: calc(100% - var(--now-playing-push));
-    overflow-x: hidden;
-    overflow-y: auto;
-    padding: 0 14px 18px;
-    scrollbar-width: none;
-    overscroll-behavior: contain;
-    mask-image: linear-gradient(to bottom, transparent 0%, black var(--now-playing-wrapper-fade));
-    transition:
-        --now-playing-push 500ms ease,
-        --now-playing-wrapper-fade 500ms ease;
+    overflow: hidden;
+    isolation: isolate;
+    mask-image: linear-gradient(black, black);
+    transition: --now-playing-push 500ms ease;
 }
 
-/* Scrolled, the background covers the content under the header: the scroller gives up 2rem and fades
-   in over its first 20% (Spotify's Canvas values, used here with or without a Canvas). */
-.now-playing-panel.is-scrolled .now-playing-panel-scroll {
-    --now-playing-wrapper-fade: 20%;
+.now-playing-panel.is-scrolled .now-playing-panel-viewport {
     --now-playing-push: 2rem;
 }
 
-.now-playing-panel.lyrics-expanded .now-playing-panel-scroll {
+/* The actual background frame paints over every card, while the fixed header remains above it. */
+.now-playing-panel-top-bg {
+    position: absolute;
+    z-index: 2;
+    inset: 0 0 auto;
+    width: 100%;
+    height: calc(2rem + (100% - 2rem) * 0.2);
+    pointer-events: none;
+    filter: brightness(0.6) saturate(2.65);
+    mask-image: linear-gradient(to bottom, black 64px, transparent 100%);
+    opacity: 0;
+    transition: opacity 500ms ease;
+}
+
+.now-playing-panel.is-scrolled:not(.lyrics-expanded):has(> .has-kawarp-background) > .now-playing-panel-top-bg {
+    opacity: 1;
+}
+
+.now-playing-panel.lyrics-expanded .now-playing-panel-viewport {
+    top: 0;
+    height: 100%;
     mask-image: none;
+}
+
+.now-playing-panel-scroll {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 0 var(--now-playing-panel-gutter) 16px;
+    scrollbar-width: none;
+    overscroll-behavior: contain;
 }
 
 .now-playing-panel-scroll::-webkit-scrollbar {
@@ -197,8 +200,8 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     position: absolute;
     z-index: 3;
     top: 0;
-    right: 14px;
-    left: 14px;
+    right: var(--now-playing-panel-gutter);
+    left: var(--now-playing-panel-gutter);
 }
 
 .now-playing-panel-header {
@@ -207,7 +210,7 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     display: grid;
     grid-template-columns: 0 minmax(0, 1fr) 0;
     align-items: center;
-    min-height: 66px;
+    min-height: 64px;
     gap: 0;
     isolation: isolate;
     transition:
@@ -216,32 +219,6 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
         opacity 220ms cubic-bezier(0.22, 1, 0.36, 1),
         filter 220ms cubic-bezier(0.22, 1, 0.36, 1),
         transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.now-playing-panel-header::before {
-    content: '';
-    position: absolute;
-    z-index: -1;
-    top: 0;
-    right: -14px;
-    left: -14px;
-    height: 84px;
-    pointer-events: none;
-    background: linear-gradient(
-        180deg,
-        rgb(0 0 0 / 0.38) 0%,
-        rgb(0 0 0 / 0.34) 18%,
-        rgb(0 0 0 / 0.24) 38%,
-        rgb(0 0 0 / 0.12) 60%,
-        rgb(0 0 0 / 0.04) 82%,
-        transparent 100%
-    );
-    transition: opacity 500ms ease;
-}
-
-/* Scrolled, the content fades out under the header instead, so nothing darkens the background. */
-.now-playing-panel.is-scrolled .now-playing-panel-header::before {
-    opacity: 0;
 }
 
 .now-playing-panel.is-scrolled .now-playing-panel-header {
@@ -369,7 +346,7 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     gap: 16px;
 
     /* The header sits above the scroller, so the content starts below it, except over a Canvas. */
-    padding-top: 66px;
+    padding-top: 64px;
     transition:
         opacity 220ms cubic-bezier(0.22, 1, 0.36, 1),
         filter 220ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -391,29 +368,41 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     background: rgb(0 0 0 / 0.28);
 }
 
+.now-playing-panel-media.is-canvas-failed {
+    display: grid;
+    place-items: center;
+    color: rgb(255 255 255 / 0.7);
+}
+
 .now-playing-panel-media-row {
     display: grid;
     min-width: 0;
 }
 
-.now-playing-panel-body.has-video-artwork .now-playing-panel-media-row {
-    width: calc(100% + 28px);
-    grid-template-rows: clamp(360px, 58dvh, 540px);
-    margin-top: -66px;
-    margin-inline: -14px;
-    margin-bottom: -126px;
-    transition: grid-template-rows 1200ms cubic-bezier(0.16, 1, 0.3, 1);
+.now-playing-panel-body.has-video-artwork {
+    --now-playing-canvas-offset: 25px;
+
+    padding-top: var(--now-playing-canvas-offset);
 }
 
-/* Collapsed, the Canvas fades slowly and runs a little under the title; expanded, it gets close to
-   the title but stops above it (as on Spotify). */
-.now-playing-panel-body.has-video-artwork .now-playing-panel-media {
-    --now-playing-canvas-fade-end: 100%;
-    --now-playing-canvas-fade-length: 230px;
+/* Spotify's layout slot is square or 9:14.5; its 9:16 Canvas surface is independent of that slot.
+   Clipping the surface to the square makes the long fade disappear before it reaches the title. */
+.now-playing-panel-body.has-video-artwork .now-playing-panel-media-row {
+    position: relative;
+    z-index: 0;
+    grid-template-rows: calc(100cqw - var(--now-playing-panel-gutter) * 2);
+    transition: grid-template-rows 1s cubic-bezier(0, 0, 0, 1);
+}
 
+.now-playing-panel-body.has-video-artwork > :not(.now-playing-panel-media-row) {
+    z-index: 1;
+}
+
+.now-playing-panel-body.has-video-artwork .now-playing-panel-media {
     width: 100%;
     height: 100%;
     aspect-ratio: auto;
+    overflow: visible;
     padding: 0;
     border: 0;
     border-radius: 0;
@@ -423,12 +412,13 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 }
 
 .now-playing-panel-body.has-video-artwork.is-canvas-expanded .now-playing-panel-media-row {
-    grid-template-rows: clamp(360px, calc(100cqw * 16 / 9), calc(100dvh - var(--now-playing-player-clearance) - 92px));
+    grid-template-rows: calc((100cqw - var(--now-playing-panel-gutter) * 2) * 14.5 / 9);
 }
 
-.now-playing-panel-body.has-video-artwork.is-canvas-expanded .now-playing-panel-media {
-    --now-playing-canvas-fade-end: calc(100% - 72px);
-    --now-playing-canvas-fade-length: 110px;
+@container nowplaying (height < 608px) {
+    .now-playing-panel-body.has-video-artwork.is-canvas-expanded .now-playing-panel-media-row {
+        grid-template-rows: calc((100cqw - var(--now-playing-panel-gutter) * 2) * 11 / 9);
+    }
 }
 
 .now-playing-panel-body.has-video-artwork .now-playing-panel-media:focus-visible {
@@ -444,60 +434,47 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     object-fit: cover;
 }
 
-/* As upstream Spicy Lyrics: the artwork melts into the background through an eased mask whose
-   stop animates, wide and soft for the cover and tight once the Canvas plays. The
-   Canvas stays slightly translucent so the background shows through it. */
+/* Spicy Lyrics spicy-dynamic-bg.css: both top and bottom fade on the full 9:16 surface.
+   The surface is lifted 25px above its slot and the video another 25px inside the surface. */
 .now-playing-panel-body.has-video-artwork
     .now-playing-panel-media
-    :is(.now-playing-panel-poster, .now-playing-panel-canvas) {
+    .now-playing-panel-canvas {
     --sl-videocanvas-mask-stop: 25%;
 
     position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+    z-index: 1;
+    inset: calc(var(--now-playing-canvas-offset) * -2) auto auto calc(var(--now-playing-panel-gutter) * -1);
+    width: 100cqw;
+    height: calc(100cqw * 16 / 9);
     object-position: center center;
     filter: brightness(0.65);
-    opacity: 0.9;
+    opacity: 0;
     mask-image: linear-gradient(
         to bottom,
+        transparent -5%,
+        black 15%,
         black var(--sl-videocanvas-mask-stop),
-        rgb(0 0 0 / 0.976) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.1),
-        rgb(0 0 0 / 0.905) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.2),
-        rgb(0 0 0 / 0.794) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.3),
-        rgb(0 0 0 / 0.655) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.4),
-        rgb(0 0 0 / 0.5) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.5),
-        rgb(0 0 0 / 0.345) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.6),
-        rgb(0 0 0 / 0.206) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.7),
-        rgb(0 0 0 / 0.095) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.8),
-        rgb(0 0 0 / 0.024) calc(var(--sl-videocanvas-mask-stop) + (var(--now-playing-canvas-fade-end) - var(--sl-videocanvas-mask-stop)) * 0.9),
-        transparent var(--now-playing-canvas-fade-end)
+        transparent 100%
     );
     transition:
         --sl-videocanvas-mask-stop 1s cubic-bezier(0, 0, 0, 1),
-        opacity 900ms cubic-bezier(0.16, 1, 0.3, 1),
         filter 200ms linear;
 }
 
-.now-playing-panel-body.has-video-artwork .now-playing-panel-media .now-playing-panel-canvas {
-    z-index: 1;
-    opacity: 0;
-}
-
 .now-playing-panel-body.has-video-artwork .now-playing-panel-media.is-canvas-playing .now-playing-panel-canvas {
-    --sl-videocanvas-mask-stop: calc(var(--now-playing-canvas-fade-end) - var(--now-playing-canvas-fade-length));
-
     opacity: 0.9;
 }
 
-.now-playing-panel-body.has-video-artwork .now-playing-panel-media.is-canvas-playing .now-playing-panel-poster {
-    opacity: 0;
+.now-playing-panel-body.has-video-artwork.is-canvas-expanded
+    .now-playing-panel-media.is-canvas-playing
+    .now-playing-panel-canvas {
+    --sl-videocanvas-mask-stop: 80%;
 }
 
 @media (hover: hover) {
     .now-playing-panel-body.has-video-artwork
         .now-playing-panel-media:hover
-        :is(.now-playing-panel-poster, .now-playing-panel-canvas) {
+        .now-playing-panel-canvas {
         filter: brightness(0.9);
     }
 }
@@ -513,9 +490,9 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 }
 
 .now-playing-panel-body.has-video-artwork .now-playing-panel-metadata {
-    min-height: 126px;
-    padding: 0 14px 14px;
-    align-items: flex-end;
+    min-height: 56px;
+    margin-bottom: 8px;
+    align-items: center;
     text-shadow: 0 2px 14px rgb(0 0 0 / 0.62);
 }
 
@@ -1281,6 +1258,8 @@ body.now-playing-panel-resizing {
 }
 
 .now-playing-panel.lyrics-expanded .now-playing-panel-scroll {
+    top: 0;
+    height: 100%;
     overflow: hidden;
     padding: 0;
     background: transparent;
@@ -1295,6 +1274,7 @@ body.now-playing-panel-resizing {
     position: relative;
     height: 100%;
     gap: 0;
+    padding-top: 0;
     background: transparent;
 }
 

@@ -13945,7 +13945,6 @@ spicy-lyrics {
 }
 
 #fullscreen-cover-overlay .spicy-lyrics-fullscreen-bg .spicy-dynamic-bg,
-#fullscreen-cover-overlay .spicy-lyrics-fullscreen-bg .spicy-dynamic-bg-fallback,
 #fullscreen-cover-overlay .spicy-lyrics-fullscreen-bg .spicy-dynamic-bg-shade {
     position: absolute;
     inset: 0;
@@ -13953,23 +13952,9 @@ spicy-lyrics {
     height: 100%;
 }
 
-#fullscreen-cover-overlay .spicy-lyrics-fullscreen-bg .spicy-dynamic-bg-fallback {
-    background-position: center;
-    background-size: cover;
-    filter: saturate(2.25) brightness(0.48) blur(46px);
-    opacity: 0;
-    transform: scale(1.16);
-    transition: opacity 850ms cubic-bezier(0.66, 0, 0.34, 1);
-}
-
-#fullscreen-cover-overlay .spicy-lyrics-fullscreen-bg .spicy-dynamic-bg-fallback.is-visible {
-    opacity: 1;
-}
-
 #fullscreen-cover-overlay .spicy-lyrics-fullscreen-bg .spicy-dynamic-bg {
     filter: saturate(2.5) brightness(0.58);
     opacity: 0;
-    transition: opacity 0.8s ease;
 }
 
 #fullscreen-cover-overlay .spicy-lyrics-fullscreen-bg.has-kawarp-background .spicy-dynamic-bg {

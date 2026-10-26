@@ -224,7 +224,10 @@ export class NowPlayingPanel {
         this.queueAdvanceArtworkContainer = null;
         this.nowPlayingNeedsRender = false;
         this.background = this.root
-            ? mountSpicyDynamicBackground(this.root, { className: 'now-playing-panel-spicy-bg' })
+            ? mountSpicyDynamicBackground(this.root, {
+                  className: 'now-playing-panel-spicy-bg',
+                  foregroundClassName: 'now-playing-panel-top-bg',
+              })
             : null;
         this.desktopMedia = matchMedia(DESKTOP_PANEL_QUERY);
         this.desktopOpenState = true;
@@ -270,10 +273,8 @@ export class NowPlayingPanel {
                 this.renderQueueControls({ preserveScroll: true });
             }
             this.canvasExpanded = false;
-            const coverId = getTrackPlayerArtwork(nextTrack);
             // Keep the queue advance as the only visible transition; the panel refreshes on close.
             if (this.activeView !== 'queue') {
-                if (coverId) this.background?.setFallbackSource?.(this.api.getCoverUrl(coverId));
                 void this.render();
             }
         };
@@ -417,6 +418,13 @@ export class NowPlayingPanel {
         };
         this.boundCanvasBackgroundSourceChanged = () => {
             this.canvasBackgroundSource = canvasSettings.getBackgroundSource();
+            if (this.model) {
+                void this.background?.setSource(this.model.artwork.staticSrc, {
+                    deferToVideo:
+                        this.canvasBackgroundSource === 'canvas' && this.canvasEnabled &&
+                        this.model.artwork.isVideo && !this.expandedLyrics && !this.reducedMotionMedia.matches,
+                });
+            }
             this.syncCanvasPlayback();
         };
         this.boundCanvasPauseBehaviorChanged = () => {
@@ -573,7 +581,9 @@ export class NowPlayingPanel {
     // New content can reset the scroll position without a scroll event, which would leave the
     // scrolled look (header push and fade) on a panel that is back at the top.
     syncScrolled() {
-        this.root.classList.toggle('is-scrolled', Boolean(this.content) && this.content.scrollTop > 8);
+        const scrolled = Boolean(this.content) && this.content.scrollTop > 0;
+        this.root.classList.toggle('is-scrolled', scrolled);
+        this.background?.setForegroundActive?.(scrolled && !this.expandedLyrics);
     }
 
     syncHeader() {
@@ -1201,8 +1211,12 @@ export class NowPlayingPanel {
             if (controller.signal.aborted) return;
             this.model = model;
             if (shouldRenderNowPlaying) {
-                await this.background?.setSource(model.artwork.staticSrc);
-                if (controller.signal.aborted) return;
+                void this.background?.setSource(model.empty ? '' : model.artwork.staticSrc, {
+                    deferToVideo:
+                        this.canvasEnabled && model.artwork.isVideo &&
+                        this.canvasBackgroundSource === 'canvas' && !this.expandedLyrics &&
+                        !this.reducedMotionMedia.matches,
+                });
             }
             await fadeOut;
             if (controller.signal.aborted) return;
@@ -1299,7 +1313,7 @@ export class NowPlayingPanel {
             <div class="now-playing-panel-body${canvasLayout ? ' has-video-artwork' : ''}${this.canvasExpanded ? ' is-canvas-expanded' : ''}${model.empty ? ' is-empty' : ''}">
                 <div class="now-playing-panel-media-row">
                     <${canvasLayout ? `button type="button" data-canvas-toggle aria-expanded="${String(this.canvasExpanded)}"` : 'div'} class="now-playing-panel-media" aria-label="${escapeHtml(canvasLayout ? `${this.canvasExpanded ? 'Collapse' : 'Expand'} ${model.title} Canvas artwork` : `${model.title} artwork`)}">
-                        <img class="now-playing-panel-poster" src="${escapeHtml(model.artwork.staticSrc)}" alt="" fetchpriority="high" />
+                        ${canvasLayout ? '' : `<img class="now-playing-panel-cover" src="${escapeHtml(model.artwork.staticSrc)}" alt="" fetchpriority="high" />`}
                     </${canvasLayout ? 'button' : 'div'}>
                 </div>
                 <section class="now-playing-panel-metadata" aria-label="Current track">
@@ -1405,7 +1419,7 @@ export class NowPlayingPanel {
 
     getNowPlayingCoverElement() {
         return (
-            this.content?.querySelector('.now-playing-panel-poster') ||
+            this.content?.querySelector('.now-playing-panel-cover') ||
             this.content?.querySelector('.now-playing-panel-media') ||
             null
         );
@@ -2593,8 +2607,7 @@ export class NowPlayingPanel {
     async mountMedia(model, signal) {
         if (!this.canvasEnabled || !model.artwork.isVideo || !model.artwork.animatedSrc) return;
         const stage = this.content.querySelector('.now-playing-panel-media');
-        const poster = stage?.querySelector('.now-playing-panel-poster');
-        if (!stage || !poster || signal.aborted || this.reducedMotionMedia.matches) return;
+        if (!stage || signal.aborted || this.reducedMotionMedia.matches) return;
 
         const isHls = /\.m3u8(?:$|[?#])/i.test(model.artwork.animatedSrc);
         let video;
@@ -2607,7 +2620,6 @@ export class NowPlayingPanel {
             video.defaultMuted = true;
             video.playsInline = true;
             video.preload = 'auto';
-            video.poster = model.artwork.staticSrc;
             video.dataset.canvasHlsUrl = model.artwork.animatedSrc;
             stage.append(video);
         } else {
@@ -2618,7 +2630,6 @@ export class NowPlayingPanel {
                 video: true,
                 autoplay: false,
                 preload: 'auto',
-                poster: model.artwork.staticSrc,
             });
         }
 
@@ -2635,20 +2646,11 @@ export class NowPlayingPanel {
                 video.dataset.canvasReady === 'true'
             )
                 return;
-            requestAnimationFrame(() => {
-                if (
-                    signal.aborted ||
-                    video !== this.canvasMedia ||
-                    !video.isConnected ||
-                    video.dataset.canvasReady === 'true'
-                )
-                    return;
-                window.clearTimeout(this.canvasLoadTimer);
-                this.canvasLoadTimer = null;
-                this.canvasLoadRetryCount = 0;
-                video.dataset.canvasReady = 'true';
-                this.syncCanvasPlayback();
-            });
+            window.clearTimeout(this.canvasLoadTimer);
+            this.canvasLoadTimer = null;
+            this.canvasLoadRetryCount = 0;
+            video.dataset.canvasReady = 'true';
+            this.syncCanvasPlayback();
         };
         const handleLoadError = () => this.retryCanvasLoad(video);
         video.addEventListener('loadeddata', markReady);
@@ -2676,7 +2678,7 @@ export class NowPlayingPanel {
 
         this.armCanvasLoadTimeout(video);
         if (isHls && this.ui?.setupHlsVideo) {
-            await this.ui.setupHlsVideo(video, { hlsUrl: model.artwork.animatedSrc }, poster, {
+            await this.ui.setupHlsVideo(video, { hlsUrl: model.artwork.animatedSrc }, null, {
                 preserveOnError: true,
                 autoplay: false,
                 onReady: () => this.syncCanvasPlayback(),
@@ -2720,9 +2722,8 @@ export class NowPlayingPanel {
             if (hlsUrl && this.ui?.setupHlsVideo) {
                 video._hls?.destroy?.();
                 video._hls = null;
-                const poster = this.canvasStage?.querySelector('.now-playing-panel-poster');
                 void this.ui
-                    .setupHlsVideo(video, { hlsUrl }, poster, {
+                    .setupHlsVideo(video, { hlsUrl }, null, {
                         preserveOnError: true,
                         autoplay: false,
                         onReady: () => this.syncCanvasPlayback(),
@@ -2744,8 +2745,6 @@ export class NowPlayingPanel {
         window.clearTimeout(this.canvasRetryTimer);
         this.canvasRetryTimer = null;
         this.canvasRetryCount = 0;
-        failedStage?.closest('.now-playing-panel-body')?.classList.remove('has-video-artwork', 'is-canvas-expanded');
-        this.canvasExpanded = false;
         this.canvasVisibilityObserver?.disconnect();
         this.canvasVisibilityObserver = null;
         this.background?.followVideo?.(null);
@@ -2760,13 +2759,12 @@ export class NowPlayingPanel {
         video.remove();
         this.canvasMedia = null;
         if (failedStage) {
-            const fallbackStage = document.createElement('div');
-            fallbackStage.className = 'now-playing-panel-media is-canvas-failed';
-            fallbackStage.setAttribute('aria-label', `${this.model?.title || 'Track'} artwork`);
-            const poster = failedStage.querySelector('.now-playing-panel-poster');
-            if (poster) fallbackStage.append(poster);
-            failedStage.replaceWith(fallbackStage);
-            this.canvasStage = fallbackStage;
+            const errorStage = document.createElement('div');
+            errorStage.className = 'now-playing-panel-media is-canvas-failed';
+            errorStage.setAttribute('role', 'status');
+            errorStage.textContent = 'Canvas unavailable';
+            failedStage.replaceWith(errorStage);
+            this.canvasStage = errorStage;
         }
     }
 
@@ -2782,7 +2780,7 @@ export class NowPlayingPanel {
             this.canvasEnabled && video.dataset.canvasReady === 'true' && !reducedMotion
         );
         const ready = this.canvasEnabled && video.dataset.canvasReady === 'true' && !reducedMotion;
-        // A frozen frame stays on screen only when the user chose to pause Canvas; otherwise the cover returns.
+        // The first decoded frame is visible even when the music has not resumed yet.
         const keepFrame = ready && this.canvasPauseBehavior === 'pause';
         stage.classList.toggle('is-canvas-playing', keepFrame || (ready && shouldPlay && !video.paused));
         if (shouldPlay) {
@@ -2806,7 +2804,7 @@ export class NowPlayingPanel {
     syncCanvasBackground() {
         const video = this.canvasMedia;
         const shown = Boolean(this.canvasStage?.classList.contains('is-canvas-playing'));
-        const follow = shown && this.canvasBackgroundSource === 'canvas';
+        const follow = shown && !this.expandedLyrics && this.canvasBackgroundSource === 'canvas';
         this.background?.followVideo?.(follow ? video : null);
         this.background?.setKeepAnimating?.(follow && this.canvasPauseBehavior === 'play');
     }
@@ -2887,6 +2885,7 @@ export class NowPlayingPanel {
         );
         this.applyCanvasMode();
         this.syncCanvasPlayback();
+        this.syncScrolled();
     }
 
     beginLyricsTransition(direction) {
