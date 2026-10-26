@@ -379,6 +379,7 @@ export class NowPlayingPanel {
             if (this.currentTrack?.id != null)
                 this.scrollByTrack.set(String(this.currentTrack.id), this.content.scrollTop);
             this.root.classList.toggle('is-scrolled', this.content.scrollTop > 8);
+            this.syncScrollMask();
             this.updateScrollbar();
         };
         this.boundQueueScroll = (event) => {
@@ -564,6 +565,13 @@ export class NowPlayingPanel {
         this.resizer.inert = !this.isOpen || fullscreenBlocksPanel;
         if (this.reopenButton) this.reopenButton.hidden = fullscreenVisible || !this.desktopMedia.matches;
         this.syncPanelActivity();
+    }
+
+    // The content fades out under the header once scrolled. The mask is fixed to the viewport, so it
+    // is positioned in the body's own coordinates (the body scrolls with the content).
+    syncScrollMask() {
+        const body = this.content?.querySelector('.now-playing-panel-body');
+        if (body) body.style.setProperty('--now-playing-mask-y', `${this.content.scrollTop - body.offsetTop}px`);
     }
 
     syncPlaybackElement() {
@@ -1196,6 +1204,7 @@ export class NowPlayingPanel {
                 clearLyricsContainerSync(this.content);
                 this.content.innerHTML = this.renderNowPlayingMarkup(model);
                 this.content.scrollTop = previousScroll;
+                this.syncScrollMask();
                 this.nowPlayingNeedsRender = false;
             }
             if (isQueueView) {

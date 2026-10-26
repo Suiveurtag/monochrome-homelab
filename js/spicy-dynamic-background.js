@@ -17,10 +17,6 @@ const BEAT_SPEED = 0.55;
 const BEAT_SCALE = 1.008;
 const ANALYSIS_INTERVAL = 100;
 const FALLBACK_TRANSITION_DURATION = 850;
-// The Canvas video, blurred and stretched, continues below its bottom edge so the two read as one surface.
-const AMBIENT_WIDTH = 64;
-const AMBIENT_PAD = 24;
-const AMBIENT_INTERVAL = 1000 / 30;
 // Upstream NpvCanvasBackground: Canvas loops are 9:16, and smoothing eases hard cuts.
 const VIDEO_OPTIONS = { sampleWidth: 72, sampleHeight: 128, smoothing: 100 };
 
@@ -50,9 +46,6 @@ export class SpicyDynamicBackground {
         this.disposed = false;
         this.loadQueue = Promise.resolve(false);
         this.video = null;
-        this.ambient = null;
-        this.ambientFrame = 0;
-        this.lastAmbientDraw = 0;
         this.playbackElement = null;
         this.getPlaybackElement = null;
         this.getAnalyser = null;
@@ -184,7 +177,6 @@ export class SpicyDynamicBackground {
         this.active = nextActive;
         window.cancelAnimationFrame?.(this.analysisFrame);
         this.analysisFrame = 0;
-        this.syncAmbient();
         if (!this.kawarp) return;
         if (!nextActive) {
             this.kawarp.stop?.();
@@ -201,7 +193,6 @@ export class SpicyDynamicBackground {
         if (nextVideo === this.video) return;
         const wasFollowing = this.video && this.root.classList.contains('has-kawarp-background');
         this.video = nextVideo;
-        this.syncAmbient();
         if (!this.kawarp || this.disposed) return;
         if (nextVideo) {
             this.loadVideo();
@@ -235,61 +226,6 @@ export class SpicyDynamicBackground {
             console.warn('Spicy Lyrics Canvas background fell back to cover:', error);
             this.followVideo(null);
         }
-    }
-
-    syncAmbient() {
-        window.cancelAnimationFrame?.(this.ambientFrame);
-        this.ambientFrame = 0;
-        const following = Boolean(this.video) && !this.disposed;
-        this.root.classList.toggle('is-following-video', following);
-        if (!following || !this.active || this.prefersReducedMotion()) return;
-        if (!this.ambient) {
-            const canvas = document.createElement('canvas');
-            canvas.className = 'spicy-dynamic-bg-ambient';
-            this.root.querySelector('.spicy-dynamic-bg-shade')?.before(canvas);
-            if (!canvas.isConnected) this.root.append(canvas);
-            this.ambient = { canvas, ctx: canvas.getContext('2d', { alpha: false }) };
-        }
-        const tick = (time) => {
-            this.ambientFrame = 0;
-            if (!this.video || this.disposed || !this.active) return;
-            if (time - this.lastAmbientDraw >= AMBIENT_INTERVAL && !document.hidden) {
-                this.lastAmbientDraw = time;
-                this.paintAmbient();
-            }
-            this.ambientFrame = window.requestAnimationFrame(tick);
-        };
-        this.ambientFrame = window.requestAnimationFrame(tick);
-    }
-
-    paintAmbient() {
-        const { video } = this;
-        const ctx = this.ambient?.ctx;
-        if (!ctx || !video || video.readyState < 2 || !video.videoWidth) return;
-        const root = this.root.getBoundingClientRect();
-        const box = video.getBoundingClientRect();
-        if (!root.width || !root.height || !box.width || !box.height) return;
-        const { canvas } = this.ambient;
-        const k = AMBIENT_WIDTH / (root.width + AMBIENT_PAD * 2);
-        const width = AMBIENT_WIDTH;
-        const height = Math.max(1, Math.round((root.height + AMBIENT_PAD * 2) * k));
-        if (canvas.width !== width || canvas.height !== height) {
-            canvas.width = width;
-            canvas.height = height;
-        }
-        // object-fit: cover, centered: the part of the video that is actually on screen.
-        const scale = Math.max(box.width / video.videoWidth, box.height / video.videoHeight);
-        const sw = box.width / scale;
-        const sh = box.height / scale;
-        const sx = (video.videoWidth - sw) / 2;
-        const sy = (video.videoHeight - sh) / 2;
-        const strip = Math.max(1, sh * 0.02);
-        const top = (box.top - root.top + AMBIENT_PAD) * k;
-        const bottom = top + box.height * k;
-        ctx.drawImage(video, sx, sy, sw, sh, 0, top, width, bottom - top);
-        if (bottom < height) ctx.drawImage(video, sx, sy + sh - strip, sw, strip, 0, bottom, width, height - bottom);
-        if (top > 0) ctx.drawImage(video, sx, sy, sw, strip, 0, 0, width, top);
-        canvas.style.setProperty('--ambient-from', `${box.bottom - root.top + AMBIENT_PAD}px`);
     }
 
     setFallbackSource(source) {
@@ -387,10 +323,6 @@ export class SpicyDynamicBackground {
         this.fallbackTransitionTimer = null;
         window.cancelAnimationFrame?.(this.analysisFrame);
         this.analysisFrame = 0;
-        window.cancelAnimationFrame?.(this.ambientFrame);
-        this.ambientFrame = 0;
-        this.ambient?.canvas.remove();
-        this.ambient = null;
         this.playbackElement?.removeEventListener('play', this.onPlay);
         this.playbackElement?.removeEventListener('pause', this.onPause);
         this.playbackElement = null;

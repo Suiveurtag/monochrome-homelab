@@ -5,9 +5,19 @@
     --now-playing-panel-width: 420px;
     --now-playing-panel-rail: 42px;
     --now-playing-player-clearance: calc(var(--player-bar-height-desktop) + 30px);
+}
 
-    /* Shared by the Canvas and the ambient layer under it, so they match where they overlap. */
-    --now-playing-canvas-grade: brightness(0.64) saturate(1.5);
+/* Animatable Canvas reveal and scroll fade, as in upstream Spicy Lyrics (spicy-dynamic-bg.css). */
+@property --sl-videocanvas-mask-stop {
+    syntax: '<percentage>';
+    inherits: false;
+    initial-value: 25%;
+}
+
+@property --now-playing-scroll-fade {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
 }
 
 .now-playing-panel {
@@ -111,37 +121,6 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     display: none;
 }
 
-/* The Canvas video, blurred and smeared below its bottom edge. It is graded like the Canvas
-   itself and fades out to the fluid background, so the video melts into a matching surface. */
-.now-playing-panel-spicy-bg .spicy-dynamic-bg-ambient {
-    --ambient-from: 0px;
-
-    inset: -24px;
-    width: calc(100% + 48px);
-    height: calc(100% + 48px);
-    filter: blur(9px) var(--now-playing-canvas-grade);
-    opacity: 0;
-    mask-image: linear-gradient(
-        to bottom,
-        black var(--ambient-from),
-        rgb(0 0 0 / 0.976) calc(var(--ambient-from) + 28px),
-        rgb(0 0 0 / 0.905) calc(var(--ambient-from) + 56px),
-        rgb(0 0 0 / 0.794) calc(var(--ambient-from) + 84px),
-        rgb(0 0 0 / 0.655) calc(var(--ambient-from) + 112px),
-        rgb(0 0 0 / 0.5) calc(var(--ambient-from) + 140px),
-        rgb(0 0 0 / 0.345) calc(var(--ambient-from) + 168px),
-        rgb(0 0 0 / 0.206) calc(var(--ambient-from) + 196px),
-        rgb(0 0 0 / 0.095) calc(var(--ambient-from) + 224px),
-        rgb(0 0 0 / 0.024) calc(var(--ambient-from) + 252px),
-        transparent calc(var(--ambient-from) + 280px)
-    );
-    transition: opacity 700ms ease;
-}
-
-.now-playing-panel-spicy-bg.is-following-video .spicy-dynamic-bg-ambient {
-    opacity: 1;
-}
-
 .now-playing-panel-scroll {
     position: relative;
     z-index: 1;
@@ -205,37 +184,10 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
         transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.now-playing-panel-header::before {
-    content: '';
-    position: absolute;
-    z-index: -1;
-    top: 0;
-    right: -14px;
-    left: -14px;
-    height: 112px;
-    pointer-events: none;
-    background: linear-gradient(
-        180deg,
-        rgb(0 0 0 / 0.5) 0%,
-        rgb(0 0 0 / 0.38) 38%,
-        rgb(0 0 0 / 0.18) 66%,
-        rgb(0 0 0 / 0.05) 84%,
-        transparent 100%
-    );
-    backdrop-filter: none;
-    mask-image: linear-gradient(180deg, black 0%, black 54%, rgb(0 0 0 / 0.68) 76%, transparent 100%);
-    opacity: 0.84;
-    transition:
-        opacity 320ms cubic-bezier(0.22, 1, 0.36, 1),
-        backdrop-filter 320ms cubic-bezier(0.22, 1, 0.36, 1);
+.now-playing-panel.is-scrolled .now-playing-panel-body {
+    --now-playing-scroll-fade: 1;
 }
 
-.now-playing-panel.is-scrolled .now-playing-panel-header::before {
-    backdrop-filter: blur(8px) saturate(1.05);
-    opacity: 1;
-}
-
-/* Keep scrolled track metadata behind the header's backdrop layer. */
 .now-playing-panel.is-scrolled .now-playing-panel-header {
     z-index: 4;
 }
@@ -356,10 +308,29 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 }
 
 .now-playing-panel-body {
+    --now-playing-mask-y: 0px;
+
     display: flex;
     flex-direction: column;
     gap: 16px;
+
+    /* Nothing hides the background at rest. Once scrolled, the content fades out under the header
+       (no blur, no scrim) so the background shows behind it; the mask is fixed to the viewport. */
+    mask-image: linear-gradient(
+        to bottom,
+        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade))) 0,
+        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.896)) 14px,
+        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.648)) 28px,
+        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.352)) 42px,
+        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.104)) 56px,
+        black 70px
+    );
+    mask-repeat: no-repeat;
+    mask-size: calc(100% + 200px) 100000px;
+    mask-position: -100px var(--now-playing-mask-y);
+    mask-clip: no-clip;
     transition:
+        --now-playing-scroll-fade 500ms ease,
         opacity 220ms cubic-bezier(0.22, 1, 0.36, 1),
         filter 220ms cubic-bezier(0.22, 1, 0.36, 1),
         transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -423,40 +394,45 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     object-fit: cover;
 }
 
-/* Poster and Canvas share one geometry, so a pause is a plain crossfade between them. The mask
-   melts the artwork into the fluid background with a cosine ease instead of a linear ramp. */
+/* As upstream Spicy Lyrics: the artwork melts into the background through an eased mask whose
+   stop animates, wide and soft for the cover (25%) and tight once the Canvas plays (80%). The
+   Canvas stays slightly translucent so the background shows through it. */
 .now-playing-panel-body.has-video-artwork
     .now-playing-panel-media
     :is(.now-playing-panel-poster, .now-playing-panel-canvas) {
+    --sl-videocanvas-mask-stop: 25%;
+
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     object-position: center center;
-    filter: var(--now-playing-canvas-grade);
+    filter: brightness(0.65);
+    opacity: 0.9;
     mask-image: linear-gradient(
         to bottom,
-        transparent 0%,
-        rgb(0 0 0 / 0.06) 4%,
-        rgb(0 0 0 / 0.22) 9%,
-        rgb(0 0 0 / 0.55) 15%,
-        rgb(0 0 0 / 0.86) 21%,
-        black 27%,
-        black 58%,
-        rgb(0 0 0 / 0.976) 62.2%,
-        rgb(0 0 0 / 0.905) 66.4%,
-        rgb(0 0 0 / 0.794) 70.6%,
-        rgb(0 0 0 / 0.655) 74.8%,
-        rgb(0 0 0 / 0.5) 79%,
-        rgb(0 0 0 / 0.345) 83.2%,
-        rgb(0 0 0 / 0.206) 87.4%,
-        rgb(0 0 0 / 0.095) 91.6%,
-        rgb(0 0 0 / 0.024) 95.8%,
+        transparent -5%,
+        rgb(0 0 0 / 0.104) -1%,
+        rgb(0 0 0 / 0.352) 3%,
+        rgb(0 0 0 / 0.648) 7%,
+        rgb(0 0 0 / 0.896) 11%,
+        black 15%,
+        black var(--sl-videocanvas-mask-stop),
+        rgb(0 0 0 / 0.976) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.1),
+        rgb(0 0 0 / 0.905) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.2),
+        rgb(0 0 0 / 0.794) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.3),
+        rgb(0 0 0 / 0.655) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.4),
+        rgb(0 0 0 / 0.5) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.5),
+        rgb(0 0 0 / 0.345) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.6),
+        rgb(0 0 0 / 0.206) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.7),
+        rgb(0 0 0 / 0.095) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.8),
+        rgb(0 0 0 / 0.024) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.9),
         transparent 100%
     );
     transition:
+        --sl-videocanvas-mask-stop 1s cubic-bezier(0, 0, 0, 1),
         opacity 900ms cubic-bezier(0.16, 1, 0.3, 1),
-        filter 500ms ease;
+        filter 200ms linear;
 }
 
 .now-playing-panel-canvas {
@@ -465,28 +441,21 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 }
 
 .now-playing-panel-media.is-canvas-playing .now-playing-panel-canvas {
-    opacity: 1;
+    --sl-videocanvas-mask-stop: 80%;
+
+    opacity: 0.9;
 }
 
 .now-playing-panel-body.has-video-artwork .now-playing-panel-media.is-canvas-playing .now-playing-panel-poster {
     opacity: 0;
 }
 
-
-/* Over Canvas the header scrim only has to keep the controls legible, so it fades out smoothly. */
-.now-playing-panel:has(.has-video-artwork) .now-playing-panel-header::before {
-    height: 96px;
-    background: linear-gradient(
-        180deg,
-        rgb(0 0 0 / 0.34) 0%,
-        rgb(0 0 0 / 0.31) 15%,
-        rgb(0 0 0 / 0.24) 30%,
-        rgb(0 0 0 / 0.15) 48%,
-        rgb(0 0 0 / 0.07) 66%,
-        rgb(0 0 0 / 0.02) 84%,
-        transparent 100%
-    );
-    mask-image: none;
+@media (hover: hover) {
+    .now-playing-panel-body.has-video-artwork
+        .now-playing-panel-media:hover
+        :is(.now-playing-panel-poster, .now-playing-panel-canvas) {
+        filter: brightness(0.9);
+    }
 }
 
 .now-playing-panel-metadata {
