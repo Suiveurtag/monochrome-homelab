@@ -511,11 +511,6 @@ export class MusicDatabase {
             await this.performTransaction(storeName, 'readwrite', (store) => store.delete(key));
             return false;
         } else {
-            const allPinned = await this.getPinned();
-            if (allPinned.length >= 3) {
-                const oldest = allPinned.sort((a, b) => a.pinnedAt - b.pinnedAt)[0];
-                await this.performTransaction(storeName, 'readwrite', (store) => store.delete(oldest.id));
-            }
             const entry = { ...minifiedItem, pinnedAt: Date.now() };
             await this.performTransaction(storeName, 'readwrite', (store) => store.put(entry));
             return true;

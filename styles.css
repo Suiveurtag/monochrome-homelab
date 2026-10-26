@@ -1053,7 +1053,7 @@ ul {
     min-height: 0;
     grid-template:
         'sidebar main' 1fr
-        'player player' auto / 210px 1fr;
+        'player player' auto / var(--sidebar-width) 1fr;
 }
 
 body.access-gated {
@@ -2247,47 +2247,7 @@ body.site-intro-active {
     grid-area: sidebar;
     min-height: 0;
     background-color: var(--background);
-    border-right: 1px solid var(--border);
-    padding: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.sidebar-content {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
-
-.sidebar-nav.main {
-    flex: 1;
-    flex-shrink: 0;
-}
-
-.sidebar-bottom-container {
-    margin-top: auto;
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-}
-
-.sidebar-nav-bottom {
-    margin-top: auto;
-    padding-top: 1rem;
-    flex: 0 0 auto;
-    border-top: 1px solid var(--border);
-    background: var(--background);
-    position: relative;
-}
-
-.sidebar-nav-bottom::before {
-    content: '';
-    display: block;
-    height: 0.5rem;
-    margin-top: -0.5rem;
 }
 
 .main-content {
@@ -2325,10 +2285,6 @@ body.site-intro-active {
     :root[data-theme='cover'] .now-playing-bar {
         background-color: rgb(10 10 10 / 0.5);
         backdrop-filter: blur(28px) saturate(1.2);
-    }
-
-    :root[data-theme='cover'] .sidebar-nav-bottom {
-        background: transparent;
     }
 }
 
@@ -2625,161 +2581,9 @@ body.site-intro-active {
     border-color: rgb(0, 0, 0, 0.1);
 }
 
-.sidebar-logo {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-}
-
-.sidebar-logo-link {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: inherit;
-    text-decoration: none;
-}
-
-.sidebar-logo .app-logo {
-    width: 15px;
-    height: 15px;
-    flex-shrink: 0;
-}
-
-.sidebar-logo span {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-}
-
-#sidebar-toggle {
-    padding: 0;
-    flex-shrink: 0;
-}
-
-.sidebar-nav ul {
-    list-style: none;
-}
-
-.sidebar-nav .nav-item a {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    border-radius: var(--radius);
-    color: var(--muted-foreground);
-    font-weight: 500;
-    transition:
-        background-color var(--transition-fast),
-        color var(--transition-fast),
-        transform var(--transition-fast);
-    cursor: pointer;
-}
-
 .search-bar svg.search-icon {
     width: 20px;
     height: 20px;
-}
-
-.sidebar-nav .nav-item a:hover {
-    background-color: var(--secondary);
-    color: var(--foreground);
-    transform: translateX(4px);
-
-    /* Slide effect */
-}
-
-.sidebar-nav .nav-item a.active {
-    background-color: var(--primary);
-    color: var(--primary-foreground);
-}
-
-.sidebar-nav .nav-item a svg {
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-}
-
-.sidebar-nav.bottom {
-    margin: 0;
-    padding: 0;
-}
-
-.sidebar-nav.bottom .nav-item a {
-    padding: 0.5rem 0.75rem;
-    gap: 0.5rem;
-    font-size: 0.8125rem;
-    font-weight: 500;
-}
-
-.sidebar-nav.bottom .nav-item a svg {
-    width: 17px;
-    height: 17px;
-}
-
-.pinned-items-header {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    color: var(--muted-foreground);
-    padding: 0 0.75rem;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-}
-
-#pinned-items-nav {
-    margin-top: auto;
-    min-height: 0;
-    flex: 1 1 auto;
-    margin-bottom: 0;
-    padding-bottom: 0;
-    overflow: visible;
-}
-
-#pinned-items-list .nav-item a {
-    gap: 0.75rem;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.9rem;
-}
-
-#pinned-items-list .nav-item a .pinned-item-cover {
-    width: 24px;
-    height: 24px;
-    border-radius: var(--radius-sm);
-    flex-shrink: 0;
-    object-fit: cover;
-}
-
-#pinned-items-list .nav-item a .pinned-item-cover.artist {
-    border-radius: var(--radius-full);
-}
-
-#pinned-items-list .nav-item a .pinned-item-name {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex: 1;
-}
-
-.pinned-item-collage {
-    width: 24px;
-    height: 24px;
-    border-radius: var(--radius-sm);
-    flex-shrink: 0;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    overflow: hidden;
-}
-
-.pinned-item-collage img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    background-color: var(--muted);
 }
 
 #sidebar-overlay {
@@ -12940,7 +12744,7 @@ img[src=''] {
 
 @media (max-width: 1024px) {
     .app-container {
-        grid-template-columns: 160px 1fr;
+        grid-template-columns: 200px 1fr;
     }
 
     .card-grid {
@@ -13314,10 +13118,6 @@ img[src=''] {
 
     .track-action-btn {
         padding: 0.25rem;
-    }
-
-    .sidebar-nav .nav-item a {
-        padding: 1rem 0.75rem;
     }
 
     .offline-notification,
@@ -13832,40 +13632,6 @@ img[src=''] {
         grid-template-columns: 80px 1fr;
     }
 
-    body.sidebar-collapsed .sidebar-logo span {
-        display: none;
-    }
-
-    body.sidebar-collapsed .sidebar-nav span {
-        display: none;
-    }
-
-    body.sidebar-collapsed .sidebar-logo {
-        justify-content: center;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    body.sidebar-collapsed .sidebar-nav .nav-item a {
-        justify-content: center;
-        padding: 0.75rem 0;
-    }
-
-    body.sidebar-collapsed .pinned-items-header {
-        display: none;
-    }
-
-    body.sidebar-collapsed #pinned-items-list .nav-item a .pinned-item-name {
-        display: none;
-    }
-
-    body.sidebar-collapsed #pinned-items-list .nav-item a {
-        justify-content: center;
-    }
-
-    body.sidebar-collapsed #sidebar-toggle {
-        margin-left: 0 !important;
-    }
 }
 
 #page-track .detail-header {
@@ -14100,15 +13866,6 @@ body:has(#side-panel.active) #close-fullscreen-cover-btn {
 }
 
 /* Micro-animations for Interactive Elements */
-.nav-item a {
-    position: relative;
-    overflow: hidden;
-}
-
-.nav-item a:active {
-    transform: scale(0.97);
-}
-
 /* ========================================
    16-Band Graphic Equalizer (Legacy EQ)
    ======================================== */

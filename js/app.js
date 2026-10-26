@@ -78,7 +78,8 @@ import {
     installAnimatedArtworkObserver,
     isSupportedArtworkFile,
 } from './animated-artwork.js';
-import { SVG_OFFLINE, SVG_RIGHT_ARROW, SVG_LEFT_ARROW, SVG_ANIMATE_SPIN, SVG_PLAY, SVG_CLOSE } from './icons.js';
+import { SVG_OFFLINE, SVG_ANIMATE_SPIN, SVG_PLAY, SVG_CLOSE } from './icons.js';
+import { initSidebar } from './sidebar.js';
 
 // Capture real iOS state before spoofing (needed for background audio)
 installAnimatedArtworkObserver();
@@ -1152,8 +1153,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Restore sidebar state
     sidebarSettings.restoreState();
 
-    // Render pinned items
-    await UIRenderer.instance.renderPinnedItems();
+    initSidebar(Player.instance, MusicAPI.instance);
 
     // Load settings module and initialize
     const { initializeSettings } = await loadSettingsModule();
@@ -1309,17 +1309,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             default:
                 void closeFullscreenOverlay();
         }
-    });
-
-    document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
-        document.body.classList.toggle('sidebar-collapsed');
-        const isCollapsed = document.body.classList.contains('sidebar-collapsed');
-        const toggleBtn = document.getElementById('sidebar-toggle');
-        if (toggleBtn) {
-            toggleBtn.innerHTML = isCollapsed ? SVG_RIGHT_ARROW(20) : SVG_LEFT_ARROW(20);
-        }
-        // Save sidebar state to localStorage
-        sidebarSettings.setCollapsed(isCollapsed);
     });
 
     // Import tab switching in playlist modal

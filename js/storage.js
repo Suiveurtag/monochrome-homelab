@@ -1,6 +1,5 @@
 //storage.js
 
-import { SVG_RIGHT_ARROW } from './icons';
 
 export const apiSettings = {
     STORAGE_KEY: 'monochrome-local-instances-v1',
@@ -2157,10 +2156,6 @@ export const sidebarSettings = {
         const isCollapsed = this.isCollapsed();
         if (isCollapsed) {
             document.body.classList.add('sidebar-collapsed');
-            const toggleBtn = document.getElementById('sidebar-toggle');
-            if (toggleBtn) {
-                toggleBtn.innerHTML = SVG_RIGHT_ARROW(20);
-            }
         }
     },
 };
@@ -2511,10 +2506,9 @@ export const sidebarSectionSettings = {
 
     shouldShowRecent() {
         try {
-            const val = localStorage.getItem(this.SHOW_RECENT_KEY);
-            return val === null ? true : val === 'true';
+            return localStorage.getItem(this.SHOW_RECENT_KEY) === 'true';
         } catch {
-            return true;
+            return false;
         }
     },
 
@@ -2536,10 +2530,9 @@ export const sidebarSectionSettings = {
 
     shouldShowGithub() {
         try {
-            const val = localStorage.getItem(this.SHOW_GITHUB_KEY);
-            return val === null ? true : val === 'true';
+            return localStorage.getItem(this.SHOW_GITHUB_KEY) === 'true';
         } catch {
-            return true;
+            return false;
         }
     },
 
@@ -2549,10 +2542,9 @@ export const sidebarSectionSettings = {
 
     shouldShowParty() {
         try {
-            const val = localStorage.getItem(this.SHOW_PARTY_KEY);
-            return val === null ? true : val === 'true';
+            return localStorage.getItem(this.SHOW_PARTY_KEY) === 'true';
         } catch {
-            return true;
+            return false;
         }
     },
 

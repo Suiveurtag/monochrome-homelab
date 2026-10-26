@@ -1,0 +1,670 @@
+/* Sidebar: app tabs, the Recents shelf and app links. Loaded after styles.css; behaviour lives in js/sidebar.js. */
+/* stylelint-disable no-descending-specificity */
+
+:root {
+    --sidebar-rail: 80px;
+    --sidebar-ease: cubic-bezier(0.32, 0.72, 0, 1);
+    --sidebar-settle: cubic-bezier(0.16, 1, 0.3, 1);
+    --sidebar-hover: color-mix(in srgb, var(--foreground) 6%, transparent);
+    --sidebar-active: color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    overflow: hidden;
+}
+
+.sidebar-content {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    height: 100%;
+    min-height: 0;
+}
+
+/* Labels fade out before the rail closes and back in once it has room. */
+.sidebar-label,
+.sidebar-library-text {
+    transition:
+        opacity 200ms ease 80ms,
+        translate 200ms var(--sidebar-ease) 80ms;
+}
+
+body.sidebar-collapsed .sidebar-label,
+body.sidebar-collapsed .sidebar-library-text {
+    opacity: 0;
+    translate: -4px 0;
+    pointer-events: none;
+    transition-duration: 120ms;
+    transition-delay: 0s;
+}
+
+/* ---- Logo row ---- */
+
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 40px;
+    padding-left: 20px;
+}
+
+.sidebar-logo-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--foreground);
+    font-size: var(--text-base);
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.sidebar-logo-link .sidebar-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-logo .app-logo {
+    flex: none;
+    width: 16px;
+    height: 16px;
+}
+
+.sidebar-toggle {
+    display: grid;
+    flex: none;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition:
+        color 160ms ease,
+        background-color 160ms ease;
+}
+
+.sidebar-toggle:hover {
+    background: var(--sidebar-hover);
+    color: var(--foreground);
+}
+
+.sidebar-toggle svg {
+    transition: rotate 360ms var(--sidebar-settle);
+}
+
+body.sidebar-collapsed .sidebar-logo {
+    justify-content: center;
+    padding-left: 0;
+}
+
+body.sidebar-collapsed .sidebar-logo-link {
+    display: none;
+}
+
+body.sidebar-collapsed .sidebar-toggle svg {
+    rotate: 180deg;
+}
+
+/* ---- Tabs ---- */
+
+.sidebar-nav {
+    position: relative;
+}
+
+.sidebar-nav ul {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    list-style: none;
+}
+
+.sidebar .nav-item[hidden] {
+    display: none;
+}
+
+/* Icons sit on the rail's centre line, so collapsing never moves them. */
+.sidebar-nav .nav-item a {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    height: 40px;
+    padding: 0 18px;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    color: var(--muted-foreground);
+    font-size: var(--text-sm);
+    font-weight: 550;
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+        color 160ms ease,
+        background-color 160ms ease,
+        scale 160ms var(--sidebar-ease);
+}
+
+.sidebar-nav .nav-item a:hover {
+    background-color: var(--sidebar-hover);
+    color: var(--foreground);
+}
+
+.sidebar-nav .nav-item a.active {
+    background-color: transparent;
+    color: var(--foreground);
+}
+
+.sidebar-nav .nav-item a:active {
+    scale: 0.98;
+}
+
+.sidebar-nav .nav-item a svg {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    transition: stroke-width 160ms ease;
+}
+
+.sidebar-nav .nav-item a.active svg {
+    stroke-width: 2.4;
+}
+
+.sidebar-nav-indicator {
+    position: absolute;
+    z-index: 0;
+    top: 0;
+    right: 0;
+    left: 0;
+    border-radius: var(--radius-md);
+    background: var(--sidebar-active);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+        transform 380ms var(--sidebar-settle),
+        opacity 180ms ease;
+}
+
+.sidebar-nav-indicator.is-instant {
+    transition: opacity 180ms ease;
+}
+
+.sidebar-nav-indicator.is-visible {
+    opacity: 1;
+}
+
+.sidebar .social-unread-badge {
+    margin-left: auto;
+}
+
+body.sidebar-collapsed .sidebar .social-unread-badge {
+    position: absolute;
+    top: 5px;
+    left: 30px;
+    min-width: 16px;
+    height: 16px;
+    line-height: 16px;
+}
+
+.sidebar-nav.bottom {
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid var(--shell-border);
+}
+
+.sidebar-nav.bottom .nav-item a {
+    height: 36px;
+    padding: 0 19px;
+    font-size: var(--text-sm);
+}
+
+.sidebar-nav.bottom .nav-item a svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* ---- Recents shelf ---- */
+
+.sidebar-library {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    padding-top: 4px;
+}
+
+/* Header and chips fold away (height included) when the sidebar collapses to a rail. */
+.sidebar-library-controls {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 360ms var(--sidebar-ease);
+}
+
+.sidebar-library-controls > div {
+    min-height: 0;
+    overflow: hidden;
+}
+
+body.sidebar-collapsed .sidebar-library-controls {
+    grid-template-rows: 0fr;
+}
+
+.sidebar-library-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 32px;
+    padding: 0 4px 0 18px;
+}
+
+.sidebar-library-header h2 {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.sidebar-library-sort {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition:
+        color 160ms ease,
+        background-color 160ms ease;
+}
+
+.sidebar-library-sort:hover,
+.sidebar-library-sort.is-sorted-by-name {
+    background: var(--sidebar-hover);
+    color: var(--foreground);
+}
+
+.sidebar-library-sort svg {
+    transition: rotate 380ms var(--sidebar-settle);
+}
+
+.sidebar-library-sort.is-sorted-by-name svg {
+    rotate: 180deg;
+}
+
+.sidebar-library-filters {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 4px 10px 12px;
+}
+
+.sidebar-library-filters button {
+    position: relative;
+    z-index: 1;
+    height: 28px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: var(--sidebar-hover);
+    color: var(--foreground);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        color 200ms ease,
+        background-color 200ms ease,
+        scale 160ms var(--sidebar-ease);
+}
+
+.sidebar-library-filters button:hover {
+    background: var(--sidebar-active);
+}
+
+.sidebar-library-filters button:active {
+    scale: 0.96;
+}
+
+.sidebar-library-filters button[aria-pressed='true'] {
+    background: transparent;
+    color: var(--background);
+}
+
+.sidebar-library-filter-pill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 28px;
+    border-radius: var(--radius-full);
+    background: var(--foreground);
+    opacity: 0;
+    scale: 0.9;
+    pointer-events: none;
+    transition:
+        transform 380ms var(--sidebar-settle),
+        width 380ms var(--sidebar-settle),
+        opacity 160ms ease,
+        scale 220ms var(--sidebar-settle);
+}
+
+.sidebar-library-filter-pill.is-visible {
+    opacity: 1;
+    scale: 1;
+}
+
+.sidebar-library-list {
+    flex: 1;
+    min-height: 0;
+    margin: 0 -12px;
+    padding: 2px 12px 12px;
+    overflow: hidden auto;
+    list-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    mask-image: linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 20px), transparent);
+}
+
+.sidebar-library-list:empty {
+    flex: 0;
+}
+
+.sidebar-library-list:hover {
+    scrollbar-color: color-mix(in srgb, var(--foreground) 22%, transparent) transparent;
+}
+
+.sidebar-library-item {
+    position: relative;
+}
+
+.sidebar-library-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 56px;
+    padding: 0 8px;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    color: var(--foreground);
+    text-decoration: none;
+    transition:
+        background-color 160ms ease,
+        scale 160ms var(--sidebar-ease);
+}
+
+.sidebar-library-link:hover,
+.sidebar-library-item:focus-within .sidebar-library-link {
+    background: var(--sidebar-hover);
+}
+
+.sidebar-library-link:active {
+    scale: 0.98;
+}
+
+.sidebar-library-link:focus-visible,
+.sidebar-nav .nav-item a:focus-visible,
+.sidebar-library-filters button:focus-visible,
+.sidebar-library-sort:focus-visible,
+.sidebar-library-pin:focus-visible,
+.sidebar-toggle:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
+}
+
+.sidebar-library-art {
+    display: grid;
+    flex: none;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background: var(--muted);
+    transition: outline-color 200ms ease;
+}
+
+.sidebar-library-art img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sidebar-library-art.is-artist {
+    border-radius: 50%;
+}
+
+.sidebar-library-art.is-collage {
+    grid-template: 1fr 1fr / 1fr 1fr;
+}
+
+/* Liked Songs is the one tile drawn in ink: the inverse of the panel. */
+.sidebar-library-art.is-liked {
+    background: var(--foreground);
+    color: var(--background);
+}
+
+.sidebar-library-art.is-liked svg {
+    width: 16px;
+    height: 16px;
+    fill: currentcolor;
+    stroke: currentcolor;
+}
+
+.sidebar-library-art.is-empty {
+    color: var(--muted-foreground);
+    font-size: var(--text-base);
+    font-weight: 650;
+    text-transform: uppercase;
+}
+
+.sidebar-library-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.sidebar-library-title {
+    overflow: hidden;
+    font-size: var(--text-sm);
+    font-weight: 550;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color 200ms ease;
+}
+
+.sidebar-library-meta {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--muted-foreground);
+    font-size: var(--text-xs);
+}
+
+.sidebar-library-pinned {
+    display: inline-flex;
+    color: var(--foreground);
+}
+
+.sidebar-library-pinned svg {
+    width: 11px;
+    height: 11px;
+    fill: currentcolor;
+}
+
+.sidebar-library-item.is-just-toggled .sidebar-library-pinned svg {
+    animation: sidebar-pin-drop 420ms var(--sidebar-settle);
+}
+
+@keyframes sidebar-pin-drop {
+    0% {
+        opacity: 0;
+        transform: translateY(-5px) scale(0.6);
+    }
+
+    100% {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* The row whose album/playlist/artist is playing: highlight title + live equalizer. */
+.sidebar-library-item.is-current .sidebar-library-title {
+    color: var(--highlight);
+}
+
+.sidebar-library-eq {
+    display: none;
+    flex: none;
+    gap: 2px;
+    align-items: flex-end;
+    height: 12px;
+    margin-right: 6px;
+    transition: opacity 140ms ease;
+}
+
+.sidebar-library-item.is-current .sidebar-library-eq {
+    display: inline-flex;
+}
+
+.sidebar-library-eq i {
+    width: 3px;
+    height: 100%;
+    border-radius: var(--radius-xs);
+    background: var(--highlight);
+    transform: scaleY(0.35);
+    transform-origin: bottom;
+}
+
+body:has(.now-playing-bar.is-playing) .sidebar-library-item.is-current .sidebar-library-eq i {
+    animation: sidebar-eq 820ms ease-in-out infinite alternate;
+}
+
+body:has(.now-playing-bar.is-playing) .sidebar-library-item.is-current .sidebar-library-eq i:nth-child(2) {
+    animation-duration: 640ms;
+    animation-delay: -320ms;
+}
+
+body:has(.now-playing-bar.is-playing) .sidebar-library-item.is-current .sidebar-library-eq i:nth-child(3) {
+    animation-duration: 940ms;
+    animation-delay: -560ms;
+}
+
+@keyframes sidebar-eq {
+    0% {
+        transform: scaleY(0.3);
+    }
+
+    100% {
+        transform: scaleY(1);
+    }
+}
+
+.sidebar-library-pin {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    display: grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    opacity: 0;
+    translate: 0 -50%;
+    scale: 0.85;
+    transition:
+        opacity 140ms ease,
+        scale 220ms var(--sidebar-settle),
+        color 140ms ease,
+        background-color 140ms ease;
+}
+
+.sidebar-library-item:is(:hover, :focus-within) .sidebar-library-pin {
+    opacity: 1;
+    scale: 1;
+}
+
+.sidebar-library-item:is(:hover, :focus-within) .sidebar-library-link {
+    padding-right: 40px;
+}
+
+.sidebar-library-item:is(:hover, :focus-within) .sidebar-library-eq {
+    opacity: 0;
+}
+
+.sidebar-library-pin:hover {
+    background: var(--sidebar-active);
+    color: var(--foreground);
+}
+
+.sidebar-library-pin[aria-pressed='true'] {
+    color: var(--foreground);
+}
+
+.sidebar-library-pin[aria-pressed='true'] svg {
+    fill: currentcolor;
+}
+
+.sidebar-library-empty {
+    margin: 0;
+    padding: 6px 18px;
+    color: var(--muted-foreground);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+}
+
+/* Rail: covers only, centred under the tab icons. */
+body.sidebar-collapsed .sidebar-library-link {
+    padding: 0 8px;
+}
+
+body.sidebar-collapsed .sidebar-library-eq,
+body.sidebar-collapsed .sidebar-library-pin,
+body.sidebar-collapsed .sidebar-library-empty {
+    display: none;
+}
+
+body.sidebar-collapsed .sidebar-library-item.is-current .sidebar-library-art {
+    outline: 2px solid var(--highlight);
+    outline-offset: 2px;
+}
+
+@media (min-width: 769px) {
+    .app-container {
+        transition: grid-template-columns 360ms var(--sidebar-ease);
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: min(300px, 86vw);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sidebar *,
+    .sidebar *::before,
+    .app-container {
+        transition-duration: 0s !important;
+        transition-delay: 0s !important;
+        animation: none !important;
+    }
+}

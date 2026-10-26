@@ -54,6 +54,7 @@ export { default as SVG_PALETTE } from '!lucide/palette.svg?svg&icon';
 export { default as SVG_PAUSE } from '../images/pause.svg?svg&icon';
 export { default as SVG_PAUSE_LARGE } from '../images/pause-large.svg?svg&icon';
 export { default as SVG_PENCIL } from '!lucide/pencil.svg?svg&icon';
+export { default as SVG_PIN } from '!lucide/pin.svg?svg&icon';
 export { default as SVG_PLAY } from '../images/play.svg?svg&icon';
 export { default as SVG_PLAY_LARGE } from '../images/play-large.svg?svg&icon';
 export { default as SVG_PLUS } from '!lucide/plus.svg?svg&icon';

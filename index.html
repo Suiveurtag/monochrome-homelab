@@ -82,6 +82,7 @@
         <link rel="stylesheet" href="/listening-recap.css" />
         <link rel="stylesheet" href="/player-refined.css" />
         <link rel="stylesheet" href="/now-playing-panel.css" />
+        <link rel="stylesheet" href="/sidebar.css" />
         <link rel="stylesheet" href="/soggy-easter-egg.css" />
         <link rel="stylesheet" href="/metallic-logo-easter-egg.css" />
     </head>
@@ -1927,97 +1928,118 @@
         </div>
 
         <div class="app-container">
-            <aside class="sidebar">
+            <aside class="sidebar" aria-label="Sidebar">
                 <div class="sidebar-content">
                     <div class="sidebar-logo">
-                        <a href="/" class="sidebar-logo-link">
+                        <a href="/" class="sidebar-logo-link" aria-label="Monochrome home">
                             <use svg="./images/monochrome-logo.svg" size="200" class="app-logo" />
-                            <span>Monochrome</span>
+                            <span class="sidebar-label">Monochrome</span>
                         </a>
                         <button
                             id="sidebar-toggle"
-                            class="btn-icon desktop-only"
-                            style="margin-left: auto"
-                            title="Collapse Sidebar"
+                            class="sidebar-toggle desktop-only"
+                            type="button"
+                            title="Collapse sidebar"
+                            aria-label="Collapse sidebar"
+                            aria-expanded="true"
                         >
-                            <use svg="!lucide/chevron-left.svg" size="20" />
+                            <use svg="!lucide/panel-left-close.svg" size="18" />
                         </button>
                     </div>
 
-                    <nav class="sidebar-nav main">
+                    <nav class="sidebar-nav main" aria-label="Main">
                         <ul>
                             <li class="nav-item" id="sidebar-nav-home">
                                 <a href="/">
-                                    <use svg="!lucide/house.svg" size="24" />
-                                    <span>Home</span>
+                                    <use svg="!lucide/music-2.svg" size="20" />
+                                    <span class="sidebar-label">Music</span>
                                 </a>
                             </li>
                             <li class="nav-item" id="sidebar-nav-library">
                                 <a href="/library">
-                                    <use svg="!lucide/library.svg" size="24" />
-                                    <span>Library</span>
-                                </a>
-                            </li>
-                            <li class="nav-item" id="sidebar-nav-upload">
-                                <a href="/upload">
-                                    <use svg="!lucide/upload.svg" size="24" />
-                                    <span>Upload</span>
+                                    <use svg="!lucide/library.svg" size="20" />
+                                    <span class="sidebar-label">Library</span>
                                 </a>
                             </li>
                             <li class="nav-item" id="sidebar-nav-social">
                                 <a href="/social">
-                                    <use svg="!lucide/messages-square.svg" size="24" />
-                                    <span>Social</span>
+                                    <use svg="!lucide/messages-square.svg" size="20" />
+                                    <span class="sidebar-label">Social</span>
                                     <span id="social-unread-badge" class="social-unread-badge" hidden>0</span>
                                 </a>
                             </li>
                             <li class="nav-item" id="sidebar-nav-recent">
                                 <a href="/stats">
-                                    <use svg="!lucide/chart-no-axes-combined.svg" size="24" />
-                                    <span>Listening stats</span>
-                                </a>
-                            </li>
-                            <li class="nav-item" id="sidebar-nav-settings">
-                                <a href="/settings">
-                                    <use svg="!lucide/settings.svg" size="24" />
-                                    <span>Settings</span>
-                                </a>
-                            </li>
-                            <li class="nav-item" id="sidebar-nav-admin" hidden>
-                                <a href="/admin">
-                                    <use svg="!lucide/shield-check.svg" size="24" />
-                                    <span>Admin</span>
+                                    <use svg="!lucide/chart-no-axes-combined.svg" size="20" />
+                                    <span class="sidebar-label">Listening stats</span>
                                 </a>
                             </li>
                         </ul>
                     </nav>
-                    <div class="sidebar-bottom-container">
-                        <nav class="sidebar-nav" id="pinned-items-nav" style="display: none">
-                            <h4 class="pinned-items-header">Pinned</h4>
-                            <ul id="pinned-items-list">
-                                <!-- Pinned should be injected here -->
-                            </ul>
-                        </nav>
 
-                        <div class="sidebar-nav-bottom">
-                            <nav class="sidebar-nav bottom">
-                                <ul>
-                                    <li class="nav-item" id="sidebar-nav-party">
-                                        <a href="/parties" id="sidebar-party-btn">
-                                            <use svg="!lucide/users.svg" size="24" />
-                                            <span>Parties</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item" id="sidebar-nav-githubbtn" style="display: none">
-                                        <a href="https://github.com/monochrome-music/monochrome" target="_blank">
-                                            <use svg="./images/github.svg" size="24" />
-                                            <span>GitHub</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </nav>
+                    <section class="sidebar-library" aria-labelledby="sidebar-library-title">
+                        <div class="sidebar-library-controls">
+                            <div>
+                                <header class="sidebar-library-header">
+                                    <h2 id="sidebar-library-title" class="sidebar-label">Recents</h2>
+                                    <button
+                                        id="sidebar-library-sort"
+                                        class="sidebar-library-sort"
+                                        type="button"
+                                        title="Sort by name"
+                                        aria-label="Sort by name"
+                                    >
+                                        <use svg="!lucide/arrow-up-down.svg" size="15" />
+                                    </button>
+                                </header>
+                                <div class="sidebar-library-filters" role="group" aria-label="Show only">
+                                    <span class="sidebar-library-filter-pill" aria-hidden="true"></span>
+                                    <button type="button" data-filter="playlist" aria-pressed="false">Playlists</button>
+                                    <button type="button" data-filter="album" aria-pressed="false">Albums</button>
+                                    <button type="button" data-filter="artist" aria-pressed="false">Artists</button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                        <ul id="sidebar-library-list" class="sidebar-library-list"></ul>
+                        <p id="sidebar-library-empty" class="sidebar-library-empty" hidden>
+                            Play an album, playlist or artist and it shows up here.
+                        </p>
+                    </section>
+
+                    <nav class="sidebar-nav bottom" aria-label="App">
+                        <ul>
+                            <li class="nav-item" id="sidebar-nav-settings">
+                                <a href="/settings">
+                                    <use svg="!lucide/settings.svg" size="20" />
+                                    <span class="sidebar-label">Settings</span>
+                                </a>
+                            </li>
+                            <li class="nav-item" id="sidebar-nav-upload">
+                                <a href="/upload">
+                                    <use svg="!lucide/upload.svg" size="20" />
+                                    <span class="sidebar-label">Upload</span>
+                                </a>
+                            </li>
+                            <li class="nav-item" id="sidebar-nav-admin" hidden>
+                                <a href="/admin">
+                                    <use svg="!lucide/shield-check.svg" size="20" />
+                                    <span class="sidebar-label">Admin</span>
+                                </a>
+                            </li>
+                            <li class="nav-item" id="sidebar-nav-party">
+                                <a href="/parties" id="sidebar-party-btn">
+                                    <use svg="!lucide/users.svg" size="20" />
+                                    <span class="sidebar-label">Parties</span>
+                                </a>
+                            </li>
+                            <li class="nav-item" id="sidebar-nav-githubbtn" style="display: none">
+                                <a href="https://github.com/monochrome-music/monochrome" target="_blank">
+                                    <use svg="./images/github.svg" size="20" />
+                                    <span class="sidebar-label">GitHub</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
                 </div>
             </aside>
 
@@ -4785,9 +4807,9 @@
                                     <span class="sidebar-settings-section-label">TOP SECTION</span>
                                     <div class="setting-item">
                                         <div class="info">
-                                            <span class="label">Show Home in Sidebar</span>
+                                            <span class="label">Show Music in Sidebar</span>
                                             <span class="description"
-                                                >Display the Home link in the sidebar navigation</span
+                                                >Display the Music link in the sidebar navigation</span
                                             >
                                         </div>
                                         <label class="toggle-switch">
@@ -4815,10 +4837,13 @@
                                             >
                                         </div>
                                         <label class="toggle-switch">
-                                            <input type="checkbox" id="sidebar-show-recent-toggle" checked />
+                                            <input type="checkbox" id="sidebar-show-recent-toggle" />
                                             <span class="slider"></span>
                                         </label>
                                     </div>
+                                </div>
+                                <div class="sidebar-settings-section sidebar-settings-bottom">
+                                    <span class="sidebar-settings-section-label">BOTTOM SECTION</span>
                                     <div class="setting-item">
                                         <div class="info">
                                             <span class="label">Show Settings in Sidebar</span>
@@ -4831,9 +4856,6 @@
                                             <span class="slider"></span>
                                         </label>
                                     </div>
-                                </div>
-                                <div class="sidebar-settings-section sidebar-settings-bottom">
-                                    <span class="sidebar-settings-section-label">BOTTOM SECTION</span>
                                     <div class="setting-item">
                                         <div class="info">
                                             <span class="label">Show Parties in Sidebar</span>
@@ -4842,7 +4864,7 @@
                                             >
                                         </div>
                                         <label class="toggle-switch">
-                                            <input type="checkbox" id="sidebar-show-party-toggle" checked />
+                                            <input type="checkbox" id="sidebar-show-party-toggle" />
                                             <span class="slider"></span>
                                         </label>
                                     </div>
@@ -4854,7 +4876,7 @@
                                             >
                                         </div>
                                         <label class="toggle-switch">
-                                            <input type="checkbox" id="sidebar-show-githubbtn-toggle" checked />
+                                            <input type="checkbox" id="sidebar-show-githubbtn-toggle" />
                                             <span class="slider"></span>
                                         </label>
                                     </div>

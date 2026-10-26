@@ -3421,6 +3421,9 @@ function playbackSourceContext(kind, item = {}, fallbackLabel = 'Now playing') {
         id: id == null ? null : String(id),
         label,
         href: normalizedKind === 'liked' ? '/favorites/tracks' : id == null ? null : `/${normalizedKind}/${id}`,
+        // Artwork for the sidebar's Recents: artist picture, playlist image or album cover.
+        cover: item.picture ?? item.image ?? item.cover ?? null,
+        images: Array.isArray(item.images) ? item.images.slice(0, 4) : undefined,
     };
 }
 

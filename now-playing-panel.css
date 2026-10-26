@@ -1390,12 +1390,12 @@ body.now-playing-panel-resizing .app-container {
     .app-container {
         grid-template:
             'sidebar main nowplaying' 1fr
-            'player player player' auto / 210px minmax(0, 1fr) var(--now-playing-panel-width);
+            'player player player' auto / var(--sidebar-width) minmax(0, 1fr) var(--now-playing-panel-width);
         transition: grid-template-columns 300ms cubic-bezier(0.22, 1, 0.36, 1);
     }
 
     body.now-playing-panel-closed .app-container {
-        grid-template-columns: 210px minmax(0, 1fr) var(--now-playing-panel-rail);
+        grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--now-playing-panel-rail);
     }
 
     body.sidebar-collapsed .app-container {

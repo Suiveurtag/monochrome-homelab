@@ -61,6 +61,7 @@ import { shuffleTracks } from './recommendation-settings.js';
 import { realRandom } from './recommendation-engine.js';
 import { AlbumCoverInspector } from './album-cover-inspector.js';
 import { getTrackDisplayAlbum, getTrackPlayerCanvas } from './track-versions.js';
+import { renderSidebarLibrary } from './sidebar.js';
 import {
     applyTrackSaveStateToButton,
     buildTrackSaveStateSnapshot,
@@ -519,46 +520,7 @@ export class UIRenderer {
     }
 
     async renderPinnedItems() {
-        const nav = document.getElementById('pinned-items-nav');
-        const list = document.getElementById('pinned-items-list');
-        if (!nav || !list) return;
-
-        const pinnedItems = await db.getPinned();
-
-        if (pinnedItems.length === 0) {
-            nav.style.display = 'none';
-            return;
-        }
-
-        nav.style.display = '';
-        list.innerHTML = pinnedItems
-            .map((item) => {
-                let iconHTML;
-                if (item.type === 'user-playlist' && !item.cover && item.images && item.images.length > 0) {
-                    const images = item.images.slice(0, 4);
-                    const imgsHTML = images
-                        .map((src) => `<img src="${this.api.getCoverUrl(src)}" loading="lazy">`)
-                        .join('');
-                    iconHTML = `<div class="pinned-item-collage">${imgsHTML}</div>`;
-                } else {
-                    const coverUrl =
-                        item.type === 'artist'
-                            ? this.api.getArtistPictureUrl(item.cover)
-                            : this.api.getCoverUrl(item.cover);
-                    const coverClass = item.type === 'artist' ? 'artist' : '';
-                    iconHTML = `<img src="${coverUrl}" class="pinned-item-cover ${coverClass}" alt="${escapeHtml(item.name)}" loading="lazy" onerror="this.src='assets/logo.svg'">`;
-                }
-
-                return `
-                <li class="nav-item">
-                    <a href="${item.href}">
-                        ${iconHTML}
-                        <span class="pinned-item-name">${escapeHtml(item.name)}</span>
-                    </a>
-                </li>
-            `;
-            })
-            .join('');
+        await renderSidebarLibrary();
     }
 
     async setCurrentTrack(track) {

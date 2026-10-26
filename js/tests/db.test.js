@@ -99,9 +99,12 @@ describe('MusicDatabase', () => {
         await db.togglePinned({ id: 'a3', title: 'A3' }, 'album');
         await db.togglePinned({ id: 'a4', title: 'A4' }, 'album');
 
+        // The sidebar shelf has room for every pin: none is evicted.
         pinned = await db.getPinned();
-        expect(pinned.length).toBe(3);
-        expect(pinned.some((p) => p.id === 'a4')).toBe(true);
+        expect(pinned.map((p) => p.id).sort()).toEqual(['a2', 'a3', 'a4', 'album1']);
+
+        await db.togglePinned(album, 'album');
+        pinned = await db.getPinned();
         expect(pinned.some((p) => p.id === 'album1')).toBe(false);
     });
 });
