@@ -140,6 +140,7 @@ export class NowPlayingPanel {
         this.lyricsManager = lyricsManager;
         this.root = document.getElementById('now-playing-panel');
         this.content = this.root?.querySelector('.now-playing-panel-scroll');
+        this.headerSlot = this.root?.querySelector('.now-playing-panel-header-slot');
         this.queueLayer = this.root?.querySelector('.now-playing-panel-queue-layer') || null;
         if (this.root && !this.queueLayer) {
             this.queueLayer = document.createElement('div');
@@ -379,7 +380,6 @@ export class NowPlayingPanel {
             if (this.currentTrack?.id != null)
                 this.scrollByTrack.set(String(this.currentTrack.id), this.content.scrollTop);
             this.root.classList.toggle('is-scrolled', this.content.scrollTop > 8);
-            this.syncScrollMask();
             this.updateScrollbar();
         };
         this.boundQueueScroll = (event) => {
@@ -562,16 +562,17 @@ export class NowPlayingPanel {
         this.root.classList.toggle('is-fullscreen-hidden', fullscreenBlocksPanel);
         this.root.setAttribute('aria-hidden', String(!this.isOpen || fullscreenBlocksPanel));
         this.content.inert = !this.isOpen || fullscreenBlocksPanel;
+        if (this.headerSlot) this.headerSlot.inert = this.content.inert;
         this.resizer.inert = !this.isOpen || fullscreenBlocksPanel;
         if (this.reopenButton) this.reopenButton.hidden = fullscreenVisible || !this.desktopMedia.matches;
         this.syncPanelActivity();
     }
 
-    // The content fades out under the header once scrolled. The mask is fixed to the viewport, so it
-    // is positioned in the body's own coordinates (the body scrolls with the content).
-    syncScrollMask() {
-        const body = this.content?.querySelector('.now-playing-panel-body');
-        if (body) body.style.setProperty('--now-playing-mask-y', `${this.content.scrollTop - body.offsetTop}px`);
+    // The header lives outside the scroller (as in Spotify's Now Playing view), so the scroller can be
+    // masked without touching it.
+    syncHeader() {
+        const header = this.content?.querySelector(':scope > .now-playing-panel-header');
+        if (header && this.headerSlot) this.headerSlot.replaceChildren(header);
     }
 
     syncPlaybackElement() {
@@ -1203,8 +1204,8 @@ export class NowPlayingPanel {
                 this.cleanupMedia();
                 clearLyricsContainerSync(this.content);
                 this.content.innerHTML = this.renderNowPlayingMarkup(model);
+                this.syncHeader();
                 this.content.scrollTop = previousScroll;
-                this.syncScrollMask();
                 this.nowPlayingNeedsRender = false;
             }
             if (isQueueView) {
@@ -3210,6 +3211,7 @@ export class NowPlayingPanel {
         if (queueView) {
             this.renderQueueLayer(this.model || {}, previousScroll, { startTransition: false });
         } else if (this.content?.querySelector('.now-playing-panel-queue-view')) {
+            this.headerSlot?.replaceChildren();
             this.content.innerHTML = this.renderQueueView(this.model || {});
             this.content.querySelector('.now-playing-panel-queue-view').scrollTop = previousScroll;
         }
