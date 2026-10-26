@@ -869,14 +869,14 @@
     opacity: 1;
     transform: none;
     filter: none;
-    transition-delay: 520ms;
+    transition-delay: 200ms;
 }
 
 .stats-cover-card:is(:hover, :focus-visible) .stats-cover-tip-text small {
     opacity: 1;
     transform: none;
     filter: none;
-    transition-delay: 620ms;
+    transition-delay: 280ms;
 }
 
 /* Touch taps play the track and leave hover stuck, and the phone layout has no room under the covers. */
@@ -911,18 +911,14 @@
 }
 
 .stats-showcase-caption {
-    position: absolute;
-    left: 0;
-    bottom: 0;
-    max-width: 52%;
-    text-align: left;
-    text-shadow: 0 1px 12px rgb(0 0 0 / 60%);
+    margin-top: 4px;
+    text-align: right;
 }
 
 .stats-showcase-caption p {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-start;
+    justify-content: flex-end;
     align-items: baseline;
     column-gap: 0.45em;
     row-gap: 3px;
