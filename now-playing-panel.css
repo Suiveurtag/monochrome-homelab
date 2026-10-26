@@ -350,11 +350,12 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     mask-image: linear-gradient(
         to bottom,
         rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade))) var(--now-playing-mask-y),
-        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.896)) calc(var(--now-playing-mask-y) + 14px),
-        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.648)) calc(var(--now-playing-mask-y) + 28px),
-        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.352)) calc(var(--now-playing-mask-y) + 42px),
-        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.104)) calc(var(--now-playing-mask-y) + 56px),
-        black calc(var(--now-playing-mask-y) + 70px)
+        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade))) calc(var(--now-playing-mask-y) + 60px),
+        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.896)) calc(var(--now-playing-mask-y) + 74px),
+        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.648)) calc(var(--now-playing-mask-y) + 88px),
+        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.352)) calc(var(--now-playing-mask-y) + 102px),
+        rgb(0 0 0 / calc(1 - var(--now-playing-scroll-fade) * 0.104)) calc(var(--now-playing-mask-y) + 116px),
+        black calc(var(--now-playing-mask-y) + 130px)
     );
     transition:
         --now-playing-scroll-fade 500ms ease,
@@ -392,7 +393,12 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     transition: grid-template-rows 1200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Collapsed, the Canvas fades slowly and runs a little under the title; expanded, it gets close to
+   the title but stops above it (as on Spotify). */
 .now-playing-panel-body.has-video-artwork .now-playing-panel-media {
+    --now-playing-canvas-fade-end: 100%;
+    --now-playing-canvas-fade-length: 230px;
+
     width: 100%;
     height: 100%;
     aspect-ratio: auto;
@@ -406,6 +412,11 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 
 .now-playing-panel-body.has-video-artwork.is-canvas-expanded .now-playing-panel-media-row {
     grid-template-rows: clamp(360px, calc(100cqw * 16 / 9), calc(100dvh - var(--now-playing-player-clearance) - 92px));
+}
+
+.now-playing-panel-body.has-video-artwork.is-canvas-expanded .now-playing-panel-media {
+    --now-playing-canvas-fade-end: calc(100% - 72px);
+    --now-playing-canvas-fade-length: 110px;
 }
 
 .now-playing-panel-body.has-video-artwork .now-playing-panel-media:focus-visible {
@@ -427,8 +438,6 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 .now-playing-panel-body.has-video-artwork
     .now-playing-panel-media
     :is(.now-playing-panel-poster, .now-playing-panel-canvas) {
-    /* The blend ends just above the title (as on Spotify), not under it. */
-    --now-playing-canvas-fade-end: calc(100% - 72px);
     --sl-videocanvas-mask-stop: 25%;
 
     position: absolute;
@@ -464,8 +473,7 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 }
 
 .now-playing-panel-body.has-video-artwork .now-playing-panel-media.is-canvas-playing .now-playing-panel-canvas {
-    /* Fully visible, then a ~110px blend that ends right above the title. */
-    --sl-videocanvas-mask-stop: calc(100% - 182px);
+    --sl-videocanvas-mask-stop: calc(var(--now-playing-canvas-fade-end) - var(--now-playing-canvas-fade-length));
 
     opacity: 0.9;
 }
