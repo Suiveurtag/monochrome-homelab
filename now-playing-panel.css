@@ -9,7 +9,7 @@
 
 /* Animatable Canvas reveal and scroll fade, as in upstream Spicy Lyrics (spicy-dynamic-bg.css). */
 @property --sl-videocanvas-mask-stop {
-    syntax: '<percentage>';
+    syntax: '<length-percentage>';
     inherits: false;
     initial-value: 25%;
 }
@@ -411,12 +411,12 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     opacity: 0.9;
     mask-image: linear-gradient(
         to bottom,
-        transparent -5%,
-        rgb(0 0 0 / 0.104) -1%,
-        rgb(0 0 0 / 0.352) 3%,
-        rgb(0 0 0 / 0.648) 7%,
-        rgb(0 0 0 / 0.896) 11%,
-        black 15%,
+        transparent 0,
+        rgb(0 0 0 / 0.104) 26px,
+        rgb(0 0 0 / 0.352) 51px,
+        rgb(0 0 0 / 0.648) 77px,
+        rgb(0 0 0 / 0.896) 102px,
+        black 128px,
         black var(--sl-videocanvas-mask-stop),
         rgb(0 0 0 / 0.976) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.1),
         rgb(0 0 0 / 0.905) calc(var(--sl-videocanvas-mask-stop) + (100% - var(--sl-videocanvas-mask-stop)) * 0.2),
@@ -441,7 +441,8 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 }
 
 .now-playing-panel-media.is-canvas-playing .now-playing-panel-canvas {
-    --sl-videocanvas-mask-stop: 80%;
+    /* Fully visible down to the title; the blend only starts there and runs under it. */
+    --sl-videocanvas-mask-stop: calc(100% - 130px);
 
     opacity: 0.9;
 }
