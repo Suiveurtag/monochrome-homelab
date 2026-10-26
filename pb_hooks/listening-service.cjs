@@ -1,5 +1,6 @@
 /* eslint-disable no-undef */
 const { STREAM_SECONDS, windowFor, aggregate } = require('./listening-model.cjs');
+const schedule = require('./listening-schedule.cjs');
 function userFor(e) {
     const user = e.app.findRecordById('users', e.auth.id);
     if (user.getString('access_status') !== 'active') throw new ForbiddenError('An active account is required.');
@@ -168,14 +169,14 @@ function stats(e) {
     const { config } = userFor(e);
     const query = e.requestInfo().query;
     const period = query.period || 'week';
-    const policy = {
-        locked: config ? !config.getBool('feature_stats') : false,
-        longTermLocked: config?.getBool('stats_lock_long_term') || false,
-    };
-    if (policy.locked || (policy.longTermLocked && ['year', 'lifetime'].includes(period)))
-        return { locked: policy.locked ? 'all' : 'long-term', policy };
     const offset = Number(query.offset || 0);
     if (!Number.isFinite(offset) || Math.abs(offset) > 840) throw new BadRequestError('Invalid timezone offset.');
+    const policy = {
+        locked: config ? !config.getBool('feature_stats') : false,
+        ...schedule.policyFor(schedule.configOf(config), Date.now(), offset),
+    };
+    if (policy.locked) return { locked: 'all', policy };
+    if (query.view === 'policy') return { policy };
     let offsets;
     try {
         offsets = JSON.parse(query.offsets || '[]');
@@ -195,10 +196,22 @@ function stats(e) {
     )
         throw new BadRequestError('Invalid timezone transitions.');
     let range;
+    const startOf = (anchor) => windowFor(period, anchor, offset, Date.now(), offsets).start;
     try {
         range = windowFor(period, query.anchor, offset, Date.now(), offsets);
     } catch (error) {
         throw new BadRequestError(error.message);
+    }
+    const rule = policy.periods[period];
+    // A recap that has dropped may always read its own period; everything else follows the tab's rule.
+    const recap = policy.recaps.items.some((item) => item.period === period && startOf(item.anchor) === range.start);
+    if (rule && !recap) {
+        if (rule.locked) return { locked: 'period', period, policy };
+        if (
+            rule.latest &&
+            (range.start > startOf(rule.latest) || (rule.earliest && range.start < startOf(rule.earliest)))
+        )
+            return { locked: 'range', period, policy };
     }
     const historyPage = Math.max(1, Math.min(100000, Math.floor(Number(query.page) || 1)));
     // Infinite history pages read one slice directly instead of re-aggregating the whole period.
@@ -253,4 +266,16 @@ function stats(e) {
     }
     return { ...result, policy, generatedAt: Date.now(), streamThreshold: STREAM_SECONDS };
 }
-module.exports = { saveSession, stats };
+// Lets an admin see how a draft release schedule plays out on any day, optionally with Warped out.
+function preview(e) {
+    if (userFor(e).user.getString('role') !== 'admin') throw new ForbiddenError('Admins only.');
+    const body = e.requestInfo().body;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(body.on)) throw new BadRequestError('Invalid date.');
+    const day = new Date(`${body.on}T12:00:00Z`);
+    if (!Number.isFinite(+day)) throw new BadRequestError('Invalid date.');
+    const config = Object.fromEntries(schedule.FIELDS.map((field) => [field, body.config?.[field] === true]));
+    // Warped is simulated as landing on 1 December.
+    const year = day.getUTCFullYear() - (day.getUTCMonth() < 2 ? 1 : 0);
+    return schedule.policyFor(config, +day, 0, body.warped === true ? { release: `${year}-12-01` } : schedule.WARPED);
+}
+module.exports = { saveSession, stats, preview };

@@ -3,8 +3,10 @@ import I_CHEVRON_RIGHT from '!lucide/chevron-right.svg?svg&icon';
 import I_MAIL from '!lucide/mail.svg?svg&icon';
 import I_TRASH from '!lucide/trash-2.svg?svg&icon';
 import I_X from '!lucide/x.svg?svg&icon';
+import I_UNLOCK from '!lucide/lock-open.svg?svg&icon';
 import { pb } from './accounts/config.js';
 import { authManager } from './accounts/auth.js';
+import { initRelease, syncRelease } from './admin-release.js';
 import { applyInstancePolicy, isAdminAccount, loadAppConfig } from './access-control.js';
 
 const escapeHtml = (value) =>
@@ -25,7 +27,15 @@ const CONFIG_FIELDS = {
     announcement: 'admin-announcement',
     feature_social: 'admin-feature-social',
     feature_stats: 'admin-feature-stats',
-    stats_lock_long_term: 'admin-stats-lock-long-term',
+    lock_week: 'admin-lock-week',
+    lock_month: 'admin-lock-month',
+    lock_year: 'admin-lock-year',
+    lock_lifetime: 'admin-lock-lifetime',
+    past_week: 'admin-past-week',
+    past_month: 'admin-past-month',
+    past_year: 'admin-past-year',
+    feature_recaps: 'admin-feature-recaps',
+    unlock_all_share_styles: 'admin-unlock-share-styles',
     feature_uploads: 'admin-feature-uploads',
     feature_parties: 'admin-feature-parties',
     allow_uploads: 'admin-allow-uploads',
@@ -588,6 +598,42 @@ async function deleteUser(user) {
     }
 }
 
+function confirmUnlockAll() {
+    return new Promise((resolve) => {
+        const dialog = document.createElement('dialog');
+        dialog.className = 'admin-warn';
+        dialog.setAttribute('aria-labelledby', 'admin-warn-title');
+        dialog.setAttribute('aria-describedby', 'admin-warn-body');
+        dialog.innerHTML = `<div class="admin-warn-icon" aria-hidden="true">${I_UNLOCK(26)}</div>
+            <h2 id="admin-warn-title">Open every share style?</h2>
+            <p id="admin-warn-body">Editions are meant to be found, one recap at a time. With everything unlocked there is nothing left to chase, and it is not much fun. Members keep any edition they already collected, and you can switch this back off at any time.</p>
+            <div class="admin-warn-actions"><button type="button" data-warn="no" autofocus>Keep the hunt</button><button type="button" data-warn="yes">Unlock everything</button></div>`;
+        document.body.append(dialog);
+        let answer = false;
+        const finish = () => {
+            dialog.classList.add('is-closing');
+            const done = () => {
+                dialog.close();
+                dialog.remove();
+                resolve(answer);
+            };
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) done();
+            else dialog.addEventListener('animationend', done, { once: true });
+        };
+        dialog.addEventListener('click', (e) => {
+            const choice = e.target.closest('[data-warn]')?.dataset.warn;
+            if (!choice) return;
+            answer = choice === 'yes';
+            finish();
+        });
+        dialog.addEventListener('cancel', (e) => {
+            e.preventDefault();
+            finish();
+        });
+        dialog.showModal();
+    });
+}
+
 function populateConfig(config) {
     state.config = config;
     for (const [field, id] of Object.entries(CONFIG_FIELDS)) {
@@ -610,6 +656,7 @@ function populateConfig(config) {
     );
     setText('admin-announcement-count', String(config.announcement || '').length);
     state.savedConfig = readConfigForm();
+    syncRelease();
 }
 
 function readConfigForm() {
@@ -788,6 +835,15 @@ function bindPage() {
     configForm?.addEventListener('input', (event) => {
         setSaveBarVisibility(!configIsSaved());
         if (event.target.id === 'admin-announcement') setText('admin-announcement-count', event.target.value.length);
+    });
+    initRelease(configForm);
+    // Opening every share style removes the reason to collect them, so enabling it asks first.
+    document.getElementById('admin-unlock-share-styles')?.addEventListener('change', async (event) => {
+        const input = event.target;
+        if (input.checked && !(await confirmUnlockAll())) {
+            input.checked = false;
+            setSaveBarVisibility(!configIsSaved());
+        }
     });
     document.getElementById('admin-reset-policy')?.addEventListener('click', () => {
         if (!state.config) return;

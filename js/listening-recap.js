@@ -40,17 +40,8 @@ const hourLabel = (hour) => new Intl.DateTimeFormat(undefined, { hour: 'numeric'
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const SOUND = 'monochrome-recap-sound';
 
-// The recaps that are ready now: last week from Monday, last month from the 1st.
-export function readyRecaps(now = new Date()) {
-    const monday = new Date(now);
-    monday.setHours(12, 0, 0, 0);
-    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7) - 7);
-    const month = new Date(now.getFullYear(), now.getMonth() - 1, 1, 12);
-    return [
-        { period: 'month', anchor: dateKey(month) },
-        { period: 'week', anchor: dateKey(monday) },
-    ].map((recap) => ({ ...recap, key: `${recap.period}:${recap.anchor}` }));
-}
+// The recaps that have dropped, as the server schedules them: the week on Sunday, the month on its last day.
+const withKeys = (items) => items.map((recap) => ({ ...recap, key: `${recap.period}:${recap.anchor}` }));
 
 function recapLabel({ period, anchor }) {
     const start = keyDate(anchor);
@@ -158,7 +149,7 @@ const SLIDES = {
         html: `<div class="stats-recap-prop" aria-hidden="true"><i></i><i></i><i></i>${art(m.tracks[0]?.cover)}</div>
             <p class="stats-recap-kicker stats-recap-in" ${at(350)}>Your ${m.period} in music</p>
             <h2 class="stats-recap-title stats-recap-big" ${at(600)}>${escape(m.label.short)}</h2>
-            <p class="stats-recap-chip stats-recap-in" ${at(1300)}>${escape(EDITIONS[m.edition].name)} edition</p>`,
+            ${m.edition ? `<p class="stats-recap-chip stats-recap-in" ${at(1300)}>${escape(EDITIONS[m.edition].name)} edition</p>` : ''}`,
     }),
     minutes: (m) => ({
         duration: 6800,
@@ -463,7 +454,7 @@ class RecapPlayer {
         this.elapsed = 0;
         this.sound = new Soundtrack(ui);
         this.root = document.createElement('dialog');
-        this.root.className = `stats-recap stats-ed-${model.edition}`;
+        this.root.className = `stats-recap${model.edition ? ` stats-ed-${model.edition}` : ''}`;
         this.root.setAttribute('aria-label', `Your ${model.period} recap, ${model.label.long}`);
         this.root.innerHTML = `<div class="stats-recap-surround" aria-hidden="true">${scene}</div>
             <div class="stats-recap-frame" tabindex="-1">${scene}
@@ -473,7 +464,7 @@ class RecapPlayer {
                 <div class="stats-recap-top">
                     <div class="stats-recap-progress" aria-hidden="true">${this.slides.map(() => '<i><b></b></i>').join('')}</div>
                     <div class="stats-recap-bar">
-                        <span class="stats-recap-edition"><i class="stats-ed-swatch stats-ed-${model.edition}">${scene}</i>${escape(EDITIONS[model.edition].name)}</span>
+                        ${model.edition ? `<span class="stats-recap-edition"><i class="stats-ed-swatch stats-ed-${model.edition}">${scene}</i>${escape(EDITIONS[model.edition].name)}</span>` : '<span></span>'}
                         <button type="button" class="stats-recap-control" data-recap-action="pause" aria-label="Pause" aria-pressed="false">${I_PAUSE(18)}</button>
                         <button type="button" class="stats-recap-control" data-recap-action="sound" aria-pressed="${!this.sound.muted}" aria-label="Music">${this.sound.muted ? I_MUTE(18) : I_VOLUME(18)}</button>
                         <button type="button" class="stats-recap-control" data-recap-action="close" aria-label="Close recap">${I_X(20)}</button>
@@ -634,7 +625,7 @@ class RecapPlayer {
         this.colors ||= await coverColors(this.model.tracks);
         const picks = {
             format: 'story',
-            style: this.model.edition,
+            style: this.model.edition || 'aura',
             headline: 'minutes',
             artists: true,
             tracks: true,
@@ -647,6 +638,7 @@ class RecapPlayer {
         this.revealed = true;
         const result = await collectEdition(this.model.key, this.model.edition);
         window.dispatchEvent(new CustomEvent('listening-recap-watched', { detail: { key: this.model.key } }));
+        if (!this.model.edition) return;
         this.revealTimer = setTimeout(
             () => (result.fresh ? this.unlock(canvas, result.owned) : this.toast(result.owned)),
             reduced.matches ? 200 : 1500
@@ -790,7 +782,7 @@ export async function openRecap(model, ui, onClose) {
 }
 
 let generation = 0;
-export async function showRecapNotices(container, { request, ui }) {
+export async function showRecapNotices(container, { request, ui, recaps = [] }) {
     const current = ++generation;
     const uid = pb.authStore.record?.id;
     if (!uid) {
@@ -798,7 +790,7 @@ export async function showRecapNotices(container, { request, ui }) {
         return;
     }
     const [models, collection] = await Promise.all([
-        Promise.all(readyRecaps().map((recap) => loadRecap(recap, request, uid))),
+        Promise.all(withKeys(recaps).map((recap) => loadRecap(recap, request, uid))),
         loadCollection(),
     ]);
     if (current !== generation || uid !== pb.authStore.record?.id) return;
@@ -810,10 +802,10 @@ export async function showRecapNotices(container, { request, ui }) {
             const seen = Boolean(collection.watched[m.key]);
             const owned = Boolean(collection.editions[m.edition]);
             const covers = m.tracks.filter((t) => t.cover).slice(0, 3);
-            return `<button type="button" class="stats-recap-notice stats-ed-${m.edition}${seen ? ' is-seen' : ''}${previous.has(m.key) ? '' : ' is-new'}" data-recap="${m.key}">${scene}
+            return `<button type="button" class="stats-recap-notice${m.edition ? ` stats-ed-${m.edition}` : ''}${seen ? ' is-seen' : ''}${previous.has(m.key) ? '' : ' is-new'}" data-recap="${m.key}">${scene}
                 <span class="stats-recap-notice-covers" aria-hidden="true">${covers.map((t, i) => `<img src="${escape(t.cover)}" alt="" style="--i:${i}" />`).join('')}</span>
                 <span class="stats-recap-notice-text">
-                    <span class="stats-recap-notice-kicker">${owned ? '' : '<b>New edition</b>'}${escape(EDITIONS[m.edition].name)}</span>
+                    <span class="stats-recap-notice-kicker">${m.edition ? `${owned ? '' : '<b>New edition</b>'}${escape(EDITIONS[m.edition].name)}` : `${m.period === 'week' ? 'Weekly' : 'Monthly'} recap`}</span>
                     <strong>${seen ? `Your ${m.period === 'week' ? 'week' : escape(m.label.short)}, again` : `Your ${m.period === 'week' ? 'week' : escape(m.label.short)} is ready`}</strong>
                     <small>${escape(m.label.long)} · ${duration(m.summary.seconds)}</small>
                 </span>
@@ -830,7 +822,7 @@ export async function showRecapNotices(container, { request, ui }) {
         try {
             await openRecap(model, ui, () => {
                 if (card.isConnected) card.focus({ preventScroll: true });
-                void showRecapNotices(container, { request, ui });
+                void showRecapNotices(container, { request, ui, recaps });
             });
         } finally {
             card.disabled = false;
@@ -843,10 +835,10 @@ export async function showRecapNotices(container, { request, ui }) {
         card.style.setProperty('--gx', `${((event.clientX - rect.left) / rect.width) * 100}%`);
         card.style.setProperty('--gy', `${((event.clientY - rect.top) / rect.height) * 100}%`);
     };
-    // Development: window.monochromeRecap('week', 'vinyl') previews any edition on the latest data.
+    // Development: window.monochromeRecap('week', '<edition id>') previews any edition on the latest data.
     if (import.meta.env.DEV)
         window.monochromeRecap = async (period = 'week', edition) => {
-            const recap = readyRecaps().find((r) => r.period === period);
+            const recap = withKeys(recaps).find((r) => r.period === period);
             if (edition && !POOLS[period].includes(edition)) throw new Error(`${edition} is not a ${period} edition`);
             const model = await loadRecap(recap, request, uid);
             if (!model) throw new Error(`No listening in the last ${period}`);

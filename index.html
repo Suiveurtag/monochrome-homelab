@@ -78,6 +78,7 @@
         <link rel="icon" href="/assets/logo.svg" type="image/svg+xml" />
         <link rel="stylesheet" href="/styles.css" />
         <link rel="stylesheet" href="/listening-stats.css" />
+        <link rel="stylesheet" href="/listening-stats-constellation.css" />
         <link rel="stylesheet" href="/listening-recap.css" />
         <link rel="stylesheet" href="/player-refined.css" />
         <link rel="stylesheet" href="/now-playing-panel.css" />
@@ -3874,9 +3875,14 @@
                                                 ><input id="admin-feature-stats" type="checkbox" role="switch"
                                             /></label>
                                             <label class="admin-control-row"
-                                                ><span class="admin-control-icon"><use svg="!lucide/lock-keyhole.svg" size="19" /></span
-                                                ><span><strong>Keep the annual recap under wraps</strong><small>Lock Year and Lifetime for everyone. Listening continues to count.</small></span
-                                                ><input id="admin-stats-lock-long-term" type="checkbox" role="switch"
+                                                ><span class="admin-control-icon"><use svg="!lucide/clapperboard.svg" size="19" /></span
+                                                ><span><strong>Weekly and monthly recaps</strong><small>Show the recap stories above the stats. Turn off to hide them for everyone.</small></span
+                                                ><input id="admin-feature-recaps" type="checkbox" role="switch"
+                                            /></label>
+                                            <label class="admin-control-row"
+                                                ><span class="admin-control-icon is-warning"><use svg="!lucide/lock-open.svg" size="19" /></span
+                                                ><span><strong>Unlock every share style</strong><small>Skip collecting editions: all share card variations are open from the start.</small></span
+                                                ><input id="admin-unlock-share-styles" type="checkbox" role="switch"
                                             /></label>
                                             <label class="admin-control-row"
                                                 ><span class="admin-control-icon"
@@ -3897,6 +3903,63 @@
                                         </div>
                                     </section>
                                 </div>
+
+                                <section id="admin-release" class="admin-section admin-control-section admin-release">
+                                    <div class="admin-section-heading">
+                                        <div>
+                                            <h2>Release schedule</h2>
+                                            <p>Choose which stats tabs stay under wraps until their recap drops.</p>
+                                        </div>
+                                    </div>
+                                    <div class="admin-release-body">
+                                        <div class="admin-release-presets" role="radiogroup" aria-label="Schedule preset">
+                                            <button type="button" role="radio" aria-checked="false" data-preset="open">Everything open</button>
+                                            <button type="button" role="radio" aria-checked="false" data-preset="yearly">Yearly</button>
+                                            <button type="button" role="radio" aria-checked="false" data-preset="monthly-yearly">Monthly + Yearly</button>
+                                            <button type="button" role="radio" aria-checked="false" data-preset="all">Weekly + Monthly + Yearly</button>
+                                            <span class="admin-release-custom" hidden>Custom mix</span>
+                                        </div>
+                                        <div class="admin-release-grid">
+                                        <div class="admin-release-row" data-row="week">
+                                            <div class="admin-release-name"><strong>Week</strong><small>Drops on Sunday and stays open until Tuesday.</small></div>
+                                            <label class="admin-release-toggle"><input id="admin-lock-week" type="checkbox" role="switch" /><span>Hold until it drops</span></label>
+                                            <label class="admin-release-toggle"><input id="admin-past-week" type="checkbox" role="switch" /><span>Allow past weeks</span></label>
+                                        </div>
+                                        <div class="admin-release-row" data-row="month">
+                                            <div class="admin-release-name"><strong>Month</strong><small>Drops on the last day of the month and stays open for a week.</small></div>
+                                            <label class="admin-release-toggle"><input id="admin-lock-month" type="checkbox" role="switch" /><span>Hold until it drops</span></label>
+                                            <label class="admin-release-toggle"><input id="admin-past-month" type="checkbox" role="switch" /><span>Allow past months</span></label>
+                                        </div>
+                                        <div class="admin-release-row" data-row="year">
+                                            <div class="admin-release-name"><strong>Year</strong><small>Opens with Warped and locks again in February.</small></div>
+                                            <label class="admin-release-toggle"><input id="admin-lock-year" type="checkbox" role="switch" /><span>Hold until it drops</span></label>
+                                            <label class="admin-release-toggle"><input id="admin-past-year" type="checkbox" role="switch" /><span>Allow past years</span></label>
+                                        </div>
+                                        <div class="admin-release-row" data-row="lifetime">
+                                            <div class="admin-release-name"><strong>Lifetime</strong><small>Its own lock. Opens with Warped.</small></div>
+                                            <label class="admin-release-toggle"><input id="admin-lock-lifetime" type="checkbox" role="switch" /><span>Hold until Warped</span></label>
+                                            <span class="admin-release-na">Not applicable</span>
+                                        </div>
+                                        </div>
+                                        <div class="admin-sim">
+                                            <div class="admin-sim-head">
+                                                <div>
+                                                    <output id="admin-sim-date" class="admin-sim-date" for="admin-sim-range"></output>
+                                                    <button type="button" id="admin-sim-today" class="admin-sim-today" hidden>Back to today</button>
+                                                </div>
+                                                <label class="admin-release-toggle admin-sim-warped"><input id="admin-sim-warped" type="checkbox" role="switch" /><span>Warped is out</span></label>
+                                            </div>
+                                            <div class="admin-sim-track">
+                                                <svg id="admin-sim-ticks" aria-hidden="true" preserveAspectRatio="none"></svg>
+                                                <input id="admin-sim-range" type="range" min="0" value="0" step="1" aria-label="Preview date" />
+                                            </div>
+                                            <div id="admin-sim-months" class="admin-sim-months" aria-hidden="true"></div>
+                                            <div id="admin-sim-tabs" class="admin-sim-tabs"></div>
+                                            <p id="admin-sim-recaps" class="admin-sim-recaps" aria-live="polite"></p>
+                                        </div>
+                                        <p class="admin-release-foot">Warped ships as a yearly update, around December. When it lands, every tab and past date opens, and weekly and monthly recaps pause for a month.</p>
+                                    </div>
+                                </section>
 
                                 <section id="admin-instance" class="admin-section admin-instance-section">
                                     <div class="admin-section-heading">
@@ -4229,6 +4292,16 @@
                                             Reset
                                         </button>
                                     </div>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="info">
+                                        <span class="label">Listening Stats Design</span>
+                                        <span class="description">Choose how the Listening stats page looks</span>
+                                    </div>
+                                    <select id="stats-design-select">
+                                        <option value="classic">Classic</option>
+                                        <option value="constellation">Constellation</option>
+                                    </select>
                                 </div>
                                 <div class="setting-item">
                                     <div class="info">

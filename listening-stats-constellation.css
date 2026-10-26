@@ -1,0 +1,852 @@
+/* stylelint-disable no-descending-specificity -- Every rule is scoped to the Constellation design. */
+
+/* Listening Stats, Constellation design: the total at the center of glowing orbits, the period's covers
+   held around it like stars, and the classic panels regrouped in a tighter grid below.
+   The orbits, orbs and starfield are drawn by js/listening-stats-constellation.js. */
+
+#page-stats[data-stats-design='constellation'] {
+    /* A fixed night palette: cyan, violet and pink, lifted into glows by listening-stats.css. */
+    --stats-color-0: #3fd2ff;
+    --stats-color-1: #9b63ff;
+    --stats-color-2: #ff4fc8;
+    --stats-chart-0: var(--stats-glow-0);
+    --stats-chart-1: color-mix(in oklch, var(--stats-glow-0) 45%, var(--stats-glow-1));
+    --stats-chart-2: color-mix(in oklch, var(--stats-glow-1) 55%, var(--stats-glow-2));
+    --stats-chart-3: var(--stats-glow-2);
+    --cosmos-up: #5eead4;
+    --cosmos-down: #fb7185;
+    --cosmos-line: color-mix(in srgb, var(--foreground) 12%, transparent);
+    --cosmos-card: color-mix(in srgb, var(--foreground) 3%, transparent);
+    --cosmos-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ---------- Header and toolbar: quiet controls, so the sky leads ---------- */
+
+#page-stats[data-stats-design='constellation'] .stats-header {
+    margin-bottom: 14px;
+}
+
+#page-stats[data-stats-design='constellation'] .stats-header h1 {
+    font-size: 1.4rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+}
+
+#page-stats[data-stats-design='constellation'] :is(.stats-pill, .stats-share-cta) {
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--cosmos-line);
+    border-radius: 9px;
+    background: var(--cosmos-card);
+    backdrop-filter: blur(10px);
+    box-shadow: none;
+    color: var(--foreground);
+    font-size: 0.82rem;
+    font-weight: 550;
+    animation: none;
+}
+
+#page-stats[data-stats-design='constellation'] :is(.stats-pill, .stats-share-cta):hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--foreground) 24%, transparent);
+    background: color-mix(in srgb, var(--foreground) 8%, transparent);
+    transform: none;
+}
+
+#page-stats[data-stats-design='constellation'] .stats-share-cta {
+    flex-direction: row-reverse;
+    gap: 8px;
+}
+
+#page-stats[data-stats-design='constellation'] .stats-share-cta::before,
+#page-stats[data-stats-design='constellation'] .stats-share-cta::after,
+#page-stats[data-stats-design='constellation'] .stats-share-cta-covers {
+    display: none;
+}
+
+#page-stats[data-stats-design='constellation'] .stats-toolbar {
+    justify-content: space-between;
+}
+
+#page-stats[data-stats-design='constellation'] .stats-date-controls .stats-icon-button {
+    width: 36px;
+    height: 36px;
+    border-color: var(--cosmos-line);
+    border-radius: 9px;
+    background: var(--cosmos-card);
+}
+
+#page-stats[data-stats-design='constellation'] #stats-period-label {
+    margin-inline: 10px 2px;
+    font-size: 0.88rem;
+    font-weight: 550;
+}
+
+/* ---------- Nebula: the page's ambient light, moved behind the covers ---------- */
+
+#page-stats[data-stats-design='constellation'] .stats-ambience {
+    height: 820px;
+    mask-image:
+        linear-gradient(to bottom, transparent, black 18%, black 52%, transparent 78%),
+        linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    mask-composite: intersect;
+}
+
+#page-stats[data-stats-design='constellation'] .stats-ambience span:nth-child(1) {
+    top: 22%;
+    left: 14%;
+    width: 22%;
+    height: 28%;
+    background: color-mix(in srgb, var(--stats-glow-2) 20%, transparent);
+}
+
+#page-stats[data-stats-design='constellation'] .stats-ambience span:nth-child(2) {
+    top: 36%;
+    left: 6%;
+    width: 16%;
+    height: 26%;
+    background: color-mix(in srgb, var(--stats-glow-0) 18%, transparent);
+}
+
+#page-stats[data-stats-design='constellation'] .stats-ambience span:nth-child(3) {
+    top: 20%;
+    left: 72%;
+    width: 20%;
+    height: 34%;
+    background: color-mix(in srgb, var(--stats-glow-2) 18%, transparent);
+}
+
+/* The center stays night-dark so the total reads first. */
+#page-stats[data-stats-design='constellation'] .stats-ambience span:nth-child(4) {
+    top: 52%;
+    left: 30%;
+    width: 40%;
+    height: 14%;
+    background: color-mix(in srgb, var(--stats-glow-1) 8%, transparent);
+}
+
+/* ---------- The sky ---------- */
+
+.stats-cosmos {
+    position: relative;
+    height: clamp(320px, 31.5cqw, 430px);
+    margin-top: 10px;
+    color: var(--foreground);
+}
+
+.stats-cosmos canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.stats-cosmos-sky {
+    z-index: 0;
+    mask-image:
+        linear-gradient(to right, transparent, black 4%, black 96%, transparent),
+        linear-gradient(to bottom, transparent, black 3%, black 97%, transparent);
+    mask-composite: intersect;
+}
+
+.stats-cosmos-near {
+    z-index: 3;
+}
+
+/* The total at the center */
+
+.stats-cosmos-core {
+    position: absolute;
+    z-index: 1;
+    inset: 29% 0 auto;
+    display: grid;
+    justify-items: center;
+    text-align: center;
+}
+
+.stats-cosmos .stats-total {
+    padding-inline: 0.06em;
+    background: linear-gradient(
+            100deg,
+            var(--foreground) 42%,
+            color-mix(in oklch, var(--stats-glow-1) 45%, var(--foreground)) 49%,
+            color-mix(in oklch, var(--stats-glow-2) 35%, var(--foreground)) 53%,
+            var(--foreground) 60%
+        )
+        100% 0 / 320% 100%;
+    background-clip: text;
+    color: transparent;
+    font-size: clamp(3.4rem, 8.6cqw, 7.4rem);
+    letter-spacing: -0.045em;
+    line-height: 0.86;
+    text-shadow: none;
+    filter: drop-shadow(0 0 28px color-mix(in srgb, var(--foreground) 16%, transparent));
+}
+
+.stats-cosmos-core h2 {
+    margin: 0.5em 0 0;
+    font-size: clamp(1rem, 1.8cqw, 1.55rem);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+}
+
+.stats-cosmos-change {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0.7em 0 0;
+    font-size: clamp(0.8rem, 1.15cqw, 0.95rem);
+}
+
+.stats-cosmos-change svg {
+    width: 0.8em;
+    height: 0.8em;
+    fill: currentcolor;
+}
+
+.stats-cosmos-change.is-up :is(svg, strong) {
+    color: var(--cosmos-up);
+}
+
+.stats-cosmos-change.is-down :is(svg, strong) {
+    color: var(--cosmos-down);
+}
+
+.stats-cosmos-change strong {
+    font-weight: 550;
+}
+
+.stats-cosmos-change:not(.is-up, .is-down) {
+    color: var(--muted-foreground);
+}
+
+.stats-cosmos-metrics {
+    display: flex;
+    margin: clamp(18px, 3.3cqw, 44px) 0 0;
+}
+
+.stats-cosmos-metrics > div {
+    padding-inline: clamp(18px, 2.6cqw, 34px);
+}
+
+.stats-cosmos-metrics > div + div {
+    border-left: 1px solid color-mix(in srgb, var(--foreground) 22%, transparent);
+}
+
+.stats-cosmos-metrics dd {
+    margin: 0;
+    font-size: clamp(1.4rem, 2.55cqw, 2.1rem);
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.stats-cosmos-metrics dt {
+    color: color-mix(in srgb, var(--foreground) 88%, transparent);
+    font-size: clamp(0.82rem, 1.2cqw, 1rem);
+}
+
+/* Covers: placed by rank around the orbit, each tilted toward the center */
+
+.stats-cosmos-star {
+    --bob: 0.42cqw;
+    --fx: calc((50 - var(--x)) * 1cqw);
+    --fy: calc((50 - var(--y)) * 0.3cqw);
+
+    position: absolute;
+    z-index: 2;
+    top: calc(var(--y) * 1%);
+    left: calc(var(--x) * 1%);
+    width: calc(var(--size) * 1cqw);
+    margin: 0;
+    translate: -50% -50%;
+}
+
+.stats-cosmos-star.is-slot-0 {
+    --x: 18.8;
+    --y: 69;
+    --size: 14.4;
+    --rz: 5deg;
+    --ry: -12deg;
+    --label-top: 52%;
+}
+
+.stats-cosmos-star.is-slot-1 {
+    --x: 80;
+    --y: 30;
+    --size: 12.4;
+    --rz: 9deg;
+    --ry: 12deg;
+    --label-top: 58%;
+}
+
+.stats-cosmos-star.is-slot-2 {
+    --x: 27.6;
+    --y: 23;
+    --size: 11.4;
+    --rz: -6deg;
+    --ry: -10deg;
+    --label-top: 22%;
+}
+
+.stats-cosmos-star.is-slot-3 {
+    --x: 77.4;
+    --y: 74;
+    --size: 8.6;
+    --rz: -7deg;
+    --ry: 14deg;
+    --label-top: 46%;
+}
+
+.stats-cosmos-star.is-slot-4 {
+    --x: 57.4;
+    --y: 10;
+    --size: 6;
+    --rz: 4deg;
+    --ry: 6deg;
+    --label-top: 6%;
+}
+
+.stats-cosmos-star:has(.stats-cosmos-art:is(:hover, :focus-visible)) {
+    z-index: 4;
+}
+
+.stats-cosmos-body {
+    position: relative;
+}
+
+/* The cover's own light, blurred beneath it. */
+.stats-cosmos-halo {
+    position: absolute;
+    inset: 4%;
+    width: 92%;
+    height: 92%;
+    border-radius: 20%;
+    object-fit: cover;
+    opacity: 0.5;
+    filter: blur(min(26px, 2cqw)) saturate(1.8);
+    transform: translateY(9%) scale(1.04);
+    pointer-events: none;
+    transition:
+        opacity 500ms,
+        transform 700ms var(--cosmos-ease);
+}
+
+.stats-cosmos-art {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: clamp(6px, 0.8cqw, 12px);
+    background: var(--muted);
+    color: var(--muted-foreground);
+    cursor: pointer;
+    box-shadow:
+        0 1.4cqw 3cqw -0.9cqw rgb(0 0 0 / 75%),
+        0 0 0 1px rgb(255 255 255 / 10%);
+    transform: perspective(900px) rotateX(var(--cosmos-tilt-x, 0deg))
+        rotateY(calc(var(--ry) + var(--cosmos-tilt-y, 0deg))) rotate(var(--rz)) scale(var(--cosmos-scale, 1));
+    transition:
+        transform 650ms var(--cosmos-ease),
+        box-shadow 400ms;
+}
+
+.stats-cosmos-art img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* A lit rim, a glare that follows the pointer, and a sheen that crosses each cover in turn. */
+.stats-cosmos-art::before,
+.stats-cosmos-art::after {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.stats-cosmos-art::before {
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle at var(--cosmos-glare, 28%) 0%, rgb(255 255 255 / 24%), transparent 58%);
+    box-shadow:
+        inset 0 0 0 1px rgb(255 255 255 / 16%),
+        inset 0 1px 0 rgb(255 255 255 / 38%);
+    opacity: 0.55;
+    transition: opacity 300ms;
+}
+
+.stats-cosmos-art::after {
+    inset: -30% -80%;
+    background: linear-gradient(105deg, transparent 44%, rgb(255 255 255 / 26%) 50%, transparent 56%);
+    translate: -70% 0;
+    mix-blend-mode: screen;
+}
+
+.stats-cosmos-play {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle, rgb(0 0 0 / 45%), rgb(0 0 0 / 5%) 72%);
+    color: white;
+    opacity: 0;
+    transition: opacity 250ms;
+}
+
+.stats-cosmos-play svg {
+    width: clamp(16px, 2cqw, 26px);
+    height: auto;
+    filter: drop-shadow(0 2px 8px rgb(0 0 0 / 60%));
+}
+
+.stats-cosmos-art:is(:hover, :focus-visible) {
+    --cosmos-scale: 1.07;
+
+    box-shadow:
+        0 2cqw 4cqw -1cqw rgb(0 0 0 / 80%),
+        0 0 0 1px rgb(255 255 255 / 22%);
+}
+
+.stats-cosmos-art:is(:hover, :focus-visible)::before {
+    opacity: 1;
+}
+
+.stats-cosmos-art:is(:hover, :focus-visible) .stats-cosmos-play {
+    opacity: 1;
+}
+
+.stats-cosmos-body:has(.stats-cosmos-art:is(:hover, :focus-visible)) .stats-cosmos-halo {
+    opacity: 0.85;
+    transform: translateY(12%) scale(1.22);
+}
+
+.stats-cosmos-star figcaption {
+    --shift: -10px;
+
+    position: absolute;
+    top: var(--label-top);
+    left: calc(100% + 1.1cqw);
+    display: grid;
+    gap: 3px;
+    width: max-content;
+    max-width: 12cqw;
+    font-size: clamp(0.62rem, 0.86cqw, 0.74rem);
+    line-height: 1.25;
+    transition: translate 400ms var(--cosmos-ease);
+}
+
+.stats-cosmos-star:is(.is-slot-0, .is-slot-2) figcaption {
+    --shift: 10px;
+
+    right: calc(100% + 1.1cqw);
+    left: auto;
+    text-align: right;
+}
+
+.stats-cosmos-star figcaption :is(strong, span) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.stats-cosmos-star figcaption strong {
+    font-weight: 550;
+}
+
+.stats-cosmos-star figcaption span {
+    color: var(--muted-foreground);
+}
+
+.stats-cosmos-body:has(.stats-cosmos-art:is(:hover, :focus-visible)) figcaption {
+    translate: calc(var(--shift) * -0.4) 0;
+}
+
+/* ---------- Panels: the classic analysis, regrouped ---------- */
+
+.stats-cosmos-grid {
+    display: grid;
+    grid-template-columns: repeat(24, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.stats-cosmos-grid > .stats-trend {
+    grid-column: span 15;
+    margin: 0;
+}
+
+.stats-cosmos-grid > .stats-artists {
+    grid-column: span 9;
+}
+
+.stats-cosmos-grid > .stats-ranking {
+    grid-column: span 11;
+}
+
+.stats-cosmos-grid > .stats-habits {
+    display: flex;
+    flex-direction: column;
+    grid-column: span 13;
+}
+
+.stats-cosmos-grid > .stats-panel {
+    padding: 16px 18px;
+    border-color: color-mix(in srgb, var(--foreground) 9%, transparent);
+    border-radius: 14px;
+    background: linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--foreground) 4%, transparent),
+        color-mix(in srgb, var(--foreground) 1.5%, transparent)
+    );
+}
+
+.stats-cosmos-grid .stats-section-header {
+    align-items: flex-start;
+}
+
+.stats-cosmos-grid .stats-section-header h2 {
+    font-size: 1.08rem;
+}
+
+.stats-cosmos-grid .stats-section-header p {
+    margin-top: 0.3rem;
+}
+
+.stats-trend-change {
+    color: var(--cosmos-up);
+}
+
+.stats-trend-change.is-down {
+    color: var(--cosmos-down);
+}
+
+.stats-cosmos-grid .stats-units {
+    position: relative;
+}
+
+.stats-cosmos-grid .stats-chart-figure {
+    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-areas:
+        'y plot'
+        '. x';
+    padding-top: 30px;
+}
+
+.stats-cosmos-grid .stats-chart-plot {
+    height: 150px;
+}
+
+.stats-cosmos-grid .stats-chart-y span {
+    right: 12px;
+}
+
+.stats-cosmos-grid .stats-chart-plot.is-near-top .stats-chart-tooltip {
+    left: clamp(64px, var(--stats-x), calc(100% - 64px));
+}
+
+.stats-cosmos-grid .stats-rotation {
+    grid-template-columns: 148px minmax(0, 1fr);
+    gap: 20px;
+}
+
+.stats-cosmos-grid .stats-donut-wrap {
+    width: 148px;
+}
+
+.stats-cosmos-grid .stats-hour-chart {
+    flex: 1;
+    grid-template-rows: minmax(0, 1fr);
+    min-height: 160px;
+    margin-top: 6px;
+}
+
+/* The bars fill whatever height On repeat gives the row; 22px is the hour labels' row. */
+.stats-cosmos-grid .stats-hour-axis {
+    height: auto;
+    padding-bottom: 22px;
+}
+
+.stats-cosmos-grid .stats-hour-bars {
+    position: relative;
+    background: none;
+}
+
+.stats-cosmos-grid .stats-hour-bars::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 22px;
+    border-block: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+    background: linear-gradient(color-mix(in srgb, var(--border) 50%, transparent) 0 0) center / 100% 1px no-repeat;
+    pointer-events: none;
+}
+
+.stats-cosmos-grid .stats-hour i {
+    /* The day runs cyan to pink instead of wrapping back to cyan at midnight. */
+    --stats-tone: color-mix(in oklch, var(--stats-glow-0), var(--stats-glow-2) calc(var(--stats-order) * 4.35%));
+
+    flex: 1;
+    height: auto;
+}
+
+/* ---------- Motion ---------- */
+
+#page-stats[data-stats-design='constellation'] #stats-content:not(.stats-update) .stats-cosmos-body {
+    animation:
+        cosmos-arrive 1300ms var(--cosmos-ease) calc(350ms + var(--i) * 120ms) both,
+        cosmos-bob calc(7s + var(--i) * 1.3s) ease-in-out calc(var(--i) * -2.1s) infinite alternate;
+}
+
+#page-stats[data-stats-design='constellation'] #stats-content.stats-update .stats-cosmos-body {
+    animation: cosmos-bob calc(7s + var(--i) * 1.3s) ease-in-out calc(var(--i) * -2.1s) infinite alternate;
+}
+
+#page-stats[data-stats-design='constellation'] #stats-content:not(.stats-update) .stats-cosmos-star figcaption {
+    animation: cosmos-label 800ms var(--cosmos-ease) calc(1150ms + var(--i) * 120ms) both;
+}
+
+#page-stats .stats-cosmos-art::after {
+    animation: cosmos-sheen 10s ease-in-out calc(3s + var(--i) * 1.7s) infinite;
+}
+
+#page-stats .stats-cosmos .stats-total {
+    animation: cosmos-shimmer 9s ease-in-out 2.4s infinite;
+}
+
+#page-stats .stats-cosmos:not(.stats-in-view) :is(.stats-cosmos-body, .stats-total),
+#page-stats .stats-cosmos:not(.stats-in-view) .stats-cosmos-art::after {
+    animation-play-state: paused;
+}
+
+#stats-content:not(.stats-update) .stats-cosmos-core > * {
+    animation: cosmos-rise 900ms var(--cosmos-ease) both;
+}
+
+#stats-content:not(.stats-update) .stats-cosmos-core > .stats-total {
+    animation:
+        cosmos-core-in 1200ms var(--cosmos-ease) 100ms both,
+        cosmos-shimmer 9s ease-in-out 2.4s infinite;
+}
+
+#stats-content:not(.stats-update) .stats-cosmos-core > h2 {
+    animation-delay: 380ms;
+}
+
+#stats-content:not(.stats-update) .stats-cosmos-core > .stats-cosmos-change {
+    animation-delay: 500ms;
+}
+
+#stats-content:not(.stats-update) .stats-cosmos-metrics > div {
+    animation: cosmos-rise 800ms var(--cosmos-ease) both;
+}
+
+#stats-content:not(.stats-update) .stats-cosmos-metrics > div:nth-child(1) {
+    animation-delay: 640ms;
+}
+
+#stats-content:not(.stats-update) .stats-cosmos-metrics > div:nth-child(2) {
+    animation-delay: 720ms;
+}
+
+#stats-content:not(.stats-update) .stats-cosmos-metrics > div:nth-child(3) {
+    animation-delay: 800ms;
+}
+
+#stats-content:not(.stats-update) .stats-cosmos-core > .stats-cosmos-metrics {
+    animation: none;
+}
+
+#stats-content:not(.stats-update) .stats-cosmos-grid > .stats-panel.stats-seen:nth-child(2) {
+    animation-delay: 80ms;
+}
+
+#stats-content:not(.stats-update) .stats-cosmos-grid > .stats-panel.stats-seen:nth-child(3) {
+    animation-delay: 140ms;
+}
+
+#stats-content:not(.stats-update) .stats-cosmos-grid > .stats-panel.stats-seen:nth-child(4) {
+    animation-delay: 200ms;
+}
+
+/* The chart lives in a panel here, so its light runs while that panel is in view. */
+#page-stats .stats-trend.stats-panel.stats-in-view .stats-chart-sweep,
+#page-stats .stats-trend.stats-panel.stats-in-view .stats-chart-marker i::after {
+    animation-play-state: running;
+}
+
+/* Each cover is pulled out of the center of the orbit, unblurring as it settles. */
+@keyframes cosmos-arrive {
+    0% {
+        opacity: 0;
+        transform: translate(var(--fx), var(--fy)) scale(0.18) rotate(-24deg);
+        filter: blur(14px) brightness(2.4);
+    }
+
+    55% {
+        opacity: 1;
+        filter: blur(0) brightness(1.35);
+    }
+
+    100% {
+        opacity: 1;
+        transform: none;
+        filter: none;
+    }
+}
+
+@keyframes cosmos-bob {
+    from {
+        translate: 0 calc(var(--bob) * -1);
+    }
+
+    to {
+        translate: 0 var(--bob);
+    }
+}
+
+@keyframes cosmos-label {
+    from {
+        opacity: 0;
+        translate: var(--shift) 0;
+        filter: blur(4px);
+    }
+
+    to {
+        opacity: 1;
+        translate: 0 0;
+        filter: none;
+    }
+}
+
+@keyframes cosmos-sheen {
+    0%,
+    72% {
+        translate: -70% 0;
+    }
+
+    100% {
+        translate: 70% 0;
+    }
+}
+
+@keyframes cosmos-shimmer {
+    0%,
+    55% {
+        background-position: 100% 0;
+    }
+
+    100% {
+        background-position: 0 0;
+    }
+}
+
+@keyframes cosmos-core-in {
+    from {
+        opacity: 0;
+        scale: 0.86;
+        filter: blur(12px) drop-shadow(0 0 28px transparent);
+    }
+
+    to {
+        opacity: 1;
+        scale: 1;
+        filter: blur(0) drop-shadow(0 0 28px color-mix(in srgb, var(--foreground) 16%, transparent));
+    }
+}
+
+@keyframes cosmos-rise {
+    from {
+        opacity: 0;
+        translate: 0 12px;
+        filter: blur(4px);
+    }
+
+    to {
+        opacity: 1;
+        translate: 0 0;
+        filter: none;
+    }
+}
+
+/* ---------- Container queries ---------- */
+
+@container (max-width: 1000px) {
+    .stats-cosmos-grid > :is(.stats-trend, .stats-artists, .stats-ranking, .stats-habits) {
+        grid-column: span 24;
+    }
+}
+
+@container (max-width: 760px) {
+    .stats-cosmos {
+        height: clamp(300px, 52cqw, 380px);
+    }
+
+    .stats-cosmos-star {
+        --fy: calc((50 - var(--y)) * 0.5cqw);
+    }
+
+    .stats-cosmos-star.is-slot-0 {
+        --x: 13;
+        --y: 74;
+        --size: 17;
+    }
+
+    .stats-cosmos-star.is-slot-1 {
+        --x: 87;
+        --y: 26;
+        --size: 15;
+    }
+
+    .stats-cosmos-star.is-slot-2 {
+        --x: 14;
+        --y: 20;
+        --size: 13;
+    }
+
+    .stats-cosmos-star.is-slot-3 {
+        --x: 87;
+        --y: 76;
+        --size: 11;
+    }
+
+    .stats-cosmos-star.is-slot-4,
+    .stats-cosmos-star figcaption {
+        display: none;
+    }
+
+    .stats-cosmos-core {
+        inset-block-start: 24%;
+    }
+}
+
+@container (max-width: 560px) {
+    #page-stats[data-stats-design='constellation'] .stats-toolbar {
+        justify-content: flex-start;
+    }
+
+    .stats-cosmos-star:is(.is-slot-2, .is-slot-3) {
+        display: none;
+    }
+
+    .stats-cosmos-star.is-slot-0 {
+        --x: 12;
+        --y: 80;
+    }
+
+    .stats-cosmos-star.is-slot-1 {
+        --x: 88;
+        --y: 18;
+    }
+
+    .stats-cosmos-grid .stats-rotation {
+        grid-template-columns: minmax(0, 1fr);
+        justify-items: center;
+    }
+}

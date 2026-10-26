@@ -4,6 +4,7 @@ import I_DOWNLOAD from '!lucide/download.svg?svg&icon';
 import I_COPY from '!lucide/copy.svg?svg&icon';
 import I_DATA from '!lucide/file-json.svg?svg&icon';
 import I_LOCK from '!lucide/lock-keyhole.svg?svg&icon';
+import { getCachedAppConfig } from './access-control.js';
 import { syncStatsSegments } from './listening-stats-scene.js';
 import { artwork, badge, css, font, lift, rgb, themeFor, write } from './listening-share-themes.js';
 import { CLASSICS, EDITIONS, POOLS, loadCollection, loadEditionFont } from './listening-recap-editions.js';
@@ -463,6 +464,7 @@ function sheet() {
                     .map(([key, name]) => styleTile(key, name))
                     .join('')}</div>
                 ${['week', 'month']
+                    .filter((period) => POOLS[period].length)
                     .map(
                         (period) =>
                             `<p class="stats-share-group" id="stats-share-${period}"><span>${period === 'week' ? 'Weekly' : 'Monthly'} editions</span><small data-share-owned="${period}"></small></p><div class="stats-share-styles" role="group" aria-labelledby="stats-share-${period}">${POOLS[
@@ -517,7 +519,10 @@ export function openStatsShare(context) {
         clearTimeout(statusTimer);
         statusTimer = setTimeout(() => (status.textContent = ''), 4000);
     };
-    const available = (style) => Boolean(CLASSICS[style] || owned.has(style));
+    const available = (style) =>
+        Boolean(
+            CLASSICS[style] || owned.has(style) || (EDITIONS[style] && getCachedAppConfig().unlock_all_share_styles)
+        );
     // The image is prepared after every change, so Share runs inside the click's activation.
     const redraw = () => {
         const current = ++token;

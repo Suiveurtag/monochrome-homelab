@@ -3,22 +3,10 @@ import { syncManager } from './accounts/pocketbase.js';
 
 // Collectible share-card editions. Every recap is pressed in one edition, picked per listener and period;
 // watching the recap to its end adds that edition to the collection. Weekly and monthly pools never overlap.
-export const EDITIONS = {
-    vinyl: { name: 'Vinyl', period: 'week', font: ['Fraunces', 'ital,wght@1,800;1,900'], face: 'italic 900' },
-    riso: { name: 'Riso', period: 'week', font: ['Bricolage Grotesque', 'wght@500;800'], face: '800' },
-    flyer: { name: 'Gig Flyer', period: 'week', font: ['Anton'], face: '400' },
-    led: { name: 'Scoreboard', period: 'week', font: ['DotGothic16'], face: '400' },
-    vhs: { name: 'VHS', period: 'week', font: ['VT323'], face: '400' },
-    ticket: { name: 'Ticket Stub', period: 'week', font: ['Barlow Condensed', 'wght@600;800'], face: '800' },
-    swiss: { name: 'Swiss', period: 'week', font: null, face: '700' },
-    lava: { name: 'Lava Lamp', period: 'week', font: ['Shrikhand'], face: '400' },
-    holo: { name: 'Holo Foil', period: 'month', font: ['Unbounded', 'wght@500;800'], face: '800' },
-    gold: { name: 'Gold Record', period: 'month', font: ['Cinzel', 'wght@500;800'], face: '800' },
-    aurora: { name: 'Aurora', period: 'month', font: ['Instrument Serif', 'ital@0;1'], face: 'italic 400' },
-    cosmos: { name: 'Cosmos', period: 'month', font: ['Syne', 'wght@500;800'], face: '800' },
-    marquee: { name: 'Marquee', period: 'month', font: ['Limelight'], face: '400' },
-    eclipse: { name: 'Eclipse', period: 'month', font: ['Bodoni Moda', 'ital,wght@0,500;1,800'], face: 'italic 800' },
-};
+// None ship right now. Add one as `id: { name, period: 'week' | 'month', font: [family, axes] | null, face }`,
+// where `face` is the CSS font shorthand used to wait for the display font; then skin it in
+// listening-recap.css (`.stats-ed-<id>`) and paint its share card in listening-share-themes.js.
+export const EDITIONS = {};
 export const POOLS = {
     week: Object.keys(EDITIONS).filter((id) => EDITIONS[id].period === 'week'),
     month: Object.keys(EDITIONS).filter((id) => EDITIONS[id].period === 'month'),
@@ -26,7 +14,9 @@ export const POOLS = {
 export const CLASSICS = { aura: 'Aura', vivid: 'Vivid', ink: 'Ink', paper: 'Paper' };
 
 // FNV-1a: the same listener and period always land on the same edition, on every device.
+// With no edition in the pool a recap is simply shown in the neutral skin.
 export function editionFor(uid, period, anchor) {
+    if (!POOLS[period].length) return null;
     let hash = 2166136261;
     for (const char of `${uid}|${period}|${anchor}`) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
     return POOLS[period][(hash >>> 0) % POOLS[period].length];
@@ -107,7 +97,7 @@ function persist(uid, state) {
 export async function collectEdition(key, edition) {
     const uid = pb.authStore.record?.id;
     const state = await loadCollection();
-    const fresh = !state.editions[edition];
+    const fresh = Boolean(edition) && !state.editions[edition];
     state.watched[key] ||= Date.now();
     if (fresh) state.editions[edition] = { at: Date.now(), from: key };
     if (uid) persist(uid, state);

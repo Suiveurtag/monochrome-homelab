@@ -22940,7 +22940,8 @@ body.share-sheet-open {
     color: #e3b35f;
 }
 
-.admin-control-row input[role='switch'] {
+.admin-control-row input[role='switch'],
+.admin-release-toggle input[role='switch'] {
     position: relative;
     width: 36px;
     height: 20px;
@@ -22955,7 +22956,8 @@ body.share-sheet-open {
         background-color 180ms ease;
 }
 
-.admin-control-row input[role='switch']::after {
+.admin-control-row input[role='switch']::after,
+.admin-release-toggle input[role='switch']::after {
     position: absolute;
     top: 2px;
     left: 2px;
@@ -22969,19 +22971,538 @@ body.share-sheet-open {
         background-color 180ms ease;
 }
 
-.admin-control-row input[role='switch']:checked {
+.admin-control-row input[role='switch']:checked,
+.admin-release-toggle input[role='switch']:checked {
     border-color: var(--foreground);
     background: var(--foreground);
 }
 
-.admin-control-row input[role='switch']:checked::after {
+.admin-control-row input[role='switch']:checked::after,
+.admin-release-toggle input[role='switch']:checked::after {
     background: var(--background);
     transform: translateX(16px);
 }
 
-.admin-control-row input[role='switch']:focus-visible {
+.admin-control-row input[role='switch']:focus-visible,
+.admin-release-toggle input[role='switch']:focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 3px;
+}
+
+.admin-release {
+    --warped: #e3b35f;
+}
+
+.admin-release-body {
+    display: grid;
+    gap: 1.1rem;
+    padding: 1rem;
+}
+
+.admin-release-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.admin-release-presets button,
+.admin-release-custom {
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    color: var(--muted-foreground);
+    background: transparent;
+    font: inherit;
+    font-size: 0.7rem;
+    font-weight: 600;
+    transition:
+        background-color 200ms ease,
+        color 200ms ease,
+        border-color 200ms ease,
+        transform 200ms var(--admin-ease);
+}
+
+.admin-release-presets button {
+    cursor: pointer;
+}
+
+.admin-release-presets button:hover {
+    color: var(--foreground);
+    transform: translateY(-1px);
+}
+
+.admin-release-presets button[aria-checked='true'] {
+    border-color: var(--foreground);
+    color: var(--background);
+    background: var(--foreground);
+}
+
+.admin-release-presets button:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+}
+
+.admin-release-custom {
+    border-style: dashed;
+    color: var(--foreground);
+    animation: admin-release-pop 320ms var(--admin-ease) both;
+}
+
+.admin-release-grid {
+    display: grid;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.admin-release-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+}
+
+.admin-release-row:last-child {
+    border-bottom: 0;
+}
+
+.admin-release-row.is-pulse {
+    animation: admin-release-row 700ms ease-out;
+}
+
+.admin-release-name {
+    display: grid;
+    gap: 0.18rem;
+}
+
+.admin-release-name strong {
+    font-size: 0.74rem;
+    font-weight: 650;
+}
+
+.admin-release-name small,
+.admin-release-na,
+.admin-release-foot {
+    color: var(--muted-foreground);
+    font-size: 0.62rem;
+    line-height: 1.4;
+}
+
+.admin-release-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 0.68rem;
+    cursor: pointer;
+}
+
+.admin-release-foot {
+    margin: 0;
+}
+
+.admin-sim {
+    display: grid;
+    gap: 0.7rem;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--card) 58%, transparent);
+}
+
+.admin-sim-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.admin-sim-head > div {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+}
+
+.admin-sim-date {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.admin-sim-today {
+    padding: 0;
+    border: 0;
+    color: var(--muted-foreground);
+    background: none;
+    font: inherit;
+    font-size: 0.65rem;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.admin-sim-warped input[role='switch']:checked {
+    border-color: var(--warped);
+    background: var(--warped);
+}
+
+.admin-sim-track {
+    position: relative;
+    height: 36px;
+}
+
+.admin-sim-track svg {
+    position: absolute;
+    inset: 8px 0 8px;
+    width: 100%;
+    height: 20px;
+}
+
+.admin-sim-track .season {
+    fill: color-mix(in srgb, var(--warped) 18%, transparent);
+}
+
+.admin-sim-track line {
+    stroke: var(--muted-foreground);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+    opacity: 0.45;
+}
+
+.admin-sim-track line.month {
+    stroke: var(--foreground);
+    opacity: 0.8;
+}
+
+.admin-sim-track input[type='range'] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    background: transparent;
+    appearance: none;
+    cursor: ew-resize;
+}
+
+.admin-sim-track input[type='range']::-webkit-slider-runnable-track {
+    height: 100%;
+    background: transparent;
+}
+
+.admin-sim-track input[type='range']::-moz-range-track {
+    height: 100%;
+    background: transparent;
+}
+
+.admin-sim-track input[type='range']::-webkit-slider-thumb {
+    width: 4px;
+    height: 36px;
+    border: 0;
+    border-radius: 2px;
+    background: var(--foreground);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--foreground) 14%, transparent);
+    appearance: none;
+    transition: box-shadow 160ms ease;
+}
+
+.admin-sim-track input[type='range']::-moz-range-thumb {
+    width: 4px;
+    height: 36px;
+    border: 0;
+    border-radius: 2px;
+    background: var(--foreground);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--foreground) 14%, transparent);
+}
+
+.admin-sim-track input[type='range']:active::-webkit-slider-thumb {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--foreground) 12%, transparent);
+}
+
+.admin-sim-track input[type='range']:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+}
+
+.admin-sim-months {
+    display: grid;
+    margin-top: -0.3rem;
+    color: var(--muted-foreground);
+    font-size: 0.56rem;
+}
+
+.admin-sim-tabs {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+.admin-sim-tab {
+    position: relative;
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.7rem 0.75rem 0.7rem 2.4rem;
+    border: 1px solid var(--foreground);
+    border-radius: 12px;
+    transition:
+        border-color 280ms ease,
+        background-color 280ms ease,
+        opacity 280ms ease;
+}
+
+.admin-sim-tab strong {
+    font-size: 0.74rem;
+}
+
+.admin-sim-tab small {
+    color: var(--muted-foreground);
+    font-size: 0.6rem;
+    line-height: 1.3;
+}
+
+.admin-sim-tab[data-state='locked'] {
+    border-style: dashed;
+    border-color: var(--border);
+    background: rgb(var(--highlight-rgb) / 0.03);
+}
+
+.admin-sim-tab[data-state='locked'] strong {
+    color: var(--muted-foreground);
+}
+
+.admin-sim-lock {
+    position: absolute;
+    top: 0.72rem;
+    left: 0.75rem;
+    width: 16px;
+    height: 16px;
+}
+
+.admin-sim-lock i {
+    position: absolute;
+    inset: 0;
+    display: block;
+    transition:
+        opacity 240ms ease,
+        transform 360ms var(--admin-ease);
+}
+
+.admin-sim-tab[data-state='open'] .is-closed,
+.admin-sim-tab[data-state='locked'] .is-open {
+    opacity: 0;
+    transform: translateY(5px) rotate(-18deg) scale(0.6);
+}
+
+.admin-sim-tab[data-state='locked'] .is-closed {
+    color: var(--muted-foreground);
+}
+
+.admin-sim-tab.is-flip {
+    animation: admin-release-flip 520ms var(--admin-ease);
+}
+
+.admin-sim-recaps {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.68rem;
+}
+
+@keyframes admin-release-flip {
+    35% {
+        transform: translateY(-4px) scale(1.03);
+    }
+}
+
+@keyframes admin-release-row {
+    from {
+        background: rgb(var(--highlight-rgb) / 0.12);
+    }
+}
+
+@keyframes admin-release-pop {
+    from {
+        opacity: 0;
+        transform: scale(0.85);
+    }
+}
+
+@media (max-width: 760px) {
+    .admin-release-row {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-sim-tabs {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-release-row.is-pulse,
+    .admin-release-custom,
+    .admin-sim-tab.is-flip {
+        animation: none;
+    }
+
+    .admin-sim-lock i,
+    .admin-sim-tab {
+        transition: none;
+    }
+}
+
+.admin-warn {
+    inset: 0;
+    margin: auto;
+    width: min(26rem, calc(100vw - 2rem));
+    padding: 1.4rem;
+    border: 1px solid color-mix(in srgb, #e3b35f 38%, var(--border));
+    border-radius: 16px;
+    color: var(--foreground);
+    background: var(--card);
+    box-shadow: 0 30px 80px rgb(0 0 0 / 0.5);
+    animation: admin-warn-in 380ms var(--admin-ease) both;
+}
+
+.admin-warn::backdrop {
+    background: rgb(0 0 0 / 0.55);
+    backdrop-filter: blur(4px);
+    animation: admin-warn-fade 260ms ease both;
+}
+
+.admin-warn.is-closing {
+    animation: admin-warn-out 200ms ease-in both;
+}
+
+.admin-warn.is-closing::backdrop {
+    animation: admin-warn-fade 200ms ease reverse both;
+}
+
+.admin-warn-icon {
+    position: relative;
+    display: grid;
+    width: 52px;
+    height: 52px;
+    place-items: center;
+    margin-bottom: 0.9rem;
+    border-radius: 14px;
+    color: #e3b35f;
+    background: color-mix(in srgb, #e3b35f 12%, transparent);
+}
+
+.admin-warn-icon svg {
+    transform-origin: 50% 90%;
+    animation: admin-warn-jiggle 700ms 260ms var(--admin-ease) both;
+}
+
+.admin-warn-icon::after {
+    position: absolute;
+    inset: 0;
+    border: 1px solid #e3b35f;
+    border-radius: inherit;
+    content: '';
+    animation: admin-warn-ring 1400ms 300ms ease-out 2 both;
+}
+
+.admin-warn h2 {
+    margin: 0 0 0.45rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.admin-warn p {
+    margin: 0 0 1.2rem;
+    color: var(--muted-foreground);
+    font-size: 0.78rem;
+    line-height: 1.55;
+}
+
+.admin-warn-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.admin-warn-actions button {
+    padding: 0.55rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    color: var(--foreground);
+    background: transparent;
+    font: inherit;
+    font-size: 0.74rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition: transform 160ms var(--admin-ease);
+}
+
+.admin-warn-actions button:hover {
+    transform: translateY(-1px);
+}
+
+.admin-warn-actions button[data-warn='yes'] {
+    border-color: transparent;
+    color: var(--background);
+    background: var(--foreground);
+}
+
+.admin-warn-actions button:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+}
+
+@keyframes admin-warn-in {
+    from {
+        opacity: 0;
+        transform: translateY(18px) scale(0.94);
+    }
+}
+
+@keyframes admin-warn-out {
+    to {
+        opacity: 0;
+        transform: translateY(10px) scale(0.97);
+    }
+}
+
+@keyframes admin-warn-fade {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes admin-warn-jiggle {
+    0%,
+    100% {
+        transform: rotate(0);
+    }
+    30% {
+        transform: rotate(-16deg);
+    }
+    55% {
+        transform: rotate(11deg);
+    }
+    80% {
+        transform: rotate(-5deg);
+    }
+}
+
+@keyframes admin-warn-ring {
+    from {
+        opacity: 0.7;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(1.7);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-warn,
+    .admin-warn::backdrop,
+    .admin-warn-icon svg,
+    .admin-warn-icon::after {
+        animation: none;
+    }
 }
 
 .admin-instance-fields {

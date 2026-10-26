@@ -45,6 +45,7 @@ import {
     devModeSettings,
     serverDisruptionSettings,
     playerBarEffectsSettings,
+    statsDesignSettings,
 } from './storage.js';
 import { audioContextManager, getPresetsForBandCount } from './audio-context.js';
 import { initializePlayerLayoutEditor } from './player-bar-layout.js';
@@ -81,6 +82,12 @@ export async function initializeSettings(scrobbler, player, api, ui) {
 
     // Initialize account system UI & Settings
     authManager.updateUI(authManager.user);
+
+    const statsDesignSelect = document.getElementById('stats-design-select');
+    if (statsDesignSelect) {
+        statsDesignSelect.value = statsDesignSettings.getDesign();
+        statsDesignSelect.addEventListener('change', (event) => statsDesignSettings.setDesign(event.target.value));
+    }
 
     const playerBarEffectSelect = document.getElementById('player-bar-effect-select');
     if (playerBarEffectSelect) {

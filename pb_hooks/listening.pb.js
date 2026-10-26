@@ -18,3 +18,13 @@ routerAdd(
     },
     $apis.requireAuth('users')
 );
+
+routerAdd(
+    'POST',
+    '/api/monochrome/listening/schedule-preview',
+    (e) => {
+        return e.json(200, require(`${__hooks}/listening-service.cjs`).preview(e));
+    },
+    $apis.requireAuth('users'),
+    $apis.bodyLimit(4000)
+);

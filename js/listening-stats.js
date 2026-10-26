@@ -4,7 +4,10 @@ import I_PLAY from '!lucide/play.svg?svg&icon';
 import I_MUSIC from '!lucide/audio-lines.svg?svg&icon';
 import I_REFRESH from '!lucide/refresh-cw.svg?svg&icon';
 import { animateStatsScene, syncStatsSegments, transitionStatsContent } from './listening-stats-scene.js';
+import { animateConstellation } from './listening-stats-constellation.js';
+import { statsDesignSettings } from './storage.js';
 import { pb } from './accounts/config.js';
+import { getCachedAppConfig } from './access-control.js';
 import { listeningTimezoneOffsets } from './listening-timezone.js';
 
 const escape = (value) =>
@@ -36,8 +39,15 @@ function cover(item, eager = false) {
 }
 const hourLabel = (hour) => new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).format(new Date(2000, 0, 1, hour));
 const keyDate = (key) => new Date(`${key}${key.length === 7 ? '-01' : ''}T12:00:00`);
-// The chart's line gradient; the selected point takes the color under it.
-const chartHue = ['var(--stats-glow-1)', 'var(--stats-glow-0)', 'var(--stats-glow-2)', 'var(--stats-glow-1)'];
+// The chart's line gradient; the selected point takes the color under it. A design may restop it.
+const chartHue = [
+    'var(--stats-chart-0, var(--stats-glow-1))',
+    'var(--stats-chart-1, var(--stats-glow-0))',
+    'var(--stats-chart-2, var(--stats-glow-2))',
+    'var(--stats-chart-3, var(--stats-glow-1))',
+];
+// Constellation covers, by rank: where each sits around the orbit and how far it drifts with the pointer.
+const cosmosDepths = [22, 18, 14, 11, 7];
 // grain is the chart bucket: hour, day, week, month or year.
 function labelFor(key, grain, period) {
     if (grain === 'year') return key;
@@ -134,6 +144,13 @@ class ListeningStats {
         this.historyItems = [];
         this.historyRevealed = new Set();
         this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+        this.design = statsDesignSettings.getDesign();
+        this.root.dataset.statsDesign = this.design;
+        window.addEventListener('listening-stats-design-changed', () => {
+            this.design = statsDesignSettings.getDesign();
+            this.root.dataset.statsDesign = this.design;
+            if (this.data?.summary && !this.data.locked) this.render(false);
+        });
         let compactChart = this.root.clientWidth <= 560;
         this.resizeObserver = new ResizeObserver(() => {
             const compact = this.root.clientWidth <= 560;
@@ -198,7 +215,10 @@ class ListeningStats {
         });
         window.addEventListener('listening-stream-synced', () => this.scheduleRefresh());
         window.addEventListener('instance-policy-applied', () => {
-            if (this.active()) void this.load();
+            if (this.active()) {
+                void this.load();
+                void this.showRecaps();
+            }
         });
         pb.authStore.onChange(() => {
             this.generation++;
@@ -268,10 +288,18 @@ class ListeningStats {
     }
     // Weekly and monthly recaps announce themselves above the period controls.
     async showRecaps() {
+        if (getCachedAppConfig().feature_recaps === false) {
+            this.root.querySelector('#stats-recaps').replaceChildren();
+            return;
+        }
         try {
+            const { policy } = await this.request({ view: 'policy' });
+            this.policy = policy;
+            this.updateControls();
             const { showRecapNotices } = await import('./listening-recap.js');
             await showRecapNotices(this.root.querySelector('#stats-recaps'), {
                 request: (period, anchor) => this.request({ period, anchor }),
+                recaps: policy.locked ? [] : policy.recaps.items,
                 ui: this.ui,
             });
         } catch {
@@ -317,16 +345,27 @@ class ListeningStats {
                 return;
             }
             this.data = data;
+            this.policy = data.policy || this.policy;
+            // A period outside what the admin allows snaps to the nearest one that is open.
+            if (data.locked === 'range' && this.clampAnchor()) {
+                this.updateUrl();
+                return await this.load(quiet);
+            }
             this.loadedKey = `${this.period}:${this.anchor}`;
             this.updateControls();
             if (data.locked) {
-                content.innerHTML = this.message(
-                    data.locked === 'all' ? 'Listening stats are locked' : 'Your recap is under wraps',
+                content.innerHTML =
                     data.locked === 'all'
-                        ? 'The administrator has locked listening stats for everyone. Your music still counts; come back when stats are unlocked.'
-                        : 'Year and Lifetime are locked for everyone ahead of the annual recap. You can still explore Day, Week and Month.',
-                    I_LOCK
-                );
+                        ? this.message(
+                              'Listening stats are locked',
+                              'The administrator has locked listening stats for everyone. Your music still counts; come back when stats are unlocked.',
+                              I_LOCK
+                          )
+                        : this.message(
+                              `${periods[this.period]} is under wraps`,
+                              `${this.opensText(data.policy?.periods?.[this.period])} Your music still counts in the meantime.`,
+                              I_LOCK
+                          );
                 return;
             }
             this.root.querySelector('#stats-export').disabled = false;
@@ -357,15 +396,40 @@ class ListeningStats {
     message(title, text, icon) {
         return `<div class="stats-empty" role="status"><span class="stats-empty-icon">${icon(32)}</span><h2>${escape(title)}</h2><p>${escape(text)}</p></div>`;
     }
+    // Compare the period each date falls in, so a Monday afternoon still counts as this week.
+    periodOf(key, period = this.period) {
+        const date = keyDate(key);
+        if (period === 'week') date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+        return dateKey(date).slice(0, period === 'year' ? 4 : period === 'month' ? 7 : 10);
+    }
+    clampAnchor() {
+        const rule = this.policy?.periods?.[this.period];
+        if (!rule || rule.locked || !rule.latest) return false;
+        const before = this.anchor;
+        if (this.periodOf(this.anchor) > this.periodOf(rule.latest)) this.anchor = rule.latest;
+        else if (rule.earliest && this.periodOf(this.anchor) < this.periodOf(rule.earliest))
+            this.anchor = rule.earliest;
+        return this.anchor !== before;
+    }
+    opensText(rule) {
+        if (!rule?.opensAt) return 'Opens with Warped, the yearly recap.';
+        const date = keyDate(rule.opensAt).toLocaleDateString(undefined, {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+        });
+        return `Opens ${date}.`;
+    }
     updateControls() {
-        const locked = this.data?.policy?.longTermLocked;
+        const rules = this.policy?.periods || {};
         for (const button of this.root.querySelectorAll('[data-period]')) {
             button.setAttribute('aria-pressed', String(button.dataset.period === this.period));
-            const long = ['year', 'lifetime'].includes(button.dataset.period);
-            button.classList.toggle('is-locked', Boolean(long && locked));
-            button.innerHTML = `${periods[button.dataset.period]}${long && locked ? I_LOCK(12) : ''}`;
-            button.title = long && locked ? 'Locked for the annual recap' : '';
+            const held = Boolean(rules[button.dataset.period]?.locked);
+            button.classList.toggle('is-locked', held);
+            button.innerHTML = `${periods[button.dataset.period]}${held ? I_LOCK(12) : ''}`;
+            button.title = held ? this.opensText(rules[button.dataset.period]) : '';
         }
+        const rule = rules[this.period];
         const label = this.root.querySelector('#stats-period-label');
         const nextLabel = periodLabel(this.data, this.anchor, this.period);
         if (label.textContent !== nextLabel) {
@@ -375,20 +439,18 @@ class ListeningStats {
         syncStatsSegments(this.root);
         const lifetime = this.period === 'lifetime';
         const input = this.root.querySelector('#stats-date');
+        const latest = rule?.latest || dateKey();
+        const pinned = Boolean(rule?.earliest) && this.periodOf(rule.earliest) >= this.periodOf(latest);
         input.value = this.anchor;
-        input.max = dateKey();
-        input.disabled = lifetime;
-        this.root.querySelector('[data-stats-action="pick-date"]').disabled = lifetime;
-        this.root.querySelector('[data-stats-action="previous"]').disabled = lifetime;
-        // Compare the period each date falls in, so a Monday afternoon still counts as this week.
-        const periodOf = (key) => {
-            const date = keyDate(key);
-            if (this.period === 'week') date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
-            return dateKey(date).slice(0, this.period === 'year' ? 4 : this.period === 'month' ? 7 : 10);
-        };
+        input.max = latest;
+        input.min = rule?.earliest || '';
+        input.disabled = lifetime || pinned;
+        this.root.querySelector('[data-stats-action="pick-date"]').disabled = lifetime || pinned;
+        this.root.querySelector('[data-stats-action="previous"]').disabled =
+            lifetime || (Boolean(rule?.earliest) && this.periodOf(this.anchor) <= this.periodOf(rule.earliest));
         this.root.querySelector('.stats-share-cta-label').textContent =
             this.period === 'lifetime' ? 'Share all time' : `Share your ${this.period}`;
-        const current = lifetime || periodOf(this.anchor) >= periodOf(dateKey());
+        const current = lifetime || this.periodOf(this.anchor) >= this.periodOf(latest);
         this.root.querySelector('[data-stats-action="next"]').disabled = current;
         this.root.querySelector('[data-stats-action="today"]').hidden = current;
     }
@@ -426,11 +488,15 @@ class ListeningStats {
                   : change === 0
                     ? `Same as the previous ${this.period}`
                     : `${change > 0 ? '+' : ''}${change}% vs. previous ${this.period}`;
+        const cosmos = this.design === 'constellation';
         const favorites = d.top.tracks
             .filter((track) => imageUrl(track.cover) && !/\/assets\/appicon\.png(?:[?#]|$)/.test(track.cover))
-            .slice(0, 3);
+            .slice(0, cosmos ? 5 : 3);
         const most = d.top.tracks[0];
         // The orbit is drawn twice: its far half behind the covers, its near half in front of them.
+        // The light comes out from behind the covers on the far half, crosses the near half and slips behind them again.
+        // The far clip overlaps the near one by a unit so no hairline shows where they meet;
+        // the light is masked with a soft cross-fade instead, so its glow is not cut along that line.
         // Its viewBox matches the orbit box's aspect, so the ring reaches past the outer covers.
         const orbit = (front) =>
             `<svg class="stats-orbit${front ? ' is-front' : ''}" viewBox="0 0 740 320" aria-hidden="true"><clipPath id="stats-orbit-${front ? 'near' : 'far'}"><rect x="-20" y="${front ? 160 : -60}" width="780" height="${front ? 220 : 221}"/></clipPath><linearGradient id="stats-spark-fade-${front ? 'near' : 'far'}" gradientUnits="userSpaceOnUse" gradientTransform="rotate(-8 370 160)" x1="0" y1="130" x2="0" y2="160"><stop offset="0" stop-color="${front ? 'black' : 'white'}"/><stop offset="1" stop-color="${front ? 'white' : 'black'}"/></linearGradient><mask id="stats-spark-${front ? 'near' : 'far'}" maskUnits="userSpaceOnUse" x="-200" y="-200" width="1140" height="720"><rect x="-200" y="-200" width="1140" height="720" fill="url(#stats-spark-fade-${front ? 'near' : 'far'})"/></mask><g transform="rotate(-8 370 160)" clip-path="url(#stats-orbit-${front ? 'near' : 'far'})"><ellipse class="stats-orbit-ring" cx="370" cy="160" rx="352" ry="84" pathLength="1"/></g><g mask="url(#stats-spark-${front ? 'near' : 'far'})"><g transform="rotate(-8 370 160)"><ellipse class="stats-orbit-spark" cx="370" cy="160" rx="352" ry="84" pathLength="1"/></g></g></svg>`;
@@ -441,8 +507,25 @@ class ListeningStats {
             month: 'month by month',
             year: 'year by year',
         }[this.series.grain];
+        const units = `<div class="stats-segments stats-units" role="group" aria-label="Chart measure"><button type="button" data-unit="minutes" aria-pressed="${this.unit === 'minutes'}">Minutes</button><button type="button" data-unit="streams" aria-pressed="${this.unit === 'streams'}">Streams</button></div>`;
+        const subtitle = (text) => (cosmos ? `<p>${text}</p>` : '');
+        const ranking = `<section class="stats-ranking stats-panel" aria-labelledby="stats-ranking-title"><div class="stats-section-header"><div><h2 id="stats-ranking-title">On repeat</h2>${subtitle(this.period === 'lifetime' ? 'Your most played of all time' : `Your most played this ${this.period}`)}</div><div class="stats-segments" role="group" aria-label="Ranking type">${['tracks', 'artists', 'albums'].map((type) => `<button type="button" data-rank="${type}" aria-pressed="${type === this.rank}">${type[0].toUpperCase() + type.slice(1)}</button>`).join('')}</div></div><div id="stats-rank-list">${this.ranking()}</div></section>`;
+        const rotation = `<section class="stats-artists stats-panel" aria-labelledby="stats-artists-title"><div class="stats-section-header"><h2 id="stats-artists-title">Your rotation</h2></div>${this.distribution()}</section>`;
+        const habits = `<section class="stats-habits stats-panel" aria-labelledby="stats-habits-title"><div class="stats-section-header"><div><h2 id="stats-habits-title">Listening by hour</h2>${subtitle('When you listen most')}</div><span class="stats-habit-note" aria-live="polite"></span></div>${this.hours()}</section>`;
+        const firstListen =
+            s.streams === 0 && s.seconds === 0
+                ? `<div class="stats-first-listen"><strong>${this.period === 'lifetime' ? 'Your listening story starts here' : 'A quiet period'}</strong><span>Listen to a track for 30 seconds to make it count. Stats collect new listens across your signed-in devices.</span><a href="/library">Explore your library ${I_CHEVRON_RIGHT(15)}</a></div>`
+                : '';
+        const trend = change !== null && change !== 0 && this.period !== 'lifetime';
         content.innerHTML = `
-            <section class="stats-scene" aria-label="Your listening in this period">
+            ${
+                cosmos
+                    ? `${this.constellation(favorites, change, comparison)}
+            ${firstListen}
+            <div class="stats-cosmos-grid">
+            <section class="stats-trend stats-panel" aria-labelledby="stats-trend-title"><div class="stats-section-header"><div><h2 id="stats-trend-title">Listening activity<span class="sr-only">, ${by}</span></h2><p>Total ${minutes(s.seconds)} minutes${trend ? ` <span aria-hidden="true">·</span> <span class="stats-trend-change${change < 0 ? ' is-down' : ''}">${comparison}</span>` : ''}</p></div>${units}</div><div id="stats-chart">${this.chart()}</div></section>
+            ${rotation}${ranking}${habits}</div>`
+                    : `<section class="stats-scene" aria-label="Your listening in this period">
                 <div class="stats-stage">
                     <div class="stats-headline"><div class="stats-total" data-count="${Math.round(s.seconds / 60)}">${minutes(s.seconds)}</div><h2>minutes listened</h2><p class="stats-comparison${change < 0 ? ' is-down' : ''}">${comparison}</p>
                     <dl class="stats-stage-metrics"><div><dd>${count(s.streams)}</dd><dt>streams</dt></div><div><dd>${count(s.artists)}</dd><dt>artists</dt></div><div><dd>${count(s.activeDays)}</dd><dt>active ${s.activeDays === 1 ? 'day' : 'days'}</dt></div></dl>
@@ -454,32 +537,48 @@ class ListeningStats {
                         ${most ? `<div class="stats-showcase-caption"><p><span class="stats-most-label">Your most played</span><strong>${escape(most.title)}</strong><small>${escape(artistNames(most))} · ${count(most.streams)} ${most.streams === 1 ? 'stream' : 'streams'}</small></p><button type="button" class="stats-hero-play" data-play-track="${escape(most.id)}" aria-label="Play ${escape(most.title)}">${I_PLAY(22)}</button></div>` : ''}
                     </div>
                 </div>
-                <section class="stats-trend" aria-labelledby="stats-trend-title"><h2 id="stats-trend-title" class="sr-only">Listening activity, ${by}</h2><div class="stats-segments stats-units" role="group" aria-label="Chart measure"><button type="button" data-unit="minutes" aria-pressed="${this.unit === 'minutes'}">Minutes</button><button type="button" data-unit="streams" aria-pressed="${this.unit === 'streams'}">Streams</button></div><div id="stats-chart">${this.chart()}</div></section>
+                <section class="stats-trend" aria-labelledby="stats-trend-title"><h2 id="stats-trend-title" class="sr-only">Listening activity, ${by}</h2>${units}<div id="stats-chart">${this.chart()}</div></section>
             </section>
-            ${s.streams === 0 && s.seconds === 0 ? `<div class="stats-first-listen"><strong>${this.period === 'lifetime' ? 'Your listening story starts here' : 'A quiet period'}</strong><span>Listen to a track for 30 seconds to make it count. Stats collect new listens across your signed-in devices.</span><a href="/library">Explore your library ${I_CHEVRON_RIGHT(15)}</a></div>` : ''}
+            ${firstListen}
             <div class="stats-analysis">
-            <section class="stats-ranking stats-panel" aria-labelledby="stats-ranking-title"><div class="stats-section-header"><h2 id="stats-ranking-title">On repeat</h2><div class="stats-segments" role="group" aria-label="Ranking type">${['tracks', 'artists', 'albums'].map((type) => `<button type="button" data-rank="${type}" aria-pressed="${type === this.rank}">${type[0].toUpperCase() + type.slice(1)}</button>`).join('')}</div></div><div id="stats-rank-list">${this.ranking()}</div></section>
-            <div class="stats-side-rail"><section class="stats-artists stats-panel" aria-labelledby="stats-artists-title"><div class="stats-section-header"><h2 id="stats-artists-title">Your rotation</h2></div>${this.distribution()}</section>
-            <section class="stats-habits stats-panel" aria-labelledby="stats-habits-title"><div class="stats-section-header"><h2 id="stats-habits-title">Listening by hour</h2><span class="stats-habit-note" aria-live="polite"></span></div>${this.hours()}</section>
-            </div></div>
+            ${ranking}
+            <div class="stats-side-rail">${rotation}
+            ${habits}
+            </div></div>`
+            }
             <section class="stats-history" aria-labelledby="stats-history-title"><div class="stats-section-header"><div><h2 id="stats-history-title">Listening history</h2><p>Every stream, including repeats</p></div><span>${count(d.historyTotal)} ${d.historyTotal === 1 ? 'stream' : 'streams'}</span></div>${d.historyTotal ? '<div id="stats-history-list"></div><div class="stats-history-footer"></div>' : '<p class="stats-table-empty">Qualified listens will appear here, grouped by day.</p>'}</section>
             <p class="stats-footnote">A playback session counts once after 30 seconds of heard audio. Pauses and seeks do not add listening time. Only new listens are included; earlier device history cannot be reconstructed reliably. Hours use ${escape(Intl.DateTimeFormat().resolvedOptions().timeZone)} time. Updated ${new Date(d.generatedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}.</p>`;
         this.root.querySelector('.stats-share-cta-covers').innerHTML = favorites
+            .slice(0, 3)
             .map((track, i) => `<img src="${escape(imageUrl(track.cover))}" alt="" style="--i:${i}" />`)
             .join('');
         this.showHour();
         this.setupHistory();
         animateStatsScene(this.root);
+        animateConstellation(this.root, !quiet);
         syncStatsSegments(this.root);
+    }
+    // The Constellation stage: the total at the center of an orbit, the period's covers held around it.
+    constellation(favorites, change, comparison) {
+        const s = this.data.summary;
+        const arrow = change > 0 ? 'M6 1 11 10H1Z' : 'M6 11 11 2H1Z';
+        const delta =
+            this.period !== 'lifetime' && change
+                ? `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="${arrow}"/></svg><strong>${change > 0 ? '+' : ''}${change}%</strong> vs. previous ${this.period}`
+                : escape(comparison);
+        return `<section class="stats-scene stats-cosmos" aria-label="Your listening in this period">
+            <canvas class="stats-cosmos-sky" aria-hidden="true"></canvas>
+            <div class="stats-cosmos-core"><div class="stats-total" data-count="${Math.round(s.seconds / 60)}">${minutes(s.seconds)}</div><h2>minutes listened</h2><p class="stats-cosmos-change${change < 0 ? ' is-down' : change > 0 ? ' is-up' : ''}">${delta}</p>
+            <dl class="stats-cosmos-metrics"><div><dd>${count(s.streams)}</dd><dt>streams</dt></div><div><dd>${count(s.artists)}</dd><dt>artists</dt></div><div><dd>${count(s.activeDays)}</dd><dt>active ${s.activeDays === 1 ? 'day' : 'days'}</dt></div></dl></div>
+            ${favorites.map((track, i) => `<figure class="stats-cosmos-star is-slot-${i}" data-depth="${cosmosDepths[i]}" style="--i:${i}"><div class="stats-cosmos-body"><img class="stats-cosmos-halo" src="${escape(imageUrl(track.cover))}" alt="" aria-hidden="true" onerror="this.hidden=true" /><button type="button" class="stats-cosmos-art" data-play-track="${escape(track.id)}" aria-label="Play ${escape(track.title)}">${cover(track)}<span class="stats-cosmos-play">${I_PLAY(22)}</span></button><figcaption><strong>${escape(track.title)}</strong><span>${escape(artistNames(track))}</span></figcaption></div></figure>`).join('')}
+            <canvas class="stats-cosmos-near" aria-hidden="true"></canvas>
+        </section>`;
     }
     chart() {
         const items = this.series.items;
         const values = items.map((p) => (this.unit === 'minutes' ? p.seconds / 60 : p.streams));
         const max = Math.max(1, ...values);
         const step = Math.max(2, 10 ** Math.floor(Math.log10(max)) / 5);
-        // The light comes out from behind the covers on the far half, crosses the near half and slips behind them again.
-        // The far clip overlaps the near one by a unit so no hairline shows where they meet;
-        // the light is masked with a soft cross-fade instead, so its glow is not cut along that line.
         const ceiling = Math.ceil((max * 1.05) / step) * step;
         const compact = this.root.clientWidth <= 560;
         // The SVG stretches to its box, so text, dots and the tooltip live in HTML and strokes don't scale.
@@ -671,11 +770,12 @@ class ListeningStats {
     ranking() {
         const all = this.data.top[this.rank];
         if (!all.length) return '<p class="stats-table-empty">No music to rank in this period yet.</p>';
-        const items = this.rankExpanded ? all : all.slice(0, 10);
+        const limit = this.design === 'constellation' ? 5 : 10;
+        const items = this.rankExpanded ? all : all.slice(0, limit);
         const artist = this.rank === 'artists';
         const more =
-            all.length > 10
-                ? `<button type="button" class="stats-more" data-stats-action="rank-more" aria-expanded="${this.rankExpanded}">${this.rankExpanded ? 'Show top 10' : `Show all ${count(all.length)}`}</button>`
+            all.length > limit
+                ? `<button type="button" class="stats-more" data-stats-action="rank-more" aria-expanded="${this.rankExpanded}">${this.rankExpanded ? `Show top ${limit}` : `Show all ${count(all.length)}`}</button>`
                 : '';
         return `<table class="stats-table"><caption class="sr-only">Top ${this.rank} by streams</caption><thead><tr><th scope="col" class="stats-position">#</th><th scope="col">${artist ? 'Artist' : this.rank === 'tracks' ? 'Track' : 'Album'}</th><th scope="col" class="stats-number">Streams</th><th scope="col" class="stats-number stats-time-column">Minutes</th><th scope="col" class="stats-row-action"><span class="sr-only">Open or play</span></th></tr></thead><tbody>${items.map((item, i) => `<tr style="--stats-order:${Math.min(i, 12)}"><td class="stats-position">${i + 1}</td><td><div class="stats-identity"><span class="stats-artwork ${artist ? 'is-artist' : ''}">${cover(item)}</span><span><a href="/${artist ? 'artist' : this.rank === 'albums' ? 'album' : 'track'}/${encodeURIComponent(item.id)}">${escape(item.title || item.name)}</a>${!artist ? `<small>${escape(artistNames(item))}</small>` : ''}</span></div></td><td class="stats-number">${count(item.streams)}</td><td class="stats-number stats-time-column">${minutes(item.seconds)}</td><td class="stats-row-action">${this.rank === 'tracks' ? `<button type="button" class="stats-icon-button" data-play-track="${escape(item.id)}" aria-label="Play ${escape(item.title)}">${I_PLAY(16)}</button>` : `<a class="stats-icon-button" href="/${artist ? 'artist' : 'album'}/${encodeURIComponent(item.id)}" aria-label="Open ${escape(item.name || item.title)}">${I_CHEVRON_RIGHT(16)}</a>`}</td></tr>`).join('')}</tbody></table>${more}`;
     }
@@ -796,6 +896,7 @@ class ListeningStats {
         }
         if (button.dataset.period) {
             this.period = button.dataset.period;
+            this.clampAnchor();
             this.updateUrl();
             await this.load();
         }
@@ -843,7 +944,7 @@ class ListeningStats {
         if (action === 'previous' || action === 'next' || action === 'today') {
             const date = new Date(`${this.anchor}T12:00:00`),
                 dir = action === 'previous' ? -1 : 1;
-            if (action === 'today') this.anchor = dateKey();
+            if (action === 'today') this.anchor = this.policy?.periods?.[this.period]?.latest || dateKey();
             else {
                 if (this.period === 'month') {
                     date.setDate(1);

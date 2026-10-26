@@ -362,6 +362,23 @@ export const nowPlayingSettings = {
     },
 };
 
+export const statsDesignSettings = {
+    STORAGE_KEY: 'listening-stats-design',
+
+    getDesign() {
+        try {
+            return localStorage.getItem(this.STORAGE_KEY) === 'constellation' ? 'constellation' : 'classic';
+        } catch {
+            return 'classic';
+        }
+    },
+
+    setDesign(design) {
+        localStorage.setItem(this.STORAGE_KEY, design === 'constellation' ? design : 'classic');
+        window.dispatchEvent(new CustomEvent('listening-stats-design-changed'));
+    },
+};
+
 const PLAYER_BAR_EFFECTS = new Set(['none', 'soft-aurora', 'side-rays', 'silk', 'strands', 'dark-veil']);
 
 export const playerBarEffectsSettings = {
