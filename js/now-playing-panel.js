@@ -379,7 +379,7 @@ export class NowPlayingPanel {
         this.boundPanelScroll = () => {
             if (this.currentTrack?.id != null)
                 this.scrollByTrack.set(String(this.currentTrack.id), this.content.scrollTop);
-            this.root.classList.toggle('is-scrolled', this.content.scrollTop > 8);
+            this.syncScrolled();
             this.updateScrollbar();
         };
         this.boundQueueScroll = (event) => {
@@ -570,6 +570,12 @@ export class NowPlayingPanel {
 
     // The header lives outside the scroller (as in Spotify's Now Playing view), so the scroller can be
     // masked without touching it.
+    // New content can reset the scroll position without a scroll event, which would leave the
+    // scrolled look (header push and fade) on a panel that is back at the top.
+    syncScrolled() {
+        this.root.classList.toggle('is-scrolled', Boolean(this.content) && this.content.scrollTop > 8);
+    }
+
     syncHeader() {
         const header = this.content?.querySelector(':scope > .now-playing-panel-header');
         if (header && this.headerSlot) this.headerSlot.replaceChildren(header);
@@ -1206,6 +1212,7 @@ export class NowPlayingPanel {
                 this.content.innerHTML = this.renderNowPlayingMarkup(model);
                 this.syncHeader();
                 this.content.scrollTop = previousScroll;
+                this.syncScrolled();
                 this.nowPlayingNeedsRender = false;
             }
             if (isQueueView) {
