@@ -72,8 +72,8 @@ body.sidebar-collapsed .sidebar-library-text {
 
 .sidebar-logo .app-logo {
     flex: none;
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
 }
 
 .sidebar-toggle {
@@ -99,7 +99,9 @@ body.sidebar-collapsed .sidebar-library-text {
 }
 
 .sidebar-toggle svg {
-    transition: rotate 360ms var(--sidebar-settle);
+    transition:
+        rotate 360ms var(--sidebar-settle),
+        opacity 160ms ease;
 }
 
 body.sidebar-collapsed .sidebar-logo {
@@ -111,8 +113,34 @@ body.sidebar-collapsed .sidebar-logo-link {
     display: none;
 }
 
-body.sidebar-collapsed .sidebar-toggle svg {
+/* Collapsed: the logo stands in for the toggle; hovering swaps it for the expand arrow. */
+.sidebar-toggle > * {
+    grid-area: 1 / 1;
+}
+
+/* Beats .sidebar-logo .app-logo, which the logo's own class also matches. */
+.sidebar-toggle .sidebar-toggle-logo {
+    width: 22px;
+    height: 22px;
+    color: var(--foreground);
+    opacity: 0;
+}
+
+body.sidebar-collapsed .sidebar-toggle-expand {
     rotate: 180deg;
+    opacity: 0;
+}
+
+body.sidebar-collapsed .sidebar-toggle-logo {
+    opacity: 1;
+}
+
+body.sidebar-collapsed .sidebar-toggle:hover .sidebar-toggle-expand {
+    opacity: 1;
+}
+
+body.sidebar-collapsed .sidebar-toggle:hover .sidebar-toggle-logo {
+    opacity: 0;
 }
 
 /* ---- Tabs ---- */
@@ -653,6 +681,12 @@ body.sidebar-collapsed .sidebar-library-empty {
 body.sidebar-collapsed .sidebar-library-item.is-current .sidebar-library-art {
     outline: 2px solid var(--highlight);
     outline-offset: 2px;
+}
+
+/* Rail: same divider as the bottom nav, so the covers keep the full rail width. */
+body.sidebar-collapsed .sidebar-library {
+    padding-top: 10px;
+    border-top: 1px solid var(--shell-border);
 }
 
 @media (min-width: 769px) {

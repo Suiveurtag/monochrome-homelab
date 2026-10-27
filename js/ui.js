@@ -112,7 +112,6 @@ import {
     SVG_SHUFFLE,
     SVG_VIDEO,
     SVG_LEFT_ARROW,
-    SVG_RIGHT_ARROW,
     SVG_CLOCK,
     SVG_CHECKBOX,
     SVG_FLUID,
@@ -6267,10 +6266,6 @@ export class UIRenderer {
         await this.showPage('track');
 
         document.body.classList.add('sidebar-collapsed');
-        const toggleBtn = document.getElementById('sidebar-toggle');
-        if (toggleBtn) {
-            toggleBtn.innerHTML = SVG_RIGHT_ARROW(20);
-        }
 
         const imageEl = document.getElementById('track-detail-image');
         const titleEl = document.getElementById('track-detail-title');
