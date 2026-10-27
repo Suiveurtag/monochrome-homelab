@@ -224,6 +224,15 @@
         ],
         "createdAt": "2026-10-27T01:32:05.494Z",
         "reason": "Claude triage: DESIGN.md (La Cabine, rewritten from this build on 2026-10-27) documents the main type and radius steps; social.css keeps the approved build's intermediate meta sizes and small control radii"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "sidebar.css"
+        ],
+        "createdAt": "2026-10-27T03:07:49.409Z",
+        "reason": "User confirmed: stroke-width is a paint property, false positive"
       }
     ]
   }
