@@ -38,14 +38,12 @@ const CONFIG_FIELDS = {
     feature_recaps: 'admin-feature-recaps',
     unlock_all_share_styles: 'admin-unlock-share-styles',
     feature_uploads: 'admin-feature-uploads',
-    feature_parties: 'admin-feature-parties',
     allow_uploads: 'admin-allow-uploads',
     allow_guest_uploads: 'admin-allow-guest-uploads',
     allow_catalog_edits: 'admin-allow-catalog-edits',
     allow_catalog_deletes: 'admin-allow-catalog-deletes',
     allow_downloads: 'admin-allow-downloads',
     allow_social_posts: 'admin-allow-social-posts',
-    allow_parties: 'admin-allow-parties',
     storage_limit_bytes: 'admin-storage-limit',
 };
 

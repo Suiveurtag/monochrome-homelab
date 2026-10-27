@@ -233,6 +233,15 @@
         ],
         "createdAt": "2026-10-27T03:07:49.409Z",
         "reason": "User confirmed: stroke-width is a paint property, false positive"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "${encodedfamily}",
+        "files": [
+          "js/storage.js"
+        ],
+        "createdAt": "2026-10-27T04:36:31.650Z",
+        "reason": "User confirmed: Google Fonts loader for user-chosen font families; font choice is intentional, not a design-system violation"
       }
     ]
   }

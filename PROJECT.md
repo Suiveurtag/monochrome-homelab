@@ -74,7 +74,7 @@ Browser (Vite dev on :5173 / nginx static on :3000)
 - **Upload gallery** (self-hosted library management)
 - **Easter eggs**: `soggy-easter-egg.*`, `metallic-logo-easter-egg.*`
 - Animated/video artwork ("canvas"), track theme colors, metadata editing, local file import (`local-music-api.js`)
-- Social features (`social.js`), listening parties (`listening-party.js`), scrobbling (Last.fm, LibreFM, ListenBrainz, Maloja)
+- Social features (`social.js`), scrobbling (Last.fm, LibreFM, ListenBrainz, Maloja)
 
 ## Dev workflow
 

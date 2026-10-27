@@ -12,7 +12,7 @@ The owner and a small circle of friends running one self-hosted Monochrome insta
 
 ## Product Purpose
 
-Monochrome is a self-hosted music streaming web app (PocketBase + Go SpotiFLAC importer fork of monochrome.tf). This fork adds a social layer on top of the shared library: presence ("what everyone is listening to"), direct messages with music sharing, group chats, a follower graph, an instance-wide feed of posts, and listening parties. Success = the instance feels like a private club for the members' music life, not a generic chat bolted onto a player.
+Monochrome is a self-hosted music streaming web app (PocketBase + Go SpotiFLAC importer fork of monochrome.tf). This fork adds a social layer on top of the shared library: presence ("what everyone is listening to"), direct messages with music sharing, group chats, a follower graph, an instance-wide feed of posts. Success = the instance feels like a private club for the members' music life, not a generic chat bolted onto a player.
 
 ## Positioning
 

@@ -2458,8 +2458,6 @@ export const sidebarSectionSettings = {
     SHOW_LIBRARY_KEY: 'sidebar-show-library',
     SHOW_RECENT_KEY: 'sidebar-show-recent',
     SHOW_SETTINGS_KEY: 'sidebar-show-settings',
-    SHOW_GITHUB_KEY: 'sidebar-show-github',
-    SHOW_PARTY_KEY: 'sidebar-show-party',
     ACCENT_ACTIVE_KEY: 'sidebar-accent-active',
     ORDER_KEY: 'sidebar-menu-order',
     DEFAULT_ORDER: [
@@ -2469,8 +2467,6 @@ export const sidebarSectionSettings = {
         'sidebar-nav-social',
         'sidebar-nav-recent',
         'sidebar-nav-settings',
-        'sidebar-nav-party',
-        'sidebar-nav-githubbtn',
     ],
 
     getBottomNavIds() {
@@ -2548,30 +2544,6 @@ export const sidebarSectionSettings = {
         }
     },
 
-    shouldShowGithub() {
-        try {
-            return localStorage.getItem(this.SHOW_GITHUB_KEY) === 'true';
-        } catch {
-            return false;
-        }
-    },
-
-    setShowGithub(enabled) {
-        localStorage.setItem(this.SHOW_GITHUB_KEY, enabled ? 'true' : 'false');
-    },
-
-    shouldShowParty() {
-        try {
-            return localStorage.getItem(this.SHOW_PARTY_KEY) === 'true';
-        } catch {
-            return false;
-        }
-    },
-
-    setShowParty(enabled) {
-        localStorage.setItem(this.SHOW_PARTY_KEY, enabled ? 'true' : 'false');
-    },
-
     normalizeOrder(order) {
         const baseOrder = this.DEFAULT_ORDER;
         const safeOrder = Array.isArray(order) ? order.filter((id) => baseOrder.includes(id)) : [];
@@ -2632,8 +2604,6 @@ export const sidebarSectionSettings = {
             { id: 'sidebar-nav-library', check: this.shouldShowLibrary() },
             { id: 'sidebar-nav-recent', check: this.shouldShowRecent() },
             { id: 'sidebar-nav-settings', check: this.shouldShowSettings() },
-            { id: 'sidebar-nav-party', check: this.shouldShowParty() },
-            { id: 'sidebar-nav-githubbtn', check: this.shouldShowGithub() },
         ];
 
         items.forEach(({ id, check }) => {

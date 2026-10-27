@@ -24,14 +24,12 @@ export const DEFAULT_CONFIG = {
     unlock_all_share_styles: false,
     debug_recaps_always: false,
     feature_uploads: true,
-    feature_parties: true,
     allow_uploads: true,
     allow_guest_uploads: false,
     allow_catalog_edits: true,
     allow_catalog_deletes: true,
     allow_downloads: true,
     allow_social_posts: true,
-    allow_parties: true,
     storage_limit_bytes: 0,
 };
 
@@ -41,7 +39,6 @@ const FEATURE_FIELDS = {
     social: 'feature_social',
     stats: 'feature_stats',
     uploads: 'feature_uploads',
-    parties: 'feature_parties',
 };
 
 const PERMISSION_FIELDS = {
@@ -50,7 +47,6 @@ const PERMISSION_FIELDS = {
     delete_catalog: 'allow_catalog_deletes',
     download_music: 'allow_downloads',
     create_social_posts: 'allow_social_posts',
-    create_parties: 'allow_parties',
 };
 
 export function isAdminAccount(user = authManager.user) {
@@ -91,7 +87,6 @@ export function canUsePermission(permission, user = authManager.user, config = c
     }
     if (permission === 'upload_music' && config.feature_uploads === false) return false;
     if (permission === 'create_social_posts' && config.feature_social === false) return false;
-    if (permission === 'create_parties' && config.feature_parties === false) return false;
     return config[field] !== false;
 }
 
@@ -101,7 +96,6 @@ export function applyInstancePolicy(config = cachedAppConfig) {
     const featureTargets = {
         social: document.getElementById('sidebar-nav-social'),
         uploads: document.getElementById('sidebar-nav-upload'),
-        parties: document.getElementById('sidebar-nav-party'),
     };
     for (const [feature, element] of Object.entries(featureTargets)) {
         if (element) element.hidden = !isFeatureEnabled(feature);
@@ -111,7 +105,6 @@ export function applyInstancePolicy(config = cachedAppConfig) {
     root.dataset.canDeleteCatalog = String(canUsePermission('delete_catalog'));
     root.dataset.canDownload = String(canUsePermission('download_music'));
     root.dataset.canPost = String(canUsePermission('create_social_posts'));
-    root.dataset.canHostParties = String(canUsePermission('create_parties'));
     const name = cachedAppConfig.instance_name?.trim() || 'Monochrome';
     document.documentElement.style.setProperty('--instance-name-length', String(name.length));
     window.dispatchEvent(new CustomEvent('instance-policy-applied', { detail: cachedAppConfig }));

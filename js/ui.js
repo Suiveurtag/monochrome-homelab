@@ -43,7 +43,6 @@ import { syncManager } from './accounts/pocketbase.js';
 import { authManager } from './accounts/auth.js';
 import { pb } from './accounts/config.js';
 import { getCachedAppConfig } from './access-control.js';
-import { partyManager } from './listening-party.js';
 import { Visualizer } from './visualizer.js';
 import { audioContextManager } from './audio-context.js';
 import { navigate } from './router.js';
@@ -2896,22 +2895,6 @@ export class UIRenderer {
         }
     }
 
-    async renderPartiesPage() {
-        await this.showPage('parties');
-        const authRequired = document.getElementById('parties-auth-required');
-        const hostControls = document.getElementById('parties-host-controls');
-        const loginBtn = document.getElementById('parties-login-btn');
-
-        if (authManager.user) {
-            authRequired.style.display = 'none';
-            hostControls.style.display = 'block';
-        } else {
-            authRequired.style.display = 'block';
-            hostControls.style.display = 'none';
-            loginBtn.onclick = () => navigate('/account');
-        }
-    }
-
     async renderResetPasswordPage() {
         await this.showPage('reset-password');
         const form = document.getElementById('reset-password-form');
@@ -2976,11 +2959,6 @@ export class UIRenderer {
                 spinner.style.display = 'none';
             }
         };
-    }
-
-    async renderPartyDetailPage(id) {
-        await this.showPage('party-detail');
-        await partyManager.joinParty(id);
     }
 
     async renderLibraryPage() {

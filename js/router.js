@@ -57,8 +57,6 @@ export function createRouter(ui) {
             social: 'social',
             recent: 'stats',
             upload: 'uploads',
-            parties: 'parties',
-            party: 'parties',
             user: 'social',
         };
         const guardedFeature = guardedFeatures[page];
@@ -110,12 +108,6 @@ export function createRouter(ui) {
             }
             case 'admin':
                 await adminManager.renderPage(ui);
-                break;
-            case 'parties':
-                await ui.renderPartiesPage();
-                break;
-            case 'party':
-                await ui.renderPartyDetailPage(param);
                 break;
             case 'search':
                 await ui.renderSearchPage(decodeURIComponent(param));
