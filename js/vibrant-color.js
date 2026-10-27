@@ -3,7 +3,7 @@
  * Assumes r, g, and b are contained in the set [0, 255] and
  * returns h, s, and l in the set [0, 1].
  */
-function rgbToHsl(r, g, b) {
+export function rgbToHsl(r, g, b) {
     r /= 255;
     g /= 255;
     b /= 255;
@@ -40,7 +40,7 @@ function rgbToHsl(r, g, b) {
 /**
  * Converts an HSL color value to RGB hex string.
  */
-function hslToHex(h, s, l) {
+export function hslToHex(h, s, l) {
     let r, g, b;
 
     if (s === 0) {

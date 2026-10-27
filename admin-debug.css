@@ -1,0 +1,333 @@
+/* Konami debug console on the admin page: a green CRT terminal over a GradientASCII field. */
+.gradient-ascii-container {
+    position: relative;
+    overflow: hidden;
+}
+
+.gradient-ascii-canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.admin-debug {
+    --debug-green: #4ade80;
+    --debug-bright: #bbf7d0;
+    --debug-dim: #15803d;
+
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: #010402;
+    color: var(--debug-green);
+    /* styles.css forces every element to var(--font-family) with !important. */
+    --font-family: ui-monospace, monospace;
+    animation: admin-debug-flash 0.5s ease-out both;
+}
+
+.admin-debug-bg {
+    position: absolute;
+    inset: 0;
+}
+
+/* Scanlines and a slow rolling band, the cheap CRT. */
+.admin-debug-scan {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(transparent 0 40%, rgb(74 222 128 / 6%) 50%, transparent 60%) 0 0 / 100% 300%,
+        repeating-linear-gradient(transparent 0 2px, rgb(0 0 0 / 28%) 2px 4px);
+    animation: admin-debug-roll 6s linear infinite;
+}
+
+.admin-debug-term {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(760px, 100%);
+    max-height: min(620px, 100%);
+    border: 1px solid rgb(74 222 128 / 45%);
+    border-radius: 10px;
+    background: rgb(1 12 5 / 82%);
+    box-shadow:
+        0 0 0 1px rgb(0 0 0 / 60%),
+        0 0 40px rgb(34 197 94 / 25%),
+        inset 0 0 60px rgb(34 197 94 / 8%);
+    backdrop-filter: blur(6px);
+    text-shadow: 0 0 6px rgb(74 222 128 / 60%);
+    animation: admin-debug-power-on 0.6s cubic-bezier(0.2, 0.9, 0.2, 1) 0.15s both;
+}
+
+.admin-debug-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgb(74 222 128 / 25%);
+    font-size: 12px;
+    color: var(--debug-dim);
+}
+
+.admin-debug-title i {
+    width: 10px;
+    height: 10px;
+    border: 1px solid var(--debug-green);
+    border-radius: 50%;
+}
+
+.admin-debug-title i:first-child {
+    background: var(--debug-green);
+}
+
+.admin-debug-title span {
+    flex: 1;
+    text-align: center;
+}
+
+.admin-debug-title button {
+    padding: 2px 8px;
+    border: 1px solid rgb(74 222 128 / 45%);
+    border-radius: 4px;
+    background: none;
+    color: var(--debug-green);
+    font: inherit;
+    cursor: pointer;
+}
+
+.admin-debug-title button:hover,
+.admin-debug-title button:focus-visible {
+    background: var(--debug-green);
+    color: #010402;
+    text-shadow: none;
+    outline: none;
+}
+
+.admin-debug-log {
+    flex: 1;
+    overflow: auto;
+    padding: 16px 18px 4px;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.admin-debug-line {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.admin-debug-line b {
+    font-weight: 400;
+    color: var(--debug-bright);
+}
+
+.admin-debug-bar {
+    color: var(--debug-bright);
+}
+
+.admin-debug-dim {
+    color: var(--debug-dim);
+}
+
+.admin-debug-banner {
+    margin: 14px 0 6px;
+    white-space: pre;
+    overflow-x: auto;
+    font-size: 15px;
+    line-height: 1.15;
+    font-weight: 700;
+    color: var(--debug-bright);
+    text-shadow:
+        0 0 8px rgb(74 222 128 / 90%),
+        0 0 24px rgb(34 197 94 / 60%);
+    animation: admin-debug-decode 0.7s steps(8) both;
+}
+
+.admin-debug-options {
+    display: grid;
+    gap: 4px;
+    margin: 12px 0;
+}
+
+.admin-debug-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border: 1px dashed transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    animation: admin-debug-slide 0.35s ease-out calc(var(--i) * 80ms) both;
+}
+
+.admin-debug-option:hover,
+.admin-debug-option:focus-within {
+    border-color: rgb(74 222 128 / 55%);
+    background: rgb(74 222 128 / 8%);
+}
+
+.admin-debug-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.admin-debug-box::before {
+    content: '[ ]';
+    color: var(--debug-dim);
+}
+
+.admin-debug-option input:checked + .admin-debug-box::before {
+    content: '[x]';
+    color: var(--debug-bright);
+}
+
+.admin-debug-option input:checked ~ span:last-child {
+    color: var(--debug-bright);
+}
+
+.admin-debug-option input:disabled ~ span {
+    opacity: 0.5;
+}
+
+.admin-debug-status {
+    min-height: 1.6em;
+    color: var(--debug-bright);
+}
+
+.admin-debug-prompt {
+    padding: 8px 18px 14px;
+    font-size: 13px;
+    color: var(--debug-dim);
+}
+
+.admin-debug-cursor {
+    display: inline-block;
+    width: 8px;
+    height: 1em;
+    vertical-align: text-bottom;
+    background: var(--debug-green);
+    animation: admin-debug-blink 1s steps(1) infinite;
+}
+
+.admin-debug.is-glitching .admin-debug-term {
+    animation: admin-debug-glitch 0.38s steps(2) both;
+}
+
+.admin-debug.is-closing {
+    animation: admin-debug-fade 0.45s ease-in 0.1s both;
+}
+
+.admin-debug.is-closing .admin-debug-term {
+    animation: admin-debug-power-off 0.45s cubic-bezier(0.6, 0, 0.8, 0.2) both;
+}
+
+@keyframes admin-debug-flash {
+    0% {
+        background: #bbf7d0;
+    }
+    100% {
+        background: #010402;
+    }
+}
+
+@keyframes admin-debug-power-on {
+    0% {
+        opacity: 0;
+        transform: scale(1, 0.004);
+        filter: brightness(4);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1, 0.004);
+    }
+    100% {
+        transform: none;
+        filter: none;
+    }
+}
+
+@keyframes admin-debug-power-off {
+    0% {
+        transform: none;
+    }
+    60% {
+        transform: scale(1, 0.004);
+        filter: brightness(4);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0, 0.004);
+    }
+}
+
+@keyframes admin-debug-fade {
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes admin-debug-glitch {
+    0%,
+    100% {
+        transform: none;
+        filter: none;
+    }
+    25% {
+        transform: translate(-6px, 2px) skewX(6deg);
+        filter: hue-rotate(60deg) brightness(1.6);
+    }
+    50% {
+        transform: translate(5px, -3px) skewX(-4deg);
+        clip-path: inset(10% 0 30% 0);
+    }
+    75% {
+        transform: translate(-2px, 1px);
+        filter: brightness(2.2);
+    }
+}
+
+@keyframes admin-debug-decode {
+    0% {
+        opacity: 0;
+        clip-path: inset(0 100% 0 0);
+    }
+    100% {
+        opacity: 1;
+        clip-path: inset(0 0 0 0);
+    }
+}
+
+@keyframes admin-debug-slide {
+    from {
+        opacity: 0;
+        transform: translateX(-12px);
+    }
+}
+
+@keyframes admin-debug-roll {
+    to {
+        background-position:
+            0 300%,
+            0 0;
+    }
+}
+
+@keyframes admin-debug-blink {
+    50% {
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-debug,
+    .admin-debug *,
+    .admin-debug.is-glitching .admin-debug-term {
+        animation: none !important;
+    }
+}

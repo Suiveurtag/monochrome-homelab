@@ -9,6 +9,8 @@ import { showNotification } from './downloads.js';
 import { playSharedItem, shareCardHTML } from './share.js';
 import { icon } from './social-icons.js';
 import { SocialFeed } from './social-feed.js';
+import { SocialBooth } from './social-booth.js';
+import { applyTints, patchKeyed, pulse, reducedMotion } from './social-dom.js';
 import { isMutualFriend, reconcileSentMessage } from './social-state.js';
 import { shareSheet, bindShareSheetRecipientClicks } from './social-share-sheet.js';
 import {
@@ -69,7 +71,9 @@ function groupAvatarHTML(conversation, profiles, size = '') {
     if (avatar) {
         return `<img class="social-group-avatar${sizeClass}" src="${escapeHtml(avatar)}" alt="" loading="lazy" />`;
     }
+    // A group shows the people you are talking to, never your own face.
     const memberAvatars = (conversation.members || [])
+        .filter((member) => member !== pb.authStore.model?.id)
         .map((member) => profiles?.get(member))
         .filter(Boolean)
         .slice(0, 4);
@@ -99,6 +103,10 @@ export class SocialManager {
         this.api = null;
         this.player = null;
         this.feed = null;
+        this.booth = null;
+        this.tickStates = new Map();
+        this.keyAlias = new Map();
+        this.renderedThread = null;
         this.profiles = new Map();
         this.presence = new Map();
         this.following = new Set();
@@ -153,6 +161,7 @@ export class SocialManager {
         this.api = api;
         this.player = player;
         this.feed = new SocialFeed(this);
+        this.booth = new SocialBooth(this);
         if (!this.bound) this.bindUI();
         shareSheet.bind({
             getRecipients: () => this.shareRecipients(),
@@ -301,7 +310,7 @@ export class SocialManager {
     paint() {
         this.renderRail();
         this.renderPresenceSummary();
-        this.renderFeedRail();
+        this.booth?.render();
         if (this.feed) this.feed.refresh().catch(() => {});
         if (this.activeId) {
             this.renderThread();
@@ -312,25 +321,35 @@ export class SocialManager {
     /* ---------------------------------- tabs --------------------------------- */
 
     setTab(tab) {
-        this.tab = tab === 'messages' ? 'messages' : 'feed';
-        const feedView = document.getElementById('social-feed-view');
-        const messagesView = document.getElementById('social-messages-view');
-        const feedTab = document.getElementById('social-tab-feed');
-        const messagesTab = document.getElementById('social-tab-messages');
-        const isMessages = this.tab === 'messages';
-        if (feedView) feedView.hidden = isMessages;
-        if (messagesView) messagesView.hidden = !isMessages;
-        feedTab?.setAttribute('aria-selected', String(!isMessages));
-        messagesTab?.setAttribute('aria-selected', String(isMessages));
-        document.getElementById('page-social')?.classList.toggle('is-messages', isMessages);
-        this.syncTabsThumb(isMessages ? messagesTab : feedTab);
+        const next = tab === 'messages' ? 'messages' : 'feed';
+        const page = document.getElementById('page-social');
+        const isMessages = next === 'messages';
+        const apply = () => {
+            this.tab = next;
+            const feedTab = document.getElementById('social-tab-feed');
+            const messagesTab = document.getElementById('social-tab-messages');
+            document.getElementById('social-feed-view').hidden = isMessages;
+            document.getElementById('social-messages-view').hidden = !isMessages;
+            feedTab?.setAttribute('aria-selected', String(!isMessages));
+            messagesTab?.setAttribute('aria-selected', String(isMessages));
+            page?.classList.toggle('is-messages', isMessages);
+            this.syncTabsThumb(isMessages ? messagesTab : feedTab);
+            this.booth?.setStrip(isMessages);
+        };
+        const changing = page?.classList.contains('is-messages') !== isMessages;
+        if (changing && page?.classList.contains('active') && this.booth) {
+            document.documentElement.dataset.socialMotion = isMessages ? 'forward' : 'back';
+            this.booth.morph(apply);
+        } else {
+            apply();
+        }
         if (isMessages) {
-            this.renderRail();
+            this.renderRail(document.getElementById('social-conversation-search')?.value || '');
             if (this.activeId) this.scrollMessagesToBottom();
         } else if (this.feed) {
             this.feed.refresh().catch(() => {});
         }
-        history.replaceState({}, '', '/social');
+        if (!this.activeId || !isMessages) history.replaceState({}, '', '/social');
     }
 
     syncTabsThumb(activeTab) {
@@ -374,15 +393,34 @@ export class SocialManager {
             );
 
         if (!entries.length) {
-            const emptyHtml = `<div class="social-rail-empty">${
-                normalized ? 'No chats match.' : 'No chats yet — follow someone from their profile, then say hi.'
-            }</div>`;
-            if (list.innerHTML !== emptyHtml) list.innerHTML = emptyHtml;
+            patchKeyed(list, [
+                {
+                    key: normalized ? 'empty-search' : 'empty',
+                    html: `<div class="social-rail-empty">${
+                        normalized
+                            ? 'No conversation matches that name.'
+                            : 'No conversations yet. Follow a friend back from their deck above, then say hi.'
+                    }</div>`,
+                },
+            ]);
         } else {
-            const html = `<span class="social-conversation-indicator" aria-hidden="true"></span>${entries
-                .map((entry) => this.renderConversationRow(entry))
-                .join('')}`;
-            if (list.innerHTML !== html) list.innerHTML = html;
+            const { fresh } = patchKeyed(
+                list,
+                [
+                    {
+                        key: 'indicator',
+                        html: '<span class="social-conversation-indicator" aria-hidden="true"></span>',
+                    },
+                    ...entries.map((entry) => ({
+                        key: entry.conversation.id,
+                        html: this.renderConversationRow(entry),
+                    })),
+                ],
+                { animateNew: Boolean(list.dataset.ready) }
+            );
+            list.dataset.ready = '1';
+            applyTints(list);
+            fresh.forEach((row) => pulse(row.querySelector('.social-chat-unread'), 'is-popping'));
             const indicator = list.querySelector('.social-conversation-indicator');
             const nextActive = list.querySelector('.social-chat-row.is-active');
             if (indicator && nextActive) {
@@ -416,13 +454,15 @@ export class SocialManager {
         const title = conversationTitle(conversation, this.profiles, this.userId);
         const avatar = conversationAvatar(conversation, this.profiles, this.userId);
         const state = isGroup ? { online: false, playing: false } : this.presenceStateFor(conversation);
+        const tint = this.conversationTint(conversation);
         const art = isGroup
             ? groupAvatarHTML(conversation, this.profiles)
             : `<img src="${escapeHtml(avatar)}" alt="" loading="lazy" />`;
         const mine = last && last.sender === this.userId;
         const prefix = mine ? 'You: ' : '';
-        return `<button class="social-chat-row${active ? ' is-active' : ''}${muted ? ' is-muted' : ''}" type="button" data-conversation="${escapeHtml(conversation.id)}">
-            <span class="social-avatar-wrap">${art}${isGroup ? '' : `<span class="social-presence-dot${state.online ? ' is-online' : ''}${state.playing ? ' is-listening' : ''}"></span>`}</span>
+        return `<button class="social-chat-row${active ? ' is-active' : ''}${muted ? ' is-muted' : ''}${unread && !muted ? ' is-unread' : ''}" type="button" data-conversation="${escapeHtml(conversation.id)}" data-tint-target>
+            ${tint ? `<img class="social-chat-wash" src="${escapeHtml(tint)}" alt="" aria-hidden="true" crossorigin="anonymous" data-tint onerror="if(this.crossOrigin){this.removeAttribute('crossorigin');this.src=this.src}else{this.hidden=true}" />` : ''}
+            <span class="social-avatar-wrap${state.playing ? ' is-live' : ''}">${art}${isGroup ? '' : `<span class="social-presence-dot${state.online ? ' is-online' : ''}${state.playing ? ' is-listening' : ''}"></span>`}</span>
             <span class="social-chat-copy">
                 <span class="social-chat-top"><strong>${escapeHtml(title)}</strong><time>${escapeHtml(last ? formatListTime(last.created) : '')}</time></span>
                 <span class="social-chat-bottom"><small>${escapeHtml(prefix + previewFor(last))}</small>
@@ -431,6 +471,18 @@ export class SocialManager {
                 </span>
             </span>
         </button>`;
+    }
+
+    /** The cover a conversation wears: its last shared music, else what the contact plays. */
+    conversationTint(conversation) {
+        const messages = this.messagesByConversation.get(conversation.id) || [];
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const image = parseJson(messages[i].payload)?.image;
+            if (image) return image;
+        }
+        if (conversation.type === 'group') return '';
+        const other = (conversation.members || []).find((member) => member !== this.userId);
+        return parseJson(this.presence.get(other)?.track)?.image || '';
     }
 
     presenceStateFor(conversation) {
@@ -509,89 +561,18 @@ export class SocialManager {
 
     renderPresenceSummary() {
         const summary = document.getElementById('social-presence-summary');
-        const popover = document.getElementById('social-presence-popover');
         if (!summary) return;
-        const people = [...this.profiles.values()];
-        const onlineProfiles = people
-            .map((profile) => ({ profile, state: presenceState(this.presence.get(profile.user)) }))
-            .filter(({ state }) => state.online || state.playing)
-            .sort((a, b) => {
-                if (a.state.playing !== b.state.playing) return a.state.playing ? -1 : 1;
-                return displayName(a.profile).localeCompare(displayName(b.profile));
-            });
-        const peopleLabel = `${people.length} ${people.length === 1 ? 'person' : 'people'}`;
-        const onlineLabel = `${onlineProfiles.length} online`;
-        summary.innerHTML = `${onlineProfiles.length ? '<span class="social-presence-pulse" aria-hidden="true"></span>' : ''}<span>${peopleLabel} · ${onlineLabel}</span>`;
-        summary.setAttribute('aria-label', `${peopleLabel} on this instance. ${onlineLabel}.`);
-        if (!popover) return;
-        const visible = onlineProfiles.slice(0, 8);
-        const remaining = onlineProfiles.length - visible.length;
-        popover.innerHTML = visible.length
-            ? `<strong>Online now</strong>${visible
-                  .map(
-                      ({ profile, state }) => `<a href="${escapeHtml(profileHref(profile))}">
-                        <span class="social-avatar-wrap"><img src="${escapeHtml(avatarFor(profile))}" alt="" loading="lazy" /><span class="social-presence-dot is-online${state.playing ? ' is-listening' : ''}"></span></span>
-                        <span><b>${escapeHtml(displayName(profile))}</b><small>${escapeHtml(state.track ? `${state.playing ? 'Listening to' : 'Paused'} ${state.track.title}` : 'Online')}</small></span>
-                    </a>`
-                  )
-                  .join('')}${remaining > 0 ? `<p>+${remaining} more online</p>` : ''}`
-            : '<p>Nobody is online right now.</p>';
-    }
-
-    renderFeedRail() {
-        const liveList = document.getElementById('social-live-list');
-        const liveCount = document.getElementById('social-live-count');
-        const groupsList = document.getElementById('social-feed-groups');
-        if (!liveList || !groupsList) return;
-
-        const liveProfiles = [...this.profiles.values()]
-            .filter((profile) => profile.user !== this.userId)
-            .map((profile) => ({
-                profile,
-                state: presenceState(this.presence.get(profile.user)),
-                friend: this.canChatWith(profile.user),
-            }))
-            .filter(({ state }) => state.online || state.playing)
-            .sort((a, b) => {
-                if (a.state.playing !== b.state.playing) return a.state.playing ? -1 : 1;
-                if (a.friend !== b.friend) return a.friend ? -1 : 1;
-                return displayName(a.profile).localeCompare(displayName(b.profile));
-            });
-
-        if (liveCount) liveCount.textContent = String(liveProfiles.length);
-        liveList.innerHTML = liveProfiles.length
-            ? liveProfiles
-                  .slice(0, 6)
-                  .map(({ profile, state, friend }) => {
-                      const status = state.track
-                          ? `${state.playing ? 'Listening to' : 'Paused'} ${state.track.title}`
-                          : 'Online now';
-                      return `<a class="social-live-row" href="${escapeHtml(profileHref(profile))}">
-                        <span class="social-avatar-wrap"><img src="${escapeHtml(avatarFor(profile))}" alt="" loading="lazy" /><span class="social-presence-dot${state.online ? ' is-online' : ''}${state.playing ? ' is-listening' : ''}"></span></span>
-                        <span class="social-live-copy"><strong>${escapeHtml(displayName(profile))}</strong><small>${escapeHtml(status)}</small></span>
-                        ${friend ? '<span class="social-live-friend">Friend</span>' : ''}
-                        ${state.playing ? '<span class="social-equalizer" aria-label="Listening now"><i></i><i></i><i></i></span>' : ''}
-                    </a>`;
-                  })
-                  .join('')
-            : `<div class="social-feed-rail-empty"><strong>Quiet right now</strong><span>Listening activity will appear here.</span></div>`;
-
-        const groups = [...this.conversations.values()]
-            .filter((conversation) => conversation.type === 'group')
-            .sort((a, b) => Date.parse(b.updated || b.created || 0) - Date.parse(a.updated || a.created || 0));
-        groupsList.innerHTML = groups.length
-            ? groups
-                  .slice(0, 4)
-                  .map(
-                      (
-                          conversation
-                      ) => `<button class="social-feed-group-row" type="button" data-feed-conversation="${escapeHtml(conversation.id)}">
-                        ${groupAvatarHTML(conversation, this.profiles, 'small')}
-                        <span class="social-feed-group-copy"><strong>${escapeHtml(conversationTitle(conversation, this.profiles, this.userId))}</strong><small>${(conversation.members || []).length} members</small></span>
-                    </button>`
-                  )
-                  .join('')
-            : `<div class="social-feed-rail-empty"><strong>No groups yet</strong><span>Create one with friends you both follow.</span></div>`;
+        const states = [...this.profiles.values()].map((profile) => presenceState(this.presence.get(profile.user)));
+        const listening = states.filter((state) => state.playing).length;
+        const online = states.filter((state) => state.online).length;
+        const label =
+            states.length <= 1
+                ? 'Just you here for now'
+                : online
+                  ? `${listening ? `${listening} listening · ` : ''}${online} online`
+                  : 'Everyone is offline';
+        const html = `${online ? '<span class="social-presence-pulse" aria-hidden="true"></span>' : ''}<span>${escapeHtml(label)}</span>`;
+        if (summary.innerHTML !== html) summary.innerHTML = html;
     }
 
     /* ----------------------------- unread handling --------------------------- */
@@ -803,6 +784,16 @@ export class SocialManager {
                 dot.classList.toggle('is-online', state.online);
                 dot.classList.toggle('is-listening', state.playing);
             }
+            if (status && state.playing) {
+                status.innerHTML = `<span class="booth-eq" aria-hidden="true"><i></i><i></i><i></i></span>${escapeHtml(status.textContent)}`;
+            }
+        }
+        document.getElementById('social-thread-avatar-wrap')?.classList.toggle('is-live', Boolean(state.playing));
+        const tint = document.getElementById('social-thread-tint');
+        const tintSource = this.conversationTint(conversation);
+        if (tint) {
+            if (tintSource && tint.getAttribute('src') !== tintSource) tint.src = tintSource;
+            tint.hidden = !tintSource;
         }
 
         const muteButton = document.getElementById('social-thread-mute');
@@ -861,21 +852,28 @@ export class SocialManager {
         const conversation = this.activeConversation();
         if (!conversation) return;
         const messages = this.messagesByConversation.get(conversation.id) || [];
+        const sameThread = this.renderedThread === conversation.id;
+        this.renderedThread = conversation.id;
         if (!messages.length) {
-            const emptyHtml = `<div class="social-new-thread"><strong>No messages yet</strong><span>Share what you're listening to.</span></div>`;
-            if (container.innerHTML !== emptyHtml) container.innerHTML = emptyHtml;
+            patchKeyed(container, [
+                {
+                    key: 'new-thread',
+                    html: `<div class="social-new-thread"><span class="social-new-thread-mark" aria-hidden="true">${icon.disc(22)}</span><strong>Start with a track</strong><span>Send a song or a snippet. It sets the color of this conversation.</span></div>`,
+                },
+            ]);
             return;
         }
         const isGroup = conversation.type === 'group';
-        const parts = [];
+        const items = [];
         let lastDay = '';
         let previous = null;
         for (const message of messages) {
             const key = dayKey(message.created);
             if (key && key !== lastDay) {
-                parts.push(
-                    `<div class="social-day-spacer" role="separator"><span>${escapeHtml(formatDayLabel(message.created))}</span></div>`
-                );
+                items.push({
+                    key: `day:${key}`,
+                    html: `<div class="social-day-spacer" role="separator"><span>${escapeHtml(formatDayLabel(message.created))}</span></div>`,
+                });
                 lastDay = key;
                 previous = null;
             }
@@ -885,22 +883,28 @@ export class SocialManager {
                 previous.sender === message.sender &&
                 Date.parse(message.created) - Date.parse(previous.created) < GROUP_MESSAGE_GAP_MS &&
                 dayKey(previous.created) === key;
-            parts.push(this.renderMessage(message, { own, grouped, isGroup }));
+            // The optimistic copy and the saved record share a key, so sending never re-enters.
+            items.push({
+                key: `m:${this.messageKey(message)}`,
+                html: this.renderMessage(message, { own, grouped, isGroup }),
+            });
             previous = message;
         }
-        const html = parts.join('');
-        if (container.innerHTML !== html) container.innerHTML = html;
+        patchKeyed(container, items, { animateNew: sameThread, flip: false });
+        container.querySelectorAll('.social-message-ticks.is-stamped').forEach((ticks) => {
+            ticks.addEventListener('animationend', () => ticks.classList.remove('is-stamped'), { once: true });
+        });
+        applyTints(container);
         this.updateSnippetButtons();
     }
 
-    renderMessage(message, { own, grouped, isGroup }) {
+    renderMessage(message, { own, grouped }) {
         const payload = parseJson(message.payload);
         const kind = message.kind || 'text';
         const sender = this.profiles.get(message.sender);
-        const showAuthor = !grouped;
         const authorRow =
-            !own && isGroup && showAuthor
-                ? `<a class="social-message-author" href="${escapeHtml(profileHref(sender))}">${escapeHtml(displayName(sender))}</a>`
+            !own && !grouped
+                ? `<span class="social-message-author"><a href="${escapeHtml(profileHref(sender))}">${escapeHtml(displayName(sender))}</a><time>${escapeHtml(formatClock(message.created))}</time></span>`
                 : '';
         const avatar =
             !own && !grouped
@@ -926,27 +930,42 @@ export class SocialManager {
         const ticks = own ? this.renderTicks(message) : '';
         const pinRecord = this.pins.find((pin) => pin.ref === message.id);
         const pinned = Boolean(pinRecord);
-        return `<div class="social-message-row${own ? ' is-own' : ''}${grouped ? ' is-grouped' : ''}" data-message-id="${escapeHtml(message.id)}">
+        const hasCard = content.includes('social-message-share') || content.includes('social-snippet');
+        const foot =
+            own || grouped
+                ? `<span class="social-message-foot"><time>${escapeHtml(formatClock(message.created))}</time>${ticks}</span>`
+                : '';
+        return `<div class="social-message-row${own ? ' is-own' : ''}${grouped ? ' is-grouped' : ''}${pinned ? ' is-pinned' : ''}" data-message-id="${escapeHtml(message.id)}">
             ${avatar}
             <div class="social-message-stack">
                 ${authorRow}
-                <div class="social-message-bubble${content.includes('social-message-share') || content.includes('social-snippet') ? ' has-card' : ''}${kind === 'image' && !message.body ? ' is-image-only' : ''}">
+                <div class="social-message-bubble${hasCard ? ' has-card' : ''}${kind === 'image' && !message.body ? ' is-image-only' : ''}">
                     ${content}
-                    <span class="social-message-foot"><time>${escapeHtml(formatClock(message.created))}</time>${ticks}</span>
+                    ${foot}
                 </div>
             </div>
-            <span class="social-message-pin${pinned ? ' is-pinned' : ''}">${message.id.startsWith('tmp') ? '' : `<button type="button" data-pin-message="${escapeHtml(message.id)}" title="${pinned ? 'Unpin' : 'Pin'}" aria-pressed="${pinned}">${icon.pin(14)}</button>`}</span>
+            <span class="social-message-pin${pinned ? ' is-pinned' : ''}">${message.id.startsWith('tmp') ? '' : `<button type="button" data-pin-message="${escapeHtml(message.id)}" title="${pinned ? 'Unpin' : 'Pin'}" aria-label="${pinned ? 'Unpin message' : 'Pin message'}" aria-pressed="${pinned}">${icon.pin(14)}</button>`}</span>
         </div>`;
     }
 
+    messageKey(message) {
+        return this.keyAlias.get(message.id) || message.id;
+    }
+
     renderTicks(message) {
-        if (message.pending) {
+        const state = message.pending ? 'pending' : message.read ? 'read' : 'delivered';
+        const key = this.messageKey(message);
+        const previous = this.tickStates.get(key);
+        this.tickStates.set(key, state);
+        // A state that changes under the reader's eyes strikes onto the bubble like a stamp.
+        const stamp = previous && previous !== state ? ' is-stamped' : '';
+        if (state === 'pending') {
             return `<span class="social-message-ticks is-pending" title="Sending…">${icon.clock(13)}</span>`;
         }
-        if (message.read) {
-            return `<span class="social-message-ticks is-read" title="Read">${icon.checkCheck(14)}</span>`;
+        if (state === 'read') {
+            return `<span class="social-message-ticks is-read${stamp}" title="Read">${icon.checkCheck(14)}</span>`;
         }
-        return `<span class="social-message-ticks" title="Delivered">${icon.checkCheck(14)}</span>`;
+        return `<span class="social-message-ticks${stamp}" title="Delivered">${icon.checkCheck(14)}</span>`;
     }
 
     renderSnippetCard(payload) {
@@ -969,23 +988,25 @@ export class SocialManager {
             .map((peak) => `<i style="height:${Math.max(12, Math.min(82, Math.round((peak || 0.08) * 72)))}%"></i>`)
             .join('');
         const playable = Boolean(payload.id);
-        return `<div class="social-snippet" data-snippet-id="${escapeHtml(payload.id || '')}">
-            ${payload.image ? `<img class="social-snippet-backdrop" src="${escapeHtml(payload.image)}" alt="" loading="lazy" />` : ''}
-            <span class="social-snippet-shade" aria-hidden="true"></span>
+        const cover = payload.image
+            ? `<img src="${escapeHtml(payload.image)}" alt="" crossorigin="anonymous" data-tint onerror="if(this.crossOrigin){this.removeAttribute('crossorigin');this.src=this.src}else{this.hidden=true}" />`
+            : icon.disc(22);
+        return `<div class="social-snippet" data-snippet-id="${escapeHtml(payload.id || '')}" data-tint-target>
+            <span class="social-snippet-disc" aria-hidden="true"><span class="social-snippet-platter">${cover}</span></span>
             <div class="social-snippet-content">
-            <div class="social-snippet-head">
-                ${playable ? `<button class="social-snippet-play" type="button" data-snippet-play="${escapeHtml(payload.id)}" data-snippet-start="${Number(snippet.start) || 0}" data-snippet-end="${Number(snippet.end) || 0}" aria-label="Play snippet">${snippetPlayIcon()}</button>` : ''}
                 <div class="social-snippet-copy">
                     <strong>${escapeHtml(payload.title || 'Snippet')}</strong>
                     <small>${escapeHtml(payload.subtitle || '')}</small>
                 </div>
-            </div>
-            <div class="social-snippet-wave-wrap" style="--selection-start:${selectionStart}%;--selection-end:${selectionEnd}%">
-                <div class="social-snippet-wave" aria-hidden="true">${bars}</div>
-                <div class="social-snippet-wave is-selected" aria-hidden="true">${bars}</div>
-                <span class="social-snippet-selection" style="--selection-start:${selectionStart}%;--selection-end:${selectionEnd}%" role="img" aria-label="Selected excerpt from ${escapeHtml(formatDuration(snippet.start || 0))} to ${escapeHtml(formatDuration(snippet.end || 0))}"></span>
-            </div>
-            <span class="social-snippet-range">${escapeHtml(formatDuration(snippet.start || 0))} – ${escapeHtml(formatDuration(snippet.end || 0))}</span>
+                <div class="social-snippet-deck">
+                    ${playable ? `<button class="social-snippet-play" type="button" data-snippet-play="${escapeHtml(payload.id)}" data-snippet-start="${Number(snippet.start) || 0}" data-snippet-end="${Number(snippet.end) || 0}" aria-label="Play snippet">${snippetPlayIcon()}</button>` : ''}
+                    <div class="social-snippet-wave-wrap" style="--selection-start:${selectionStart}%;--selection-end:${selectionEnd}%">
+                        <div class="social-snippet-wave" aria-hidden="true">${bars}</div>
+                        <div class="social-snippet-wave is-selected" aria-hidden="true">${bars}</div>
+                        <span class="social-snippet-selection" role="img" aria-label="Excerpt from ${escapeHtml(formatDuration(snippet.start || 0))} to ${escapeHtml(formatDuration(snippet.end || 0))}"></span>
+                        <span class="social-snippet-range">${escapeHtml(formatDuration(snippet.start || 0))} – ${escapeHtml(formatDuration(snippet.end || 0))}</span>
+                    </div>
+                </div>
             </div>
         </div>`;
     }
@@ -1047,6 +1068,7 @@ export class SocialManager {
 
         if (image) data.image = image;
         const record = await pb.collection('social_messages').create(data);
+        this.keyAlias.set(record.id, tempId);
         const list = this.messagesByConversation.get(conversationId) || [];
         reconcileSentMessage(list, tempId, record);
         if (conversationId === this.activeId) {
@@ -1067,6 +1089,7 @@ export class SocialManager {
         input.value = '';
         input.style.height = 'auto';
         this.setAttachments([]);
+        pulse(document.querySelector('#social-composer .social-send-button'), 'is-launching');
         try {
             await this.sendToConversation(conversation.id, { body, image });
         } catch (error) {
@@ -1074,8 +1097,17 @@ export class SocialManager {
         }
     }
 
+    syncSendButton() {
+        const button = document.querySelector('#social-composer .social-send-button');
+        const ready = Boolean(document.getElementById('social-message-input')?.value.trim() || this.attachments.length);
+        if (!button || button.disabled === !ready) return;
+        button.disabled = !ready;
+        if (ready) pulse(button, 'is-arming');
+    }
+
     setAttachments(files) {
         this.attachments = files.slice(0, 1);
+        this.syncSendButton();
         const strip = document.getElementById('social-attach-strip');
         if (!strip) return;
         if (!this.attachments.length) {
@@ -1093,13 +1125,28 @@ export class SocialManager {
     /* ------------------------------ info panel ------------------------------- */
 
     toggleInfoPanel(force = null) {
-        this.infoOpen = force === null ? !this.infoOpen : force;
+        const open = force === null ? !this.infoOpen : force;
         const panel = document.getElementById('social-info-panel');
-        if (!panel) return;
-        panel.hidden = !this.infoOpen;
-        document.getElementById('social-thread-info')?.setAttribute('aria-pressed', String(this.infoOpen));
-        document.querySelector('.social-messages-view')?.classList.toggle('has-info', this.infoOpen);
-        if (this.infoOpen) this.renderInfoPanel();
+        if (!panel || open === this.infoOpen) return;
+        this.infoOpen = open;
+        document.getElementById('social-thread-info')?.setAttribute('aria-pressed', String(open));
+        const view = document.querySelector('.social-messages-view');
+        if (open) {
+            panel.classList.remove('is-closing');
+            panel.hidden = false;
+            view?.classList.add('has-info');
+            this.renderInfoPanel();
+            return;
+        }
+        const finish = () => {
+            if (this.infoOpen) return;
+            panel.hidden = true;
+            panel.classList.remove('is-closing');
+            view?.classList.remove('has-info');
+        };
+        if (reducedMotion() || panel.hidden) return finish();
+        panel.classList.add('is-closing');
+        panel.addEventListener('animationend', finish, { once: true });
     }
 
     renderInfoPanel() {
@@ -1124,7 +1171,9 @@ export class SocialManager {
         if (!isGroup) sections.push(this.renderMutual(other));
         sections.push(this.renderPinned(conversation));
 
-        panel.innerHTML = `<button class="social-info-close btn-icon" type="button" data-close-info aria-label="Close details">${icon.x(17)}</button>${sections.filter(Boolean).join('')}`;
+        const html = `<button class="social-info-close" type="button" data-close-info aria-label="Close details">${icon.x(17)}</button>${sections.filter(Boolean).join('')}`;
+        if (panel.innerHTML !== html) panel.innerHTML = html;
+        applyTints(panel);
     }
 
     renderGroupHeader(conversation) {
@@ -1185,16 +1234,14 @@ export class SocialManager {
         if (!state.track) return '';
         const track = state.track;
         return `<section class="social-info-section">
-            <h3>${state.playing ? 'Currently listening' : 'Paused on'}</h3>
-            <div class="social-info-track${track.image ? ' has-track-backdrop' : ''}">
-                ${track.image ? `<img class="social-track-backdrop" src="${escapeHtml(track.image)}" alt="" loading="lazy" /><span class="social-track-shade" aria-hidden="true"></span>` : ''}
-                ${track.image ? `<img src="${escapeHtml(track.image)}" alt="" />` : ''}
+            <h3>${state.playing ? 'Listening now' : 'Paused on'}</h3>
+            <div class="social-info-deck${state.playing ? ' is-live' : ''}" data-tint-target>
+                <span class="social-info-disc" aria-hidden="true">${track.image ? `<img src="${escapeHtml(track.image)}" alt="" crossorigin="anonymous" data-tint onerror="if(this.crossOrigin){this.removeAttribute('crossorigin');this.src=this.src}else{this.hidden=true}" />` : icon.disc(20)}</span>
                 <div class="social-info-track-copy">
-                    ${state.playing ? '<span class="social-equalizer"><i></i><i></i><i></i></span>' : '<em>PAUSED</em>'}
                     <a href="${escapeHtml(track.href || '#')}"><strong>${escapeHtml(track.title || '')}</strong></a>
                     <small>${escapeHtml(track.subtitle || '')}</small>
                 </div>
-                <button type="button" data-play-share="${escapeHtml(track.id || '')}" data-play-kind="track" aria-label="Play">${icon.play(15)}</button>
+                <button type="button" data-play-share="${escapeHtml(track.id || '')}" data-play-kind="track" aria-label="Play ${escapeHtml(track.title || 'this track')}" title="Play">${icon.play(15)}</button>
             </div>
         </section>`;
     }
@@ -1346,6 +1393,7 @@ export class SocialManager {
             .getFullList({ filter: `user="${this.userId}"`, sort: '-created' });
         showNotification('Pinned');
         this.renderMessages();
+        pulse(document.querySelector(`[data-pin-message="${CSS.escape(messageId)}"]`), 'is-dropping');
         if (this.infoOpen) this.renderInfoPanel();
     }
 
@@ -1381,6 +1429,8 @@ export class SocialManager {
         this.renderRail(document.getElementById('social-conversation-search')?.value || '');
         this.renderThread();
         if (this.infoOpen) this.renderInfoPanel();
+        pulse(document.getElementById('social-thread-mute'), 'is-ringing');
+        pulse(document.querySelector(`[data-toggle-mute="${CSS.escape(conversationId)}"]`), 'is-ringing');
     }
 
     /* -------------------------------- groups --------------------------------- */
@@ -1529,6 +1579,11 @@ export class SocialManager {
         this.renderRail(document.getElementById('social-conversation-search')?.value || '');
         this.renderThread();
         if (this.infoOpen) this.renderInfoPanel();
+        this.booth?.render();
+        const selector = ['data-deck-follow', 'data-toggle-follow', 'data-follow-user']
+            .map((attribute) => `[${attribute}="${CSS.escape(userId)}"]`)
+            .join(',');
+        document.querySelectorAll(selector).forEach((button) => pulse(button, 'is-stamping'));
         document.dispatchEvent(new CustomEvent('monochrome-follow-changed', { detail: { userId } }));
     }
 
@@ -1571,6 +1626,26 @@ export class SocialManager {
         }
     }
 
+    /** Start a library track at `start` seconds through the global player. */
+    async playTrackAt(trackId, start = 0) {
+        try {
+            const meta = await this.api.getTrackMetadata(trackId);
+            if (!meta || !this.player) throw new Error('Track unavailable');
+            this.stopSnippetPlayback();
+            await this.player.setQueue([meta], 0, false, {
+                kind: 'single',
+                id: String(trackId),
+                label: meta.title || 'Shared track',
+                href: `/track/${trackId}`,
+            });
+            this.player.enableAutoplay();
+            await this.player.playTrackFromQueue(Math.max(0, Number(start) || 0));
+        } catch (error) {
+            console.warn('[Social] Playback failed:', error);
+            playSharedItem('track', trackId);
+        }
+    }
+
     clearSnippetPlayback(element = null) {
         const active = this.activeSnippet;
         if (!active || (element && active.element !== element)) return;
@@ -1591,7 +1666,9 @@ export class SocialManager {
     updateSnippetButtons() {
         document.querySelectorAll('[data-snippet-play]').forEach((button) => {
             const playing = this.activeSnippet?.trackId === button.dataset.snippetPlay;
+            if (button.classList.contains('is-playing') === playing && button.innerHTML) return;
             button.classList.toggle('is-playing', playing);
+            button.closest('.social-snippet')?.classList.toggle('is-playing', playing);
             button.setAttribute('aria-label', playing ? 'Pause snippet' : 'Play snippet');
             button.innerHTML = snippetPlayIcon(playing);
         });
@@ -1779,7 +1856,10 @@ export class SocialManager {
             if (event.action === 'delete') {
                 if (index >= 0) list.splice(index, 1);
             } else if (index >= 0) list[index] = record;
-            else if (pendingIndex >= 0) list.splice(pendingIndex, 1, record);
+            else if (pendingIndex >= 0) {
+                this.keyAlias.set(record.id, record.client_nonce);
+                list.splice(pendingIndex, 1, record);
+            }
             else list.push(record);
             list.sort((a, b) => Date.parse(a.created) - Date.parse(b.created));
             if (conversationId === this.activeId) {
@@ -1931,10 +2011,8 @@ export class SocialManager {
         if (composer) composer.hidden = true;
         const count = document.getElementById('social-people-count');
         if (count) count.textContent = '0';
-        const live = document.getElementById('social-live-list');
-        const groups = document.getElementById('social-feed-groups');
-        if (live) live.innerHTML = '<div class="social-feed-rail-empty">Sign in to see who is around.</div>';
-        if (groups) groups.innerHTML = '<div class="social-feed-rail-empty">Sign in to see your groups.</div>';
+        const booth = document.getElementById('social-booth');
+        if (booth) booth.hidden = true;
     }
 
     /* --------------------------------- bind ---------------------------------- */
@@ -1949,12 +2027,6 @@ export class SocialManager {
             this.renderRail(event.target.value);
         });
         document.getElementById('social-new-group')?.addEventListener('click', () => this.openGroupModal());
-        document.getElementById('social-feed-new-group')?.addEventListener('click', () => this.openGroupModal());
-
-        document.getElementById('social-feed-groups')?.addEventListener('click', (event) => {
-            const row = event.target.closest('[data-feed-conversation]');
-            if (row) this.openConversation(row.dataset.feedConversation).catch(console.error);
-        });
 
         document.getElementById('social-conversation-list')?.addEventListener('click', (event) => {
             const row = event.target.closest('[data-conversation]');
@@ -2047,10 +2119,16 @@ export class SocialManager {
             const block = event.target.closest('[data-block-user]');
             if (block) {
                 block.disabled = true;
-                this.blockUser(block.dataset.blockUser).catch((error) => {
-                    block.disabled = false;
-                    showNotification(error?.message || 'Could not block this account', 'error');
-                });
+                // The account is struck through before it disappears, so the cut reads as deliberate.
+                pulse(block.closest('.social-info-hero'), 'is-struck');
+                setTimeout(
+                    () =>
+                        this.blockUser(block.dataset.blockUser).catch((error) => {
+                            block.disabled = false;
+                            showNotification(error?.message || 'Could not block this account', 'error');
+                        }),
+                    reducedMotion() ? 0 : 460
+                );
                 return;
             }
             const unpin = event.target.closest('[data-unpin]');
@@ -2103,6 +2181,7 @@ export class SocialManager {
         input?.addEventListener('input', () => {
             input.style.height = 'auto';
             input.style.height = `${Math.min(140, input.scrollHeight)}px`;
+            this.syncSendButton();
         });
         document.getElementById('social-attach-image')?.addEventListener('click', () => {
             document.getElementById('social-image-input')?.click();

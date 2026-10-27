@@ -583,7 +583,7 @@ describe('Now Playing panel interactions', () => {
         expect(stage.querySelector('.now-playing-panel-poster')).toBeNull();
         const canvas = stage.querySelector('video.now-playing-panel-canvas');
         expect(canvas).toBeTruthy();
-        expect(stage.querySelectorAll('img, video')).toHaveLength(1);
+        expect(stage.querySelectorAll(':scope > img, video')).toHaveLength(1);
         expect(canvas.getAttribute('poster')).toBeNull();
         let canvasPaused = true;
         Object.defineProperty(canvas, 'paused', { configurable: true, get: () => canvasPaused });
@@ -646,10 +646,25 @@ describe('Now Playing panel interactions', () => {
         await panel.render({});
         expect(panel.canvasMedia).toBeTruthy();
         expect(panel.canvasMedia.getAttribute('poster')).toBeNull();
-        expect(panel.content.querySelector('.now-playing-panel-cover')).toBeNull();
+        expect(panel.content.querySelector('.now-playing-panel-cover:not(.is-artwork-leaving)')).toBeNull();
         panel.failCanvasMedia();
         expect(panel.content.querySelector('[role="status"]').textContent).toBe('Canvas unavailable');
         expect(panel.content.querySelector('.now-playing-panel-cover')).toBeNull();
+        panel.destroy();
+    });
+
+    test('fades the previous artwork over the next track instead of blanking it', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const panel = new NowPlayingPanel(dependencies());
+        panel.currentTrack = { id: 'first', title: 'First', album: { cover: '/first.jpg' } };
+        await panel.render({});
+        const previous = panel.content.querySelector('.now-playing-panel-cover');
+        panel.currentTrack = { id: 'second', title: 'Second', album: { cover: '/second.jpg' } };
+        await panel.render({});
+        const media = panel.content.querySelector('.now-playing-panel-media');
+        expect(previous.classList.contains('is-artwork-leaving')).toBe(true);
+        expect(previous.parentElement).toBe(media);
+        expect(media.querySelectorAll('.now-playing-panel-cover')).toHaveLength(2);
         panel.destroy();
     });
 
@@ -832,6 +847,33 @@ describe('Now Playing panel interactions', () => {
             getBoundingClientRect.mockRestore();
         }
     );
+
+    test('does not rebuild the panel when endless playback appends tracks', async () => {
+        const { NowPlayingPanel } = await import('./now-playing-panel.js');
+        const deps = dependencies();
+        const current = { id: 'current', title: 'Current' };
+        deps.player.currentTrack = current;
+        deps.player.currentQueueIndex = 0;
+        deps.player.getCurrentQueue = () => [current];
+        const panel = new NowPlayingPanel(deps);
+        await waitForPanel(panel);
+        const body = panel.content.querySelector('.now-playing-panel-body');
+
+        window.dispatchEvent(
+            new CustomEvent('player-queue-changed', {
+                detail: {
+                    queue: [current, { id: 'endless-1' }, { id: 'endless-2' }],
+                    currentIndex: 0,
+                    sourceContext: deps.player.sourceContext,
+                },
+            })
+        );
+        await Promise.resolve();
+
+        expect(panel.content.querySelector('.now-playing-panel-body')).toBe(body);
+        expect(panel.root.classList.contains('is-track-transitioning')).toBe(false);
+        panel.destroy();
+    });
 
     test('does not rebuild the panel when pause saves an unchanged queue', async () => {
         const { NowPlayingPanel } = await import('./now-playing-panel.js');

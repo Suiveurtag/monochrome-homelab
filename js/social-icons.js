@@ -12,6 +12,7 @@ import I_CHEVRON_LEFT from '!lucide/chevron-left.svg?svg&icon';
 import I_DISC from '!lucide/disc.svg?svg&icon';
 import I_DOOR_OPEN from '!lucide/door-open.svg?svg&icon';
 import I_ELLIPSIS from '!lucide/ellipsis.svg?svg&icon';
+import I_HEADPHONES from '!lucide/headphones.svg?svg&icon';
 import I_HEART from '!lucide/heart.svg?svg&icon';
 import I_IMAGE_PLUS from '!lucide/image-plus.svg?svg&icon';
 import I_INFO from '!lucide/info.svg?svg&icon';
@@ -25,8 +26,10 @@ import I_PAUSE from '!lucide/pause.svg?svg&icon';
 import I_PLAY from '!lucide/play.svg?svg&icon';
 import I_PLUS from '!lucide/plus.svg?svg&icon';
 import I_REPEAT_2 from '!lucide/repeat-2.svg?svg&icon';
+import I_SEND from '!lucide/send-horizontal.svg?svg&icon';
 import I_SEARCH from '!lucide/search.svg?svg&icon';
 import I_SHARE_2 from '!lucide/share-2.svg?svg&icon';
+import I_ARROW_UP_RIGHT from '!lucide/arrow-up-right.svg?svg&icon';
 import I_USER_ROUND from '!lucide/user-round.svg?svg&icon';
 import I_USER_ROUND_PLUS from '!lucide/user-round-plus.svg?svg&icon';
 import I_USERS_ROUND from '!lucide/users-round.svg?svg&icon';
@@ -44,6 +47,7 @@ export const icon = {
     disc: I_DISC,
     doorOpen: I_DOOR_OPEN,
     ellipsis: I_ELLIPSIS,
+    headphones: I_HEADPHONES,
     heart: I_HEART,
     imagePlus: I_IMAGE_PLUS,
     info: I_INFO,
@@ -58,7 +62,9 @@ export const icon = {
     plus: I_PLUS,
     repeat: I_REPEAT_2,
     search: I_SEARCH,
+    send: I_SEND,
     share: I_SHARE_2,
+    open: I_ARROW_UP_RIGHT,
     user: I_USER_ROUND,
     userPlus: I_USER_ROUND_PLUS,
     users: I_USERS_ROUND,

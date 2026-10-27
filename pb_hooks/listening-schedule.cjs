@@ -2,7 +2,16 @@ const DAY = 86400000;
 // Warped, the yearly recap, ships as an update each December. Set { release: 'YYYY-MM-DD' } when it does;
 // it then opens every tab and pauses the weekly and monthly recaps for a month.
 const WARPED = null;
-const FIELDS = ['lock_week', 'lock_month', 'lock_year', 'lock_lifetime', 'past_week', 'past_month', 'past_year'];
+const FIELDS = [
+    'lock_week',
+    'lock_month',
+    'lock_year',
+    'lock_lifetime',
+    'past_week',
+    'past_month',
+    'past_year',
+    'debug_recaps_always',
+];
 
 const parse = (key) => new Date(`${key}T00:00:00Z`);
 const key = (date) => date.toISOString().slice(0, 10);
@@ -80,9 +89,15 @@ function policyFor(config, now, offset, warped = WARPED) {
     periods.lifetime =
         config.lock_lifetime && !warpedOpen ? { locked: true, opensAt } : { locked: false, closesAt: null };
 
+    // Debug: the latest week and month are always offered, outside their windows and through the pause.
+    const always = config.debug_recaps_always;
     const items = [];
-    if (!paused && weekWindow.open) items.push({ period: 'week', anchor: weekWindow.subject });
-    if (!paused && monthWindow.open) items.push({ period: 'month', anchor: monthWindow.subject });
+    if (always || (!paused && weekWindow.open)) items.push({ period: 'week', anchor: weekWindow.subject });
+    if (always || (!paused && monthWindow.open))
+        items.push({
+            period: 'month',
+            anchor: monthWindow.subject || key(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1))),
+        });
     return {
         periods,
         recaps: { items, pausedUntil: paused ? key(new Date(season.pauseEnd)) : null },

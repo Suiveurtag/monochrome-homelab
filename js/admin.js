@@ -7,6 +7,7 @@ import I_UNLOCK from '!lucide/lock-open.svg?svg&icon';
 import { pb } from './accounts/config.js';
 import { authManager } from './accounts/auth.js';
 import { initRelease, syncRelease } from './admin-release.js';
+import { initDebugConsole } from './admin-debug.js';
 import { applyInstancePolicy, isAdminAccount, loadAppConfig } from './access-control.js';
 
 const escapeHtml = (value) =>
@@ -837,6 +838,7 @@ function bindPage() {
         if (event.target.id === 'admin-announcement') setText('admin-announcement-count', event.target.value.length);
     });
     initRelease(configForm);
+    initDebugConsole();
     // Opening every share style removes the reason to collect them, so enabling it asks first.
     document.getElementById('admin-unlock-share-styles')?.addEventListener('change', async (event) => {
         const input = event.target;

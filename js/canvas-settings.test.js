@@ -28,7 +28,7 @@ describe('Canvas settings', () => {
         expect(canvasSettings.getPauseBehavior()).toBe('pause');
 
         localStorage.setItem('now-playing-canvas-pause-behavior', 'cover');
-        expect(canvasSettings.getPauseBehavior()).toBe('pause');
+        expect(canvasSettings.getPauseBehavior()).toBe('cover');
 
         canvasSettings.setBackgroundSource('cover');
         canvasSettings.setPauseBehavior('play');

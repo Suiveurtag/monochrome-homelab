@@ -278,7 +278,9 @@ export class SpicyDynamicBackground {
             this.loadVideo();
         } else if (wasFollowing && this.kawarp) {
             this.kawarp.unloadVideo();
-            if (this.deferToVideo || !this.source) {
+            // Waiting for the next Canvas: its first frame crossfades from the last one, which stays on screen.
+            if (this.deferToVideo) return;
+            if (!this.source) {
                 this.root.classList.remove('has-kawarp-background');
                 return;
             }

@@ -2,8 +2,13 @@ function isReducedMotion() {
     return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
 
-function spawnShockwave(button) {
+// Contour pulse: a thin ring that expands just past the button edge and fades
+function spawnShockwave(button, delay = 0) {
     if (!button || !button.isConnected || isReducedMotion()) return;
+    if (delay) {
+        window.setTimeout(() => spawnShockwave(button), delay);
+        return;
+    }
     const rect = button.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
@@ -12,9 +17,7 @@ function spawnShockwave(button) {
     ring.setAttribute('aria-hidden', 'true');
     ring.style.left = `${cx}px`;
     ring.style.top = `${cy}px`;
-    // Hollow expanding ring – subtle, not too big
-    const base = Math.max(rect.width, rect.height);
-    const size = base * 1.75;
+    const size = Math.max(rect.width, rect.height) * 1.65;
     ring.style.width = `${size}px`;
     ring.style.height = `${size}px`;
     ring.style.marginLeft = `${-size / 2}px`;
@@ -24,10 +27,14 @@ function spawnShockwave(button) {
     window.setTimeout(() => ring.remove(), 700);
 }
 
-function spawnConfetti(button) {
+// Confetti: a full circle of small squares and dots that bursts out and fades
+function spawnConfetti(button, delay = 0) {
     if (!button || !button.isConnected || isReducedMotion()) return;
+    if (delay) {
+        window.setTimeout(() => spawnConfetti(button), delay);
+        return;
+    }
     const rect = button.getBoundingClientRect();
-    // Anchor at centre – particles bloom around the top half like a halo
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
     const layer = document.createElement('span');
@@ -35,41 +42,75 @@ function spawnConfetti(button) {
     layer.setAttribute('aria-hidden', 'true');
     layer.style.left = `${cx}px`;
     layer.style.top = `${cy}px`;
-    const count = 7;
-    const spread = 150; // degrees, top arc only
-    const baseRadius = Math.max(rect.width, rect.height) * 0.46;
+    const count = 16;
+    const radius = Math.max(rect.width, rect.height) / 2;
+    // Green, white and teal, as in the reference recording
+    const colors = ['var(--highlight)', 'rgba(255, 255, 255, 0.8)', '#3fd6a8'];
     for (let i = 0; i < count; i++) {
-        const dot = document.createElement('span');
-        dot.className = 'track-save-confetti';
-        // Evenly spaced around top half for a clean halo, with tiny jitter
-        const t = count === 1 ? 0.5 : i / (count - 1);
-        const baseAngle = -90 - spread / 2 + spread * t; // -165 to -15
-        const jitter = (Math.random() - 0.5) * 10;
-        const angle = baseAngle + jitter;
+        const piece = document.createElement('span');
+        piece.className = i % 2 ? 'track-save-confetti track-save-confetti--square' : 'track-save-confetti';
+        // Full circle with jitter. Pieces appear near the rim and drift outwards, they do not fly from the centre.
+        const angle = (360 / count) * i + (Math.random() - 0.5) * 16;
         const rad = (angle * Math.PI) / 180;
-        // Start just outside the circle, end a bit further out
-        const dist = baseRadius + 7 + Math.random() * 13; // 7-20px beyond radius
-        const tx = Math.cos(rad) * dist;
-        const ty = Math.sin(rad) * dist;
-        const size = 3.0 + Math.random() * 2.2; // 3-5.2px – a touch bigger
-        const rot = Math.round(Math.random() * 360);
-        const delay = i * 28;
-        const duration = 620 + Math.random() * 110;
-        dot.style.setProperty('--tx', `${tx.toFixed(1)}px`);
-        dot.style.setProperty('--ty', `${ty.toFixed(1)}px`);
-        dot.style.setProperty('--rot', `${rot}deg`);
-        dot.style.setProperty('--delay', `${delay}ms`);
-        dot.style.setProperty('--dur', `${duration}ms`);
-        dot.style.width = `${size.toFixed(1)}px`;
-        dot.style.height = `${size.toFixed(1)}px`;
-        layer.appendChild(dot);
+        const startDist = radius * (1.25 + Math.random() * 0.15);
+        const endDist = radius * (1.8 + Math.random() * 0.2);
+        const size = 1.8 + Math.random() * 1.2;
+        piece.style.setProperty('--sx', `${(Math.cos(rad) * startDist).toFixed(1)}px`);
+        piece.style.setProperty('--sy', `${(Math.sin(rad) * startDist).toFixed(1)}px`);
+        piece.style.setProperty('--tx', `${(Math.cos(rad) * endDist).toFixed(1)}px`);
+        piece.style.setProperty('--ty', `${(Math.sin(rad) * endDist).toFixed(1)}px`);
+        piece.style.setProperty('--rot', `${Math.round(Math.random() * 360)}deg`);
+        piece.style.setProperty('--delay', `${Math.round(Math.random() * 30)}ms`);
+        piece.style.setProperty('--dur', `${260 + Math.random() * 70}ms`);
+        piece.style.setProperty('--c', colors[Math.floor(Math.random() * colors.length)]);
+        piece.style.width = `${size.toFixed(1)}px`;
+        piece.style.height = `${size.toFixed(1)}px`;
+        layer.appendChild(piece);
     }
     document.body.appendChild(layer);
-    // Clean up after longest animation
-    const cleanup = () => layer.remove();
-    layer.addEventListener('animationend', cleanup, { once: true });
-    // Fallback timer
-    window.setTimeout(cleanup, 1300);
+    // Remove on a timer covering the longest piece: animationend bubbles up from every
+    // child, so listening to it would cut the burst short when the first piece lands.
+    window.setTimeout(() => layer.remove(), 800);
+}
+
+// Unlike: the filled disc shrinks to a dot before the outline comes back
+function spawnUnlikeDot(button) {
+    if (!button || !button.isConnected || isReducedMotion()) return;
+    const rect = button.getBoundingClientRect();
+    const dot = document.createElement('span');
+    dot.className = 'track-save-unlike-dot';
+    dot.setAttribute('aria-hidden', 'true');
+    const size = Math.min(rect.width, rect.height) * 0.7;
+    dot.style.left = `${rect.left + rect.width / 2}px`;
+    dot.style.top = `${rect.top + rect.height / 2}px`;
+    dot.style.width = `${size}px`;
+    dot.style.height = `${size}px`;
+    dot.style.marginLeft = `${-size / 2}px`;
+    dot.style.marginTop = `${-size / 2}px`;
+    document.body.appendChild(dot);
+    dot.addEventListener('animationend', () => dot.remove(), { once: true });
+    window.setTimeout(() => dot.remove(), 500);
+}
+
+// Pale disc behind the icon on click: a light flash before the fill takes over
+function spawnFlash(button, delay = 0) {
+    if (!button || isReducedMotion()) return;
+    window.setTimeout(() => {
+        if (!button.isConnected) return;
+        const rect = button.getBoundingClientRect();
+        const flash = document.createElement('span');
+        flash.className = 'track-save-flash';
+        flash.setAttribute('aria-hidden', 'true');
+        const size = Math.min(rect.width, rect.height);
+        flash.style.left = `${rect.left + rect.width / 2}px`;
+        flash.style.top = `${rect.top + rect.height / 2}px`;
+        flash.style.width = `${size}px`;
+        flash.style.height = `${size}px`;
+        flash.style.marginLeft = `${-size / 2}px`;
+        flash.style.marginTop = `${-size / 2}px`;
+        document.body.appendChild(flash);
+        window.setTimeout(() => flash.remove(), 150);
+    }, delay);
 }
 
 export function buildTrackSaveStateSnapshot(likedTracks = [], likedVideos = [], playlists = []) {
@@ -139,12 +180,13 @@ export function applyTrackSaveStateToButton(button, state, { animate = false } =
         void button.offsetWidth;
         if (willBeSaved) {
             button.classList.add('track-save-animate-in');
-            // Only on like/add: confetti + shockwave, minimalist and theme-coloured
-            spawnShockwave(button);
-            spawnConfetti(button);
+            spawnFlash(button);
+            spawnShockwave(button, 120);
+            spawnConfetti(button, 180);
             window.setTimeout(() => button.classList.remove('track-save-animate-in'), 620);
         } else {
             button.classList.add('track-save-animate-out');
+            spawnUnlikeDot(button);
             window.setTimeout(() => button.classList.remove('track-save-animate-out'), 520);
         }
     } else if (animate && !isReducedMotion()) {

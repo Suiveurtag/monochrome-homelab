@@ -1,4 +1,5 @@
 import { mountSpicyDynamicBackground } from './spicy-dynamic-background.js';
+import { loadEdgeLight } from './edge-light.js';
 import { buildNowPlayingPanelModel, normalizeSourceContext } from './now-playing-panel-model.js';
 import { clearLyricsContainerSync, renderLyricsInContainer, renderLyricsInNowPanel } from './lyrics.js';
 import { createTrackSaveIconHTML } from './track-save-ui.js';
@@ -40,6 +41,7 @@ const CANVAS_LOAD_TIMEOUT = 20000;
 const CANVAS_LOAD_RETRY_LIMIT = 2;
 const CANVAS_RETRY_DELAY = 240;
 const TRACK_FADE_OUT_DURATION = 180;
+const TRACK_ARTWORK_FADE_DURATION = 520;
 const QUEUE_OPEN_DURATION = 360;
 const QUEUE_CLOSE_DURATION = 360;
 const QUEUE_COVER_DURATION = 360;
@@ -201,7 +203,6 @@ export class NowPlayingPanel {
         this.queueCoverMorph = null;
         this.queueCanvasStage = null;
         this.queueCanvasAnimation = null;
-        this.queueCanvasTargetOpacity = null;
         this.queueCoverTarget = null;
         this.queueCoverClosingTarget = null;
         this.queueCoverSourceElement = null;
@@ -305,6 +306,9 @@ export class NowPlayingPanel {
                 return;
             }
             this.queueRenderSignature = nextSignature;
+            const sourceChanged =
+                nextSourceContext?.label !== this.sourceContext?.label ||
+                nextSourceContext?.href !== this.sourceContext?.href;
             this.sourceContext = nextSourceContext;
             const nextQueue = event.detail?.queue || this.player?.getCurrentQueue?.() || [];
             const nextCurrentTrack = nextQueue[nextCurrentIndex];
@@ -330,7 +334,8 @@ export class NowPlayingPanel {
                 this.renderQueueControls({ preserveScroll: true });
                 return;
             }
-            void this.render({ preserveScroll: true });
+            // Now Playing only shows the queue's source; tracks appended by endless playback must not rebuild it.
+            if (sourceChanged) void this.render({ preserveScroll: true });
         };
         this.boundRepeatChanged = () => {
             this.syncQueueLoopButton({ animate: true });
@@ -414,7 +419,11 @@ export class NowPlayingPanel {
         this.boundCanvasPreferenceChanged = (event) => {
             this.canvasEnabled = event.detail?.enabled ?? canvasSettings.isEnabled();
             this.canvasExpanded = false;
-            void this.render({ preserveScroll: true });
+            this.canvasHandoff = true;
+            void this.render({ preserveScroll: true }).finally(() => {
+                this.canvasHandoff = false;
+                this.content?.querySelector('.now-playing-panel-cover')?.classList.add('is-canvas-handoff');
+            });
         };
         this.boundCanvasBackgroundSourceChanged = () => {
             this.canvasBackgroundSource = canvasSettings.getBackgroundSource();
@@ -599,6 +608,21 @@ export class NowPlayingPanel {
         this.canvasPlaybackElement = nextElement;
         this.canvasPlaybackElement?.addEventListener('play', this.boundPlaybackChanged);
         this.canvasPlaybackElement?.addEventListener('pause', this.boundPlaybackChanged);
+    }
+
+    // The collapsed rail's edge light is lit by colours extracted from the artwork.
+    syncEdgeLight(src) {
+        if (!this.reopenButton || src === this.edgeLightSource) return;
+        this.edgeLightSource = src;
+        const apply = (value) => {
+            if (this.edgeLightSource === src) this.reopenButton.style.setProperty('--reopen-light', value);
+        };
+        if (!src) {
+            apply('none');
+            return;
+        }
+        // Artwork the canvas can't read (no CORS) still lights the rail, just unsampled.
+        loadEdgeLight(src).then(apply, () => apply(`url("${src}")`));
     }
 
     syncPanelActivity() {
@@ -1210,6 +1234,7 @@ export class NowPlayingPanel {
             });
             if (controller.signal.aborted) return;
             this.model = model;
+            this.syncEdgeLight(model.empty ? '' : model.artwork.staticSrc);
             if (shouldRenderNowPlaying) {
                 void this.background?.setSource(model.empty ? '' : model.artwork.staticSrc, {
                     deferToVideo:
@@ -1220,10 +1245,13 @@ export class NowPlayingPanel {
             }
             await fadeOut;
             if (controller.signal.aborted) return;
+            let leavingArtwork = null;
             if (shouldRenderNowPlaying) {
+                leavingArtwork = isQueueView ? null : this.takeLeavingArtwork();
                 this.cleanupMedia();
                 clearLyricsContainerSync(this.content);
                 this.content.innerHTML = this.renderNowPlayingMarkup(model);
+                this.fadeOutLeavingArtwork(leavingArtwork);
                 this.syncHeader();
                 this.content.scrollTop = previousScroll;
                 this.syncScrolled();
@@ -1255,7 +1283,7 @@ export class NowPlayingPanel {
             }
             this.updateScrollbar();
             if (!isQueueView) {
-                await this.mountMedia(model, controller.signal);
+                await this.mountMedia(model, controller.signal, { crossfade: Boolean(leavingArtwork) });
                 await this.mountLyrics(model, controller.signal);
                 this.applyLyricsMode();
                 await this.syncArtistLikeState();
@@ -1283,6 +1311,80 @@ export class NowPlayingPanel {
             const errorTarget = isQueueView && this.queueLayer ? this.queueLayer : this.content;
             errorTarget.innerHTML = '<div class="now-playing-panel-error">Now Playing could not be loaded.</div>';
         }
+    }
+
+    // The artwork on screen is kept out of the swap so it can fade over the next track's artwork.
+    takeLeavingArtwork() {
+        const stage = this.content?.querySelector('.now-playing-panel-media');
+        if (!stage || this.reducedMotionMedia.matches) return null;
+        const element = stage.classList.contains('is-canvas-playing')
+            ? stage.querySelector('.now-playing-panel-canvas:not(.is-artwork-leaving)')
+            : stage.querySelector(
+                  ':is(.now-playing-panel-canvas-cover, .now-playing-panel-cover):not(.is-artwork-leaving)'
+              );
+        if (!element || typeof element.animate !== 'function') return null;
+        const computed = getComputedStyle(element);
+        const from = {
+            offset: 0,
+            opacity: computed.opacity,
+            filter: computed.filter,
+            transform: computed.transform,
+            '--sl-videocanvas-mask-stop': computed.getPropertyValue('--sl-videocanvas-mask-stop'),
+        };
+        const playing = element.tagName === 'VIDEO' && !element.paused;
+        // A Canvas may land on a cover layout, where it no longer has its tall masked surface: keep its look and place.
+        const surface = {
+            rect: element.getBoundingClientRect(),
+            maskImage: computed.maskImage,
+            objectFit: computed.objectFit,
+            objectPosition: computed.objectPosition,
+            transformOrigin: computed.transformOrigin,
+        };
+        element.remove();
+        return { element, from, playing, surface };
+    }
+
+    // Missing end values fall back to the new stage's CSS, so a Canvas collapses the way it does on pause.
+    fadeOutLeavingArtwork(leaving) {
+        if (!leaving) return;
+        const { element, from, playing, surface } = leaving;
+        const release = () => {
+            element.remove();
+            if (element.tagName === 'VIDEO') this.releaseCanvasVideo(element);
+        };
+        const stage = this.content?.querySelector('.now-playing-panel-media');
+        if (!stage) {
+            release();
+            return;
+        }
+        element.classList.add('is-artwork-leaving');
+        const to = { opacity: 0 };
+        if (element.tagName === 'VIDEO' && !stage.closest('.has-video-artwork') && this.root) {
+            const rootRect = this.root.getBoundingClientRect();
+            Object.assign(element.style, {
+                left: `${surface.rect.left - rootRect.left}px`,
+                top: `${surface.rect.top - rootRect.top}px`,
+                width: `${surface.rect.width}px`,
+                height: `${surface.rect.height}px`,
+                maskImage: surface.maskImage,
+                objectFit: surface.objectFit,
+                objectPosition: surface.objectPosition,
+                transformOrigin: surface.transformOrigin,
+                borderRadius: '0',
+            });
+            Object.assign(to, { filter: 'brightness(0.65) blur(14px) saturate(1.5)', transform: 'scale(1.07)' });
+            // Before the scroller, so it stays under the text and over the background.
+            this.content.before(element);
+        } else {
+            stage.append(element);
+        }
+        if (playing) void element.play().catch(() => {});
+        const animation = element.animate([from, to], {
+            duration: TRACK_ARTWORK_FADE_DURATION,
+            easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+            fill: 'forwards',
+        });
+        animation.finished.then(release, release);
     }
 
     renderMarkup(model) {
@@ -1420,6 +1522,7 @@ export class NowPlayingPanel {
     getNowPlayingCoverElement() {
         return (
             this.content?.querySelector('.now-playing-panel-cover') ||
+            this.content?.querySelector('.now-playing-panel-canvas-cover img') ||
             this.content?.querySelector('.now-playing-panel-media') ||
             null
         );
@@ -1445,7 +1548,14 @@ export class NowPlayingPanel {
     }
 
     restoreQueueCoverSource() {
-        this.queueCoverSourceElement?.style.removeProperty('opacity');
+        const element = this.queueCoverSourceElement;
+        if (element) {
+            // The media has an opacity transition; without this the restored cover fades back in after the morph is gone.
+            element.style.setProperty('transition', 'none');
+            element.style.removeProperty('opacity');
+            void element.offsetWidth;
+            element.style.removeProperty('transition');
+        }
         this.queueCoverSourceElement = null;
     }
 
@@ -1458,7 +1568,7 @@ export class NowPlayingPanel {
         const rect = element.getBoundingClientRect();
         if (!rect.width || !rect.height) return null;
         const visualElement =
-            element.closest?.('.now-playing-panel-media, .queue-current-artwork') || element;
+            element.closest?.('.now-playing-panel-canvas-cover, .now-playing-panel-media, .queue-current-artwork') || element;
         const computed = getComputedStyle(element);
         const visualComputed = getComputedStyle(visualElement);
         return {
@@ -2321,39 +2431,36 @@ export class NowPlayingPanel {
         finish();
     }
 
+    // Opening plays the Canvas -> cover swap (mask collapses, Canvas blurs away) under the flying cover;
+    // closing runs it back to the Canvas state from CSS. Starting from the computed style lets a reversal turn in place.
     animateQueueCanvasStage(stage, token, direction) {
-        if (!stage || token !== this.queueTransitionToken) return;
-        this.queueCanvasAnimation?.cancel?.();
-        this.queueCanvasAnimation = null;
-        const fromOpacity = Number.parseFloat(getComputedStyle(stage).opacity);
-        const toOpacity = direction === 'opening' ? 0 : 1;
-        const startOpacity = Number.isFinite(fromOpacity) ? fromOpacity : direction === 'opening' ? 1 : 0;
-        if (typeof stage.animate !== 'function') {
-            stage.style.setProperty('opacity', String(toOpacity));
-            return;
-        }
-        const animation = stage.animate(
-            [{ opacity: startOpacity }, { opacity: toOpacity }],
-            { duration: QUEUE_COVER_DURATION, easing: QUEUE_EASE_IN_OUT, fill: 'both' }
-        );
-        this.queueCanvasAnimation = animation;
-        this.queueCanvasTargetOpacity = toOpacity;
-        animation.onfinish = () => {
-            if (this.queueCanvasAnimation !== animation) return;
-            stage.style.setProperty('opacity', String(toOpacity));
+        const canvas = stage?.querySelector('.now-playing-panel-canvas:not(.is-artwork-leaving)');
+        if (!canvas || token !== this.queueTransitionToken || typeof canvas.animate !== 'function') return;
+        const computed = getComputedStyle(canvas);
+        const from = {
+            offset: 0,
+            opacity: computed.opacity,
+            filter: computed.filter,
+            transform: computed.transform,
+            '--sl-videocanvas-mask-stop': computed.getPropertyValue('--sl-videocanvas-mask-stop'),
         };
+        this.queueCanvasAnimation?.cancel?.();
+        const collapsed = {
+            opacity: 0,
+            filter: 'brightness(0.65) blur(14px) saturate(1.5)',
+            transform: 'scale(1.07)',
+            '--sl-videocanvas-mask-stop': '0%',
+        };
+        this.queueCanvasAnimation = canvas.animate(direction === 'opening' ? [from, collapsed] : [from], {
+            duration: QUEUE_COVER_DURATION,
+            easing: QUEUE_EASE_IN_OUT,
+            fill: 'both',
+        });
     }
 
     settleQueueCanvasStage() {
-        const animation = this.queueCanvasAnimation;
-        const stage = this.queueCanvasStage;
-        if (animation) {
-            const opacity = this.queueCanvasTargetOpacity ?? Number.parseFloat(stage ? getComputedStyle(stage).opacity : '');
-            if (stage && Number.isFinite(opacity)) stage.style.setProperty('opacity', String(opacity));
-            animation.cancel();
-        }
+        this.queueCanvasAnimation?.cancel?.();
         this.queueCanvasAnimation = null;
-        this.queueCanvasTargetOpacity = null;
     }
 
     freezeQueueMotion() {
@@ -2362,14 +2469,6 @@ export class NowPlayingPanel {
             this.queueLayerAnimation.onfinish = null;
             this.queueLayerAnimation.cancel();
             this.queueLayerAnimation = null;
-        }
-        if (this.queueCanvasAnimation) {
-            const stage = this.queueCanvasStage;
-            const opacity = Number.parseFloat(stage ? getComputedStyle(stage).opacity : '');
-            this.queueCanvasAnimation.cancel();
-            this.queueCanvasAnimation = null;
-            this.queueCanvasTargetOpacity = null;
-            if (stage && Number.isFinite(opacity)) stage.style.setProperty('opacity', String(opacity));
         }
         this.queueLayer.style.setProperty('transform', `translate3d(0, ${state.offsetY}px, 0)`);
         this.queueLayer.style.setProperty('opacity', String(state.opacity));
@@ -2382,6 +2481,8 @@ export class NowPlayingPanel {
         const finish = () => {
             if (token !== this.queueTransitionToken) return;
             target.element.style.removeProperty('opacity');
+            // The hidden media must come back with the morph's removal, not a frame later with the canvas animation.
+            if (direction === 'closing') this.restoreQueueCoverSource();
             if (this.queueCoverMorph) this.queueCoverMorph.remove();
             this.queueCoverMorph = null;
             this.queueCoverAnimation = null;
@@ -2411,9 +2512,13 @@ export class NowPlayingPanel {
         morph.style.filter = source.filter;
         this.root.append(morph);
         this.queueCoverMorph = morph;
-        const hasCanvasTransition = Boolean(this.queueCanvasStage);
+        // Over a playing Canvas the cover develops out of the same blur as the Canvas -> cover swap.
+        const hasCanvasTransition = Boolean(this.getQueueCanvasStage());
+        const canvasCoverFilter = 'blur(14px) brightness(1.2) saturate(1.3)';
         const morphFromOpacity = direction === 'opening' && hasCanvasTransition ? 0 : 1;
         const morphToOpacity = direction === 'closing' && hasCanvasTransition ? 0 : 1;
+        const morphFromFilter = direction === 'opening' && hasCanvasTransition ? canvasCoverFilter : source.filter;
+        const morphToFilter = direction === 'closing' && hasCanvasTransition ? canvasCoverFilter : target.filter;
         const duration = direction === 'closing' ? QUEUE_CLOSE_DURATION : QUEUE_COVER_DURATION;
         // Animate the box itself: Chrome keeps a scaled <img> rasterized at its starting size, which looks tiny mid-flight.
         const morphFrom = {
@@ -2423,7 +2528,7 @@ export class NowPlayingPanel {
             height: `${source.rect.height}px`,
             opacity: morphFromOpacity,
             borderRadius: source.borderRadius,
-            filter: source.filter,
+            filter: morphFromFilter,
         };
         const morphTo = {
             left: `${toX}px`,
@@ -2432,7 +2537,7 @@ export class NowPlayingPanel {
             height: `${target.rect.height}px`,
             opacity: morphToOpacity,
             borderRadius: target.borderRadius,
-            filter: target.filter,
+            filter: morphToFilter,
         };
         if (typeof morph.animate !== 'function') {
             Object.assign(morph.style, morphTo);
@@ -2604,7 +2709,7 @@ export class NowPlayingPanel {
         });
     }
 
-    async mountMedia(model, signal) {
+    async mountMedia(model, signal, { crossfade = false } = {}) {
         if (!this.canvasEnabled || !model.artwork.isVideo || !model.artwork.animatedSrc) return;
         const stage = this.content.querySelector('.now-playing-panel-media');
         if (!stage || signal.aborted || this.reducedMotionMedia.matches) return;
@@ -2635,6 +2740,17 @@ export class NowPlayingPanel {
 
         video.setAttribute('role', 'img');
         video.setAttribute('aria-label', `${model.title} animated artwork`);
+        // The cover lives under the Canvas and takes over whenever the Canvas is not shown.
+        const cover = document.createElement('div');
+        cover.className = 'now-playing-panel-canvas-cover';
+        cover.innerHTML = `<img src="${escapeHtml(model.artwork.staticSrc)}" alt="" draggable="false" />`;
+        stage.prepend(cover);
+        // A new track mounts straight into its final state; only a settings toggle plays the hand-off.
+        // A skip keeps the transitions so the Canvas fades in over the previous track's fading artwork.
+        if (!this.canvasHandoff) {
+            if (!crossfade) stage.classList.add('is-canvas-instant');
+            if (this.canvasPauseBehavior !== 'cover' || this.shouldCanvasPlay()) stage.classList.add('is-canvas-pending');
+        }
         this.canvasMedia = video;
         this.canvasStage = stage;
 
@@ -2748,14 +2864,9 @@ export class NowPlayingPanel {
         this.canvasVisibilityObserver?.disconnect();
         this.canvasVisibilityObserver = null;
         this.background?.followVideo?.(null);
-        video.removeEventListener('play', this.boundCanvasPlaybackStarted);
-        video.removeEventListener('pause', this.boundCanvasPlaybackInterrupted);
-        video.removeEventListener('stalled', this.boundCanvasPlaybackInterrupted);
-        video.removeEventListener('waiting', this.boundCanvasPlaybackInterrupted);
-        video._hls?.destroy?.();
-        video.pause();
-        video.removeAttribute('src');
-        video.load?.();
+        // Without a Canvas to defer to, the background falls back to the cover.
+        if (this.model) void this.background?.setSource(this.model.artwork.staticSrc, { deferToVideo: false });
+        this.releaseCanvasVideo(video);
         video.remove();
         this.canvasMedia = null;
         if (failedStage) {
@@ -2789,6 +2900,7 @@ export class NowPlayingPanel {
                 .then(() => {
                     if (video === this.canvasMedia && video.isConnected) {
                         stage.classList.toggle('is-canvas-playing', ready);
+                        this.settleCanvasStage(stage, ready, true);
                         this.syncCanvasBackground();
                     }
                 })
@@ -2796,8 +2908,17 @@ export class NowPlayingPanel {
         } else {
             video.pause();
             stage.classList.toggle('is-canvas-playing', keepFrame);
+            this.settleCanvasStage(stage, ready, false);
         }
         this.syncCanvasBackground();
+    }
+
+    // Once the first frame decision is made, drop the no-transition mount state so later changes animate.
+    settleCanvasStage(stage, ready, playing) {
+        if (!ready || !stage.classList.contains('is-canvas-instant') && !stage.classList.contains('is-canvas-pending')) return;
+        if (playing && !stage.classList.contains('is-canvas-playing')) return;
+        stage.classList.remove('is-canvas-pending');
+        window.setTimeout(() => stage.classList.remove('is-canvas-instant'), 80);
     }
 
     // The fluid background follows Canvas only while Canvas is what the panel shows.
@@ -2805,8 +2926,25 @@ export class NowPlayingPanel {
         const video = this.canvasMedia;
         const shown = Boolean(this.canvasStage?.classList.contains('is-canvas-playing'));
         const follow = shown && !this.expandedLyrics && this.canvasBackgroundSource === 'canvas';
+        // Back on the cover, the fluid background follows the cover instead of the frozen Canvas.
+        const coverBackground =
+            !shown && this.canvasPauseBehavior === 'cover' && this.canvasBackgroundSource === 'canvas' &&
+            this.canvasStage?.classList.contains('is-canvas-ready') && !this.expandedLyrics;
+        if (coverBackground !== Boolean(this.canvasCoverBackground) && this.model) {
+            this.canvasCoverBackground = coverBackground;
+            void this.background?.setSource(this.model.artwork.staticSrc, { deferToVideo: !coverBackground });
+            // A paused background is frozen, so it needs a moment of motion to crossfade to the cover.
+            window.clearTimeout(this.canvasCoverSettleTimer);
+            this.canvasCoverSettling = coverBackground;
+            if (coverBackground) {
+                this.canvasCoverSettleTimer = window.setTimeout(() => {
+                    this.canvasCoverSettling = false;
+                    this.background?.setKeepAnimating?.(false);
+                }, 1600);
+            }
+        }
         this.background?.followVideo?.(follow ? video : null);
-        this.background?.setKeepAnimating?.(follow && this.canvasPauseBehavior === 'play');
+        this.background?.setKeepAnimating?.((follow && this.canvasPauseBehavior === 'play') || Boolean(this.canvasCoverSettling));
     }
 
     shouldCanvasPlay() {
@@ -2818,6 +2956,9 @@ export class NowPlayingPanel {
     }
 
     cleanupMedia() {
+        this.canvasCoverBackground = false;
+        this.canvasCoverSettling = false;
+        window.clearTimeout(this.canvasCoverSettleTimer);
         window.clearTimeout(this.canvasLoadTimer);
         this.canvasLoadTimer = null;
         this.canvasLoadRetryCount = 0;
@@ -2826,19 +2967,21 @@ export class NowPlayingPanel {
         this.canvasVisibilityObserver?.disconnect();
         this.canvasVisibilityObserver = null;
         this.background?.followVideo?.(null);
-        this.content?.querySelectorAll('video').forEach((video) => {
-            video.removeEventListener('play', this.boundCanvasPlaybackStarted);
-            video.removeEventListener('pause', this.boundCanvasPlaybackInterrupted);
-            video.removeEventListener('stalled', this.boundCanvasPlaybackInterrupted);
-            video.removeEventListener('waiting', this.boundCanvasPlaybackInterrupted);
-            video._hls?.destroy?.();
-            video.pause();
-            video.removeAttribute('src');
-            video.load?.();
-        });
+        this.content?.querySelectorAll('video').forEach((video) => this.releaseCanvasVideo(video));
         this.canvasMedia = null;
         this.canvasStage = null;
         this.canvasRetryCount = 0;
+    }
+
+    releaseCanvasVideo(video) {
+        video.removeEventListener('play', this.boundCanvasPlaybackStarted);
+        video.removeEventListener('pause', this.boundCanvasPlaybackInterrupted);
+        video.removeEventListener('stalled', this.boundCanvasPlaybackInterrupted);
+        video.removeEventListener('waiting', this.boundCanvasPlaybackInterrupted);
+        video._hls?.destroy?.();
+        video.pause();
+        video.removeAttribute('src');
+        video.load?.();
     }
 
     async mountLyrics(model, signal) {
@@ -3375,7 +3518,6 @@ export class NowPlayingPanel {
         this.queueTabAnimation = null;
         this.queueCanvasAnimation?.cancel?.();
         this.queueCanvasAnimation = null;
-        this.queueCanvasTargetOpacity = null;
         this.queueCanvasStage = null;
         this.restoreQueueCoverSource();
         this.cleanupQueueDrag();

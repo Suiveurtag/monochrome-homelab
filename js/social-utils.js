@@ -16,8 +16,40 @@ export function parseJson(value, fallback = null) {
     }
 }
 
+const initialDiscs = new Map();
+
+/**
+ * A neutral initial disc. It is painted on a canvas because an SVG image cannot
+ * reach the page's fonts and falls back to a serif; the one DOM touch in this file.
+ */
+function initialDisc(initial) {
+    if (initialDiscs.has(initial)) return initialDiscs.get(initial);
+    const letter = initial.replace(/[<&>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+    let url = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#2c2c2f"/><text x="32" y="42.5" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="600" fill="#ececec">${letter}</text></svg>`)}`;
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#2c2c2f';
+        ctx.fillRect(0, 0, 128, 128);
+        ctx.fillStyle = '#ececec';
+        ctx.font = `600 56px ${getComputedStyle(document.body).fontFamily}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(initial, 64, 68);
+        url = canvas.toDataURL('image/png');
+    } catch {
+        /* Outside a document the SVG disc stands in. */
+    }
+    // Only keep the disc once the app's fonts are in, so an early paint is not frozen in a fallback face.
+    if (typeof document === 'undefined' || document.fonts?.status === 'loaded') initialDiscs.set(initial, url);
+    return url;
+}
+
+/** A member's picture, or a neutral initial disc so nobody wears the app logo. */
 export function avatarFor(profile) {
-    return profile?.avatar_url || '/assets/appicon.png';
+    if (profile?.avatar_url) return profile.avatar_url;
+    return initialDisc(([...displayName(profile).trim()][0] || '?').toUpperCase());
 }
 
 export function displayName(profile) {

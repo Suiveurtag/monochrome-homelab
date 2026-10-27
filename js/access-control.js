@@ -22,6 +22,7 @@ export const DEFAULT_CONFIG = {
     past_year: true,
     feature_recaps: true,
     unlock_all_share_styles: false,
+    debug_recaps_always: false,
     feature_uploads: true,
     feature_parties: true,
     allow_uploads: true,

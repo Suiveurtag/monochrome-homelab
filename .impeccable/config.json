@@ -125,6 +125,105 @@
         ],
         "createdAt": "2026-10-26T01:50:37.834Z",
         "reason": "Claude triage: domain-appropriate motion; overshoot is the edition's physical metaphor (Riso drum press, Gig Flyer stamp slam, Lava Lamp wax wobble), scoped to those three skins"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "admin-debug.css"
+        ],
+        "createdAt": "2026-10-26T18:39:03.913Z",
+        "reason": "User asked for a bright green terminal easter egg on the admin page; off-system palette is the point"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          "admin-debug.css"
+        ],
+        "createdAt": "2026-10-26T18:39:03.947Z",
+        "reason": "User asked for a bright green terminal easter egg on the admin page; off-system palette is the point"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          "admin-debug.css"
+        ],
+        "createdAt": "2026-10-26T18:39:03.976Z",
+        "reason": "User asked for a bright green terminal easter egg on the admin page; off-system palette is the point"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "admin-debug.css"
+        ],
+        "createdAt": "2026-10-26T18:43:06.927Z",
+        "reason": "User asked for a terminal-style easter egg; monospace terminal sizes are intentionally off the app type ramp"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.34, 1.45, 0.64, 1)",
+        "files": [
+          "social.css"
+        ],
+        "createdAt": "2026-10-27T00:48:24.370Z",
+        "reason": "user confirmed (round 1 Q6): a slight overshoot for tactile gestures only (like, send, follow stamp, pin, deck drop); hovers and layout use ease-out"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "var(--booth-spring)",
+        "files": [
+          "social.css"
+        ],
+        "createdAt": "2026-10-27T00:48:37.475Z",
+        "reason": "user confirmed (round 1 Q6): slight overshoot reserved for tactile keyframe gestures (like, send, follow stamp, pin, deck drop, message arrival); hovers use ease-out"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(255 255 255 / 0.16)",
+        "files": [
+          "social.css"
+        ],
+        "createdAt": "2026-10-27T01:31:45.026Z",
+        "reason": "Claude triage: fixed white over artwork scrims (platter specular, play icon on cover veil, lightbox close on its black veil) must stay white in every theme"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#fff",
+        "files": [
+          "social.css"
+        ],
+        "createdAt": "2026-10-27T01:31:45.055Z",
+        "reason": "Claude triage: fixed white over artwork scrims (platter specular, play icon on cover veil, lightbox close on its black veil) must stay white in every theme"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(255 255 255 / 0.25)",
+        "files": [
+          "social.css"
+        ],
+        "createdAt": "2026-10-27T01:31:45.085Z",
+        "reason": "Claude triage: fixed white over artwork scrims (platter specular, play icon on cover veil, lightbox close on its black veil) must stay white in every theme"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "social.css"
+        ],
+        "createdAt": "2026-10-27T01:32:05.465Z",
+        "reason": "Claude triage: DESIGN.md (La Cabine, rewritten from this build on 2026-10-27) documents the main type and radius steps; social.css keeps the approved build's intermediate meta sizes and small control radii"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          "social.css"
+        ],
+        "createdAt": "2026-10-27T01:32:05.494Z",
+        "reason": "Claude triage: DESIGN.md (La Cabine, rewritten from this build on 2026-10-27) documents the main type and radius steps; social.css keeps the approved build's intermediate meta sizes and small control radii"
       }
     ]
   }
