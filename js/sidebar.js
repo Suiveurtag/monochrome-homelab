@@ -6,6 +6,7 @@ import { escapeHtml } from './utils.js';
 
 const RECENTS_KEY = 'monochrome-sidebar-recents';
 const VIEW_KEY = 'monochrome-sidebar-library-view';
+const RECENTS_HIDDEN_KEY = 'monochrome-sidebar-recents-hidden';
 const MAX_RECENTS = 30;
 const RECENT_KINDS = new Set(['album', 'playlist', 'artist', 'liked']);
 const KIND_LABELS = { album: 'Album', playlist: 'Playlist', artist: 'Artist', liked: 'Playlist' };
@@ -186,7 +187,7 @@ export async function renderSidebarLibrary({ cascade = false, toggledKey = null 
 }
 
 function syncFilters() {
-    const { filter, sort } = getView();
+    const { filter } = getView();
     const group = document.querySelector('.sidebar-library-filters');
     const pill = group?.querySelector('.sidebar-library-filter-pill');
     let active = null;
@@ -203,13 +204,17 @@ function syncFilters() {
         }
     }
 
-    const sortButton = document.getElementById('sidebar-library-sort');
-    if (sortButton) {
-        const label = sort === 'name' ? 'Sort by recent' : 'Sort by name';
-        sortButton.classList.toggle('is-sorted-by-name', sort === 'name');
-        sortButton.setAttribute('aria-label', label);
-        sortButton.title = label;
-    }
+}
+
+function syncRecentsHidden() {
+    const hidden = readJson(RECENTS_HIDDEN_KEY, false) === true;
+    document.querySelector('.sidebar-library')?.classList.toggle('is-hidden', hidden);
+    const toggle = document.getElementById('sidebar-library-hide');
+    if (!toggle) return;
+    const label = hidden ? 'Show Recents' : 'Hide Recents';
+    toggle.setAttribute('aria-expanded', String(!hidden));
+    toggle.setAttribute('aria-label', label);
+    toggle.title = label;
 }
 
 function setView(patch, renderOptions) {
@@ -269,6 +274,9 @@ export function initSidebar(playerInstance, apiInstance) {
         const collapsed = document.body.classList.toggle('sidebar-collapsed');
         sidebarSettings.setCollapsed(collapsed);
         syncToggle();
+        const motion = collapsed ? 'sidebar-collapsing' : 'sidebar-expanding';
+        document.body.classList.add(motion);
+        setTimeout(() => document.body.classList.remove(motion), 800);
     });
 
     initNavIndicators();
@@ -284,9 +292,11 @@ export function initSidebar(playerInstance, apiInstance) {
         setView({ filter }, { cascade: true });
     });
 
-    document.getElementById('sidebar-library-sort')?.addEventListener('click', () => {
-        setView({ sort: getView().sort === 'name' ? 'recent' : 'name' });
+    document.getElementById('sidebar-library-hide')?.addEventListener('click', () => {
+        writeJson(RECENTS_HIDDEN_KEY, !readJson(RECENTS_HIDDEN_KEY, false));
+        syncRecentsHidden();
     });
+    syncRecentsHidden();
 
     document.getElementById('sidebar-library-list')?.addEventListener('click', async (event) => {
         const button = event.target.closest('.sidebar-library-pin');

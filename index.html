@@ -1988,27 +1988,32 @@
                                 <header class="sidebar-library-header">
                                     <h2 id="sidebar-library-title" class="sidebar-label">Recents</h2>
                                     <button
-                                        id="sidebar-library-sort"
-                                        class="sidebar-library-sort"
+                                        id="sidebar-library-hide"
+                                        class="sidebar-library-toggle"
                                         type="button"
-                                        title="Sort by name"
-                                        aria-label="Sort by name"
+                                        title="Hide Recents"
+                                        aria-label="Hide Recents"
+                                        aria-expanded="true"
                                     >
-                                        <use svg="!lucide/arrow-up-down.svg" size="15" />
+                                        <use svg="!lucide/chevron-up.svg" size="15" />
                                     </button>
                                 </header>
+                            </div>
+                        </div>
+                        <div class="sidebar-library-body">
+                            <div class="sidebar-library-content">
                                 <div class="sidebar-library-filters" role="group" aria-label="Show only">
                                     <span class="sidebar-library-filter-pill" aria-hidden="true"></span>
                                     <button type="button" data-filter="playlist" aria-pressed="false">Playlists</button>
                                     <button type="button" data-filter="album" aria-pressed="false">Albums</button>
                                     <button type="button" data-filter="artist" aria-pressed="false">Artists</button>
                                 </div>
+                                <ul id="sidebar-library-list" class="sidebar-library-list"></ul>
+                                <p id="sidebar-library-empty" class="sidebar-library-empty" hidden>
+                                    Play an album, playlist or artist and it shows up here.
+                                </p>
                             </div>
                         </div>
-                        <ul id="sidebar-library-list" class="sidebar-library-list"></ul>
-                        <p id="sidebar-library-empty" class="sidebar-library-empty" hidden>
-                            Play an album, playlist or artist and it shows up here.
-                        </p>
                     </section>
 
                     <nav class="sidebar-nav bottom" aria-label="App">

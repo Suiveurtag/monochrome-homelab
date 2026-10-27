@@ -275,10 +275,10 @@ body.sidebar-collapsed .sidebar .social-unread-badge {
     flex: 1;
     flex-direction: column;
     min-height: 0;
-    padding-top: 4px;
+    padding-top: 10px;
+    border-top: 1px solid var(--shell-border);
 }
 
-/* Header and chips fold away (height included) when the sidebar collapses to a rail. */
 .sidebar-library-controls {
     display: grid;
     grid-template-rows: 1fr;
@@ -290,8 +290,14 @@ body.sidebar-collapsed .sidebar .social-unread-badge {
     overflow: hidden;
 }
 
-body.sidebar-collapsed .sidebar-library-controls {
-    grid-template-rows: 0fr;
+/* Rail: the header stays so its chevron can still hide and show Recents, centred on its own. */
+body.sidebar-collapsed .sidebar-library-header {
+    justify-content: center;
+    padding: 0;
+}
+
+body.sidebar-collapsed .sidebar-library-header h2 {
+    display: none;
 }
 
 .sidebar-library-header {
@@ -309,7 +315,7 @@ body.sidebar-collapsed .sidebar-library-controls {
     font-weight: 600;
 }
 
-.sidebar-library-sort {
+.sidebar-library-toggle {
     display: grid;
     width: 28px;
     height: 28px;
@@ -325,33 +331,58 @@ body.sidebar-collapsed .sidebar-library-controls {
         background-color 160ms ease;
 }
 
-.sidebar-library-sort:hover,
-.sidebar-library-sort.is-sorted-by-name {
+.sidebar-library-toggle:hover {
     background: var(--sidebar-hover);
     color: var(--foreground);
 }
 
-.sidebar-library-sort svg {
+.sidebar-library-toggle svg {
     transition: rotate 380ms var(--sidebar-settle);
 }
 
-.sidebar-library-sort.is-sorted-by-name svg {
+/* Hidden: the chevron flips to point down, and the rows fold away below the header. */
+.sidebar-library.is-hidden .sidebar-library-toggle svg {
     rotate: 180deg;
+}
+
+.sidebar-library-body {
+    display: grid;
+    flex: 1;
+    grid-template-rows: 1fr;
+    min-height: 0;
+    transition: grid-template-rows 360ms var(--sidebar-ease);
+}
+
+.sidebar-library.is-hidden .sidebar-library-body {
+    grid-template-rows: 0fr;
+}
+
+/* The content's padding gives the list's negative margin room inside the clip. */
+.sidebar-library-content {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin: 0 -12px;
+    padding: 0 12px;
+    overflow: hidden;
 }
 
 .sidebar-library-filters {
     position: relative;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 4px;
     padding: 6px 4px 10px 12px;
+    overflow: hidden;
 }
 
 .sidebar-library-filters button {
     position: relative;
     z-index: 1;
+    flex: none;
     height: 28px;
     padding: 0 10px;
+    white-space: nowrap;
     border: 0;
     border-radius: var(--radius-full);
     background: var(--sidebar-hover);
@@ -451,7 +482,7 @@ body.sidebar-collapsed .sidebar-library-controls {
 .sidebar-library-link:focus-visible,
 .sidebar-nav .nav-item a:focus-visible,
 .sidebar-library-filters button:focus-visible,
-.sidebar-library-sort:focus-visible,
+.sidebar-library-toggle:focus-visible,
 .sidebar-library-pin:focus-visible,
 .sidebar-toggle:focus-visible {
     outline: 2px solid var(--ring);
@@ -674,7 +705,8 @@ body.sidebar-collapsed .sidebar-library-link {
 
 body.sidebar-collapsed .sidebar-library-eq,
 body.sidebar-collapsed .sidebar-library-pin,
-body.sidebar-collapsed .sidebar-library-empty {
+body.sidebar-collapsed .sidebar-library-empty,
+body.sidebar-collapsed .sidebar-library-filters {
     display: none;
 }
 
@@ -683,10 +715,56 @@ body.sidebar-collapsed .sidebar-library-item.is-current .sidebar-library-art {
     outline-offset: 2px;
 }
 
-/* Rail: same divider as the bottom nav, so the covers keep the full rail width. */
-body.sidebar-collapsed .sidebar-library {
-    padding-top: 10px;
-    border-top: 1px solid var(--shell-border);
+
+/* Expanding the rows drop into place, collapsing they rise; each one starts a little after the last. */
+@keyframes sidebar-row-drop {
+    from {
+        transform: translateY(-14px);
+    }
+}
+
+@keyframes sidebar-row-rise {
+    from {
+        transform: translateY(14px);
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    body:is(.sidebar-expanding, .sidebar-collapsing) .sidebar-library-item:nth-child(-n + 8) {
+        animation: sidebar-row-drop 360ms var(--sidebar-ease) backwards;
+    }
+
+    body.sidebar-collapsing .sidebar-library-item:nth-child(-n + 8) {
+        animation-name: sidebar-row-rise;
+    }
+
+    body:is(.sidebar-expanding, .sidebar-collapsing) .sidebar-library-item:nth-child(2) {
+        animation-delay: 40ms;
+    }
+
+    body:is(.sidebar-expanding, .sidebar-collapsing) .sidebar-library-item:nth-child(3) {
+        animation-delay: 80ms;
+    }
+
+    body:is(.sidebar-expanding, .sidebar-collapsing) .sidebar-library-item:nth-child(4) {
+        animation-delay: 120ms;
+    }
+
+    body:is(.sidebar-expanding, .sidebar-collapsing) .sidebar-library-item:nth-child(5) {
+        animation-delay: 160ms;
+    }
+
+    body:is(.sidebar-expanding, .sidebar-collapsing) .sidebar-library-item:nth-child(6) {
+        animation-delay: 200ms;
+    }
+
+    body:is(.sidebar-expanding, .sidebar-collapsing) .sidebar-library-item:nth-child(7) {
+        animation-delay: 240ms;
+    }
+
+    body:is(.sidebar-expanding, .sidebar-collapsing) .sidebar-library-item:nth-child(8) {
+        animation-delay: 280ms;
+    }
 }
 
 @media (min-width: 769px) {
