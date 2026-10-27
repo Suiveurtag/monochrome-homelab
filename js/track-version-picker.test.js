@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { page } from 'vitest/browser';
 import { setupTrackVersionPicker } from './track-version-picker.js';
 
 vi.mock('./downloads.js', () => ({ showNotification: vi.fn() }));
@@ -37,6 +38,9 @@ afterEach(() => {
 
 describe('track version player picker', () => {
     test('reveals linked versions, marks the active one, and switches in place', async () => {
+        // The default browser viewport is phone-sized, which pushes the popover to the left edge.
+        const viewport = [window.innerWidth, window.innerHeight];
+        await page.viewport(1280, 800);
         const original = {
             id: 'original',
             title: 'Afterglow',
@@ -81,5 +85,6 @@ describe('track version player picker', () => {
         await vi.waitFor(() => expect(player.switchTrackVersion.mock.calls).toEqual([[instrumental]]));
         expect(panel.hidden).toBe(true);
         expect(trigger.querySelector('img').getAttribute('src')).toBe('/instrumental.jpg');
+        await page.viewport(...viewport);
     });
 });

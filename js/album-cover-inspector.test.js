@@ -83,7 +83,7 @@ describe('AlbumCoverInspector', () => {
             expect(inspector.springTarget.rotateY).toBe(rotateY);
         });
 
-        inspector.updateTilt({ clientX: 200, clientY: 0 });
+        inspector.updateTilt({ clientX: 0, clientY: 0 });
         expect(inspector.springTarget.glareX).toBe(100);
         expect(inspector.springTarget.glareY).toBe(100);
         expect(inspector.springTarget.opacity).toBe(0);

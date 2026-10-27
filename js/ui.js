@@ -472,9 +472,9 @@ export class UIRenderer {
 
         const img = new Image();
         img.crossOrigin = 'Anonymous';
-        // Add cache buster to bypass opaque response in cache
+        // Add cache buster to bypass opaque response in cache; a data URL has no cache entry and must stay intact.
         const separator = url.includes('?') ? '&' : '?';
-        img.src = `${url}${separator}not-from-cache-please`;
+        img.src = url.startsWith('data:') ? url : `${url}${separator}not-from-cache-please`;
 
         img.onload = () => {
             try {
@@ -1551,8 +1551,14 @@ export class UIRenderer {
                     track.coverFallback || track.staticCover || track.album?.coverFallback || track.album?.staticCover,
             });
             const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-            const videoCoverUrl = reducedMotion ? null : getTrackPlayerCanvas(track) || artworkSources.animated || null;
-            const staticCover = artworkSources.static || '/assets/appicon.png';
+            // An animated GIF is an image, so it lives in the cover slot; only video sources take the video path.
+            const gifCover = /(?:\.gif(?:$|[?#])|^data:image\/gif)/i.test(artworkSources.animated || '')
+                ? artworkSources.animated
+                : '';
+            const videoCoverUrl = reducedMotion
+                ? null
+                : getTrackPlayerCanvas(track) || (gifCover ? null : artworkSources.animated) || null;
+            const staticCover = gifCover || artworkSources.static || '/assets/appicon.png';
             const coverUrl = /^(?:data:|blob:|https?:|\/)/i.test(String(staticCover))
                 ? staticCover
                 : this.api.getCoverUrl(staticCover, '1280');
@@ -1589,6 +1595,7 @@ export class UIRenderer {
                     video.id = currentImage.id;
                     video.style.objectFit = 'cover';
                     video.dataset.fullscreenCanvasUrl = videoCoverUrl;
+                    video.poster = coverUrl;
                     currentImage.src = coverUrl;
                     currentImage.replaceWith(video);
                     if (isHlsCanvas) {

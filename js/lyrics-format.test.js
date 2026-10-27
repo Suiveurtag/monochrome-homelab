@@ -31,9 +31,9 @@ describe('LRC lyrics formatting', () => {
         expect(isTtml('<tt><body></body></tt>')).toBe(false);
     });
 
-    it('adds interpolated word timings to line-timed TTML', () => {
+    it('adds interpolated word timings to TTML declared word-timed', () => {
         const input =
-            '<?xml version="1.0"?><tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal" itunes:timing="Line"><body><div><p begin="1s" end="3s">Why\'d you wanna go</p></div></body></tt>';
+            '<?xml version="1.0"?><tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal" itunes:timing="Word"><body><div><p begin="1s" end="3s">Why\'d you wanna go</p></div></body></tt>';
         const normalized = normalizeTtmlWordTiming(input);
         const document = new DOMParser().parseFromString(normalized, 'application/xml');
         const line = document.getElementsByTagNameNS('http://www.w3.org/ns/ttml', 'p')[0];
@@ -46,7 +46,7 @@ describe('LRC lyrics formatting', () => {
 
     it('turns parenthesized vocals into an AMLL/Spicy background lane', () => {
         const input =
-            '<?xml version="1.0"?><tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata"><body><div><p begin="1s" end="3s">Main line (background voice)</p></div></body></tt>';
+            '<?xml version="1.0"?><tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata" xmlns:itunes="http://music.apple.com/lyric-ttml-internal" itunes:timing="Word"><body><div><p begin="1s" end="3s">Main line (background voice)</p></div></body></tt>';
         const normalized = normalizeTtmlWordTiming(input);
         const document = new DOMParser().parseFromString(normalized, 'application/xml');
         const background = document.querySelector('[*|role="x-bg"]');
@@ -57,7 +57,7 @@ describe('LRC lyrics formatting', () => {
 
     it('restores the missing opening duet lane in the Stars Apple export', () => {
         const input =
-            '<?xml version="1.0"?><tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal"><head><metadata><ttm:title xmlns:ttm="http://www.w3.org/ns/ttml#metadata">Stars</ttm:title><ttm:artist xmlns:ttm="http://www.w3.org/ns/ttml#metadata">PinkPantheress</ttm:artist></metadata></head><body><div><p begin="1s" end="2s">Why\'d you wanna go (why\'d you wanna go)</p><p begin="2s" end="3s">You need somebody, baby, just call me</p><p begin="3s" end="4s">Tell me what always keeps you up at night</p></div></body></tt>';
+            '<?xml version="1.0"?><tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal" itunes:timing="Word"><head><metadata><ttm:title xmlns:ttm="http://www.w3.org/ns/ttml#metadata">Stars</ttm:title><ttm:artist xmlns:ttm="http://www.w3.org/ns/ttml#metadata">PinkPantheress</ttm:artist></metadata></head><body><div><p begin="1s" end="2s">Why\'d you wanna go (why\'d you wanna go)</p><p begin="2s" end="3s">You need somebody, baby, just call me</p><p begin="3s" end="4s">Tell me what always keeps you up at night</p></div></body></tt>';
         const normalized = normalizeTtmlWordTiming(input);
         const document = new DOMParser().parseFromString(normalized, 'application/xml');
         const lines = Array.from(document.getElementsByTagNameNS('http://www.w3.org/ns/ttml', 'p'));

@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest';
 
-vi.mock('../accounts/config.js', () => ({ pb: {} }));
+vi.mock('../accounts/config.js', () => ({ pb: {}, auth: {} }));
 import { lifetimeSeries } from '../listening-stats.js';
 
 const today = new Date('2026-10-25T15:00:00');

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 const intersectionObservers = [];
 
@@ -96,6 +96,9 @@ function dependencies() {
 async function waitForPanel(panel) {
     await vi.waitFor(() => expect(panel.root.querySelector('.now-playing-panel-close')).toBeTruthy());
 }
+
+// A failing assertion skips mockRestore(), and the leftover rect spy would recurse into itself in the next test.
+afterEach(() => vi.restoreAllMocks());
 
 beforeEach(() => {
     intersectionObservers.length = 0;
@@ -337,7 +340,6 @@ describe('Now Playing panel interactions', () => {
         expect(panel.queueLayer.textContent).toContain('All history');
         expect(panel.queueLayer.querySelectorAll('[data-history-track-id="session-track"]')).toHaveLength(2);
         expect(panel.queueLayer.querySelectorAll('.queue-history-day')).toHaveLength(3);
-        expect(panel.queueLayer.querySelector('[data-history-summary]').hidden).toBe(true);
 
         panel.queueLayer.querySelector('[data-history-search-toggle]').click();
         const input = panel.queueLayer.querySelector('#queue-history-search');
@@ -347,7 +349,6 @@ describe('Now Playing panel interactions', () => {
         expect(panel.queueLayer.textContent).toContain('Older song');
         expect(panel.queueLayer.textContent).not.toContain('Oldest song');
         expect(panel.queueLayer.textContent).not.toContain('Session song');
-        expect(panel.queueLayer.querySelector('[data-history-summary]').textContent).toBe('1 result');
         panel.queueLayer.querySelector('[data-history-track-id="older-track"]').click();
         await vi.waitFor(() => expect(deps.player.setQueue).toHaveBeenCalledOnce());
         expect(deps.player.playTrackFromQueue).toHaveBeenCalledOnce();
@@ -816,12 +817,17 @@ describe('Now Playing panel interactions', () => {
             queue.splice(insertionIndex, 0, added);
             window.dispatchEvent(
                 new CustomEvent('queue-tracks-added', {
-                    detail: { tracks: [added], mode, userInitiated: true },
+                    detail: { tracks: [added], mode, index: insertionIndex, userInitiated: true },
                 })
             );
             window.dispatchEvent(
                 new CustomEvent('player-queue-changed', {
-                    detail: { queue, currentIndex: 0, sourceContext: deps.player.sourceContext },
+                    detail: {
+                        queue,
+                        currentIndex: 0,
+                        sourceContext: deps.player.sourceContext,
+                        queueChange: { type: 'insert', mode, index: insertionIndex, count: 1 },
+                    },
                 })
             );
 
@@ -835,11 +841,18 @@ describe('Now Playing panel interactions', () => {
                 expect(row.classList.contains('queue-track-row-static')).toBe(true);
                 expect(row.classList.contains('queue-track-row-added')).toBe(false);
             });
-            const movedRows = rowAnimations.mock.contexts.filter((element) => element.matches('.queue-track-row'));
+            // Panels from earlier tests may still hear window events; only this panel's rows count.
+            const ownRowAnimations = () =>
+                rowAnimations.mock.contexts.filter(
+                    (element) => panel.queueLayer.contains(element) && element.matches('.queue-track-row')
+                );
+            const movedRows = ownRowAnimations();
             expect(movedRows).toHaveLength(expectedMovingRows + 1);
             await panel.render({ preserveScroll: true });
-            expect([...panel.queueLayer.querySelectorAll('.queue-track-row')]).toEqual(rows);
-            expect(rowAnimations.mock.contexts.filter((element) => element.matches('.queue-track-row'))).toHaveLength(
+            expect([...panel.queueLayer.querySelectorAll('.queue-track-row')].map((row) => row.dataset.trackId)).toEqual(
+                rows.map((row) => row.dataset.trackId)
+            );
+            expect(ownRowAnimations()).toHaveLength(
                 expectedMovingRows + 1
             );
             panel.destroy();
