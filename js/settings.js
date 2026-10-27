@@ -6266,6 +6266,24 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
+    const sidebarShowSocialToggle = document.getElementById('sidebar-show-social-toggle');
+    if (sidebarShowSocialToggle) {
+        sidebarShowSocialToggle.checked = sidebarSectionSettings.shouldShowSocial();
+        sidebarShowSocialToggle.addEventListener('change', (e) => {
+            sidebarSectionSettings.setShowSocial(e.target.checked);
+            sidebarSectionSettings.applySidebarVisibility();
+        });
+    }
+
+    const sidebarShowUploadToggle = document.getElementById('sidebar-show-upload-toggle');
+    if (sidebarShowUploadToggle) {
+        sidebarShowUploadToggle.checked = sidebarSectionSettings.shouldShowUpload();
+        sidebarShowUploadToggle.addEventListener('change', (e) => {
+            sidebarSectionSettings.setShowUpload(e.target.checked);
+            sidebarSectionSettings.applySidebarVisibility();
+        });
+    }
+
     const sidebarAccentActiveToggle = document.getElementById('sidebar-accent-active-toggle');
     if (sidebarAccentActiveToggle) {
         sidebarAccentActiveToggle.checked = sidebarSectionSettings.usesAccentActive();
