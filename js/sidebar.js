@@ -1,7 +1,7 @@
 // Sidebar: active-tab indicator, collapse toggle and the Recents shelf (pinned items + recently played sources).
 import { db } from './db.js';
 import { SVG_HEART_FILLED, SVG_PIN } from './icons.js';
-import { sidebarSettings } from './storage.js';
+import { sidebarSectionSettings, sidebarSettings } from './storage.js';
 import { escapeHtml } from './utils.js';
 
 const RECENTS_KEY = 'monochrome-sidebar-recents';
@@ -264,6 +264,7 @@ export function initSidebar(playerInstance, apiInstance) {
     api = apiInstance;
 
     syncToggle();
+    sidebarSectionSettings.applyAccentActive();
     document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
         const collapsed = document.body.classList.toggle('sidebar-collapsed');
         sidebarSettings.setCollapsed(collapsed);

@@ -164,6 +164,10 @@ body.sidebar-collapsed .sidebar-toggle svg {
     color: var(--foreground);
 }
 
+body.sidebar-accent-active .sidebar-nav .nav-item a.active {
+    color: var(--primary-foreground, var(--foreground));
+}
+
 .sidebar-nav .nav-item a:active {
     scale: 0.98;
 }
@@ -192,6 +196,10 @@ body.sidebar-collapsed .sidebar-toggle svg {
     transition:
         transform 380ms var(--sidebar-settle),
         opacity 180ms ease;
+}
+
+body.sidebar-accent-active .sidebar-nav-indicator {
+    background: var(--primary, var(--sidebar-active));
 }
 
 .sidebar-nav-indicator.is-instant {

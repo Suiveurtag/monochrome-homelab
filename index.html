@@ -1978,12 +1978,6 @@
                                     <span id="social-unread-badge" class="social-unread-badge" hidden>0</span>
                                 </a>
                             </li>
-                            <li class="nav-item" id="sidebar-nav-recent">
-                                <a href="/stats">
-                                    <use svg="!lucide/chart-no-axes-combined.svg" size="20" />
-                                    <span class="sidebar-label">Listening stats</span>
-                                </a>
-                            </li>
                         </ul>
                     </nav>
 
@@ -2018,6 +2012,12 @@
 
                     <nav class="sidebar-nav bottom" aria-label="App">
                         <ul>
+                            <li class="nav-item" id="sidebar-nav-recent">
+                                <a href="/stats">
+                                    <use svg="!lucide/chart-no-axes-combined.svg" size="20" />
+                                    <span class="sidebar-label">Stats</span>
+                                </a>
+                            </li>
                             <li class="nav-item" id="sidebar-nav-settings">
                                 <a href="/settings">
                                     <use svg="!lucide/settings.svg" size="20" />
@@ -4828,6 +4828,21 @@
                                             <span class="slider"></span>
                                         </label>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-group">
+                                <div class="setting-item">
+                                    <div class="info">
+                                        <span class="label">Accent Color on Active Tab</span>
+                                        <span class="description"
+                                            >Tint the active sidebar tab with the current track's color. Off keeps it grey.</span
+                                        >
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="sidebar-accent-active-toggle" checked />
+                                        <span class="slider"></span>
+                                    </label>
                                 </div>
                             </div>
 

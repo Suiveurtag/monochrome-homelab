@@ -6266,6 +6266,14 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
+    const sidebarAccentActiveToggle = document.getElementById('sidebar-accent-active-toggle');
+    if (sidebarAccentActiveToggle) {
+        sidebarAccentActiveToggle.checked = sidebarSectionSettings.usesAccentActive();
+        sidebarAccentActiveToggle.addEventListener('change', (e) => {
+            sidebarSectionSettings.setUseAccentActive(e.target.checked);
+        });
+    }
+
     const sidebarShowSettingsToggle = document.getElementById('sidebar-show-settings-toggle');
     if (sidebarShowSettingsToggle) {
         sidebarShowSettingsToggle.checked = true;

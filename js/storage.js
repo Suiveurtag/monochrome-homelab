@@ -2460,6 +2460,7 @@ export const sidebarSectionSettings = {
     SHOW_SETTINGS_KEY: 'sidebar-show-settings',
     SHOW_GITHUB_KEY: 'sidebar-show-github',
     SHOW_PARTY_KEY: 'sidebar-show-party',
+    ACCENT_ACTIVE_KEY: 'sidebar-accent-active',
     ORDER_KEY: 'sidebar-menu-order',
     DEFAULT_ORDER: [
         'sidebar-nav-home',
@@ -2506,14 +2507,33 @@ export const sidebarSectionSettings = {
 
     shouldShowRecent() {
         try {
-            return localStorage.getItem(this.SHOW_RECENT_KEY) === 'true';
+            const val = localStorage.getItem(this.SHOW_RECENT_KEY);
+            return val === null ? true : val === 'true';
         } catch {
-            return false;
+            return true;
         }
     },
 
     setShowRecent(enabled) {
         localStorage.setItem(this.SHOW_RECENT_KEY, enabled ? 'true' : 'false');
+    },
+
+    usesAccentActive() {
+        try {
+            const val = localStorage.getItem(this.ACCENT_ACTIVE_KEY);
+            return val === null ? true : val === 'true';
+        } catch {
+            return true;
+        }
+    },
+
+    setUseAccentActive(enabled) {
+        localStorage.setItem(this.ACCENT_ACTIVE_KEY, enabled ? 'true' : 'false');
+        this.applyAccentActive();
+    },
+
+    applyAccentActive() {
+        document.body.classList.toggle('sidebar-accent-active', this.usesAccentActive());
     },
 
     shouldShowSettings() {
