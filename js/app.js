@@ -1476,14 +1476,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    document.getElementById('nav-back')?.addEventListener('click', () => {
-        window.history.back();
-    });
-
-    document.getElementById('nav-forward')?.addEventListener('click', () => {
-        window.history.forward();
-    });
-
     document.getElementById('toggle-lyrics-btn')?.addEventListener('click', async (e) => {
         e.stopPropagation();
         if (!Player.instance.currentTrack) {

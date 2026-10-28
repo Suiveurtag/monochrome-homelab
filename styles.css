@@ -2631,44 +2631,6 @@ body.site-intro-active {
     height: 100%;
 }
 
-.navigation-controls {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-}
-
-.nav-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-full);
-    background-color: var(--card);
-    border: 1px solid var(--border);
-
-    /* Better definition */
-    color: var(--foreground);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition:
-        transform var(--transition-fast),
-        background-color var(--transition-fast),
-        box-shadow var(--transition-fast);
-    box-shadow: var(--shadow-sm);
-}
-
-.nav-btn:hover {
-    background-color: var(--secondary);
-    transform: scale(1.1);
-    box-shadow: var(--shadow-md);
-}
-
-.nav-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-}
-
 .hamburger-menu {
     display: none;
     background: transparent;
