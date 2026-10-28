@@ -187,12 +187,26 @@
     color: var(--debug-bright);
 }
 
-.admin-debug-option input:checked ~ span:last-child {
+.admin-debug-option input:checked ~ span:last-of-type {
     color: var(--debug-bright);
 }
 
 .admin-debug-option input:disabled ~ span {
     opacity: 0.5;
+}
+
+.admin-debug-option .admin-debug-count {
+    position: static;
+    width: 4.5em;
+    margin-left: auto;
+    padding: 2px 6px;
+    font: inherit;
+    color: var(--debug-bright);
+    background: transparent;
+    border: 1px solid rgb(74 222 128 / 55%);
+    border-radius: 3px;
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .admin-debug-status {

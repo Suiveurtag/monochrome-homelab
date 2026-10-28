@@ -2049,16 +2049,36 @@
                         <use svg="!lucide/menu.svg" size="24" />
                     </button>
                     <form class="search-bar" id="search-form">
-                        <use svg="!lucide/search.svg" class="search-icon" size="24" />
-                        <input
-                            type="search"
-                            id="search-input"
-                            placeholder="Search for tracks, artists, albums..."
-                            autocomplete="off"
-                            autocorrect="off"
-                            autocapitalize="off"
-                            spellcheck="false"
-                        />
+                        <svg class="gooey-filter" aria-hidden="true">
+                            <defs>
+                                <filter id="gooey-search" x="-50%" y="-50%" width="200%" height="200%">
+                                    <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+                                    <feColorMatrix
+                                        in="blur"
+                                        type="matrix"
+                                        values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -10"
+                                        result="goo"
+                                    />
+                                    <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+                                </filter>
+                            </defs>
+                        </svg>
+                        <div class="gooey-wrap">
+                            <span class="gooey-bubble"><use svg="!lucide/search.svg" size="18" /></span>
+                            <label class="gooey-pill">
+                                <use svg="!lucide/search.svg" class="search-icon" size="18" />
+                                <input
+                                    type="search"
+                                    id="search-input"
+                                    placeholder="Search"
+                                    enterkeyhint="search"
+                                    autocomplete="off"
+                                    autocorrect="off"
+                                    autocapitalize="off"
+                                    spellcheck="false"
+                                />
+                            </label>
+                        </div>
                         <button
                             type="button"
                             class="search-clear-btn btn-icon"
@@ -2067,7 +2087,7 @@
                         >
                             &times;
                         </button>
-                        <div id="search-history" class="search-history" style="display: none"></div>
+                        <div id="search-history" class="search-history" hidden></div>
                     </form>
                     <div class="header-account-control">
                         <button

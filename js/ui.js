@@ -1169,7 +1169,9 @@ export class UIRenderer {
     setupSearchClearButton(inputElement, clearBtnSelector = '.search-clear-btn') {
         if (!inputElement) return;
 
-        const clearBtn = inputElement.parentElement?.querySelector(clearBtnSelector);
+        const clearBtn = (inputElement.closest('.search-bar') || inputElement.parentElement)?.querySelector(
+            clearBtnSelector
+        );
         if (!clearBtn) return;
 
         // Remove old listener if exists
@@ -1884,7 +1886,9 @@ export class UIRenderer {
                 overlay.classList.remove('lyrics-unavailable');
                 clearFullscreenLyricsSync(lyricsContent);
                 const renderFullscreenLyrics =
-                    this.fullscreenLyricsRenderer === 'spicy' ? renderSpicyLyricsInFullscreen : renderLyricsInFullscreen;
+                    this.fullscreenLyricsRenderer === 'spicy'
+                        ? renderSpicyLyricsInFullscreen
+                        : renderLyricsInFullscreen;
                 const lyricsElement = await renderFullscreenLyrics(
                     track,
                     fullscreenAudioElement,
@@ -2456,8 +2460,7 @@ export class UIRenderer {
         const renderController = new AbortController();
         const generation = ++this.fullscreenOpenGeneration;
         this.fullscreenRenderController = renderController;
-        const isCurrentRequest = () =>
-            this.fullscreenOpenGeneration === generation && !renderController.signal.aborted;
+        const isCurrentRequest = () => this.fullscreenOpenGeneration === generation && !renderController.signal.aborted;
 
         clearFullscreenLyricsSync(lyricsContent);
         lyricsContent.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
@@ -4224,70 +4227,6 @@ export class UIRenderer {
             playlistsContainer.innerHTML = errorMsg;
             if (podcastsContainer) podcastsContainer.innerHTML = '';
         }
-    }
-
-    renderSearchHistory() {
-        const historyEl = document.getElementById('search-history');
-        if (!historyEl) return;
-        const history = JSON.parse(localStorage.getItem('search-history') || '[]');
-        if (history.length === 0) {
-            historyEl.style.display = 'none';
-            return;
-        }
-        historyEl.innerHTML =
-            history
-                .map(
-                    (query) => `
-            <div class="search-history-item" data-query="${escapeHtml(query)}">
-                ${SVG_CLOCK(16)}
-                <span class="query-text">${escapeHtml(query)}</span>
-                <span class="delete-history-btn" title="Remove from history">
-                    ${SVG_CLOSE(14)}
-                </span>
-            </div>
-        `
-                )
-                .join('') +
-            `
-            <div class="search-history-clear-all" id="clear-search-history">
-                Clear all history
-            </div>
-        `;
-        historyEl.style.display = 'block';
-
-        historyEl.querySelectorAll('.search-history-item').forEach((item) => {
-            item.addEventListener('click', (e) => {
-                if (e.target.closest('.delete-history-btn')) {
-                    e.stopPropagation();
-                    this.removeFromSearchHistory(item.dataset.query);
-                    return;
-                }
-                const query = item.dataset.query;
-                const searchInput = document.getElementById('search-input');
-                if (searchInput) {
-                    searchInput.value = query;
-                    searchInput.dispatchEvent(new Event('input'));
-                    historyEl.style.display = 'none';
-                }
-            });
-        });
-
-        const clearBtn = document.getElementById('clear-search-history');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                localStorage.removeItem('search-history');
-                this.renderSearchHistory();
-            });
-        }
-    }
-
-    removeFromSearchHistory(query) {
-        let history = JSON.parse(localStorage.getItem('search-history') || '[]');
-        history = history.filter((q) => q !== query);
-        localStorage.setItem('search-history', JSON.stringify(history));
-        this.renderSearchHistory();
     }
 
     addToSearchHistory(query) {

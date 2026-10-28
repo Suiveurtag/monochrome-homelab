@@ -1,4 +1,5 @@
 //js/app.js
+import { initSearchSuggestions } from './search-suggestions.js';
 import discordSvg from '../images/discord.svg?svg&size=22';
 import googleSvg from '../images/google.svg?svg&size=22';
 import githubSvg from '../images/github.svg?svg&size=22';
@@ -2956,19 +2957,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    searchInput.addEventListener('focus', () => {
-        UIRenderer.instance.renderSearchHistory();
-    });
-
-    searchInput.addEventListener('click', () => {
-        UIRenderer.instance.renderSearchHistory();
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.search-bar')) {
-            const historyEl = document.getElementById('search-history');
-            if (historyEl) historyEl.style.display = 'none';
-        }
+    const suggestions = initSearchSuggestions({
+        input: searchInput,
+        form: searchForm,
+        panel: document.getElementById('search-history'),
     });
 
     searchForm.addEventListener('submit', (e) => {
@@ -2979,8 +2971,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!handleExternalLink(query)) {
             UIRenderer.instance.addToSearchHistory(query);
             performSearch(query);
-            const historyEl = document.getElementById('search-history');
-            if (historyEl) historyEl.style.display = 'none';
+            suggestions.close();
         }
     });
 

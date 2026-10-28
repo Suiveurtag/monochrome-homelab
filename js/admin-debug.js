@@ -15,7 +15,10 @@ const KONAMI = [
     'a',
     'enter',
 ];
-const OPTIONS = [{ field: 'debug_recaps_always', label: 'weekly & monthly recap always available' }];
+const OPTIONS = [
+    { field: 'debug_recaps_always', label: 'weekly & monthly recap always available' },
+    { field: 'debug_fake_users', label: 'fake social users (Overwatch)', count: 'debug_fake_users_count' },
+];
 
 const BANNER = String.raw` ____  _____ ____  _   _  ____
 |  _ \| ____| __ )| | | |/ ___|
@@ -86,20 +89,23 @@ async function boot(overlay, log) {
     list.setAttribute('role', 'group');
     list.setAttribute('aria-label', 'Debug options');
     list.innerHTML = OPTIONS.map(
-        ({ field, label }, i) =>
-            `<label class="admin-debug-option" style="--i:${i}"><input type="checkbox" role="switch" data-debug-field="${field}"${config[field] ? ' checked' : ''} /><span class="admin-debug-box" aria-hidden="true"></span><span>${label}</span></label>`
+        ({ field, label, count }, i) =>
+            `<label class="admin-debug-option" style="--i:${i}"><input type="checkbox" role="switch" data-debug-field="${field}"${config[field] ? ' checked' : ''} /><span class="admin-debug-box" aria-hidden="true"></span><span>${label}</span>${count ? `<input type="number" class="admin-debug-count" min="1" max="100" step="1" aria-label="number of fake users" data-debug-field="${count}" value="${config[count] || 10}" />` : ''}</label>`
     ).join('');
     log.append(list);
     const status = line('admin-debug-line admin-debug-status');
     status.setAttribute('role', 'status');
     list.addEventListener('change', async (event) => {
         const input = event.target;
+        const checkbox = input.type === 'checkbox';
+        const value = checkbox ? input.checked : input.valueAsNumber;
         input.disabled = true;
         try {
-            await save(input.dataset.debugField, input.checked);
-            status.textContent = `> ${input.dataset.debugField} = ${input.checked}`;
+            await save(input.dataset.debugField, value);
+            status.textContent = `> ${input.dataset.debugField} = ${value}`;
         } catch (error) {
-            input.checked = !input.checked;
+            if (checkbox) input.checked = !input.checked;
+            else input.value = getCachedAppConfig()[input.dataset.debugField] || 10;
             status.textContent = `> error: ${error.message || 'could not save'}`;
         } finally {
             input.disabled = false;
