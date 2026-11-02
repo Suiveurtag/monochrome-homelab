@@ -2601,10 +2601,26 @@ body.site-intro-active {
     width: 100%;
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.header-notifications-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .header-account-control {
     position: relative;
     flex-shrink: 0;
-    margin-left: auto;
 }
 
 #header-account-dropdown {
