@@ -2676,13 +2676,14 @@ body.site-intro-active {
 }
 
 .gooey-pill {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 0.5rem;
     height: 40px;
     width: 280px;
     margin-left: 0;
-    padding: 0 1rem;
+    padding: 0 1rem 0 0.6875rem;
     border-radius: 999px;
     cursor: text;
     transition:
@@ -2702,7 +2703,7 @@ body.site-intro-active {
     flex: 1;
     min-width: 0;
     height: 100%;
-    padding: 0 1.5rem 0 0;
+    padding: 0 2.25rem 0 0;
     background: transparent;
     border: 0;
     outline: none;
@@ -2735,7 +2736,7 @@ body.site-intro-active {
     margin-left: 50px;
 }
 
-.search-bar:is(:focus-within, :has(input:not(:placeholder-shown))) .gooey-pill svg {
+.search-bar:is(:focus-within, :has(input:not(:placeholder-shown))) .gooey-pill > svg {
     opacity: 0;
     width: 0;
     margin-right: -0.5rem;
@@ -2746,9 +2747,22 @@ body.site-intro-active {
     opacity: 1;
 }
 
-.search-bar .search-clear-btn {
+/* Clear button lives inside the pill, so it shares its rounded end */
+.gooey-pill .search-clear-btn {
+    position: absolute;
+    right: 0.375rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 50%;
     color: var(--muted-foreground);
-    right: 0.5rem;
+}
+
+.gooey-pill .search-clear-btn:hover {
+    background: var(--muted);
+    color: var(--foreground);
 }
 
 @media (prefers-reduced-motion: reduce) {
