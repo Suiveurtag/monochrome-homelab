@@ -254,6 +254,18 @@ function initNavIndicators() {
     });
 }
 
+// Nav icons are hand-made animated SVGs (SMIL); a click on the tab plays that icon once.
+function initNavIconAnimations() {
+    document.querySelectorAll('.sidebar-nav .nav-item a').forEach((link) => {
+        const icon = link.querySelector('svg.nav-anim-icon');
+        if (!icon) return;
+        link.addEventListener('click', () => {
+            if (reducedMotion.matches) return;
+            icon.querySelectorAll('animate, animateTransform').forEach((anim) => anim.beginElement());
+        });
+    });
+}
+
 function syncToggle() {
     const toggle = document.getElementById('sidebar-toggle');
     if (!toggle) return;
@@ -269,6 +281,7 @@ export function initSidebar(playerInstance, apiInstance) {
     api = apiInstance;
 
     syncToggle();
+    initNavIconAnimations();
     sidebarSectionSettings.applyAccentActive();
     document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
         const collapsed = document.body.classList.toggle('sidebar-collapsed');
