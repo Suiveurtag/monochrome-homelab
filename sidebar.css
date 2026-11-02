@@ -26,18 +26,27 @@
 
 /* Labels fade out before the rail closes and back in once it has room. */
 .sidebar-label,
-.sidebar-library-text {
+.sidebar-library-text,
+.sidebar-library-empty {
     transition:
         opacity 200ms ease 80ms,
         translate 200ms var(--sidebar-ease) 80ms;
 }
 
 body.sidebar-collapsed .sidebar-label,
-body.sidebar-collapsed .sidebar-library-text {
+body.sidebar-collapsed .sidebar-library-text,
+body.sidebar-collapsed .sidebar-library-empty {
     opacity: 0;
     translate: -4px 0;
     pointer-events: none;
     transition-duration: 120ms;
+    transition-delay: 0s;
+}
+
+/* Keep the empty-state copy hidden until the sidebar has finished widening. */
+body.sidebar-expanding .sidebar-library-empty {
+    opacity: 0;
+    translate: -4px 0;
     transition-delay: 0s;
 }
 
@@ -715,7 +724,6 @@ body.sidebar-collapsed .sidebar-library-item.is-current .sidebar-library-art {
     outline-offset: 2px;
 }
 
-
 /* Expanding the rows drop into place, collapsing they rise; each one starts a little after the last. */
 @keyframes sidebar-row-drop {
     from {
@@ -786,5 +794,195 @@ body.sidebar-collapsed .sidebar-library-item.is-current .sidebar-library-art {
         transition-duration: 0s !important;
         transition-delay: 0s !important;
         animation: none !important;
+    }
+}
+
+/* ---- Nav icon animations: played once when a tab is clicked (JS toggles .icon-anim on the link) ---- */
+
+@media (prefers-reduced-motion: no-preference) {
+    .sidebar-nav a.icon-anim svg :is(path, circle) {
+        transform-box: fill-box;
+        transform-origin: center;
+    }
+
+    /* Music: the note hops and settles */
+    #sidebar-nav-home a.icon-anim svg {
+        animation: nav-icon-hop 600ms var(--sidebar-ease);
+    }
+
+    /* Library: the books lean out of the shelf one after another */
+    #sidebar-nav-library a.icon-anim svg path {
+        transform-origin: 50% 100%;
+        animation: nav-icon-book 700ms var(--sidebar-ease);
+    }
+    #sidebar-nav-library a.icon-anim svg path:nth-child(3) {
+        animation-delay: 70ms;
+    }
+    #sidebar-nav-library a.icon-anim svg path:nth-child(2) {
+        animation-delay: 140ms;
+    }
+    #sidebar-nav-library a.icon-anim svg path:nth-child(1) {
+        animation-delay: 210ms;
+    }
+
+    /* Social: the left bubble slides in from the left, the right one from the right, pushing the old ones out */
+    #sidebar-nav-social a.icon-anim svg path:nth-child(1) {
+        animation: nav-icon-chat-left 800ms var(--sidebar-ease);
+    }
+    #sidebar-nav-social a.icon-anim svg path:nth-child(2) {
+        animation: nav-icon-chat-right 800ms var(--sidebar-ease) 120ms backwards;
+    }
+
+    /* Stats: the bars grow, then the trend line draws itself */
+    #sidebar-nav-recent a.icon-anim svg path:not(:nth-child(4)) {
+        transform-origin: 50% 100%;
+        animation: nav-icon-bar 600ms var(--sidebar-ease) backwards;
+    }
+    #sidebar-nav-recent a.icon-anim svg path:nth-child(5) {
+        animation-delay: 60ms;
+    }
+    #sidebar-nav-recent a.icon-anim svg path:nth-child(1) {
+        animation-delay: 120ms;
+    }
+    #sidebar-nav-recent a.icon-anim svg path:nth-child(2) {
+        animation-delay: 180ms;
+    }
+    #sidebar-nav-recent a.icon-anim svg path:nth-child(3) {
+        animation-delay: 240ms;
+    }
+    #sidebar-nav-recent a.icon-anim svg path:nth-child(4) {
+        stroke-dasharray: 40;
+        animation: nav-icon-draw 700ms ease-out 200ms backwards;
+    }
+
+    /* Settings: the cog makes a full turn */
+    #sidebar-nav-settings a.icon-anim svg {
+        animation: nav-icon-spin 800ms cubic-bezier(0.65, 0, 0.35, 1);
+    }
+
+    /* Upload: the arrow shoots up and a fresh one rises from the tray */
+    #sidebar-nav-upload a.icon-anim svg path:nth-child(-n + 2) {
+        animation: nav-icon-up 700ms cubic-bezier(0.5, 0, 0.3, 1);
+    }
+
+    /* Admin: the check draws itself */
+    #sidebar-nav-admin a.icon-anim svg path:nth-child(2) {
+        stroke-dasharray: 10;
+        animation: nav-icon-draw-check 600ms ease-out;
+    }
+    #sidebar-nav-admin a.icon-anim svg path:nth-child(1) {
+        animation: nav-icon-pop 500ms var(--sidebar-ease);
+    }
+}
+
+@keyframes nav-icon-hop {
+    30% {
+        transform: translateY(-4px) rotate(-8deg);
+    }
+    60% {
+        transform: translateY(1px) rotate(4deg);
+    }
+}
+
+@keyframes nav-icon-book {
+    35% {
+        transform: translateY(-3px) rotate(-10deg);
+    }
+    70% {
+        transform: translateY(0) rotate(3deg);
+    }
+}
+
+@keyframes nav-icon-chat-left {
+    0% {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+    30% {
+        transform: translate(0, -9px);
+        opacity: 0;
+    }
+    31% {
+        transform: translate(-16px, 0);
+        opacity: 0;
+    }
+    100% {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+}
+
+@keyframes nav-icon-chat-right {
+    0% {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+    30% {
+        transform: translate(0, 9px);
+        opacity: 0;
+    }
+    31% {
+        transform: translate(16px, 0);
+        opacity: 0;
+    }
+    100% {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+}
+
+@keyframes nav-icon-bar {
+    from {
+        transform: scaleY(0);
+        opacity: 0;
+    }
+}
+
+@keyframes nav-icon-draw {
+    from {
+        stroke-dashoffset: 40;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes nav-icon-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes nav-icon-up {
+    0% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    45% {
+        transform: translateY(-14px);
+        opacity: 0;
+    }
+    46% {
+        transform: translateY(14px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes nav-icon-draw-check {
+    from {
+        stroke-dashoffset: 10;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes nav-icon-pop {
+    40% {
+        transform: scale(1.12);
     }
 }
