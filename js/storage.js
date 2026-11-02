@@ -2160,6 +2160,27 @@ export const sidebarSettings = {
     },
 };
 
+export const nowPlayingPanelSettings = {
+    STORAGE_KEY: 'monochrome-now-playing-panel-open',
+
+    // Desktop only: the panel is open unless the user last collapsed it.
+    isOpen() {
+        try {
+            return localStorage.getItem(this.STORAGE_KEY) !== 'false';
+        } catch {
+            return true;
+        }
+    },
+
+    setOpen(open) {
+        try {
+            localStorage.setItem(this.STORAGE_KEY, open ? 'true' : 'false');
+        } catch {
+            // Storage blocked: the panel just falls back to open on next load.
+        }
+    },
+};
+
 export const listenBrainzSettings = {
     ENABLED_KEY: 'listenbrainz-enabled',
     TOKEN_KEY: 'listenbrainz-token',

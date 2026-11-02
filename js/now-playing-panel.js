@@ -14,7 +14,7 @@ import { audioContextManager } from './audio-context.js';
 import { listeningTracker } from './listening-tracker.js';
 import { canvasSettings } from './canvas-settings.js';
 import { getTrackDisplayAlbum, getTrackPlayerArtwork } from './track-versions.js';
-import { crossfadeSettings, gaplessPlaybackSettings } from './storage.js';
+import { crossfadeSettings, gaplessPlaybackSettings, nowPlayingPanelSettings } from './storage.js';
 import { keyboardShortcuts, matchesShortcut } from './keyboard-shortcuts.js';
 import ICON_CHEVRON_RIGHT from '!lucide/chevron-right.svg?svg&icon';
 import ICON_ELLIPSIS from '!lucide/ellipsis.svg?svg&icon';
@@ -231,8 +231,8 @@ export class NowPlayingPanel {
               })
             : null;
         this.desktopMedia = matchMedia(DESKTOP_PANEL_QUERY);
-        this.desktopOpenState = true;
-        this.isOpen = this.desktopMedia.matches;
+        this.desktopOpenState = nowPlayingPanelSettings.isOpen();
+        this.isOpen = this.desktopMedia.matches && this.desktopOpenState;
         this.fullscreenOverlay = document.getElementById('fullscreen-cover-overlay');
         this.fullscreenObserver = null;
         this.fullscreenVisible = false;
@@ -526,7 +526,10 @@ export class NowPlayingPanel {
         const desktopAvailable = this.desktopMedia.matches;
         const queueAvailable = this.activeView === 'queue';
         const panelAvailable = desktopAvailable || queueAvailable;
-        if (!preserveDesktopState && desktopAvailable) this.desktopOpenState = Boolean(open);
+        if (!preserveDesktopState && desktopAvailable) {
+            this.desktopOpenState = Boolean(open);
+            nowPlayingPanelSettings.setOpen(this.desktopOpenState);
+        }
         this.isOpen = panelAvailable && Boolean(open);
         this.root.classList.toggle('is-closed', !this.isOpen);
         this.root.setAttribute('aria-hidden', String(!this.isOpen));
