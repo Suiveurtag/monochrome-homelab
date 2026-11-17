@@ -104,6 +104,14 @@ export async function initializeSettings(scrobbler, player, api, ui) {
             playerBarEffectsSettings.setMagicRingsEnabled(event.target.checked);
         });
     }
+
+    const playerScrubLyricsToggle = document.getElementById('player-scrub-lyrics-toggle');
+    if (playerScrubLyricsToggle) {
+        playerScrubLyricsToggle.checked = playerBarEffectsSettings.areScrubLyricsEnabled();
+        playerScrubLyricsToggle.addEventListener('change', (event) => {
+            playerBarEffectsSettings.setScrubLyricsEnabled(event.target.checked);
+        });
+    }
     const canvasEnabledToggle = document.getElementById('canvas-enabled-toggle');
     if (canvasEnabledToggle) {
         canvasEnabledToggle.checked = canvasSettings.isEnabled();

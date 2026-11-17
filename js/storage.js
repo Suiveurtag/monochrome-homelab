@@ -383,6 +383,7 @@ const PLAYER_BAR_EFFECTS = new Set(['none', 'soft-aurora', 'side-rays', 'silk', 
 export const playerBarEffectsSettings = {
     STORAGE_KEY: 'player-bar-background-effect',
     MAGIC_RINGS_KEY: 'player-magic-rings-enabled',
+    SCRUB_LYRICS_KEY: 'player-scrub-lyrics-enabled',
 
     getEffect() {
         try {
@@ -410,6 +411,18 @@ export const playerBarEffectsSettings = {
     setMagicRingsEnabled(enabled) {
         localStorage.setItem(this.MAGIC_RINGS_KEY, String(enabled));
         window.dispatchEvent(new CustomEvent('player-magic-rings-changed', { detail: { enabled } }));
+    },
+
+    areScrubLyricsEnabled() {
+        try {
+            return localStorage.getItem(this.SCRUB_LYRICS_KEY) !== 'false';
+        } catch {
+            return true;
+        }
+    },
+
+    setScrubLyricsEnabled(enabled) {
+        localStorage.setItem(this.SCRUB_LYRICS_KEY, String(enabled));
     },
 };
 

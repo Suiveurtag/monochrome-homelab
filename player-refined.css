@@ -940,16 +940,90 @@
     transition-delay: 90ms;
 }
 
-.now-playing-bar .quality-badge.is-floating-panel-open {
-    opacity: 0;
-    transform: scale(0.92);
-}
-
 .player-popover-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0.2rem 0.4rem 0.8rem;
+}
+
+.quality-auto-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: color 160ms ease;
+}
+
+.quality-auto-toggle:has(input:checked) {
+    color: var(--foreground);
+}
+
+.quality-auto-toggle input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.quality-auto-track {
+    /* Sora UI "sm" switch: 36x20 pill, 14px thumb, spring travel (stiffness 500, damping 30). */
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 36px;
+    height: 20px;
+    padding: 2px;
+    box-sizing: border-box;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.16);
+    transition: background-color 150ms ease;
+}
+
+.quality-auto-track::after {
+    content: '';
+    position: absolute;
+    inset: -8px -12px;
+}
+
+.quality-auto-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--foreground);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+    transition:
+        transform 450ms linear(0.0, 0.0725, 0.2366, 0.4313, 0.6176, 0.7744, 0.8936, 0.9757, 1.0256, 1.0507, 1.0583, 1.0549, 1.0457, 1.0344, 1.0234, 1.014, 1.0068, 1.0018, 0.9987, 0.9971, 0.9966, 0.9968, 0.9973, 0.9979, 1),
+        background-color 150ms ease;
+}
+
+.quality-auto-toggle input:checked + .quality-auto-track {
+    background: var(--foreground);
+}
+
+.quality-auto-toggle input:checked + .quality-auto-track .quality-auto-thumb {
+    background: var(--background);
+    transform: translateX(16px);
+}
+
+.quality-auto-toggle:has(input:focus-visible) .quality-auto-track {
+    outline: 3px solid rgb(var(--highlight-rgb), 0.5);
+    outline-offset: 0;
+}
+
+.quality-auto-toggle:has(input:disabled) {
+    cursor: wait;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quality-auto-track,
+    .quality-auto-thumb {
+        transition-duration: 0ms;
+    }
 }
 
 .player-popover-header h3 {
@@ -2332,4 +2406,206 @@
     .now-playing-bar .quality-badge::before {
         animation: none !important;
     }
+}
+
+/* Lyrics preview above the seek bar while scrubbing.
+   The sweep of ink across each word is the one gesture this panel owns; the frame stays quiet. */
+.scrub-lyrics {
+    --scrub-ink: var(--foreground);
+    --scrub-ink-dim: color-mix(in srgb, var(--foreground) 50%, transparent);
+    position: fixed;
+    z-index: 2110;
+    left: 0;
+    bottom: 0;
+    box-sizing: border-box;
+    padding: 0.85rem 1.25rem 0.95rem;
+    border: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent);
+    border-radius: 16px;
+    /* Opaque enough to read over any page; blur only softens what bleeds through. */
+    background: color-mix(in srgb, var(--card) 90%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(1.15);
+    backdrop-filter: blur(20px) saturate(1.15);
+    box-shadow: 0 16px 40px rgb(0 0 0 / 0.24);
+    color: var(--scrub-ink);
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px) scale(0.97);
+    transform-origin: 50% 100%;
+    transition:
+        opacity 150ms ease,
+        transform 180ms var(--ease-out),
+        visibility 0s linear 180ms;
+}
+
+.scrub-lyrics.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    transition:
+        opacity 180ms ease,
+        transform 340ms cubic-bezier(0.22, 1.3, 0.36, 1),
+        visibility 0s;
+}
+
+.scrub-lyrics-reel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.2rem;
+}
+
+.scrub-lyrics-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    font-family: var(--font-family-key, var(--font-family));
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+}
+
+/* The current line reserves two lines so the panel never jumps in height while scrubbing. */
+.scrub-lyrics-row[data-role='current'] {
+    min-height: 2.6em;
+}
+
+.scrub-lyrics-row.is-leaving {
+    position: absolute;
+    left: 0;
+    right: 0;
+}
+
+.scrub-lyrics-text {
+    display: block;
+    max-width: 100%;
+    transition:
+        opacity 240ms ease,
+        transform 340ms cubic-bezier(0.22, 1, 0.36, 1),
+        color 240ms ease;
+}
+
+.scrub-lyrics-row:not([data-role='current']) .scrub-lyrics-text {
+    overflow: hidden;
+    color: var(--scrub-ink-dim);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transform: scale(0.74);
+}
+
+.scrub-lyrics-row[data-role='prev'] .scrub-lyrics-text {
+    transform-origin: 50% 100%;
+}
+
+.scrub-lyrics-row[data-role='next'] .scrub-lyrics-text {
+    transform-origin: 50% 0;
+}
+
+.scrub-lyrics-row[data-role='current'] .scrub-lyrics-text {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: var(--scrub-ink);
+    text-wrap: balance;
+}
+
+.scrub-lyrics-group {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.scrub-lyrics-word {
+    --p: 0;
+    display: inline-block;
+    transition: transform 220ms var(--ease-out);
+}
+
+.scrub-lyrics-word.is-background {
+    font-size: 0.78em;
+    font-weight: 600;
+}
+
+/* Word-timed lyrics: ink sweeps across each syllable with a soft leading edge. */
+.scrub-lyrics[data-mode='word'] .scrub-lyrics-row[data-role='current'] .scrub-lyrics-word {
+    padding-block: 0.08em;
+    margin-block: -0.08em;
+    color: transparent;
+    background: linear-gradient(
+        90deg,
+        var(--scrub-ink) calc(var(--p) * (100% + 0.55em) - 0.55em),
+        var(--scrub-ink-dim) calc(var(--p) * (100% + 0.55em))
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+.scrub-lyrics[data-mode='word'] .scrub-lyrics-row[data-role='current'] .scrub-lyrics-word.is-singing {
+    transform: translateY(-0.07em);
+}
+
+.scrub-lyrics-row.is-gap {
+    gap: 0.5rem;
+    height: 1.3em;
+}
+
+.scrub-lyrics-row.is-gap[data-role='current'] {
+    height: 2.6em;
+}
+
+.scrub-lyrics-dot {
+    --p: 0;
+    width: 0.42rem;
+    height: 0.42rem;
+    border-radius: 50%;
+    background: var(--scrub-ink);
+    opacity: calc(0.18 + var(--p) * 0.82);
+    transform: scale(calc(0.7 + var(--p) * 0.3));
+}
+
+.scrub-lyrics-row.is-gap:not([data-role='current']) .scrub-lyrics-dot {
+    opacity: 0.18;
+    transform: scale(0.6);
+}
+
+@media (max-width: 768px) {
+    .scrub-lyrics {
+        padding: 0.7rem 1rem 0.8rem;
+        border-radius: 14px;
+    }
+
+    .scrub-lyrics-row {
+        font-size: 1.05rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scrub-lyrics,
+    .scrub-lyrics.is-visible {
+        transform: none;
+        transition:
+            opacity 120ms ease,
+            visibility 0s linear 120ms;
+    }
+
+    .scrub-lyrics.is-visible {
+        transition: opacity 120ms ease;
+    }
+
+    .scrub-lyrics-text,
+    .scrub-lyrics-word {
+        transition: none;
+    }
+
+    .scrub-lyrics[data-mode='word'] .scrub-lyrics-row[data-role='current'] .scrub-lyrics-word.is-singing {
+        transform: none;
+    }
+}
+
+.scrub-lyrics-row.is-spacer {
+    visibility: hidden;
 }
