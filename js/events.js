@@ -423,6 +423,27 @@ function setupQualityPopover(player) {
             `H${x + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z")`;
     };
 
+    // The badge changes width with the selected tier: follow its rect every frame while open.
+    let holeFrame = 0;
+    let holeKey = '';
+    const trackBadgeHole = () => {
+        cancelAnimationFrame(holeFrame);
+        const tick = () => {
+            if (panel.hidden) return;
+            const rect = getRectSnapshot(getCurrentTrigger());
+            const key = rect ? `${rect.left}|${rect.top}|${rect.width}|${rect.height}` : '';
+            if (rect && key !== holeKey) {
+                holeKey = key;
+                lastTriggerRect = rect;
+                updateBackdropHole(rect);
+            }
+            holeFrame = requestAnimationFrame(tick);
+        };
+        holeKey = '';
+        holeFrame = requestAnimationFrame(tick);
+    };
+    const stopBadgeHole = () => cancelAnimationFrame(holeFrame);
+
     const getCurrentTrigger = () => {
         if (getRectSnapshot(trigger)) return trigger;
         return [...title.querySelectorAll('.quality-badge')].find((badge) => getRectSnapshot(badge)) || null;
@@ -559,6 +580,7 @@ function setupQualityPopover(player) {
             transform: computedPanel.transform === 'none' ? expanded.transform : computedPanel.transform,
         };
         panelAnimation?.cancel();
+        stopBadgeHole();
         panel.classList.remove('is-open');
         backdrop.classList.remove('is-open');
         trigger?.classList.remove('is-floating-panel-open');
@@ -649,6 +671,7 @@ function setupQualityPopover(player) {
         lastTriggerRadius = getComputedStyle(badge).borderRadius || '999px';
         render();
         updateBackdropHole(lastTriggerRect);
+        trackBadgeHole();
         panel.style.visibility = 'hidden';
         panel.hidden = false;
         backdrop.hidden = false;

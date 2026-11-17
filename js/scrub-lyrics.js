@@ -9,6 +9,9 @@ const REVEAL_DELAY_MS = 140;
 const PANEL_GAP_PX = 46;
 const VIEWPORT_GUTTER_PX = 16;
 const REEL_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
+// Line changes closer together than this count as a fast drag.
+const RACING_INTERVAL_MS = 180;
+const RACING_IDLE_MS = 260;
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -113,6 +116,8 @@ export function createScrubLyrics({ anchor, getTrack }) {
     let frame = 0;
     let latestTimeSeconds = 0;
     let focus = null;
+    let lastRenderAt = 0;
+    let racingTimer = 0;
     const rows = new Map();
 
     const ensurePanel = () => {
@@ -195,22 +200,40 @@ export function createScrubLyrics({ anchor, getTrack }) {
     };
 
     const ghostOut = (element, direction) => {
-        const top = element.offsetTop;
+        // Pin the ghost where it is drawn right now, mid-animation included.
+        const top = element.getBoundingClientRect().top - reel.getBoundingClientRect().top;
+        element.getAnimations().forEach((animation) => animation.cancel());
         element.classList.add('is-leaving');
         element.style.top = `${top}px`;
         const animation = element.animate(
             [
                 { opacity: 1, transform: 'translateY(0)' },
-                { opacity: 0, transform: reduceMotion.matches ? 'none' : `translateY(${direction * -16}px)` },
+                { opacity: 0, transform: `translateY(${direction * -12}px)` },
             ],
-            { duration: reduceMotion.matches ? 120 : 220, easing: 'ease-out', fill: 'forwards' }
+            { duration: 180, easing: 'ease-out', fill: 'forwards' }
         );
         animation.onfinish = () => element.remove();
     };
 
+    const markRacing = () => {
+        panel.classList.add('is-racing');
+        window.clearTimeout(racingTimer);
+        racingTimer = window.setTimeout(() => panel?.classList.remove('is-racing'), RACING_IDLE_MS);
+    };
+
     const renderReel = (nextFocus) => {
+        const now = performance.now();
         const direction = focus == null ? 0 : Math.sign(nextFocus - focus);
         const animate = isVisible && focus != null && !reduceMotion.matches;
+        // Fast drags change lines faster than the reel can settle: skip ghosts,
+        // snap leftovers away and use short moves so nothing trails behind.
+        const racing = animate && (now - lastRenderAt < RACING_INTERVAL_MS || Math.abs(nextFocus - focus) > 1);
+        lastRenderAt = now;
+        if (racing) {
+            markRacing();
+            reel.querySelectorAll('.scrub-lyrics-row.is-leaving').forEach((ghost) => ghost.remove());
+        }
+
         const firstTops = new Map();
         if (animate) rows.forEach((element, index) => firstTops.set(index, element.getBoundingClientRect().top));
 
@@ -220,7 +243,7 @@ export function createScrubLyrics({ anchor, getTrack }) {
         rows.forEach((element, index) => {
             if (wanted.includes(index)) return;
             rows.delete(index);
-            if (animate) ghostOut(element, direction);
+            if (animate && !racing) ghostOut(element, direction);
             else element.remove();
         });
 
@@ -230,19 +253,20 @@ export function createScrubLyrics({ anchor, getTrack }) {
             if (isNew) {
                 element = buildLineElement(items[index]);
                 rows.set(index, element);
+            } else if (animate) {
+                // Positions were measured with transforms applied, so restarting is seamless.
+                element.getAnimations().forEach((animation) => animation.cancel());
             }
             element.dataset.role = index < nextFocus ? 'prev' : index > nextFocus ? 'next' : 'current';
             reel.insertBefore(element, reel.querySelector('.scrub-lyrics-row.is-leaving'));
-            if (!animate) return;
-            if (isNew) {
-                element.animate(
-                    [
-                        { opacity: 0, transform: `translateY(${direction * 18}px)` },
-                        { opacity: 1, transform: 'translateY(0)' },
-                    ],
-                    { duration: 300, easing: REEL_EASING }
-                );
-            }
+            if (!animate || !isNew) return;
+            element.animate(
+                [
+                    { opacity: 0, transform: `translateY(${direction * (racing ? 8 : 18)}px)` },
+                    { opacity: 1, transform: 'translateY(0)' },
+                ],
+                { duration: racing ? 140 : 300, easing: REEL_EASING }
+            );
         });
 
         if (animate) {
@@ -251,7 +275,7 @@ export function createScrubLyrics({ anchor, getTrack }) {
                 const delta = firstTops.get(index) - element.getBoundingClientRect().top;
                 if (Math.abs(delta) < 0.5) return;
                 element.animate([{ transform: `translateY(${delta}px)` }, { transform: 'translateY(0)' }], {
-                    duration: 340,
+                    duration: racing ? 160 : 340,
                     easing: REEL_EASING,
                 });
             });
