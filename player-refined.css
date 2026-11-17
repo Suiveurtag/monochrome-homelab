@@ -2009,26 +2009,364 @@
 /* A little corrupted signal hidden among the quality tiers. */
 .quality-radio-option.is-sana {
     overflow: hidden;
-    border: 1px solid rgb(255 65 75 / 0.35);
-    background: repeating-linear-gradient(0deg, rgb(255 65 75 / 0.08) 0 1px, transparent 1px 4px);
+    isolation: isolate;
+    background:
+        linear-gradient(100deg, rgb(255 65 75 / 0.1), transparent 55%),
+        repeating-linear-gradient(0deg, rgb(255 65 75 / 0.05) 0 1px, transparent 1px 4px);
+    box-shadow: inset 0 0 0 1px rgb(255 65 75 / 0.28);
+    animation: sana-reveal 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* A soft scanline sweeping across the row. */
+.quality-radio-option.is-sana::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: -1;
+    width: 38%;
+    background: linear-gradient(90deg, transparent, rgb(255 65 75 / 0.16), transparent);
+    transform: translateX(-120%);
+    animation: sana-sweep 3.6s ease-in-out 600ms infinite;
+    pointer-events: none;
 }
 
 .quality-radio-option.is-sana .quality-radio-copy strong,
-.quality-radio-option.is-sana .quality-radio-bitrate,
-.quality-radio-option.is-sana .quality-tier-icon {
-    color: #ff5963;
+.quality-radio-option.is-sana .quality-radio-bitrate {
+    color: #ff6b73;
+}
+
+.quality-radio-option.is-sana .quality-radio-copy strong {
+    letter-spacing: 0.02em;
 }
 
 .quality-radio-option.is-sana .quality-tier-icon {
-    animation: sana-signal 1.8s steps(2, end) infinite;
+    color: #ff6b73;
+    border-color: rgb(255 65 75 / 0.4);
+    background: rgb(255 65 75 / 0.12);
 }
 
-@keyframes sana-signal {
-    0%, 88%, 100% { transform: translateX(0); }
-    90% { transform: translateX(-2px); }
-    94% { transform: translateX(2px); }
+.quality-radio-option.is-sana .quality-tier-icon svg path {
+    stroke-dasharray: 60;
+    animation: sana-wave 2.8s ease-in-out infinite;
+}
+
+.quality-radio-option.is-sana.is-selected .quality-tier-icon {
+    animation: sana-pulse 2.4s ease-out infinite;
+}
+
+@keyframes sana-reveal {
+    from { opacity: 0; transform: translateY(-6px) scale(0.98); filter: blur(3px); }
+    to { opacity: 1; transform: none; filter: none; }
+}
+
+@keyframes sana-sweep {
+    0%, 55% { transform: translateX(-120%); }
+    100% { transform: translateX(380%); }
+}
+
+@keyframes sana-wave {
+    0% { stroke-dashoffset: 60; }
+    45%, 80% { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: -60; }
+}
+
+@keyframes sana-pulse {
+    0% { box-shadow: 0 0 0 0 rgb(255 65 75 / 0.45); }
+    70%, 100% { box-shadow: 0 0 0 9px rgb(255 65 75 / 0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .quality-radio-option.is-sana .quality-tier-icon { animation: none; }
+    .quality-radio-option.is-sana,
+    .quality-radio-option.is-sana::after,
+    .quality-radio-option.is-sana .quality-tier-icon,
+    .quality-radio-option.is-sana .quality-tier-icon svg path { animation: none; }
+}
+
+/* ---- Wave tiers: the icon plays a quick animation when picked ---- */
+.quality-tier-icon svg .echo {
+    stroke-opacity: 0.4;
+}
+
+.quality-radio-option.is-just-selected[data-quality-profile='LOWEST'] .quality-tier-icon svg path:not(.echo),
+.quality-radio-option.is-just-selected[data-quality-profile='LOW'] .quality-tier-icon svg path:not(.echo),
+.quality-radio-option.is-just-selected[data-quality-profile='NORMAL'] .quality-tier-icon svg path:not(.echo) {
+    stroke-dasharray: 100;
+    animation: quality-wave-draw 560ms cubic-bezier(0.3, 0.7, 0.2, 1) both;
+}
+
+.quality-radio-option.is-just-selected[data-quality-profile='LOWEST'] .quality-tier-icon svg .echo,
+.quality-radio-option.is-just-selected[data-quality-profile='LOW'] .quality-tier-icon svg .echo,
+.quality-radio-option.is-just-selected[data-quality-profile='NORMAL'] .quality-tier-icon svg .echo {
+    animation: quality-echo-fade 560ms ease both;
+}
+
+.quality-radio-option.is-just-selected[data-quality-profile='HIGH'] .quality-tier-icon svg path:not(:last-child) {
+    animation: quality-wave-flow 520ms cubic-bezier(0.3, 0.7, 0.2, 1) both;
+}
+
+.quality-radio-option.is-just-selected[data-quality-profile='HIGH'] .quality-tier-icon svg path:last-child {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: quality-bolt-zap 520ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+
+.quality-radio-option.is-just-selected[data-quality-profile='HIGH'] .quality-tier-icon {
+    animation: quality-tier-pop 520ms cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+
+@keyframes quality-wave-draw {
+    from { stroke-dashoffset: 100; }
+    to { stroke-dashoffset: 0; }
+}
+
+@keyframes quality-echo-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes quality-wave-flow {
+    0% { transform: translateX(-4px); opacity: 0.2; }
+    60% { transform: translateX(1px); opacity: 1; }
+    100% { transform: none; }
+}
+
+@keyframes quality-bolt-zap {
+    0% { transform: scale(0.4); opacity: 0; filter: drop-shadow(0 0 0 transparent); }
+    55% { transform: scale(1.35); opacity: 1; filter: drop-shadow(0 0 5px rgb(var(--quality-tier-rgb))); }
+    100% { transform: none; filter: none; }
+}
+
+@keyframes quality-tier-pop {
+    0% { transform: scale(0.9); }
+    50% { transform: scale(1.1); }
+    100% { transform: none; }
+}
+
+/* ---- Lossless CD: a quick spin and a glint ---- */
+.quality-radio-option.is-cd .quality-tier-icon svg {
+    transform-origin: center;
+}
+
+.quality-radio-option.is-cd.is-just-selected .quality-tier-icon {
+    animation: none;
+}
+
+.quality-radio-option.is-cd.is-just-selected .quality-tier-icon svg {
+    animation: quality-cd-spin 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.quality-radio-option.is-cd.is-just-selected .quality-tier-icon svg .glint {
+    animation: quality-cd-glint 900ms ease both;
+}
+
+@keyframes quality-cd-spin {
+    from { transform: rotate(-360deg) scale(0.85); }
+    to { transform: none; }
+}
+
+@keyframes quality-cd-glint {
+    0%, 30% { stroke-opacity: 0; }
+    60% { stroke-opacity: 1; stroke-width: 2.4; filter: drop-shadow(0 0 3px rgb(var(--quality-tier-rgb))); }
+    100% { stroke-opacity: 0.9; }
+}
+
+/* ---- Hi-Res Lossless: a golden vinyl, visually apart from the CD ---- */
+.quality-radio-option.is-vinyl {
+    --vinyl-gold: 244 191 84;
+
+    overflow: hidden;
+    isolation: isolate;
+    min-height: 64px;
+    background:
+        radial-gradient(circle at 100% 50%, rgb(var(--vinyl-gold) / 0.16), transparent 58%),
+        repeating-radial-gradient(circle at 100% 50%, transparent 0 5px, rgb(var(--vinyl-gold) / 0.07) 5px 6px);
+    box-shadow: inset 0 0 0 1px rgb(var(--vinyl-gold) / 0.3);
+}
+
+.quality-radio-option.is-vinyl::before {
+    /* Gold foil edge */
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: linear-gradient(115deg, transparent 30%, rgb(255 236 180 / 0.2) 48%, transparent 66%);
+    background-size: 260% 100%;
+    background-position: 130% 0;
+    animation: vinyl-foil 5s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.quality-radio-option.is-vinyl .quality-tier-icon {
+    width: 38px;
+    height: 38px;
+    margin: -2px;
+    border-radius: 50%;
+    border-color: rgb(var(--vinyl-gold) / 0.55);
+    background: radial-gradient(circle, rgb(var(--vinyl-gold) / 0.22), rgb(var(--vinyl-gold) / 0.06));
+    color: rgb(var(--vinyl-gold));
+}
+
+.quality-radio-option.is-vinyl .quality-tier-icon svg {
+    width: 24px;
+    height: 24px;
+    overflow: visible;
+}
+
+.quality-radio-option.is-vinyl .quality-tier-icon svg .record {
+    transform-box: view-box;
+    transform-origin: 11px 13px;
+}
+
+.quality-radio-option.is-vinyl .quality-tier-icon svg .arm {
+    transform-box: view-box;
+    transform-origin: 21px 3.5px;
+    transform: rotate(-24deg);
+    transition: transform 500ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.quality-radio-option.is-vinyl .quality-radio-copy strong,
+.quality-radio-option.is-vinyl .quality-radio-bitrate {
+    background: linear-gradient(100deg, #f4bf54, #fff1c2 50%, #f4bf54);
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.quality-radio-option.is-vinyl .quality-radio-check {
+    color: rgb(var(--vinyl-gold));
+}
+
+/* Selected: the needle rests on a slowly turning record */
+.quality-radio-option.is-vinyl.is-selected .quality-tier-icon svg .record {
+    animation: vinyl-turn 6s linear infinite;
+}
+
+.quality-radio-option.is-vinyl.is-selected .quality-tier-icon svg .arm {
+    transform: rotate(0);
+}
+
+/* Just picked: the record spins up, the needle drops, golden rings ripple out */
+.quality-radio-option.is-vinyl.is-just-selected .quality-tier-icon {
+    animation: vinyl-halo 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.quality-radio-option.is-vinyl.is-just-selected .quality-tier-icon svg .record {
+    animation: vinyl-spinup 1.6s cubic-bezier(0.1, 0.7, 0.2, 1) both, vinyl-turn 6s linear 1.6s infinite;
+}
+
+.quality-radio-option.is-vinyl.is-just-selected .quality-tier-icon svg .arm {
+    animation: vinyl-needle 900ms cubic-bezier(0.3, 0.8, 0.2, 1.2) both;
+}
+
+.quality-radio-option.is-vinyl.is-just-selected::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 29px;
+    z-index: -1;
+    width: 36px;
+    height: 36px;
+    margin: -18px;
+    border: 2px solid rgb(var(--vinyl-gold) / 0.7);
+    border-radius: 50%;
+    animation: vinyl-ripple 1.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    pointer-events: none;
+}
+
+.quality-popover.is-vinyl-magic .quality-selection-indicator {
+    animation: vinyl-wash 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes vinyl-turn {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes vinyl-spinup {
+    from { transform: rotate(-900deg) scale(0.6); opacity: 0.2; }
+    to { transform: none; opacity: 1; }
+}
+
+@keyframes vinyl-needle {
+    0% { transform: rotate(-34deg); }
+    55% { transform: rotate(-34deg); }
+    100% { transform: rotate(0); }
+}
+
+@keyframes vinyl-halo {
+    0% { box-shadow: 0 0 0 0 rgb(var(--vinyl-gold) / 0.7); }
+    35% { box-shadow: 0 0 22px 4px rgb(var(--vinyl-gold) / 0.55); }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+@keyframes vinyl-ripple {
+    from { transform: scale(0.6); opacity: 1; }
+    to { transform: scale(14); opacity: 0; border-width: 0.4px; }
+}
+
+@keyframes vinyl-wash {
+    0%, 100% { border-color: rgb(var(--quality-tier-rgb) / 0.2); box-shadow: none; }
+    30% { border-color: rgb(var(--quality-tier-rgb) / 0.7); box-shadow: 0 10px 34px rgb(var(--quality-tier-rgb) / 0.28); }
+}
+
+@keyframes vinyl-foil {
+    0%, 40% { background-position: 130% 0; }
+    80%, 100% { background-position: -40% 0; }
+}
+
+/* ---- Now-playing badge: Sana and Hi-Res get a small signature ---- */
+.now-playing-bar .quality-badge[data-quality-profile='SANA'] {
+    --quality-badge-color: #ff6b73;
+
+    border-color: rgb(255 65 75 / 0.5);
+    box-shadow: 0 0 10px rgb(255 65 75 / 0.22);
+}
+
+.now-playing-bar .quality-badge[data-quality-profile='SANA']::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    margin-right: 0.32rem;
+    border-radius: 50%;
+    background: #ff414b;
+    animation: badge-sana-blink 1.4s steps(2, end) infinite;
+}
+
+.now-playing-bar .quality-badge[data-quality-profile='HI_RES_LOSSLESS'] {
+    --quality-badge-color: #f4bf54;
+
+    color: #f4bf54;
+    border-color: rgb(244 191 84 / 0.65);
+    box-shadow: 0 0 12px rgb(244 191 84 / 0.3);
+}
+
+.now-playing-bar .quality-badge[data-quality-profile='HI_RES_LOSSLESS']::before {
+    content: '';
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 0.32rem;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle, #f4bf54 0 1.2px, #1a1206 1.3px 2px, transparent 2.1px),
+        repeating-radial-gradient(circle, rgb(244 191 84 / 0.85) 0 0.6px, rgb(244 191 84 / 0.25) 0.6px 1.2px);
+    animation: vinyl-turn 4s linear infinite;
+}
+
+@keyframes badge-sana-blink {
+    0%, 60% { opacity: 1; }
+    61%, 100% { opacity: 0.15; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quality-radio-option.is-vinyl::before,
+    .quality-radio-option.is-vinyl::after,
+    .quality-radio-option.is-just-selected .quality-tier-icon,
+    .quality-radio-option.is-just-selected .quality-tier-icon svg,
+    .quality-radio-option.is-just-selected .quality-tier-icon svg *,
+    .quality-radio-option.is-vinyl.is-selected .quality-tier-icon svg .record,
+    .quality-popover.is-vinyl-magic .quality-selection-indicator,
+    .now-playing-bar .quality-badge::before {
+        animation: none !important;
+    }
 }

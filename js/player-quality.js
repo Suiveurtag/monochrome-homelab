@@ -1,4 +1,4 @@
-export const SANA_QUALITY = { id: 'SANA', label: 'Sana quality', description: 'A gently broken 1-bit signal', detail: '1 kb/s', targetBandwidth: 1_000, apiQuality: 'LOW' };
+export const SANA_QUALITY = { id: 'SANA', label: 'Sana quality', description: 'A deliberately worn-out signal', detail: '1 kb/s', targetBandwidth: 1_000, apiQuality: 'LOW' };
 
 export const PLAYBACK_QUALITY_OPTIONS = [
     {

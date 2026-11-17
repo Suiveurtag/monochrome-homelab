@@ -103,7 +103,6 @@ class AudioContextManager {
         this.sourceGains = new Map();
         this.sourceMixer = null;
         this.sanaEnabled = false;
-        this.sanaProcessor = null;
         this.sanaFilter = null;
         this.analyser = null;
         this.filters = [];
@@ -683,32 +682,15 @@ class AudioContextManager {
 
         const connectTail = (lastNode) => {
             if (this.sanaEnabled) {
-                if (!this.sanaProcessor) {
+                // Low-bitrate feel only: a stereo-safe band limit, no effect layered on top.
+                if (!this.sanaFilter) {
                     this.sanaFilter = this.audioContext.createBiquadFilter();
                     this.sanaFilter.type = 'lowpass';
-                    this.sanaFilter.frequency.value = 1800;
-                    this.sanaProcessor = this.audioContext.createScriptProcessor(2048, 1, 1);
-                    let phase = 0;
-                    let sample = 0;
-                    this.sanaProcessor.onaudioprocess = (event) => {
-                        const input = event.inputBuffer.getChannelData(0);
-                        const output = event.outputBuffer.getChannelData(0);
-                        for (let i = 0; i < output.length; i++) {
-                            phase += 1000;
-                            if (phase >= this.audioContext.sampleRate) {
-                                phase -= this.audioContext.sampleRate;
-                                // Stop the 1-bit modulator from generating noise during silence.
-                                sample = Math.abs(input[i]) < 0.001
-                                    ? 0
-                                    : Math.max(-0.8, Math.min(0.8, sample + (input[i] >= sample ? 0.12 : -0.12)));
-                            }
-                            output[i] = input[i] * 0.85 + sample * 0.15;
-                        }
-                    };
+                    this.sanaFilter.frequency.value = 3200;
+                    this.sanaFilter.Q.value = 0.5;
                 }
                 lastNode.connect(this.sanaFilter);
-                this.sanaFilter.connect(this.sanaProcessor);
-                lastNode = this.sanaProcessor;
+                lastNode = this.sanaFilter;
             }
             if (this.isGraphicEQEnabled && this.geqFilters.length > 0) {
                 lastNode.connect(this.geqPreampNode);
@@ -738,7 +720,6 @@ class AudioContextManager {
             };
             safeDisconnect(this.sourceMixer);
             safeDisconnect(this.sanaFilter);
-            safeDisconnect(this.sanaProcessor);
             safeDisconnect(this.monoGainNode);
             safeDisconnect(this.monoMergerNode);
             if (this.binauralDsp) {

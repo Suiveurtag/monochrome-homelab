@@ -37,7 +37,8 @@ import {
     SVG_PLUS,
     SVG_SEARCH,
     SVG_MUTE,
-    SVG_QUALITY_LOSSLESS,
+    SVG_QUALITY_CD,
+    SVG_QUALITY_VINYL,
     SVG_QUALITY_WAVE_SAW,
     SVG_QUALITY_WAVE_SINE,
     SVG_QUALITY_WAVE_SQUARE,
@@ -328,6 +329,7 @@ function setupQualityPopover(player) {
     let qualityChangeInFlight = false;
     let selectionRun = 0;
     let losslessMagicTimer = 0;
+    let iconAnimationTimer = 0;
     let sanaUnlocked = false;
     let secretKeys = '';
     let lastTriggerRect = null;
@@ -345,12 +347,12 @@ function setupQualityPopover(player) {
         LOW: { rgb: '96 165 250', icon: SVG_QUALITY_WAVE_SQUARE(20) },
         NORMAL: { rgb: '168 85 247', icon: SVG_QUALITY_WAVE_SAW(20) },
         HIGH: { rgb: '249 115 22', icon: SVG_QUALITY_WAVES_ELECTRICITY(20) },
-        LOSSLESS: { rgb: '45 212 191', icon: SVG_QUALITY_LOSSLESS(20) },
-        HI_RES_LOSSLESS: { rgb: '45 212 191', icon: SVG_QUALITY_LOSSLESS(20) },
+        LOSSLESS: { rgb: '45 212 191', icon: SVG_QUALITY_CD(20) },
+        HI_RES_LOSSLESS: { rgb: '244 191 84', icon: SVG_QUALITY_VINYL(22) },
     };
 
     const getConnectionMessage = (state) => {
-        if (state.requested === 'SANA') return '1 kb/s effect blended with the source. Your stream may use more data.';
+        if (state.requested === 'SANA') return 'Deliberately degraded, low-bitrate sound. Nothing is added on top.';
         const effectiveLabel =
             state.options.find((option) => option.id === state.effective)?.label || 'a lower quality';
         if (state.fallbackReason) {
@@ -378,12 +380,22 @@ function setupQualityPopover(player) {
         panel.dataset.selectedQuality = selected.dataset.qualityProfile;
     };
 
-    const playLosslessMagic = () => {
+    const playLosslessMagic = (profile) => {
+        const magicClass = profile === 'HI_RES_LOSSLESS' ? 'is-vinyl-magic' : 'is-lossless-magic';
         window.clearTimeout(losslessMagicTimer);
-        panel.classList.remove('is-lossless-magic');
+        panel.classList.remove('is-lossless-magic', 'is-vinyl-magic');
         void panel.offsetWidth;
-        panel.classList.add('is-lossless-magic');
-        losslessMagicTimer = window.setTimeout(() => panel.classList.remove('is-lossless-magic'), 720);
+        panel.classList.add(magicClass);
+        losslessMagicTimer = window.setTimeout(() => panel.classList.remove(magicClass), profile === 'HI_RES_LOSSLESS' ? 2200 : 720);
+    };
+
+    // Replays the per-tier icon animation on the freshly selected row.
+    const playIconAnimation = (option) => {
+        window.clearTimeout(iconAnimationTimer);
+        panel.querySelectorAll('.is-just-selected').forEach((el) => el.classList.remove('is-just-selected'));
+        void option.offsetWidth;
+        option.classList.add('is-just-selected');
+        iconAnimationTimer = window.setTimeout(() => option.classList.remove('is-just-selected'), 2200);
     };
 
     const getCurrentTrigger = () => {
@@ -439,7 +451,8 @@ function setupQualityPopover(player) {
         indicator.style.setProperty('--quality-tier-rgb', next.dataset.tierRgb || '148 163 184');
         panel.dataset.selectedQuality = profile;
 
-        if (profile.endsWith('LOSSLESS')) playLosslessMagic();
+        playIconAnimation(next);
+        if (profile.endsWith('LOSSLESS')) playLosslessMagic(profile);
 
         if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
             return;
@@ -574,7 +587,7 @@ function setupQualityPopover(player) {
                         const visual = qualityVisuals[option.id] || qualityVisuals.auto;
                         return `
                             <label class="quality-radio-option ${isSelected ? 'is-selected' : ''} ${!isAvailable ? 'is-unavailable' : ''} ${
-                                option.id === 'SANA' ? 'is-sana' : option.id.endsWith('LOSSLESS') ? 'is-lossless' : ''
+                                option.id === 'SANA' ? 'is-sana' : option.id === 'LOSSLESS' ? 'is-lossless is-cd' : option.id === 'HI_RES_LOSSLESS' ? 'is-lossless is-vinyl' : ''
                             }"
                                 data-quality-profile="${option.id}"
                                 data-tier-rgb="${visual.rgb}"
@@ -1260,8 +1273,11 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
                 const progressFill = document.getElementById('progress-fill');
                 const currentTimeEl = document.getElementById('current-time');
                 const progressBar = document.getElementById('progress-bar');
-                progressFill.style.width = `${(currentTime / duration) * 100}%`;
-                currentTimeEl.textContent = formatTime(currentTime);
+                // While scrubbing, playback continues but the thumb follows the pointer.
+                if (!progressBar?.classList.contains('is-scrubbing')) {
+                    progressFill.style.width = `${(currentTime / duration) * 100}%`;
+                    currentTimeEl.textContent = formatTime(currentTime);
+                }
                 progressBar?.setAttribute('aria-valuemax', String(Math.round(duration)));
                 progressBar?.setAttribute('aria-valuenow', String(Math.round(currentTime)));
                 progressBar?.setAttribute('aria-valuetext', `${formatTime(currentTime)} of ${formatTime(duration)}`);
@@ -1598,7 +1614,6 @@ function initializeSmoothSliders(player) {
     const volumeSlider = document.getElementById('volume-slider');
 
     let isSeeking = false;
-    let wasPlaying = false;
     let isAdjustingVolume = false;
     let lastSeekPosition = 0;
 
@@ -1754,10 +1769,8 @@ function initializeSmoothSliders(player) {
 
     // Progress bar with smooth dragging
     progressBar.addEventListener('mousedown', (e) => {
-        const activeEl = player.activeElement;
         isSeeking = true;
-        wasPlaying = !activeEl.paused;
-        if (wasPlaying) activeEl.pause();
+        progressBar.classList.add('is-scrubbing');
 
         seek(progressBar, e, (position) => {
             lastSeekPosition = position;
@@ -1767,11 +1780,9 @@ function initializeSmoothSliders(player) {
 
     // Touch events for mobile
     progressBar.addEventListener('touchstart', (e) => {
-        const activeEl = player.activeElement;
         e.preventDefault();
         isSeeking = true;
-        wasPlaying = !activeEl.paused;
-        if (wasPlaying) activeEl.pause();
+        progressBar.classList.add('is-scrubbing');
 
         const touch = e.touches[0];
         const rect = progressBar.getBoundingClientRect();
@@ -1841,9 +1852,9 @@ function initializeSmoothSliders(player) {
             if (!isNaN(activeEl.duration)) {
                 activeEl.currentTime = lastSeekPosition * activeEl.duration;
                 player.updateMediaSessionPositionState();
-                if (wasPlaying) activeEl.play();
             }
             isSeeking = false;
+            progressBar.classList.remove('is-scrubbing');
         }
 
         if (isAdjustingVolume) {
@@ -1857,9 +1868,9 @@ function initializeSmoothSliders(player) {
             if (!isNaN(activeEl.duration)) {
                 activeEl.currentTime = lastSeekPosition * activeEl.duration;
                 player.updateMediaSessionPositionState();
-                if (wasPlaying) activeEl.play();
             }
             isSeeking = false;
+            progressBar.classList.remove('is-scrubbing');
         }
 
         if (isAdjustingVolume) {
