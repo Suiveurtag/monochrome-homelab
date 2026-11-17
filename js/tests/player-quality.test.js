@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
     getAvailableQualityOptions,
+    getApiQuality,
+    getQualityOption,
+    normalizePlaybackQuality,
     getNextLowerQuality,
     resolvePlaybackQuality,
     suggestPlaybackQuality,
@@ -11,6 +14,14 @@ const cdTrack = { audioQuality: 'LOSSLESS', mediaMetadata: { tags: ['LOSSLESS'] 
 const hiResTrack = { audioQuality: 'HI_RES_LOSSLESS', mediaMetadata: { tags: ['HI_RES_LOSSLESS'] } };
 
 describe('player quality profiles', () => {
+    it('keeps Sana explicit without adding it to automatic quality choices', () => {
+        expect(normalizePlaybackQuality('SANA')).toBe('SANA');
+        expect(resolvePlaybackQuality('SANA', lossyTrack)).toBe('SANA');
+        expect(getApiQuality('SANA')).toBe('LOW');
+        expect(getQualityOption('SANA').detail).toBe('1 kb/s');
+        expect(getAvailableQualityOptions(lossyTrack).map((option) => option.id)).not.toContain('SANA');
+    });
+
     it('caps known MP3 quality at the source bitrate', () => {
         const options = getAvailableQualityOptions({ audioCodec: 'MP3', audioBitrate: 128, fileName: 'song.mp3' });
         expect(options.map((option) => option.id)).toEqual(['LOWEST', 'LOW']);

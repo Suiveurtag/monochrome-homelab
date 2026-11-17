@@ -57,7 +57,7 @@ import { socialManager } from './social.js';
 import { canvasSettings } from './canvas-settings.js';
 import { setupTrackVersionPicker } from './track-version-picker.js';
 import { getTrackDisplayAlbum } from './track-versions.js';
-import { PLAYBACK_QUALITY_OPTIONS } from './player-quality.js';
+import { PLAYBACK_QUALITY_OPTIONS, SANA_QUALITY } from './player-quality.js';
 
 let currentTrackIdForWaveform = null;
 
@@ -328,6 +328,8 @@ function setupQualityPopover(player) {
     let qualityChangeInFlight = false;
     let selectionRun = 0;
     let losslessMagicTimer = 0;
+    let sanaUnlocked = false;
+    let secretKeys = '';
     let lastTriggerRect = null;
     let lastTriggerRadius = '999px';
     const backdrop = document.createElement('div');
@@ -338,6 +340,7 @@ function setupQualityPopover(player) {
 
     const qualityVisuals = {
         auto: { rgb: '148 163 184', icon: SVG_SETTINGS(20) },
+        SANA: { rgb: '255 65 75', icon: SVG_QUALITY_WAVE_SQUARE(20) },
         LOWEST: { rgb: '148 163 184', icon: SVG_QUALITY_WAVE_SINE(20) },
         LOW: { rgb: '96 165 250', icon: SVG_QUALITY_WAVE_SQUARE(20) },
         NORMAL: { rgb: '168 85 247', icon: SVG_QUALITY_WAVE_SAW(20) },
@@ -347,6 +350,7 @@ function setupQualityPopover(player) {
     };
 
     const getConnectionMessage = (state) => {
+        if (state.requested === 'SANA') return '1 kb/s effect blended with the source. Your stream may use more data.';
         const effectiveLabel =
             state.options.find((option) => option.id === state.effective)?.label || 'a lower quality';
         if (state.fallbackReason) {
@@ -544,7 +548,7 @@ function setupQualityPopover(player) {
     };
     const render = () => {
         const state = player.getQualityState();
-        const selectedProfile = state.options.some((option) => option.id === state.requested)
+        const selectedProfile = state.requested === 'SANA' || state.options.some((option) => option.id === state.requested)
             ? state.requested
             : state.effective;
         const choices = [
@@ -554,6 +558,7 @@ function setupQualityPopover(player) {
                 description: 'Adjusts to the track and your connection',
                 detail: 'Recommended',
             },
+            ...(sanaUnlocked || state.requested === 'SANA' ? [SANA_QUALITY] : []),
             ...(state.allOptions || PLAYBACK_QUALITY_OPTIONS),
         ];
         panel.innerHTML = `
@@ -564,12 +569,12 @@ function setupQualityPopover(player) {
                 <span class="quality-selection-indicator" aria-hidden="true"></span>
                 ${choices
                     .map((option) => {
-                        const isAvailable = option.id === 'auto' || state.options.some((available) => available.id === option.id);
+                        const isAvailable = option.id === 'auto' || option.id === 'SANA' || state.options.some((available) => available.id === option.id);
                         const isSelected = option.id === selectedProfile;
                         const visual = qualityVisuals[option.id] || qualityVisuals.auto;
                         return `
                             <label class="quality-radio-option ${isSelected ? 'is-selected' : ''} ${!isAvailable ? 'is-unavailable' : ''} ${
-                                option.id.endsWith('LOSSLESS') ? 'is-lossless' : ''
+                                option.id === 'SANA' ? 'is-sana' : option.id.endsWith('LOSSLESS') ? 'is-lossless' : ''
                             }"
                                 data-quality-profile="${option.id}"
                                 data-tier-rgb="${visual.rgb}"
@@ -597,6 +602,7 @@ function setupQualityPopover(player) {
     };
     const open = (badge) => {
         const run = ++animationRun;
+        secretKeys = '';
         trigger = badge;
         lastTriggerRect = getRectSnapshot(badge);
         if (!lastTriggerRect) return;
@@ -688,7 +694,7 @@ function setupQualityPopover(player) {
                 qualityChangeInFlight = false;
                 group?.removeAttribute('aria-busy');
                 panel.querySelectorAll('input[name="playback-quality"]').forEach((radio) => {
-                    radio.disabled = false;
+                    radio.disabled = radio.closest('.is-unavailable') !== null;
                 });
             }
         }
@@ -716,6 +722,19 @@ function setupQualityPopover(player) {
     });
     document.addEventListener('keydown', (event) => {
         if (panel.hidden) return;
+        if (!event.ctrlKey && !event.altKey && !event.metaKey && event.key.length === 1) {
+            secretKeys = (secretKeys + event.key.toLowerCase()).slice(-4);
+            if (secretKeys === 'sana' && !sanaUnlocked) {
+                sanaUnlocked = true;
+                render();
+                positionPlayerPopover(panel, refreshTriggerRect(), 420);
+                syncSelectionIndicator();
+                panel.querySelector('[value="SANA"]')?.focus({ preventScroll: true });
+                return;
+            }
+            if ('sana'.startsWith(secretKeys)) return;
+            secretKeys = '';
+        }
         if (event.key === 'Escape') {
             close({ restoreFocus: true });
             return;

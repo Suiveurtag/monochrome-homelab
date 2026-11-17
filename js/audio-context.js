@@ -102,6 +102,9 @@ class AudioContextManager {
         this.sources = new Map();
         this.sourceGains = new Map();
         this.sourceMixer = null;
+        this.sanaEnabled = false;
+        this.sanaProcessor = null;
+        this.sanaFilter = null;
         this.analyser = null;
         this.filters = [];
         this.outputNode = null;
@@ -529,6 +532,7 @@ class AudioContextManager {
 
             this.monoMergerNode = this.audioContext.createChannelMerger(2);
 
+            this.isInitialized = true;
             this._connectGraph();
 
             // Auto-recover from unexpected suspensions (e.g. background throttling)
@@ -545,7 +549,6 @@ class AudioContextManager {
                 }
             });
 
-            this.isInitialized = true;
         } catch (e) {
             console.warn('[AudioContext] Init failed:', e);
         }
@@ -665,6 +668,12 @@ class AudioContextManager {
      * Uses connect-before-disconnect ordering to avoid audio dropouts:
      * the new chain is wired up first, then the old connections are torn down.
      */
+    setSanaQuality(enabled) {
+        if (this.sanaEnabled === enabled) return;
+        this.sanaEnabled = enabled;
+        if (this.isInitialized) this._connectGraph();
+    }
+
     _connectGraph() {
         if (!this.isInitialized || !this.source || !this.audioContext) return;
 
@@ -673,6 +682,34 @@ class AudioContextManager {
         }
 
         const connectTail = (lastNode) => {
+            if (this.sanaEnabled) {
+                if (!this.sanaProcessor) {
+                    this.sanaFilter = this.audioContext.createBiquadFilter();
+                    this.sanaFilter.type = 'lowpass';
+                    this.sanaFilter.frequency.value = 1800;
+                    this.sanaProcessor = this.audioContext.createScriptProcessor(2048, 1, 1);
+                    let phase = 0;
+                    let sample = 0;
+                    this.sanaProcessor.onaudioprocess = (event) => {
+                        const input = event.inputBuffer.getChannelData(0);
+                        const output = event.outputBuffer.getChannelData(0);
+                        for (let i = 0; i < output.length; i++) {
+                            phase += 1000;
+                            if (phase >= this.audioContext.sampleRate) {
+                                phase -= this.audioContext.sampleRate;
+                                // Stop the 1-bit modulator from generating noise during silence.
+                                sample = Math.abs(input[i]) < 0.001
+                                    ? 0
+                                    : Math.max(-0.8, Math.min(0.8, sample + (input[i] >= sample ? 0.12 : -0.12)));
+                            }
+                            output[i] = input[i] * 0.85 + sample * 0.15;
+                        }
+                    };
+                }
+                lastNode.connect(this.sanaFilter);
+                this.sanaFilter.connect(this.sanaProcessor);
+                lastNode = this.sanaProcessor;
+            }
             if (this.isGraphicEQEnabled && this.geqFilters.length > 0) {
                 lastNode.connect(this.geqPreampNode);
                 this.geqPreampNode.connect(this.geqFilters[0]);
@@ -700,6 +737,8 @@ class AudioContextManager {
                 } catch {}
             };
             safeDisconnect(this.sourceMixer);
+            safeDisconnect(this.sanaFilter);
+            safeDisconnect(this.sanaProcessor);
             safeDisconnect(this.monoGainNode);
             safeDisconnect(this.monoMergerNode);
             if (this.binauralDsp) {

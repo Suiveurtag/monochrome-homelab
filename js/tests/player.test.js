@@ -14,6 +14,7 @@ vi.mock('../audio-context.js', () => ({
         startCrossfade: vi.fn(),
         finishCrossfade: vi.fn(),
         cancelCrossfade: vi.fn(),
+        setSanaQuality: vi.fn(),
     },
 }));
 

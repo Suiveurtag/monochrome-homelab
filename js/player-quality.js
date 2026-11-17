@@ -1,3 +1,5 @@
+export const SANA_QUALITY = { id: 'SANA', label: 'Sana quality', description: 'A gently broken 1-bit signal', detail: '1 kb/s', targetBandwidth: 1_000, apiQuality: 'LOW' };
+
 export const PLAYBACK_QUALITY_OPTIONS = [
     {
         id: 'LOWEST',
@@ -115,15 +117,15 @@ export function getAvailableQualityOptions(track, variants = []) {
 }
 
 export function normalizePlaybackQuality(profile) {
-    return profile === 'auto' || QUALITY_IDS.has(profile) ? profile : 'auto';
+    return profile === 'auto' || profile === 'SANA' || QUALITY_IDS.has(profile) ? profile : 'auto';
 }
 
 export function getApiQuality(profile) {
-    return PLAYBACK_QUALITY_OPTIONS.find((option) => option.id === profile)?.apiQuality || 'HIGH';
+    return profile === 'SANA' ? 'LOW' : PLAYBACK_QUALITY_OPTIONS.find((option) => option.id === profile)?.apiQuality || 'HIGH';
 }
 
 export function getQualityOption(profile) {
-    return PLAYBACK_QUALITY_OPTIONS.find((option) => option.id === profile) || PLAYBACK_QUALITY_OPTIONS[3];
+    return profile === 'SANA' ? SANA_QUALITY : PLAYBACK_QUALITY_OPTIONS.find((option) => option.id === profile) || PLAYBACK_QUALITY_OPTIONS[3];
 }
 
 export function suggestPlaybackQuality(connection, track, variants = []) {
@@ -159,6 +161,7 @@ export function resolvePlaybackQuality(profile, track, variants = [], connection
     const normalized = normalizePlaybackQuality(profile);
     const available = getAvailableQualityOptions(track, variants);
     if (normalized === 'auto') return suggestPlaybackQuality(connection, track, variants);
+    if (normalized === 'SANA') return 'SANA';
     if (available.some((option) => option.id === normalized)) return normalized;
 
     const requestedIndex = PLAYBACK_QUALITY_OPTIONS.findIndex((option) => option.id === normalized);
