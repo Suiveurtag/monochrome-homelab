@@ -74,7 +74,13 @@ const getTrackBaseQuality = (track) => {
     return null;
 };
 
+// Pretend this track is available in every quality tier (demo / easter egg).
+const FULL_QUALITY_TITLE = /desire,?\s+be\s+desire,?\s+go/i;
+
 export function getTrackQualityAvailability(track, variants = []) {
+    if (FULL_QUALITY_TITLE.test(String(track?.title || track?.name || ''))) {
+        return { lossless: true, hiRes: true, maxLossyQuality: null };
+    }
     const baseQuality = getTrackBaseQuality(track);
     const tags = collectTags(track);
     const flacVariants = variants.filter((variant) => variant.audioCodec?.toLowerCase().includes('flac'));

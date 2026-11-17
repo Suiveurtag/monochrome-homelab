@@ -1132,7 +1132,7 @@
 }
 
 .quality-popover.is-lossless-magic .quality-radio-option.is-selected .quality-tier-icon {
-    animation: quality-lossless-mark 620ms cubic-bezier(0.16, 1, 0.3, 1);
+    animation: none;
 }
 
 @keyframes quality-lossless-wash {
@@ -2045,8 +2045,7 @@
     background: rgb(255 65 75 / 0.12);
 }
 
-.quality-radio-option.is-sana .quality-tier-icon svg path {
-    stroke-dasharray: 60;
+.quality-radio-option.is-sana .quality-tier-icon svg path:not(.echo) {
     animation: sana-wave 2.8s ease-in-out infinite;
 }
 
@@ -2065,9 +2064,9 @@
 }
 
 @keyframes sana-wave {
-    0% { stroke-dashoffset: 60; }
+    0% { stroke-dashoffset: 1; }
     45%, 80% { stroke-dashoffset: 0; }
-    100% { stroke-dashoffset: -60; }
+    100% { stroke-dashoffset: -1; }
 }
 
 @keyframes sana-pulse {
@@ -2082,92 +2081,54 @@
     .quality-radio-option.is-sana .quality-tier-icon svg path { animation: none; }
 }
 
-/* ---- Wave tiers: the icon plays a quick animation when picked ---- */
+/* ---- Wave tiers: the SMIL animation inside each icon is started from JS on selection ---- */
 .quality-tier-icon svg .echo {
     stroke-opacity: 0.4;
 }
 
-.quality-radio-option.is-just-selected[data-quality-profile='LOWEST'] .quality-tier-icon svg path:not(.echo),
-.quality-radio-option.is-just-selected[data-quality-profile='LOW'] .quality-tier-icon svg path:not(.echo),
-.quality-radio-option.is-just-selected[data-quality-profile='NORMAL'] .quality-tier-icon svg path:not(.echo) {
-    stroke-dasharray: 100;
-    animation: quality-wave-draw 560ms cubic-bezier(0.3, 0.7, 0.2, 1) both;
+/* ---- Lossless CD: the disc spins up and slows to rest while light refracts across it ---- */
+.quality-radio-option.is-cd .quality-tier-icon {
+    position: relative;
+    overflow: hidden;
 }
 
-.quality-radio-option.is-just-selected[data-quality-profile='LOWEST'] .quality-tier-icon svg .echo,
-.quality-radio-option.is-just-selected[data-quality-profile='LOW'] .quality-tier-icon svg .echo,
-.quality-radio-option.is-just-selected[data-quality-profile='NORMAL'] .quality-tier-icon svg .echo {
-    animation: quality-echo-fade 560ms ease both;
-}
-
-.quality-radio-option.is-just-selected[data-quality-profile='HIGH'] .quality-tier-icon svg path:not(:last-child) {
-    animation: quality-wave-flow 520ms cubic-bezier(0.3, 0.7, 0.2, 1) both;
-}
-
-.quality-radio-option.is-just-selected[data-quality-profile='HIGH'] .quality-tier-icon svg path:last-child {
-    transform-box: fill-box;
-    transform-origin: center;
-    animation: quality-bolt-zap 520ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
-}
-
-.quality-radio-option.is-just-selected[data-quality-profile='HIGH'] .quality-tier-icon {
-    animation: quality-tier-pop 520ms cubic-bezier(0.2, 0.9, 0.3, 1.3);
-}
-
-@keyframes quality-wave-draw {
-    from { stroke-dashoffset: 100; }
-    to { stroke-dashoffset: 0; }
-}
-
-@keyframes quality-echo-fade {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes quality-wave-flow {
-    0% { transform: translateX(-4px); opacity: 0.2; }
-    60% { transform: translateX(1px); opacity: 1; }
-    100% { transform: none; }
-}
-
-@keyframes quality-bolt-zap {
-    0% { transform: scale(0.4); opacity: 0; filter: drop-shadow(0 0 0 transparent); }
-    55% { transform: scale(1.35); opacity: 1; filter: drop-shadow(0 0 5px rgb(var(--quality-tier-rgb))); }
-    100% { transform: none; filter: none; }
-}
-
-@keyframes quality-tier-pop {
-    0% { transform: scale(0.9); }
-    50% { transform: scale(1.1); }
-    100% { transform: none; }
-}
-
-/* ---- Lossless CD: a quick spin and a glint ---- */
-.quality-radio-option.is-cd .quality-tier-icon svg {
-    transform-origin: center;
-}
-
-.quality-radio-option.is-cd.is-just-selected .quality-tier-icon {
-    animation: none;
+.quality-radio-option.is-cd .quality-tier-icon::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: conic-gradient(
+        from 0deg,
+        transparent 0 15%,
+        rgb(var(--quality-tier-rgb) / 0.75) 25%,
+        rgb(190 255 245 / 0.9) 32%,
+        transparent 45% 65%,
+        rgb(var(--quality-tier-rgb) / 0.5) 78%,
+        transparent 90%
+    );
+    -webkit-mask: radial-gradient(circle, transparent 0 24%, #000 26% 62%, transparent 66%);
+    mask: radial-gradient(circle, transparent 0 24%, #000 26% 62%, transparent 66%);
+    opacity: 0;
+    pointer-events: none;
 }
 
 .quality-radio-option.is-cd.is-just-selected .quality-tier-icon svg {
-    animation: quality-cd-spin 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation: quality-cd-spin 1.1s cubic-bezier(0.1, 0.6, 0.2, 1) both;
 }
 
-.quality-radio-option.is-cd.is-just-selected .quality-tier-icon svg .glint {
-    animation: quality-cd-glint 900ms ease both;
+.quality-radio-option.is-cd.is-just-selected .quality-tier-icon::after {
+    animation: quality-cd-refract 1.1s cubic-bezier(0.1, 0.6, 0.2, 1) both;
 }
 
 @keyframes quality-cd-spin {
-    from { transform: rotate(-360deg) scale(0.85); }
-    to { transform: none; }
+    from { transform: rotate(-720deg); }
+    to { transform: rotate(0); }
 }
 
-@keyframes quality-cd-glint {
-    0%, 30% { stroke-opacity: 0; }
-    60% { stroke-opacity: 1; stroke-width: 2.4; filter: drop-shadow(0 0 3px rgb(var(--quality-tier-rgb))); }
-    100% { stroke-opacity: 0.9; }
+@keyframes quality-cd-refract {
+    0% { opacity: 0; transform: rotate(-200deg); }
+    25% { opacity: 1; }
+    100% { opacity: 0; transform: rotate(160deg); }
 }
 
 /* ---- Hi-Res Lossless: a golden vinyl, visually apart from the CD ---- */
@@ -2193,8 +2154,11 @@
     background: linear-gradient(115deg, transparent 30%, rgb(255 236 180 / 0.2) 48%, transparent 66%);
     background-size: 260% 100%;
     background-position: 130% 0;
-    animation: vinyl-foil 5s ease-in-out infinite;
     pointer-events: none;
+}
+
+.quality-radio-option.is-vinyl.is-just-selected::before {
+    animation: vinyl-foil 1.4s cubic-bezier(0.3, 0.6, 0.2, 1) 200ms both;
 }
 
 .quality-radio-option.is-vinyl .quality-tier-icon {
@@ -2203,7 +2167,7 @@
     margin: -2px;
     border-radius: 50%;
     border-color: rgb(var(--vinyl-gold) / 0.55);
-    background: radial-gradient(circle, rgb(var(--vinyl-gold) / 0.22), rgb(var(--vinyl-gold) / 0.06));
+    background: rgb(var(--vinyl-gold) / 0.12);
     color: rgb(var(--vinyl-gold));
 }
 
@@ -2222,14 +2186,12 @@
     transform-box: view-box;
     transform-origin: 21px 3.5px;
     transform: rotate(-24deg);
-    transition: transform 500ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .quality-radio-option.is-vinyl .quality-radio-copy strong,
 .quality-radio-option.is-vinyl .quality-radio-bitrate {
-    background: linear-gradient(100deg, #f4bf54, #fff1c2 50%, #f4bf54);
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #f4bf54;
 }
 
 .quality-radio-option.is-vinyl .quality-radio-check {
@@ -2247,7 +2209,6 @@
 
 /* Just picked: the record spins up, the needle drops, golden rings ripple out */
 .quality-radio-option.is-vinyl.is-just-selected .quality-tier-icon {
-    animation: vinyl-halo 1.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .quality-radio-option.is-vinyl.is-just-selected .quality-tier-icon svg .record {
@@ -2255,7 +2216,7 @@
 }
 
 .quality-radio-option.is-vinyl.is-just-selected .quality-tier-icon svg .arm {
-    animation: vinyl-needle 900ms cubic-bezier(0.3, 0.8, 0.2, 1.2) both;
+    animation: vinyl-needle 900ms cubic-bezier(0.3, 0.8, 0.2, 1) both;
 }
 
 .quality-radio-option.is-vinyl.is-just-selected::after {
@@ -2292,15 +2253,9 @@
     100% { transform: rotate(0); }
 }
 
-@keyframes vinyl-halo {
-    0% { box-shadow: 0 0 0 0 rgb(var(--vinyl-gold) / 0.7); }
-    35% { box-shadow: 0 0 22px 4px rgb(var(--vinyl-gold) / 0.55); }
-    100% { box-shadow: 0 0 0 0 transparent; }
-}
-
 @keyframes vinyl-ripple {
     from { transform: scale(0.6); opacity: 1; }
-    to { transform: scale(14); opacity: 0; border-width: 0.4px; }
+    to { transform: scale(9); opacity: 0; border-width: 0.5px; }
 }
 
 @keyframes vinyl-wash {
@@ -2309,8 +2264,8 @@
 }
 
 @keyframes vinyl-foil {
-    0%, 40% { background-position: 130% 0; }
-    80%, 100% { background-position: -40% 0; }
+    from { background-position: 130% 0; }
+    to { background-position: -40% 0; }
 }
 
 /* ---- Now-playing badge: Sana and Hi-Res get a small signature ---- */
@@ -2336,21 +2291,27 @@
     --quality-badge-color: #f4bf54;
 
     color: #f4bf54;
-    border-color: rgb(244 191 84 / 0.65);
-    box-shadow: 0 0 12px rgb(244 191 84 / 0.3);
+    border-color: rgb(244 191 84 / 0.5);
+    letter-spacing: 0.06em;
+    box-shadow: inset 0 1px 0 rgb(255 240 200 / 0.28);
 }
 
-.now-playing-bar .quality-badge[data-quality-profile='HI_RES_LOSSLESS']::before {
+/* One gold glint crosses the badge when Hi-Res becomes active. */
+.now-playing-bar .quality-badge[data-quality-profile='HI_RES_LOSSLESS']::after {
     content: '';
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    margin-right: 0.32rem;
-    border-radius: 50%;
-    background:
-        radial-gradient(circle, #f4bf54 0 1.2px, #1a1206 1.3px 2px, transparent 2.1px),
-        repeating-radial-gradient(circle, rgb(244 191 84 / 0.85) 0 0.6px, rgb(244 191 84 / 0.25) 0.6px 1.2px);
-    animation: vinyl-turn 4s linear infinite;
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(105deg, transparent 38%, rgb(255 236 180 / 0.55) 50%, transparent 62%);
+    background-size: 260% 100%;
+    background-position: 160% 0;
+    animation: badge-gold-glint 1.4s cubic-bezier(0.3, 0.6, 0.2, 1) 400ms both;
+    pointer-events: none;
+}
+
+@keyframes badge-gold-glint {
+    from { background-position: 160% 0; }
+    to { background-position: -60% 0; }
 }
 
 @keyframes badge-sana-blink {
@@ -2360,6 +2321,8 @@
 
 @media (prefers-reduced-motion: reduce) {
     .quality-radio-option.is-vinyl::before,
+    .quality-radio-option.is-cd .quality-tier-icon::after,
+    .now-playing-bar .quality-badge::after,
     .quality-radio-option.is-vinyl::after,
     .quality-radio-option.is-just-selected .quality-tier-icon,
     .quality-radio-option.is-just-selected .quality-tier-icon svg,

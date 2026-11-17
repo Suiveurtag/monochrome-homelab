@@ -395,6 +395,12 @@ function setupQualityPopover(player) {
         panel.querySelectorAll('.is-just-selected').forEach((el) => el.classList.remove('is-just-selected'));
         void option.offsetWidth;
         option.classList.add('is-just-selected');
+        // Wave icons carry their own SMIL animation; Sana keeps its looping CSS one.
+        if (option.dataset.qualityProfile !== 'SANA') {
+            option
+                .querySelectorAll('.quality-tier-icon animate, .quality-tier-icon animateTransform')
+                .forEach((node) => node.beginElement?.());
+        }
         iconAnimationTimer = window.setTimeout(() => option.classList.remove('is-just-selected'), 2200);
     };
 
