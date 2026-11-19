@@ -262,6 +262,15 @@
         "value": "0.72rem",
         "createdAt": "2026-11-19T21:34:31.454Z",
         "reason": "user confirmed: DESIGN.md Meta step 0.72-0.82rem"
+      },
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "metallic-logo-easter-egg.css"
+        ],
+        "createdAt": "2026-11-19T22:46:21.525Z",
+        "reason": "User requested a chrome effect on the Monochrome text"
       }
     ]
   }

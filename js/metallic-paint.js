@@ -134,7 +134,9 @@ export class MetallicPaint {
         gl.enableVertexAttribArray(position);
         gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
         const image = new Image();
-        image.onload = () => this.upload(processImage(image));
+        image.onload = () => {
+            if (!this.destroyed) this.upload(processImage(image));
+        };
         image.src = this.imageSrc;
     }
 
@@ -183,12 +185,17 @@ export class MetallicPaint {
             gl.uniform1f(u.u_ratio, 1);
             gl.uniform1f(u.u_time, time * o.speed);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            if (this.options.onReady) {
+                this.options.onReady();
+                this.options.onReady = null;
+            }
             this.frame = requestAnimationFrame(render);
         };
         this.frame = requestAnimationFrame(render);
     }
 
     destroy() {
+        this.destroyed = true;
         if (this.frame) cancelAnimationFrame(this.frame);
     }
 }
