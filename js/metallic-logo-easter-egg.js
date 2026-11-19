@@ -7,13 +7,18 @@ function initializeMetallicLogoEasterEgg() {
     const logo = document.querySelector('.sidebar-logo-link');
     const modal = document.getElementById('metallic-logo-easter-egg');
     const canvas = document.getElementById('metallic-logo-paint');
+    const stage = modal?.querySelector('.metallic-logo-easter-egg__stage');
     const closeButton = document.getElementById('metallic-logo-easter-egg-close');
-    if (!logo || !modal || !canvas || !closeButton) return;
+    if (!logo || !modal || !canvas || !stage || !closeButton) return;
 
     let clicks = 0;
     let resetTimer;
     let previousFocus;
     let paint;
+    const resetTilt = () => {
+        canvas.style.removeProperty('--logo-tilt-x');
+        canvas.style.removeProperty('--logo-tilt-y');
+    };
     const reset = () => {
         clicks = 0;
         clearTimeout(resetTimer);
@@ -23,6 +28,7 @@ function initializeMetallicLogoEasterEgg() {
         document.body.classList.remove('metallic-easter-egg-open');
         paint?.destroy();
         paint = null;
+        resetTilt();
         previousFocus?.focus();
     };
     const open = () => {
@@ -44,6 +50,15 @@ function initializeMetallicLogoEasterEgg() {
             reset();
         }, CLICK_WINDOW);
     });
+    stage.addEventListener('pointermove', (event) => {
+        if (event.pointerType !== 'mouse' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const rect = stage.getBoundingClientRect();
+        const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+        const y = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
+        canvas.style.setProperty('--logo-tilt-x', `${(0.5 - y) * 12}deg`);
+        canvas.style.setProperty('--logo-tilt-y', `${(x - 0.5) * 12}deg`);
+    });
+    stage.addEventListener('pointerleave', resetTilt);
     closeButton.addEventListener('click', close);
     modal.addEventListener('click', (event) => {
         if (event.target === modal) close();

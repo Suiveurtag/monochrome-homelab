@@ -47,6 +47,7 @@ import {
     SVG_SETTINGS,
     SVG_SHUFFLE,
     SVG_VOLUME,
+    SVG_VOLUME_1,
     SVG_USER,
 } from './icons.js';
 import { MusicAPI } from './music-api.js';
@@ -54,6 +55,7 @@ import { LyricsManager } from './lyrics.js';
 import { createScrubLyrics } from './scrub-lyrics.js';
 import { Player } from './player.js';
 import { playerBarEffects } from './player-bar-effects.js';
+import { createElasticVolume } from './elastic-volume.js';
 import { initializePlayerActionLayout, PLAYER_ACTIONS } from './player-bar-layout.js';
 import { socialManager } from './social.js';
 import { canvasSettings } from './canvas-settings.js';
@@ -262,17 +264,35 @@ const volumeBtn = document.getElementById('volume-btn');
 
 initializePlayerActionLayout();
 
+let elasticVolume = null;
+const VOLUME_ICONS = { mute: SVG_MUTE, low: SVG_VOLUME_1, high: SVG_VOLUME };
+
+// Three icon states follow the level; the SVG is only replaced when the state changes, so dragging
+// the slider doesn't rebuild it every frame and the icon can animate the change.
+const syncVolumeIcon = (level) => {
+    if (!volumeBtn) return;
+    const state = level <= 0 ? 'mute' : level < 0.5 ? 'low' : 'high';
+    if (volumeBtn.dataset.volumeState === state) return;
+    volumeBtn.dataset.volumeFrom = volumeBtn.dataset.volumeState || '';
+    volumeBtn.dataset.volumeState = state;
+    volumeBtn.innerHTML = VOLUME_ICONS[state](20);
+};
+
 const updateVolumeUI = () => {
     const activeEl = Player.instance.activeElement;
     const { muted } = activeEl;
     const volume = Player.instance.userVolume;
-    volumeBtn.innerHTML = muted || volume === 0 ? SVG_MUTE(20) : SVG_VOLUME(20);
-    const effectiveVolume = muted ? 0 : volume * 100;
-    volumeFill.style.setProperty('--volume-level', `${effectiveVolume}%`);
-    volumeFill.style.width = `${effectiveVolume}%`;
-    _volumeBar?.style.setProperty('--volume-level', `${effectiveVolume}%`);
+    const level = muted ? 0 : volume;
+    syncVolumeIcon(level);
+    volumeFill.style.setProperty('--volume-level', `${level * 100}%`);
+    _volumeBar?.style.setProperty('--volume-level', `${level * 100}%`);
+    if (elasticVolume) {
+        elasticVolume.sync(level);
+        return;
+    }
+    volumeFill.style.width = `${level * 100}%`;
     const slider = document.getElementById('volume-slider');
-    if (slider) slider.value = String(effectiveVolume);
+    if (slider) slider.value = String(level * 100);
 };
 
 function getRectSnapshot(element) {
@@ -352,6 +372,71 @@ function setupQualityPopover(player) {
         HIGH: { rgb: '249 115 22', icon: SVG_QUALITY_WAVES_ELECTRICITY(20) },
         LOSSLESS: { rgb: '45 212 191', icon: SVG_QUALITY_CD(20) },
         HI_RES_LOSSLESS: { rgb: '244 191 84', icon: SVG_QUALITY_VINYL(22) },
+    };
+
+    // Disc/record rotation driven by momentum: ω relaxes exponentially toward a cruise speed,
+    // so a new kick, a deselect or a close/reopen always continues from the current angle and speed.
+    const SPIN = {
+        LOSSLESS: { kick: 1500, friction: 2.6, cruise: 0, target: (icon) => icon.querySelector('svg') },
+        HI_RES_LOSSLESS: { kick: 1900, friction: 1.7, cruise: 60, target: (icon) => icon.querySelector('svg .record') },
+    };
+    const spinStates = {};
+    let spinFrame = 0;
+    const spinNow = (profile, now = performance.now()) => {
+        const s = spinStates[profile] || { theta: 0, omega: 0, target: 0, k: SPIN[profile].friction, t0: now };
+        const dt = (now - s.t0) / 1000;
+        const decay = Math.exp(-s.k * dt);
+        return {
+            theta: s.theta + s.target * dt + ((s.omega - s.target) / s.k) * (1 - decay),
+            omega: s.target + (s.omega - s.target) * decay,
+        };
+    };
+    const setSpin = (profile, { kick = 0, cruising = false }) => {
+        const now = performance.now();
+        const cfg = SPIN[profile];
+        const cur = spinNow(profile, now);
+        const target = cruising ? cfg.cruise : 0;
+        let omega = cur.omega + kick;
+        // A free-spinning disc coasts to an upright rest instead of stopping at a random angle.
+        if (target === 0 && omega > 1) {
+            const end = cur.theta + omega / cfg.friction;
+            omega = Math.max(omega, (Math.ceil(end / 360) * 360 - cur.theta) * cfg.friction);
+        }
+        spinStates[profile] = { theta: cur.theta % 360, omega, target, k: cfg.friction, t0: now };
+    };
+    const tickSpin = () => {
+        spinFrame = 0;
+        if (panel.hidden) return;
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let active = false;
+        for (const profile of Object.keys(SPIN)) {
+            const icon = panel.querySelector(`.quality-radio-option[data-quality-profile="${profile}"] .quality-tier-icon`);
+            const el = icon && SPIN[profile].target(icon);
+            const { theta, omega } = spinNow(profile);
+            const s = spinStates[profile];
+            if (!s || reduce) continue;
+            const settled = s.target === 0 && Math.abs(omega) < 0.4;
+            if (settled) {
+                spinStates[profile] = { theta: 0, omega: 0, target: 0, k: s.k, t0: performance.now() };
+                if (el) el.style.transform = '';
+                continue;
+            }
+            if (el) el.style.transform = `rotate(${theta % 360}deg)`;
+            active = true;
+        }
+        if (active) spinFrame = requestAnimationFrame(tickSpin);
+    };
+    const startSpinLoop = () => {
+        if (!spinFrame) spinFrame = requestAnimationFrame(tickSpin);
+    };
+    // After every render: resume from the stored angle/speed; the selected record keeps cruising.
+    const syncSpinToPanel = (selectedProfile) => {
+        for (const profile of Object.keys(SPIN)) {
+            const wantsCruise = profile === selectedProfile && SPIN[profile].cruise > 0;
+            if (spinStates[profile] && (spinStates[profile].target !== 0) !== wantsCruise) setSpin(profile, { cruising: wantsCruise });
+            else if (!spinStates[profile] && wantsCruise) setSpin(profile, { cruising: true });
+        }
+        startSpinLoop();
     };
 
     const getConnectionMessage = (state) => {
@@ -500,6 +585,13 @@ function setupQualityPopover(player) {
 
         playIconAnimation(next);
         if (profile.endsWith('LOSSLESS')) playLosslessMagic(profile);
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            for (const other of Object.keys(SPIN)) {
+                if (other === profile) setSpin(other, { kick: SPIN[other].kick, cruising: SPIN[other].cruise > 0 });
+                else if (spinStates[other]) setSpin(other, { cruising: false });
+            }
+            startSpinLoop();
+        }
 
         if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
             return;
@@ -661,6 +753,7 @@ function setupQualityPopover(player) {
                 <span class="quality-connection-icon" aria-hidden="true">${SVG_INFORMATION_CIRCLE(18)}</span>
                 <span class="quality-connection-copy">${getConnectionMessage(state)}</span>
             </div>`;
+        syncSpinToPanel(isAuto ? null : selectedProfile);
     };
     const open = (badge) => {
         const run = ++animationRun;
@@ -1633,9 +1726,6 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
     if (volumeBtn) {
         volumeBtn.addEventListener('click', () => {
             const activeEl = player.activeElement;
-            _volumeBar?.classList.remove('is-mute-animating');
-            void _volumeBar?.offsetWidth;
-            _volumeBar?.classList.add('is-mute-animating');
             activeEl.muted = !activeEl.muted;
             localStorage.setItem('muted', activeEl.muted);
 
@@ -1644,7 +1734,6 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
             });
 
             updateVolumeUI();
-            window.setTimeout(() => _volumeBar?.classList.remove('is-mute-animating'), 360);
         });
     }
     const isMuted = localStorage.getItem('muted') === 'true';
@@ -1684,44 +1773,10 @@ function initializeSmoothSliders(player) {
     };
 
     if (volumeSlider) {
-        const MAX_OVERFLOW = 50;
-        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
         let volumeFrame = 0;
         let pendingVolume = player.userVolume;
-        let returnAnimation = null;
-        const decayOverflow = (value) => 2 * (1 / (1 + Math.exp(-(value / MAX_OVERFLOW))) - 0.5) * MAX_OVERFLOW;
-        const updateElasticShape = (clientX) => {
-            const rect = volumeBar.getBoundingClientRect();
-            const raw = clientX < rect.left ? clientX - rect.left : clientX > rect.right ? clientX - rect.right : 0;
-            const overflow = decayOverflow(Math.abs(raw));
-            const direction = raw < 0 ? -1 : raw > 0 ? 1 : 0;
-            const scaleX = 1 + overflow / rect.width;
-            const scaleY = 1 - (overflow / MAX_OVERFLOW) * 0.2;
-            volumeBar.style.transformOrigin = direction < 0 ? 'right' : 'left';
-            volumeBar.style.transform = reduceMotion.matches
-                ? 'none'
-                : `translateX(${direction * overflow * 0.5}px) scale(${scaleX}, ${scaleY})`;
-        };
-        const releaseElasticShape = (event) => {
-            volumeBar.classList.remove('is-stretched');
-            volumeBar.classList.add('is-release-reset');
-            volumeSlider.classList.remove('is-grabbing');
-            if (event?.pointerId != null && volumeSlider.hasPointerCapture(event.pointerId)) {
-                volumeSlider.releasePointerCapture(event.pointerId);
-            }
-            volumeSlider.blur();
-            returnAnimation?.cancel();
-            if (!reduceMotion.matches) {
-                returnAnimation = volumeBar.animate(
-                    [{ transform: volumeBar.style.transform || 'none' }, { transform: 'translateX(0) scale(1)' }],
-                    { duration: 520, easing: 'cubic-bezier(.22, 1.45, .36, 1)' }
-                );
-            }
-            volumeBar.style.transform = '';
-        };
         const commitVolume = () => {
             volumeFrame = 0;
-            const position = pendingVolume;
             const activeEl = player.activeElement;
             if (activeEl.muted) {
                 activeEl.muted = false;
@@ -1729,39 +1784,23 @@ function initializeSmoothSliders(player) {
                 if (inactiveEl) inactiveEl.muted = false;
                 localStorage.setItem('muted', 'false');
             }
-            player.setVolume(position);
-            volumeFill.style.width = `${position * 100}%`;
-            volumeBar.style.setProperty('--volume-level', `${position * 100}%`);
-        };
-        const setElasticVolume = () => {
-            pendingVolume = Number(volumeSlider.value) / 100;
-            volumeFill.style.width = `${pendingVolume * 100}%`;
+            player.setVolume(pendingVolume);
             volumeBar.style.setProperty('--volume-level', `${pendingVolume * 100}%`);
-            if (!volumeFrame) volumeFrame = requestAnimationFrame(commitVolume);
+            syncVolumeIcon(pendingVolume);
         };
-        volumeSlider.value = String(player.userVolume * 100);
-        volumeSlider.addEventListener('input', setElasticVolume);
-        volumeSlider.addEventListener('pointerdown', (event) => {
-            event.stopPropagation();
-            returnAnimation?.cancel();
-            volumeBar.classList.remove('is-release-reset');
-            volumeSlider.setPointerCapture(event.pointerId);
-            volumeBar.classList.add('is-stretched');
-            volumeSlider.classList.add('is-grabbing');
+        elasticVolume = createElasticVolume({
+            bar: volumeBar,
+            fill: volumeFill,
+            input: volumeSlider,
+            startIcon: volumeBtn,
+            pushed: [volumeBar.closest('.volume-controls')?.querySelector('.player-actions-row')].filter(Boolean),
+            onInput: (fraction) => {
+                pendingVolume = fraction;
+                if (!volumeFrame) volumeFrame = requestAnimationFrame(commitVolume);
+            },
         });
-        volumeSlider.addEventListener('pointermove', (event) => {
-            if (volumeSlider.hasPointerCapture(event.pointerId)) updateElasticShape(event.clientX);
-        });
-        volumeSlider.addEventListener('pointerup', (event) => {
-            event.stopPropagation();
-            releaseElasticShape(event);
-        });
-        volumeSlider.addEventListener('pointercancel', releaseElasticShape);
-        volumeSlider.addEventListener('lostpointercapture', releaseElasticShape);
-        window.addEventListener('pointerup', releaseElasticShape);
-        window.addEventListener('blur', releaseElasticShape);
-        volumeBar.addEventListener('pointerleave', () => volumeBar.classList.remove('is-release-reset'));
-        volumeSlider.addEventListener('click', (event) => event.stopPropagation());
+        const activeEl = player.activeElement;
+        elasticVolume.jump(activeEl?.muted ? 0 : player.userVolume);
     }
 
     const updateVolumeHover = (event) => {
@@ -1993,8 +2032,7 @@ function initializeSmoothSliders(player) {
             }
 
             player.setVolume(newVolume);
-            volumeFill.style.width = `${newVolume * 100}%`;
-            volumeBar.style.setProperty('--volume-level', `${newVolume * 100}%`);
+            updateVolumeUI();
         },
         { passive: false }
     );
@@ -2016,8 +2054,7 @@ function initializeSmoothSliders(player) {
             }
 
             player.setVolume(newVolume);
-            volumeFill.style.width = `${newVolume * 100}%`;
-            volumeBar.style.setProperty('--volume-level', `${newVolume * 100}%`);
+            updateVolumeUI();
         },
         { passive: false }
     );

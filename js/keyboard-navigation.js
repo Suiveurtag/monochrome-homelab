@@ -294,6 +294,16 @@ export function initializeKeyboardNavigation(root = document) {
 }
 
 export function installKeyboardShortcuts(actions, { registry = keyboardShortcuts, root = document } = {}) {
+    const handleSpace = (event) => {
+        if (
+            event.key !== ' ' || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey ||
+            event.isComposing || isEditingTarget(event.target) ||
+            document.querySelector('[data-shortcut-recording="true"]') || !actions.playPause
+        ) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (!event.repeat) Promise.resolve(actions.playPause()).catch(console.error);
+    };
     const handleKey = (event) => {
         if (event.defaultPrevented || event.isComposing || isEditingTarget(event.target)) return;
         const shortcuts = registry.getShortcuts();
@@ -320,6 +330,10 @@ export function installKeyboardShortcuts(actions, { registry = keyboardShortcuts
             return;
         }
     };
+    root.addEventListener('keydown', handleSpace, true);
     root.addEventListener('keydown', handleKey);
-    return () => root.removeEventListener('keydown', handleKey);
+    return () => {
+        root.removeEventListener('keydown', handleSpace, true);
+        root.removeEventListener('keydown', handleKey);
+    };
 }
