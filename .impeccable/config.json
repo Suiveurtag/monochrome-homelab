@@ -264,6 +264,15 @@
         "reason": "user confirmed: DESIGN.md Meta step 0.72-0.82rem"
       },
       {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "js/tests/player.test.js"
+        ],
+        "createdAt": "2026-11-19T22:44:22.553Z",
+        "reason": "agent: test fixture DOM stub in a vitest file, never rendered as UI"
+      },
+      {
         "rule": "gradient-text",
         "value": "*",
         "files": [

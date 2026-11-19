@@ -1545,8 +1545,652 @@
     color: #fbbf24;
 }
 
+/* Sleep timer panel. The dial is the one focal point: a 2-hour clock face whose ink arc is the
+   length you set and, once running, the fraction of time left. Everything else is quiet
+   ink-on-card controls in the player's own vocabulary. */
 .sleep-timer-popover {
-    padding: 1rem;
+    --sleep-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --sleep-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+    --sleep-wash: color-mix(in srgb, var(--foreground) 7%, transparent);
+    --sleep-rule: color-mix(in srgb, var(--foreground) 10%, transparent);
+    --sleep-accent: rgb(var(--highlight-rgb, 245 245 245));
+    --sleep-accent-ink: var(--primary-foreground, var(--background));
+
+    padding: 0.9rem 1rem 1rem;
+}
+
+.sleep-timer-popover .player-popover-header {
+    padding: 0 0 0.2rem 0.15rem;
+}
+
+.sleep-dial-wrap {
+    display: grid;
+    place-items: center;
+    padding-top: 0.2rem;
+}
+
+.sleep-dial {
+    position: relative;
+    width: min(192px, 60vw);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.sleep-dial:focus {
+    outline: none;
+}
+
+.sleep-dial:focus-visible {
+    outline: 2px solid var(--sleep-accent);
+    outline-offset: 3px;
+}
+
+.sleep-dial.is-dragging {
+    cursor: grabbing;
+}
+
+.sleep-timer-popover.is-running .sleep-dial {
+    cursor: default;
+}
+
+.sleep-dial-face {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.sleep-tick {
+    stroke: color-mix(in srgb, var(--foreground) 16%, transparent);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    transition: stroke 260ms ease;
+}
+
+.sleep-tick-major {
+    stroke: color-mix(in srgb, var(--foreground) 30%, transparent);
+    stroke-width: 2.2;
+}
+
+.sleep-tick.is-lit {
+    stroke: color-mix(in srgb, var(--sleep-accent) 62%, transparent);
+}
+
+.sleep-tick-major.is-lit {
+    stroke: var(--sleep-accent);
+}
+
+.sleep-dial-track,
+.sleep-dial-arc {
+    fill: none;
+    stroke-width: 10;
+}
+
+.sleep-dial-track {
+    stroke: var(--sleep-wash);
+}
+
+.sleep-dial-arc {
+    stroke: var(--sleep-accent);
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: 100px 100px;
+    transition: stroke 600ms ease;
+}
+
+.sleep-dial-hand {
+    transform-origin: 100px 100px;
+}
+
+.sleep-dial-knob {
+    fill: var(--background);
+    stroke: var(--sleep-accent);
+    stroke-width: 3.5;
+    filter: drop-shadow(0 3px 6px rgb(0 0 0 / 0.35));
+    transition:
+        r 260ms var(--sleep-spring),
+        fill 240ms ease;
+}
+
+.sleep-dial:hover .sleep-dial-knob,
+.sleep-dial.is-dragging .sleep-dial-knob {
+    r: 12px;
+}
+
+.sleep-timer-popover.is-running .sleep-dial-knob {
+    r: 6px;
+    fill: var(--sleep-accent);
+}
+
+/* Running: the player ticks every 250ms, these transitions join the steps into one glide. */
+.sleep-dial.is-ticking .sleep-dial-arc {
+    transition:
+        stroke-dasharray 250ms linear,
+        stroke 600ms ease;
+}
+
+.sleep-dial.is-ticking .sleep-dial-hand {
+    transition: transform 250ms linear;
+}
+
+.sleep-timer-popover.is-fading .sleep-dial-arc {
+    stroke: color-mix(in srgb, var(--sleep-accent) 50%, transparent);
+}
+
+.sleep-dial-readout {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 0.3rem;
+    pointer-events: none;
+    text-align: center;
+}
+
+.sleep-dial-value {
+    font-family: var(--font-family-key);
+    font-size: 2.75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.035em;
+    line-height: 1;
+}
+
+.sleep-timer-popover.is-running .sleep-dial-value {
+    font-size: 1.85rem;
+    letter-spacing: -0.025em;
+}
+
+/* Under the number: the unit while setting, a bell with the pause time once running. Both sit in
+   one grid cell and cross-fade, so the readout never jumps. */
+.sleep-dial-sub {
+    display: grid;
+    justify-items: center;
+}
+
+.sleep-dial-unit,
+.sleep-dial-alarm {
+    grid-area: 1 / 1;
+    transition:
+        opacity 260ms ease,
+        transform 360ms var(--sleep-ease),
+        filter 260ms ease;
+}
+
+.sleep-dial-unit {
+    color: var(--muted-foreground);
+    font-size: 0.78rem;
+    font-weight: 550;
+}
+
+.sleep-dial-alarm {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--muted-foreground);
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    opacity: 0;
+    filter: blur(3px);
+    transform: translateY(5px);
+}
+
+.sleep-dial-alarm svg {
+    flex: none;
+    transform-origin: 50% 15%;
+}
+
+.sleep-timer-popover.is-running .sleep-dial-unit {
+    opacity: 0;
+    filter: blur(3px);
+    transform: translateY(-5px);
+}
+
+.sleep-timer-popover.is-running .sleep-dial-alarm {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+}
+
+/* The bell swings once when the timer starts (not on every reopen), like an alarm being set. */
+.sleep-dial-alarm.is-set svg {
+    animation: sleep-bell-set 720ms var(--sleep-ease) 120ms;
+}
+
+.sleep-timer-popover.is-fading .sleep-dial-alarm {
+    color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+}
+
+@keyframes sleep-bell-set {
+    20% {
+        transform: rotate(16deg);
+    }
+
+    45% {
+        transform: rotate(-11deg);
+    }
+
+    70% {
+        transform: rotate(5deg);
+    }
+
+    100% {
+        transform: rotate(0);
+    }
+}
+
+/* The "Pauses at" line only serves setup; running, the bell in the dial says it, so it folds away. */
+.sleep-timer-ends {
+    height: 1.25em;
+    margin: 0.5rem 0 0.85rem;
+    overflow: hidden;
+    color: var(--muted-foreground);
+    font-size: 0.8rem;
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    transition:
+        height 380ms var(--sleep-ease),
+        margin 380ms var(--sleep-ease),
+        opacity 200ms ease,
+        visibility 0s linear 0s;
+}
+
+.sleep-timer-popover.is-running .sleep-timer-ends {
+    height: 0;
+    margin: 0.35rem 0 0.4rem;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+        height 380ms var(--sleep-ease),
+        margin 380ms var(--sleep-ease),
+        opacity 200ms ease,
+        visibility 0s linear 0s;
+}
+
+/* Presets and "end of track" fold away once the timer runs; the panel grows and shrinks upward. */
+.sleep-setup {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition:
+        grid-template-rows 380ms var(--sleep-ease),
+        opacity 220ms ease;
+}
+
+.sleep-setup-inner {
+    display: grid;
+    min-height: 0;
+    gap: 0.45rem;
+    padding-bottom: 0.7rem;
+    overflow: hidden;
+}
+
+.sleep-timer-popover.is-running .sleep-setup {
+    grid-template-rows: 0fr;
+    opacity: 0;
+}
+
+/* End of this track. Selecting it pours the accent out from the press point (a clip-path circle on
+   ::before); deselecting drains it back to where you pressed. The label inks over once the fill has
+   reached it, so text never sits dark-on-dark mid-pour. */
+.sleep-track-option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 40px;
+    padding: 0 0.85rem;
+    overflow: hidden;
+    isolation: isolate;
+    border: 1px solid var(--sleep-rule);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--foreground);
+    font: 600 0.84rem/1.2 var(--font-family);
+    cursor: pointer;
+    transition:
+        background-color 180ms ease,
+        border-color 260ms ease,
+        color 160ms ease,
+        transform 220ms var(--sleep-spring);
+}
+
+.sleep-track-option::before {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    content: '';
+    background: var(--sleep-accent);
+    clip-path: circle(0 at var(--fill-x, 50%) var(--fill-y, 50%));
+    transition:
+        clip-path 420ms var(--sleep-ease),
+        background-color 180ms ease;
+}
+
+.sleep-track-option:hover:not(:disabled, .is-selected) {
+    background: var(--sleep-wash);
+}
+
+.sleep-track-option:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.sleep-track-left {
+    color: var(--muted-foreground);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    transition: color 160ms ease;
+}
+
+.sleep-track-option.is-selected {
+    border-color: transparent;
+    color: var(--sleep-accent-ink);
+    transition:
+        background-color 180ms ease,
+        border-color 260ms ease,
+        color 220ms ease 170ms,
+        transform 220ms var(--sleep-spring);
+}
+
+.sleep-track-option.is-selected::before {
+    clip-path: circle(150% at var(--fill-x, 50%) var(--fill-y, 50%));
+    transition:
+        clip-path 640ms var(--sleep-ease),
+        background-color 180ms ease;
+}
+
+.sleep-track-option.is-selected:hover::before {
+    background: color-mix(in srgb, var(--sleep-accent) 94%, var(--background));
+}
+
+.sleep-track-option.is-selected .sleep-track-left {
+    color: color-mix(in srgb, var(--sleep-accent-ink) 68%, transparent);
+    transition: color 220ms ease 170ms;
+}
+
+.sleep-track-option:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.sleep-timer-popover .sleep-fade-row {
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    padding: 0.7rem 0.1rem 0.75rem;
+    border-top: 1px solid var(--sleep-rule);
+    color: var(--foreground);
+    font-size: 0.86rem;
+}
+
+/* Same switch as the quality panel's Auto, but on the theme's accent: only this one takes the hue. */
+.sleep-timer-popover .quality-auto-toggle input:checked + .quality-auto-track {
+    background: var(--sleep-accent);
+}
+
+.sleep-timer-popover .quality-auto-toggle input:checked + .quality-auto-track .quality-auto-thumb {
+    background: var(--sleep-accent-ink);
+}
+
+.sleep-fade-copy {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.sleep-fade-hint {
+    color: var(--muted-foreground);
+    font-size: 0.74rem;
+    font-weight: 450;
+}
+
+.sleep-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.sleep-action {
+    position: relative;
+    flex: 1;
+    height: 42px;
+    padding: 0 1rem;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--foreground) 16%, transparent);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--foreground);
+    font: 650 0.88rem/1 var(--font-family);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition:
+        background-color 180ms ease,
+        border-color 180ms ease,
+        color 180ms ease,
+        transform 260ms var(--sleep-spring);
+}
+
+.sleep-action[hidden] {
+    display: none;
+}
+
+.sleep-action:hover {
+    border-color: color-mix(in srgb, var(--foreground) 26%, transparent);
+    background: var(--sleep-wash);
+}
+
+/* Press sinks quickly; release springs back through the slower spring above. */
+.sleep-action:active {
+    transform: scale(0.95);
+    transition-duration: 180ms, 180ms, 180ms, 90ms;
+}
+
+.sleep-action-label {
+    display: inline-block;
+}
+
+/* +15 min: the label rolls over like a counter ticking up while the pill flashes the accent. */
+.sleep-action.is-bumped {
+    animation: sleep-bump-flash 560ms var(--sleep-ease);
+}
+
+.sleep-action.is-bumped .sleep-action-label {
+    animation: sleep-bump-roll 480ms var(--sleep-ease);
+}
+
+/* Turn off: a quiet warning tone on hover, the only destructive action in the panel. */
+.sleep-action-stop:hover {
+    border-color: color-mix(in srgb, var(--foreground) 30%, transparent);
+    background: color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+/* Start, stop or timer end while open: the new row rises in, one pill after the other. */
+.sleep-actions.is-swapping .sleep-action:not([hidden], .is-bumped) {
+    animation: sleep-action-in 520ms var(--sleep-ease) both;
+}
+
+.sleep-actions.is-swapping .sleep-action:not([hidden]) + .sleep-action:not([hidden], .is-bumped) {
+    animation-delay: 60ms;
+}
+
+@keyframes sleep-action-in {
+    from {
+        opacity: 0;
+        filter: blur(4px);
+        transform: translateY(8px) scale(0.94);
+    }
+}
+
+@keyframes sleep-bump-flash {
+    18% {
+        border-color: transparent;
+        background: color-mix(in srgb, var(--sleep-accent) 22%, transparent);
+    }
+}
+
+@keyframes sleep-bump-roll {
+    0% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    40% {
+        transform: translateY(-120%);
+        opacity: 0;
+    }
+
+    41% {
+        transform: translateY(120%);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.sleep-action-primary {
+    border-color: transparent;
+    background: var(--sleep-accent);
+    color: var(--sleep-accent-ink);
+}
+
+.sleep-action-primary:hover {
+    background: color-mix(in srgb, var(--sleep-accent) 86%, var(--background));
+}
+
+.sleep-timer-popover :is(.sleep-track-option, .sleep-action):focus-visible {
+    outline: 2px solid var(--sleep-accent);
+    outline-offset: 2px;
+}
+
+/* Start: the dial settles like a record dropping onto the platter. */
+.sleep-timer-popover.is-starting .sleep-dial-face {
+    animation: sleep-settle 620ms var(--sleep-spring);
+}
+
+@keyframes sleep-settle {
+    30% {
+        transform: scale(0.95);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@media (max-width: 768px) {
+    .sleep-track-option,
+    .sleep-action {
+        min-height: 44px;
+    }
+}
+
+/* Player bar button: the moon fills and a thin ring around it runs down with the timer. */
+.now-playing-bar .sleep-timer-button {
+    position: relative;
+}
+
+.now-playing-bar .sleep-timer-button .sleep-timer-icon {
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.now-playing-bar .sleep-timer-button .s-moon {
+    transition: fill 320ms ease;
+}
+
+.now-playing-bar .sleep-timer-button.is-sleep-active {
+    color: var(--foreground);
+}
+
+.now-playing-bar .sleep-timer-button.is-sleep-active .sleep-timer-icon {
+    transform: scale(0.76);
+}
+
+.now-playing-bar .sleep-timer-button.is-sleep-active .s-moon {
+    fill: currentcolor;
+}
+
+/* The ring is a clock: the arc is the time left, running from 12 o'clock clockwise to a hand tip
+   that winds back toward 12 as the timer runs, the same reading as the panel's dial. Starting the
+   timer winds it up from zero. */
+.now-playing-bar .sleep-timer-button svg.sleep-timer-ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.82);
+    transition:
+        opacity 260ms ease,
+        transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.now-playing-bar .sleep-timer-button.is-sleep-active svg.sleep-timer-ring {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.sleep-ring-track,
+.sleep-ring-fill {
+    fill: none;
+    stroke-width: 2.2;
+}
+
+.sleep-ring-track {
+    stroke: color-mix(in srgb, currentcolor 16%, transparent);
+}
+
+.sleep-ring-fill {
+    stroke: currentcolor;
+    stroke-linecap: round;
+    stroke-dasharray: 100 100;
+    stroke-dashoffset: calc((1 - var(--sleep-left, 1)) * 100);
+    transform: rotate(-90deg);
+    transform-origin: 18px 18px;
+    transition: stroke-dashoffset 250ms linear;
+}
+
+.sleep-ring-hand {
+    transform: rotate(calc(var(--sleep-left, 1) * 360deg));
+    transform-origin: 18px 18px;
+    transition: transform 250ms linear;
+}
+
+.sleep-ring-tip {
+    fill: currentcolor;
+    stroke: var(--background);
+    stroke-width: 1.2;
+}
+
+.now-playing-bar .sleep-timer-button.is-sleep-active .sleep-ring-fill {
+    animation: sleep-ring-wind-arc 760ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.now-playing-bar .sleep-timer-button.is-sleep-active .sleep-ring-hand {
+    animation: sleep-ring-wind-hand 760ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes sleep-ring-wind-arc {
+    from {
+        stroke-dashoffset: 100;
+    }
+}
+
+@keyframes sleep-ring-wind-hand {
+    from {
+        transform: rotate(0deg);
+    }
 }
 
 .player-popover-close {
@@ -1562,103 +2206,12 @@
     cursor: pointer;
     transition:
         color 160ms ease,
-        background-color 160ms ease,
-        transform 180ms var(--ease-out-back);
+        background-color 160ms ease;
 }
 
 .player-popover-close:hover {
     background: rgb(255 255 255 / 0.1);
     color: var(--foreground);
-    transform: rotate(5deg) scale(1.04);
-}
-
-.sleep-timer-description {
-    margin: -0.1rem 0 0.85rem;
-    color: var(--muted-foreground);
-    font-size: 0.74rem;
-}
-
-.sleep-timer-popover .timer-options {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.38rem;
-}
-
-.sleep-timer-popover .timer-option {
-    display: flex;
-    min-width: 0;
-    min-height: 54px;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 0.05rem;
-    padding: 0.45rem 0.2rem;
-    border: 1px solid rgb(255 255 255 / 0.08);
-    border-radius: 11px;
-    background: rgb(255 255 255 / 0.035);
-    color: var(--foreground);
-    cursor: pointer;
-    transition:
-        transform 220ms var(--ease-out-back),
-        border-color 180ms ease,
-        background-color 180ms ease,
-        box-shadow 180ms ease;
-}
-
-.sleep-timer-popover .timer-option:hover,
-.sleep-timer-popover .timer-option:focus-visible {
-    border-color: rgb(var(--highlight-rgb) / 0.38);
-    background: rgb(var(--highlight-rgb) / 0.1);
-    box-shadow: 0 8px 24px rgb(var(--highlight-rgb) / 0.08);
-    transform: translateY(-3px);
-    outline: none;
-}
-
-.sleep-timer-popover .timer-option strong {
-    font-size: 0.92rem;
-}
-
-.sleep-timer-popover .timer-option span {
-    color: var(--muted-foreground);
-    font-size: 0.62rem;
-}
-
-.custom-timer-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid rgb(255 255 255 / 0.07);
-    font-size: 0.74rem;
-}
-
-.custom-timer-control {
-    display: flex;
-    align-items: center;
-    gap: 0.36rem;
-}
-
-.custom-timer-control input {
-    width: 58px;
-    height: 34px;
-    padding: 0 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    background: rgb(255 255 255 / 0.04);
-    color: var(--foreground);
-    text-align: right;
-}
-
-.custom-timer-control > span {
-    color: var(--muted-foreground);
-    font-size: 0.68rem;
-}
-
-.custom-timer-control #custom-timer-btn {
-    min-height: 34px;
-    padding-inline: 0.7rem;
 }
 
 @media (max-width: 768px) {
@@ -2045,7 +2598,9 @@
     .quality-radio-bitrate,
     .quality-selection-indicator,
     .quality-lossless-magic *,
-    .sleep-timer-popover .timer-option,
+    .sleep-timer-popover *,
+    .sleep-track-option::before,
+    .now-playing-bar .sleep-timer-button *,
     .progress-hover-time {
         animation: none !important;
         transition-duration: 0ms !important;
@@ -3029,13 +3584,17 @@
     transition-delay: 80ms;
 }
 
-/* Sleep timer: the hands wind back. */
-.now-playing-bar :is(#sleep-timer-btn, #sleep-timer-btn-desktop) .m-hands {
-    transform-origin: 12px 12px;
+/* Sleep timer: the moon leans back into the night, its z lifts a little. */
+.now-playing-bar .sleep-timer-button .m-moon {
+    transform-origin: 10px 14px;
 }
 
-.now-playing-bar :is(#sleep-timer-btn, #sleep-timer-btn-desktop).is-posed:not(.is-clicking) .m-hands {
-    transform: rotate(-90deg);
+.now-playing-bar .sleep-timer-button.is-posed:not(.is-clicking) .m-moon {
+    transform: rotate(-14deg);
+}
+
+.now-playing-bar .sleep-timer-button.is-posed:not(.is-clicking) .m-z {
+    transform: translate(1px, -1.6px);
 }
 
 /* Equalizer: the faders slide to an even level. */

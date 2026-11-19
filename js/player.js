@@ -21,6 +21,7 @@ import {
     contentBlockingSettings,
     gaplessPlaybackSettings,
     crossfadeSettings,
+    sleepTimerSettings,
 } from './storage.js';
 import { audioContextManager } from './audio-context.js';
 import { isIos, isSafari } from './platform-detection.js';
@@ -42,7 +43,19 @@ import {
     resolvePlaybackQuality,
 } from './player-quality.js';
 
-import { SVG_CLOCK, SVG_ATMOS } from './icons.js';
+import { SVG_ATMOS } from './icons.js';
+
+// The fade lasts up to a minute, never more than 40% of the timer, so short timers still play.
+const SLEEP_FADE_MS = 60_000;
+
+function describeSleepRemaining(ms) {
+    const seconds = Math.ceil(ms / 1000);
+    if (seconds < 60) return `${seconds} s`;
+    const minutes = Math.ceil(seconds / 60);
+    if (minutes < 60) return `${minutes} min`;
+    const rest = minutes % 60;
+    return rest ? `${Math.floor(minutes / 60)} h ${rest} min` : `${minutes / 60} h`;
+}
 import { UIRenderer } from './ui.js';
 import { MediaSession } from '@capgo/capacitor-media-session';
 
@@ -115,10 +128,10 @@ export class Player {
             (window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator?.standalone === true);
 
         this.hls = null;
-        // Sleep timer properties
+        // Sleep timer: { mode: 'duration' | 'track', endTime?, total } while running.
         this.sleepTimer = null;
-        this.sleepTimerEndTime = null;
         this.sleepTimerInterval = null;
+        this.sleepFadeGain = 1;
         // Artist popular tracks state
         this.artistPopularTracksState = {
             artistId: null,
@@ -350,7 +363,7 @@ export class Player {
         const curvedVolume = exponentialVolumeSettings.applyCurve(this.userVolume);
 
         // Calculate effective volume
-        const effectiveVolume = curvedVolume * scale;
+        const effectiveVolume = curvedVolume * scale * this.sleepFadeGain;
 
         const el = this.activeElement;
 
@@ -2003,6 +2016,7 @@ export class Player {
     async startCrossfadeIfNeeded(element = this.activeElement) {
         if (
             this._crossfadeInFlight ||
+            this.sleepTimer?.mode === 'track' ||
             !crossfadeSettings.isEnabled() ||
             element !== this.activeElement ||
             this.currentTrack?.type === 'video' ||
@@ -2057,6 +2071,7 @@ export class Player {
         if (
             this._crossfadeInFlight ||
             this._gaplessInFlight ||
+            this.sleepTimer?.mode === 'track' ||
             !gaplessPlaybackSettings.isEnabled() ||
             crossfadeSettings.isEnabled() ||
             element !== this.activeElement ||
@@ -3209,46 +3224,127 @@ export class Player {
         });
     }
 
-    // Sleep Timer Methods
+    // Sleep timer. 'duration' runs on the wall clock (it keeps counting while paused, like a bedside
+    // timer); 'track' follows the media clock of whatever is playing. With fade on, the volume eases
+    // down over the last stretch through sleepFadeGain, which applyReplayGain multiplies in.
     setSleepTimer(minutes) {
-        this.clearSleepTimer(); // Clear any existing timer
+        const total = Math.max(1, minutes) * 60_000;
+        this.startSleepTimer({ mode: 'duration', endTime: Date.now() + total, total });
+    }
 
-        this.sleepTimerEndTime = Date.now() + minutes * 60 * 1000;
+    setSleepTimerEndOfTrack() {
+        const remaining = this.getTrackRemainingMs();
+        if (remaining === null) return false;
+        this.startSleepTimer({
+            mode: 'track',
+            total: Math.max(remaining, 1000),
+            trackId: this.currentTrack?.id ?? null,
+            lastRemaining: remaining,
+        });
+        return true;
+    }
 
-        this.sleepTimer = setTimeout(
-            () => {
-                this.activeElement.pause();
-                this.clearSleepTimer();
-                this.updateSleepTimerUI();
-            },
-            minutes * 60 * 1000
-        );
+    extendSleepTimer(minutes) {
+        const remaining = this.getSleepTimerRemainingMs();
+        if (remaining === null) return;
+        const total = remaining + minutes * 60_000;
+        this.startSleepTimer({ mode: 'duration', endTime: Date.now() + total, total });
+    }
 
-        // Update UI every second
-        this.sleepTimerInterval = setInterval(() => {
-            this.updateSleepTimerUI();
-        }, 1000);
+    startSleepTimer(timer) {
+        this.clearSleepTimer({ silent: true });
+        this.sleepTimer = timer;
+        this.sleepTimerInterval = setInterval(() => this.tickSleepTimer(), 250);
+        this.tickSleepTimer();
+    }
 
+    clearSleepTimer({ finished = false, silent = false } = {}) {
+        clearInterval(this.sleepTimerInterval);
+        this.sleepTimerInterval = null;
+        const wasActive = this.sleepTimer !== null;
+        this.sleepTimer = null;
+        if (this.sleepFadeGain !== 1) {
+            this.sleepFadeGain = 1;
+            this.applyReplayGain();
+        }
+        if (silent) return;
+        this.updateSleepTimerUI();
+        if (wasActive) window.dispatchEvent(new CustomEvent('sleep-timer-end', { detail: { finished } }));
+    }
+
+    // Called by the 'ended' handler: true when the timer was waiting for this end and playback must stop.
+    consumeSleepTimerAtTrackEnd() {
+        if (this.sleepTimer?.mode !== 'track') return false;
+        this.clearSleepTimer({ finished: true });
+        return true;
+    }
+
+    finishSleepTimer() {
+        this.activeElement.pause();
+        this.clearSleepTimer({ finished: true });
+    }
+
+    tickSleepTimer() {
+        const timer = this.sleepTimer;
+        if (!timer) return;
+        const remaining = this.getSleepTimerRemainingMs();
+        // End of track is finished only by the 'ended' handler (consumeSleepTimerAtTrackEnd): stopping
+        // here could race the queued 'ended' event and let it start the next track.
+        if (timer.mode === 'duration' && remaining <= 0) {
+            this.finishSleepTimer();
+            return;
+        }
+        const fadeWindow = Math.min(SLEEP_FADE_MS, timer.total * 0.4);
+        const gain = sleepTimerSettings.isFadeEnabled() && remaining < fadeWindow ? (remaining / fadeWindow) ** 2 : 1;
+        if (Math.abs(gain - this.sleepFadeGain) > 0.001 || (gain === 1 && this.sleepFadeGain !== 1)) {
+            this.sleepFadeGain = gain;
+            this.applyReplayGain();
+        }
         this.updateSleepTimerUI();
     }
 
-    clearSleepTimer() {
-        if (this.sleepTimer) {
-            clearTimeout(this.sleepTimer);
-            this.sleepTimer = null;
+    getTrackRemainingMs() {
+        const element = this.activeElement;
+        if (!element || !Number.isFinite(element.duration) || element.duration <= 0) return null;
+        return (Math.max(0, element.duration - element.currentTime) / (element.playbackRate || 1)) * 1000;
+    }
+
+    getSleepTimerRemainingMs() {
+        const timer = this.sleepTimer;
+        if (!timer) return null;
+        if (timer.mode === 'track') {
+            // End of track follows whatever is playing now. A new track refills the ring; while it
+            // loads (no duration yet) the last known value holds instead of jumping.
+            const remaining = this.getTrackRemainingMs();
+            const trackId = this.currentTrack?.id ?? null;
+            if (remaining !== null) {
+                if (trackId !== timer.trackId) {
+                    timer.trackId = trackId;
+                    timer.total = Math.max(remaining, 1000);
+                }
+                timer.lastRemaining = remaining;
+            }
+            return timer.lastRemaining ?? timer.total;
         }
-        if (this.sleepTimerInterval) {
-            clearInterval(this.sleepTimerInterval);
-            this.sleepTimerInterval = null;
-        }
-        this.sleepTimerEndTime = null;
-        this.updateSleepTimerUI();
+        return Math.max(0, timer.endTime - Date.now());
     }
 
     getSleepTimerRemaining() {
-        if (!this.sleepTimerEndTime) return null;
-        const remaining = Math.max(0, this.sleepTimerEndTime - Date.now());
-        return Math.ceil(remaining / 1000); // Return seconds remaining
+        const remaining = this.getSleepTimerRemainingMs();
+        return remaining === null ? null : Math.ceil(remaining / 1000);
+    }
+
+    getSleepTimerState() {
+        const timer = this.sleepTimer;
+        if (!timer) return null;
+        const remaining = this.getSleepTimerRemainingMs();
+        return {
+            mode: timer.mode,
+            remaining,
+            total: Math.max(timer.total, remaining),
+            endsAt: Date.now() + remaining,
+            fading: this.sleepFadeGain < 1,
+        };
     }
 
     isSleepTimerActive() {
@@ -3256,35 +3352,19 @@ export class Player {
     }
 
     updateSleepTimerUI() {
-        const timerBtn = document.getElementById('sleep-timer-btn');
-        const timerBtnDesktop = document.getElementById('sleep-timer-btn-desktop');
-
-        const updateBtn = (btn) => {
-            if (!btn) return;
-            if (this.isSleepTimerActive()) {
-                const remaining = this.getSleepTimerRemaining();
-                if (remaining > 0) {
-                    const minutes = Math.floor(remaining / 60);
-                    const seconds = remaining % 60;
-                    btn.innerHTML = `<span style="font-size: 12px; font-weight: bold;">${minutes}:${seconds.toString().padStart(2, '0')}</span>`;
-                    btn.title = `Sleep Timer: ${minutes}:${seconds.toString().padStart(2, '0')} remaining`;
-                    btn.classList.add('active');
-                    btn.style.color = 'var(--primary)';
-                } else {
-                    btn.innerHTML = SVG_CLOCK(20);
-                    btn.title = 'Sleep Timer';
-                    btn.classList.remove('active');
-                    btn.style.color = '';
-                }
-            } else {
-                btn.innerHTML = SVG_CLOCK(20);
-                btn.title = 'Sleep Timer';
-                btn.classList.remove('active');
-                btn.style.color = '';
+        const state = this.getSleepTimerState();
+        const label = state ? `Sleep timer, ${describeSleepRemaining(state.remaining)} left` : 'Sleep timer';
+        for (const id of ['sleep-timer-btn', 'sleep-timer-btn-desktop']) {
+            const button = document.getElementById(id);
+            if (!button) continue;
+            button.classList.toggle('is-sleep-active', Boolean(state));
+            // Idle keeps the last value so the ring fades out where it stood instead of sweeping back to full.
+            if (state) button.style.setProperty('--sleep-left', (state.remaining / state.total).toFixed(4));
+            if (button.title !== label) {
+                button.title = label;
+                button.setAttribute('aria-label', label);
             }
-        };
-
-        updateBtn(timerBtn);
-        updateBtn(timerBtnDesktop);
+        }
+        window.dispatchEvent(new CustomEvent('sleep-timer-tick', { detail: state }));
     }
 }

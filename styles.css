@@ -7303,36 +7303,6 @@ input:checked + .slider::before {
     box-shadow: 0 2px 4px rgb(0, 0, 0, 0.3);
 }
 
-/* Sleep Timer Button */
-#sleep-timer-btn {
-    position: relative;
-    font-size: 0.8rem;
-    font-weight: bold;
-    transition: all var(--transition);
-}
-
-#sleep-timer-btn:hover {
-    color: var(--highlight);
-}
-
-#sleep-timer-btn.active {
-    color: var(--primary);
-    text-shadow: 0 0 8px rgb(var(--highlight-rgb), 0.5);
-}
-
-#sleep-timer-btn svg {
-    width: 20px;
-    height: 20px;
-}
-
-#sleep-timer-btn span {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-}
-
 #context-menu,
 #sort-menu,
 #export-playlist-menu,

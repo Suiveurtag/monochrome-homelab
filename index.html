@@ -1447,37 +1447,66 @@
             hidden
         >
             <div class="player-popover-header">
-                <div>
-                    <span class="player-popover-kicker">Playback</span>
-                    <h3 id="sleep-timer-title">Sleep timer</h3>
-                </div>
+                <h3 id="sleep-timer-title">Sleep timer</h3>
                 <button id="cancel-sleep-timer" class="player-popover-close" type="button" aria-label="Close">
                     <use svg="!lucide/x.svg" size="18" />
                 </button>
             </div>
-            <p class="sleep-timer-description">Monochrome will gently pause when the timer ends.</p>
-            <div class="timer-options" aria-label="Timer duration">
-                <button class="timer-option" type="button" data-minutes="5"><strong>5</strong><span>min</span></button>
-                <button class="timer-option" type="button" data-minutes="15">
-                    <strong>15</strong><span>min</span>
-                </button>
-                <button class="timer-option" type="button" data-minutes="30">
-                    <strong>30</strong><span>min</span>
-                </button>
-                <button class="timer-option" type="button" data-minutes="60">
-                    <strong>1</strong><span>hour</span>
-                </button>
-                <button class="timer-option" type="button" data-minutes="120">
-                    <strong>2</strong><span>hours</span>
-                </button>
-            </div>
-            <div class="custom-timer-row">
-                <label for="custom-minutes">Custom</label>
-                <div class="custom-timer-control">
-                    <input type="number" id="custom-minutes" placeholder="45" min="1" max="480" inputmode="numeric" />
-                    <span>min</span>
-                    <button class="timer-option" id="custom-timer-btn" type="button">Set</button>
+            <div class="sleep-dial-wrap">
+                <div
+                    id="sleep-dial"
+                    class="sleep-dial"
+                    role="slider"
+                    tabindex="0"
+                    aria-label="Timer length"
+                    aria-valuemin="5"
+                    aria-valuemax="120"
+                    aria-valuenow="30"
+                    aria-valuetext="30 minutes"
+                >
+                    <svg class="sleep-dial-face" viewBox="0 0 200 200" aria-hidden="true">
+                        <g class="sleep-dial-ticks"></g>
+                        <circle class="sleep-dial-track" cx="100" cy="100" r="76" />
+                        <circle class="sleep-dial-arc" cx="100" cy="100" r="76" pathLength="120" />
+                        <g class="sleep-dial-hand">
+                            <circle class="sleep-dial-knob" cx="100" cy="24" r="10" />
+                        </g>
+                    </svg>
+                    <div class="sleep-dial-readout" aria-hidden="true">
+                        <span class="sleep-dial-value" id="sleep-dial-value">30</span>
+                        <span class="sleep-dial-sub">
+                            <span class="sleep-dial-unit" id="sleep-dial-unit">min</span>
+                            <span class="sleep-dial-alarm">
+                                <use svg="!lucide/bell.svg" size="13" />
+                                <span id="sleep-dial-alarm-time">--:--</span>
+                            </span>
+                        </span>
+                    </div>
                 </div>
+            </div>
+            <p class="sleep-timer-ends" id="sleep-timer-ends">Pauses at --:--</p>
+            <div class="sleep-setup" id="sleep-setup">
+                <div class="sleep-setup-inner">
+                    <button type="button" class="sleep-track-option" id="sleep-track-option" aria-pressed="false">
+                        <span>End of this track</span>
+                        <span class="sleep-track-left" id="sleep-track-left"></span>
+                    </button>
+                </div>
+            </div>
+            <label class="sleep-fade-row quality-auto-toggle" for="sleep-fade-toggle">
+                <span class="sleep-fade-copy">
+                    <span>Fade out</span>
+                    <span class="sleep-fade-hint">Volume eases down over the last minute</span>
+                </span>
+                <input id="sleep-fade-toggle" type="checkbox" role="switch" />
+                <span class="quality-auto-track" aria-hidden="true"><span class="quality-auto-thumb"></span></span>
+            </label>
+            <div class="sleep-actions">
+                <button type="button" class="sleep-action sleep-action-primary" id="sleep-start">Start timer</button>
+                <button type="button" class="sleep-action" id="sleep-extend">
+                    <span class="sleep-action-label">+15 min</span>
+                </button>
+                <button type="button" class="sleep-action sleep-action-stop" id="sleep-stop">Turn off</button>
             </div>
         </div>
 
@@ -7454,24 +7483,68 @@
                         <button
                             id="sleep-timer-btn"
                             data-player-action="sleep-timer"
-                            title="Sleep Timer"
-                            class="mobile-only"
-                            aria-label="Set a sleep timer"
+                            title="Sleep timer"
+                            class="mobile-only sleep-timer-button"
+                            aria-label="Sleep timer"
                             aria-haspopup="dialog"
                             aria-expanded="false"
                         >
-                            <use svg="!lucide/clock.svg" size="20" />
+                            <svg
+                                class="sleep-timer-icon"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    class="s-moon"
+                                    d="M17.827 14.348a7.92 7.92 0 1 1-8.336-8.335c.356-.019.543.405.354.707a5.28 5.28 0 0 0 7.276 7.276c.303-.189.726-.004.707.353"
+                                />
+                                <path class="s-z" d="M16.5 3h4l-4 4h4" />
+                            </svg>
+                            <svg class="sleep-timer-ring" viewBox="0 0 36 36" aria-hidden="true">
+                                <circle class="sleep-ring-track" cx="18" cy="18" r="16.5" />
+                                <circle class="sleep-ring-fill" cx="18" cy="18" r="16.5" pathLength="100" />
+                                <g class="sleep-ring-hand"><circle class="sleep-ring-tip" cx="18" cy="1.5" r="2.4" /></g>
+                            </svg>
                         </button>
                         <button
                             id="sleep-timer-btn-desktop"
                             data-player-action="sleep-timer"
-                            title="Sleep Timer"
-                            class="desktop-only"
-                            aria-label="Set a sleep timer"
+                            title="Sleep timer"
+                            class="desktop-only sleep-timer-button"
+                            aria-label="Sleep timer"
                             aria-haspopup="dialog"
                             aria-expanded="false"
                         >
-                            <use svg="!lucide/clock.svg" size="20" />
+                            <svg
+                                class="sleep-timer-icon"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    class="s-moon"
+                                    d="M17.827 14.348a7.92 7.92 0 1 1-8.336-8.335c.356-.019.543.405.354.707a5.28 5.28 0 0 0 7.276 7.276c.303-.189.726-.004.707.353"
+                                />
+                                <path class="s-z" d="M16.5 3h4l-4 4h4" />
+                            </svg>
+                            <svg class="sleep-timer-ring" viewBox="0 0 36 36" aria-hidden="true">
+                                <circle class="sleep-ring-track" cx="18" cy="18" r="16.5" />
+                                <circle class="sleep-ring-fill" cx="18" cy="18" r="16.5" pathLength="100" />
+                                <g class="sleep-ring-hand"><circle class="sleep-ring-tip" cx="18" cy="1.5" r="2.4" /></g>
+                            </svg>
                         </button>
                         <button id="queue-btn" data-player-action="queue" title="Queue" aria-label="Open queue">
                             <use svg="!lucide/list-music.svg" size="24" />

@@ -36,7 +36,7 @@ const CANON = {
         '<g class="m-arrow"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/></g><path class="m-tray" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
     cast: '<path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><path class="m-wave-big" d="M2 12a9 9 0 0 1 8 8"/><path class="m-wave-small" d="M2 16a5 5 0 0 1 4 4"/><line class="m-dot" x1="2" x2="2.01" y1="20" y2="20"/>',
     queue: '<path class="m-line m-line-1" d="M16 5H3"/><path class="m-line m-line-2" d="M11 12H3"/><path class="m-line m-line-3" d="M11 19H3"/><g class="m-note"><path d="M21 16V5"/><circle class="m-note-head" cx="18" cy="16" r="3"/></g>',
-    clock: '<circle cx="12" cy="12" r="10"/><path class="m-hands" d="M12 6v6l4 2"/>',
+    sleep: '<g class="m-moon"><path class="s-moon" d="M17.827 14.348a7.92 7.92 0 1 1-8.336-8.335c.356-.019.543.405.354.707a5.28 5.28 0 0 0 7.276 7.276c.303-.189.726-.004.707.353"/></g><path class="m-z-out" opacity="0" d="M16.5 3h4l-4 4h4"/><path class="m-z s-z" d="M16.5 3h4l-4 4h4"/>',
     equalizer: '<path class="m-eq" d="M4 18V13M4 9V4M12 18V10M12 6V4M20 18V15M20 11V4M2 13h4M10 6h4M18 15h4"/>',
     speaker:
         '<path class="m-speaker" d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/>',
@@ -234,10 +234,24 @@ function queue(svg) {
     });
 }
 
-// Sleep timer: the hands wind back one full turn, a countdown.
-function clock(svg) {
-    const group = stage(svg, CANON.clock);
-    add(q(group, '.m-hands'), { type: 'rotate', values: ['0 12 12', '-360 12 12'], ease: IN_OUT, dur: 900 });
+// Sleep timer: the moon rocks like a cradle while its z drifts up and fades, then a fresh z writes
+// itself back in, a slow breath out.
+function sleep(svg) {
+    const group = stage(svg, CANON.sleep);
+    const dur = 1000;
+    // No pivot in the values: the CSS transform-origin (10px 14px, set for the hover pose) also
+    // applies to this transform attribute, and a second pivot would swing the moon out of the box.
+    add(q(group, '.m-moon'), {
+        type: 'rotate',
+        values: ['0', '-16', '9', '-4', '0'],
+        times: [0, 0.26, 0.54, 0.78, 1],
+        ease: [OUT, IN_OUT, IN_OUT, IN_OUT],
+        dur,
+    });
+    const leaving = q(group, '.m-z-out');
+    add(leaving, { type: 'translate', dur, ...segment('0 0', '2.5 -5', 0, 0.48) });
+    add(leaving, { attr: 'opacity', dur, ...segment('1', '0', 0.06, 0.48) });
+    draw(q(group, '.m-z'), { t0: 0.46, t1: 0.92, dur });
 }
 
 // Equalizer: the three faders move to new levels and settle back, like a quick retune.
@@ -331,8 +345,8 @@ const RECIPES = [
     ['#download-current-btn', { build: download }],
     ['#cast-btn', { build: cast }],
     ['#queue-btn', { build: queue }],
-    ['#sleep-timer-btn', { build: clock }],
-    ['#sleep-timer-btn-desktop', { build: clock }],
+    ['#sleep-timer-btn', { build: sleep }],
+    ['#sleep-timer-btn-desktop', { build: sleep }],
     ['#equalizer-player-btn', { build: equalizer }],
     ['#now-playing-mix-btn', { build: mix }],
     ['#compact-mix-btn', { build: mix }],

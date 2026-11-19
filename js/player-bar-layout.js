@@ -10,7 +10,7 @@ const ICONS = {
     equalizer:
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18v-5m0-4V4m8 14v-8m0-4V4m8 14v-3m0-4V4M2 13h4M10 6h4m4 9h4"/></svg>',
     'sleep-timer':
-        '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6"/></svg>',
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.827 14.348a7.92 7.92 0 1 1-8.336-8.335c.356-.019.543.405.354.707a5.28 5.28 0 0 0 7.276 7.276c.303-.189.726-.004.707.353M16.5 3h4l-4 4h4"/></svg>',
     queue: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h8m5-3 3 3-3 3"/></svg>',
 };
 

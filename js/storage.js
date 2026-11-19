@@ -3384,4 +3384,28 @@ export const contentBlockingSettings = {
     },
 };
 
+export const sleepTimerSettings = {
+    MINUTES_KEY: 'sleep-timer-minutes',
+    FADE_KEY: 'sleep-timer-fade',
+    MIN_MINUTES: 5,
+    MAX_MINUTES: 120,
+
+    getMinutes() {
+        const minutes = parseInt(localStorage.getItem(this.MINUTES_KEY), 10);
+        return minutes >= this.MIN_MINUTES && minutes <= this.MAX_MINUTES ? minutes : 30;
+    },
+
+    setMinutes(minutes) {
+        localStorage.setItem(this.MINUTES_KEY, String(minutes));
+    },
+
+    isFadeEnabled() {
+        return localStorage.getItem(this.FADE_KEY) !== 'false';
+    },
+
+    setFadeEnabled(enabled) {
+        localStorage.setItem(this.FADE_KEY, String(enabled));
+    },
+};
+
 export { keyboardShortcuts } from './keyboard-shortcuts.js';
