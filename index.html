@@ -86,6 +86,7 @@
         <link rel="stylesheet" href="/social.css" />
         <link rel="stylesheet" href="/soggy-easter-egg.css" />
         <link rel="stylesheet" href="/metallic-logo-easter-egg.css" />
+        <link rel="stylesheet" href="/sleep-nightfall.css" />
         <link rel="stylesheet" href="/admin-debug.css" />
     </head>
 
@@ -7639,6 +7640,54 @@
                 aria-label="Close metallic logo"
             >
                 ×
+            </button>
+        </div>
+        <div
+            id="sleep-nightfall"
+            class="sleep-nightfall"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sleep-nightfall-title"
+            aria-describedby="sleep-nightfall-detail"
+            tabindex="-1"
+            hidden
+        >
+            <div class="sleep-nightfall__sky"></div>
+            <div class="sleep-nightfall__stars" aria-hidden="true"></div>
+            <div class="sleep-nightfall__stars sleep-nightfall__stars--small" aria-hidden="true"></div>
+            <div class="sleep-nightfall__wisp" aria-hidden="true"></div>
+            <div class="sleep-nightfall__cloud sleep-nightfall__cloud--back" aria-hidden="true"><span></span></div>
+            <div class="sleep-nightfall__cloud sleep-nightfall__cloud--mid" aria-hidden="true"><span></span></div>
+            <div class="sleep-nightfall__cloud sleep-nightfall__cloud--front" aria-hidden="true"><span></span></div>
+            <div class="sleep-nightfall__content">
+                <div class="sleep-nightfall__moon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            class="sleep-nightfall__crescent"
+                            d="M17.827 14.348a7.92 7.92 0 1 1-8.336-8.335c.356-.019.543.405.354.707a5.28 5.28 0 0 0 7.276 7.276c.303-.189.726-.004.707.353"
+                        />
+                        <path class="sleep-nightfall__z" d="M16 5.5h2.6l-2.6 2.6h2.6" />
+                        <path class="sleep-nightfall__z" d="M17 6h2.2l-2.2 2.2h2.2" />
+                        <path class="sleep-nightfall__z" d="M15.5 6.5h1.9l-1.9 1.9h1.9" />
+                    </svg>
+                </div>
+                <h2 id="sleep-nightfall-title" class="sleep-nightfall__title">Sleep well</h2>
+                <p id="sleep-nightfall-detail" class="sleep-nightfall__detail"></p>
+                <div class="sleep-nightfall__actions">
+                    <button
+                        id="sleep-nightfall-resume"
+                        class="sleep-nightfall__action sleep-nightfall__action--primary"
+                        type="button"
+                    >
+                        Resume
+                    </button>
+                    <button id="sleep-nightfall-extend" class="sleep-nightfall__action" type="button">
+                        Play 15 more min
+                    </button>
+                </div>
+            </div>
+            <button id="sleep-nightfall-close" class="sleep-nightfall__close" type="button" aria-label="Close">
+                <use svg="!lucide/x.svg" size="20" />
             </button>
         </div>
         <div id="share-sheet" class="share-sheet" role="dialog" aria-modal="true" aria-label="Share" hidden>

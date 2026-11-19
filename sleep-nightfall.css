@@ -1,0 +1,576 @@
+/* Sleep timer nightfall. When the timer pauses playback the room goes dark: the app dims and
+   blurs behind a night sky, a cloud bank rises from the bottom, and the sleep button's own moon
+   settles in the middle, rocking like a cradle while its z's drift up. Blue-violet is the one
+   place this hue exists in the app, and it means exactly one thing: the timer put you to sleep.
+   The scene is dark in every theme on purpose, it is night whatever the room was before. */
+.sleep-nightfall {
+    --night-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --night-deep: #07071a;
+    --night-indigo: #15134a;
+    --night-violet: #3b2b78;
+    --night-cloud-back: #25246a;
+    --night-cloud-mid: #463a93;
+    --night-cloud-front: #8a7fd0;
+    --night-moon: #efeaff;
+    --night-ink: #f1eeff;
+    --night-soft: #bdb6ea;
+    --night-on-moon: #17143f;
+
+    position: fixed;
+    inset: 0;
+    z-index: 20010;
+    display: grid;
+    place-items: center;
+    padding: 1.5rem 1rem calc(1.5rem + env(safe-area-inset-bottom));
+    overflow: hidden;
+    color: var(--night-ink);
+    isolation: isolate;
+}
+
+/* Focus lands on the dialog container only to anchor the trap; the actions carry the visible rings. */
+.sleep-nightfall:focus {
+    outline: none;
+}
+
+.sleep-nightfall[hidden] {
+    display: none;
+}
+
+/* The sky: the app stays faintly visible through it, blurred and dimmed like a room at lights out. */
+.sleep-nightfall__sky {
+    position: absolute;
+    inset: 0;
+    z-index: -3;
+    background:
+        radial-gradient(
+            120% 70% at 50% 108%,
+            color-mix(in srgb, var(--night-violet) 85%, transparent),
+            transparent 62%
+        ),
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--night-deep) 94%, transparent) 0%,
+            color-mix(in srgb, var(--night-indigo) 90%, transparent) 58%,
+            color-mix(in srgb, var(--night-violet) 88%, transparent) 100%
+        );
+    backdrop-filter: blur(16px) saturate(0.55);
+    opacity: 0;
+    transition: opacity 1100ms var(--night-ease);
+}
+
+/* Two star layers at different sizes, each breathing on its own period so they never pulse together. */
+.sleep-nightfall__stars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -2;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    background: transparent;
+    color: color-mix(in srgb, var(--night-moon) 80%, transparent);
+    box-shadow:
+        9vw 12vh,
+        22vw 6vh,
+        31vw 21vh,
+        44vw 9vh,
+        58vw 15vh,
+        67vw 5vh,
+        78vw 19vh,
+        88vw 10vh,
+        15vw 31vh,
+        73vw 33vh,
+        95vw 27vh,
+        4vw 24vh;
+    opacity: 0;
+    transition: opacity 1600ms var(--night-ease) 400ms;
+}
+
+.sleep-nightfall__stars--small {
+    width: 1px;
+    height: 1px;
+    box-shadow:
+        5vw 7vh,
+        13vw 18vh,
+        19vw 3vh,
+        27vw 13vh,
+        36vw 4vh,
+        40vw 26vh,
+        51vw 3vh,
+        54vw 22vh,
+        62vw 11vh,
+        70vw 24vh,
+        83vw 4vh,
+        91vw 17vh,
+        97vw 8vh,
+        25vw 36vh,
+        48vw 38vh,
+        85vw 37vh;
+}
+
+/* Cloud bank. Each cloud is a cluster of soft radial puffs blurred into one body; three layers drift
+   at different speeds so the bank has parallax depth. Drift is linear and slow, the sky's own time. */
+.sleep-nightfall__cloud {
+    position: absolute;
+    left: -25%;
+    z-index: -1;
+    width: 150%;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate3d(0, 40%, 0);
+    transition:
+        opacity 1300ms var(--night-ease),
+        transform 1500ms var(--night-ease);
+}
+
+.sleep-nightfall__cloud > span {
+    display: block;
+    width: 100%;
+    height: 100%;
+    animation: sleep-cloud-drift 70s linear infinite alternate;
+    will-change: transform;
+}
+
+.sleep-nightfall__cloud--back {
+    bottom: 10%;
+    height: 34vh;
+    filter: blur(12px);
+}
+
+.sleep-nightfall__cloud--back > span {
+    background:
+        radial-gradient(14% 42% at 8% 62%, var(--night-cloud-back) 0 60%, transparent 74%),
+        radial-gradient(18% 56% at 24% 52%, var(--night-cloud-back) 0 58%, transparent 72%),
+        radial-gradient(16% 48% at 43% 64%, var(--night-cloud-back) 0 60%, transparent 74%),
+        radial-gradient(20% 60% at 62% 50%, var(--night-cloud-back) 0 56%, transparent 70%),
+        radial-gradient(15% 46% at 80% 60%, var(--night-cloud-back) 0 60%, transparent 74%),
+        radial-gradient(17% 50% at 95% 56%, var(--night-cloud-back) 0 58%, transparent 72%);
+    animation-duration: 96s;
+}
+
+.sleep-nightfall__cloud--mid {
+    bottom: -2%;
+    height: 30vh;
+    filter: blur(9px);
+    transition-delay: 120ms;
+}
+
+.sleep-nightfall__cloud--mid > span {
+    background:
+        radial-gradient(16% 50% at 4% 66%, var(--night-cloud-mid) 0 58%, transparent 72%),
+        radial-gradient(19% 58% at 20% 58%, var(--night-cloud-mid) 0 56%, transparent 70%),
+        radial-gradient(14% 44% at 36% 70%, var(--night-cloud-mid) 0 60%, transparent 74%),
+        radial-gradient(21% 62% at 54% 60%, var(--night-cloud-mid) 0 54%, transparent 68%),
+        radial-gradient(15% 48% at 72% 68%, var(--night-cloud-mid) 0 60%, transparent 74%),
+        radial-gradient(19% 56% at 90% 60%, var(--night-cloud-mid) 0 56%, transparent 70%);
+    animation-duration: 74s;
+    animation-direction: alternate-reverse;
+}
+
+.sleep-nightfall__cloud--front {
+    bottom: -12%;
+    height: 26vh;
+    filter: blur(6px);
+    transition-delay: 240ms;
+}
+
+.sleep-nightfall__cloud--front > span {
+    background:
+        radial-gradient(
+            18% 52% at 12% 64%,
+            color-mix(in srgb, var(--night-cloud-front) 77%, transparent) 0 56%,
+            transparent 72%
+        ),
+        radial-gradient(
+            15% 46% at 30% 70%,
+            color-mix(in srgb, var(--night-cloud-front) 67%, transparent) 0 58%,
+            transparent 72%
+        ),
+        radial-gradient(
+            20% 58% at 50% 62%,
+            color-mix(in srgb, var(--night-cloud-front) 72%, transparent) 0 54%,
+            transparent 72%
+        ),
+        radial-gradient(
+            16% 48% at 70% 70%,
+            color-mix(in srgb, var(--night-cloud-front) 64%, transparent) 0 58%,
+            transparent 72%
+        ),
+        radial-gradient(
+            18% 54% at 88% 64%,
+            color-mix(in srgb, var(--night-cloud-front) 74%, transparent) 0 56%,
+            transparent 72%
+        );
+    animation-duration: 52s;
+}
+
+/* A lone wisp crossing the upper sky, the only cloud near the stars. */
+.sleep-nightfall__wisp {
+    position: absolute;
+    top: 18%;
+    left: -40%;
+    z-index: -1;
+    width: 38vw;
+    min-width: 220px;
+    height: 9vh;
+    background:
+        radial-gradient(
+            30% 60% at 30% 55%,
+            color-mix(in srgb, var(--night-cloud-front) 48%, transparent) 0 55%,
+            transparent 72%
+        ),
+        radial-gradient(
+            36% 70% at 62% 48%,
+            color-mix(in srgb, var(--night-cloud-front) 44%, transparent) 0 55%,
+            transparent 72%
+        );
+    filter: blur(14px);
+    opacity: 0;
+    transition: opacity 1800ms var(--night-ease) 600ms;
+    animation: sleep-wisp-cross 140s linear infinite;
+}
+
+/* Content floats on the sky itself, no card: the moon is the focal point, everything else defers. */
+.sleep-nightfall__content {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    width: min(100%, 24rem);
+    text-align: center;
+}
+
+.sleep-nightfall__moon {
+    position: relative;
+    width: 108px;
+    height: 108px;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    filter: blur(8px);
+    transform: translate3d(0, 28px, 0) scale(0.88);
+    transition:
+        opacity 1000ms var(--night-ease) 250ms,
+        filter 1000ms var(--night-ease) 250ms,
+        transform 1200ms var(--night-ease) 250ms;
+}
+
+.sleep-nightfall__moon::before {
+    position: absolute;
+    inset: -70%;
+    z-index: -1;
+    content: '';
+    background: radial-gradient(
+        closest-side,
+        color-mix(in srgb, var(--night-moon) 22%, transparent),
+        color-mix(in srgb, var(--night-cloud-front) 10%, transparent) 55%,
+        transparent
+    );
+    animation: sleep-moon-halo 7s ease-in-out infinite alternate;
+}
+
+.sleep-nightfall__moon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.sleep-nightfall__crescent {
+    fill: var(--night-moon);
+    transform-box: view-box;
+    transform-origin: 50% 50%;
+    animation: sleep-moon-rock 6.4s ease-in-out infinite alternate;
+}
+
+.sleep-nightfall__z {
+    fill: none;
+    stroke: var(--night-moon);
+    stroke-width: 0.85;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: sleep-z-rise 5.4s var(--night-ease) infinite;
+}
+
+.sleep-nightfall__z:nth-of-type(2) {
+    animation-delay: 1.8s;
+}
+
+.sleep-nightfall__z:nth-of-type(3) {
+    animation-delay: 3.6s;
+}
+
+.sleep-nightfall__title {
+    margin: 0;
+    font-family: var(--font-family-key);
+    font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.1rem);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--night-ink);
+    text-wrap: balance;
+
+    --enter-delay: 480ms;
+}
+
+.sleep-nightfall__detail {
+    max-width: 30ch;
+    margin: 0.6rem 0 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--night-soft);
+    text-wrap: pretty;
+
+    --enter-delay: 580ms;
+}
+
+.sleep-nightfall__detail strong {
+    font-weight: 500;
+    color: var(--night-ink);
+}
+
+.sleep-nightfall__time {
+    font-variant-numeric: tabular-nums;
+}
+
+.sleep-nightfall__title,
+.sleep-nightfall__detail,
+.sleep-nightfall__actions {
+    opacity: 0;
+    filter: blur(5px);
+    transform: translate3d(0, 10px, 0);
+    transition:
+        opacity 800ms var(--night-ease) var(--enter-delay, 0ms),
+        filter 800ms var(--night-ease) var(--enter-delay, 0ms),
+        transform 900ms var(--night-ease) var(--enter-delay, 0ms);
+}
+
+.sleep-nightfall__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-top: 1.75rem;
+
+    --enter-delay: 720ms;
+}
+
+.sleep-nightfall__action {
+    min-width: 8.5rem;
+    min-height: 44px;
+    padding: 0 1.25rem;
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--night-ink);
+    cursor: pointer;
+    background: color-mix(in srgb, var(--night-moon) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--night-moon) 24%, transparent);
+    border-radius: 999px;
+    transition:
+        background-color 200ms var(--night-ease),
+        border-color 200ms var(--night-ease),
+        transform 200ms var(--night-ease);
+}
+
+.sleep-nightfall__action:hover {
+    background: color-mix(in srgb, var(--night-moon) 15%, transparent);
+    border-color: color-mix(in srgb, var(--night-moon) 40%, transparent);
+}
+
+.sleep-nightfall__action:active {
+    transform: scale(0.97);
+}
+
+.sleep-nightfall__action--primary {
+    color: var(--night-on-moon);
+    background: var(--night-moon);
+    border-color: var(--night-moon);
+}
+
+.sleep-nightfall__action--primary:hover {
+    background: var(--night-moon);
+    filter: brightness(1.06);
+}
+
+.sleep-nightfall__close {
+    position: absolute;
+    top: calc(0.9rem + env(safe-area-inset-top));
+    right: 0.9rem;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    color: var(--night-soft);
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+    opacity: 0;
+    transition:
+        opacity 600ms var(--night-ease) 900ms,
+        color 200ms var(--night-ease),
+        background-color 200ms var(--night-ease);
+}
+
+.sleep-nightfall__close:hover {
+    color: var(--night-ink);
+    background: color-mix(in srgb, var(--night-moon) 10%, transparent);
+}
+
+.sleep-nightfall__action:focus-visible,
+.sleep-nightfall__close:focus-visible {
+    outline: 2px solid var(--night-moon);
+    outline-offset: 3px;
+}
+
+.sleep-nightfall ::selection {
+    color: var(--night-on-moon);
+    background: var(--night-soft);
+}
+
+/* Open: the sky dims in first, clouds rise, then moon, words, actions. */
+.sleep-nightfall.is-open .sleep-nightfall__sky,
+.sleep-nightfall.is-open .sleep-nightfall__close {
+    opacity: 1;
+}
+
+.sleep-nightfall.is-open .sleep-nightfall__stars {
+    opacity: 1;
+    animation: sleep-stars-breathe 4.8s ease-in-out 2s infinite alternate;
+}
+
+.sleep-nightfall.is-open .sleep-nightfall__stars--small {
+    animation-duration: 3.4s;
+    animation-delay: 2.6s;
+}
+
+.sleep-nightfall.is-open .sleep-nightfall__wisp {
+    opacity: 1;
+}
+
+.sleep-nightfall.is-open .sleep-nightfall__cloud {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+}
+
+.sleep-nightfall.is-open .sleep-nightfall__moon {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, 0, 0) scale(1);
+}
+
+.sleep-nightfall.is-open .sleep-nightfall__title,
+.sleep-nightfall.is-open .sleep-nightfall__detail,
+.sleep-nightfall.is-open .sleep-nightfall__actions {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, 0, 0);
+}
+
+/* Closing: the night lifts faster than it fell, clouds sink back, content blurs away together. */
+.sleep-nightfall.is-closing * {
+    transition-delay: 0ms !important;
+    transition-duration: 520ms !important;
+}
+
+.sleep-nightfall.is-closing .sleep-nightfall__cloud {
+    transform: translate3d(0, 55%, 0);
+}
+
+@keyframes sleep-cloud-drift {
+    from {
+        transform: translate3d(-6%, 0, 0);
+    }
+
+    to {
+        transform: translate3d(6%, 0, 0);
+    }
+}
+
+@keyframes sleep-wisp-cross {
+    from {
+        transform: translate3d(0, 0, 0);
+    }
+
+    to {
+        transform: translate3d(190vw, -2vh, 0);
+    }
+}
+
+@keyframes sleep-moon-rock {
+    from {
+        transform: rotate(-7deg);
+    }
+
+    to {
+        transform: rotate(5deg);
+    }
+}
+
+@keyframes sleep-moon-halo {
+    from {
+        opacity: 0.7;
+        transform: scale(0.94);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1.06);
+    }
+}
+
+@keyframes sleep-z-rise {
+    0% {
+        opacity: 0;
+        transform: translate3d(0, 6px, 0) scale(0.6) rotate(-8deg);
+    }
+
+    18% {
+        opacity: 0.95;
+    }
+
+    70% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate3d(14px, -30px, 0) scale(1.15) rotate(10deg);
+    }
+}
+
+@keyframes sleep-stars-breathe {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0.45;
+    }
+}
+
+@media (max-width: 520px) {
+    .sleep-nightfall__moon {
+        width: 92px;
+        height: 92px;
+    }
+
+    .sleep-nightfall__actions {
+        flex-direction: column;
+        align-items: stretch;
+        width: min(100%, 18rem);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sleep-nightfall *,
+    .sleep-nightfall *::before,
+    .sleep-nightfall.is-closing * {
+        animation: none !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0ms !important;
+    }
+}

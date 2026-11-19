@@ -10,6 +10,7 @@ import {
     escapeHtml,
 } from './utils.js';
 import { buildSharePath, copyShareLink } from './share.js';
+import { setupSleepNightfall } from './sleep-nightfall.js';
 import {
     lastFMStorage,
     libreFmSettings,
@@ -4702,8 +4703,10 @@ function setupSleepTimer(player, triggers) {
         }
     });
 
+    const nightfall = setupSleepNightfall(player, { onExtend: () => !panel.hidden && sync({ animate: true }) });
+
     window.addEventListener('sleep-timer-end', (event) => {
-        if (event.detail?.finished) showNotification('Paused by the sleep timer');
+        if (event.detail?.finished) nightfall.show();
         if (panel.hidden) return;
         const hadFocus = panel.contains(document.activeElement);
         sync({ animate: true });

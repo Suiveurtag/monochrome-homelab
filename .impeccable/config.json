@@ -280,6 +280,15 @@
         ],
         "createdAt": "2026-11-19T22:46:21.525Z",
         "reason": "User requested a chrome effect on the Monochrome text"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "sleep-nightfall.css"
+        ],
+        "createdAt": "2026-11-19T23:11:41.893Z",
+        "reason": "Claude triage: DESIGN.md type ramp is scoped to Social/Admin; the sleep nightfall scene is a one-off full-screen moment with its own fluid title size"
       }
     ]
   }
