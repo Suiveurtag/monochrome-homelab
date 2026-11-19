@@ -823,7 +823,7 @@
 
 .progress-track-shell .progress-bar:hover,
 .progress-track-shell .progress-bar:active {
-    height: 12px;
+    height: 8px;
     background-color: color-mix(in srgb, var(--muted-foreground) 24%, var(--secondary));
     box-shadow: 0 0 0 1px rgb(255 255 255 / 0.04);
 }
@@ -847,6 +847,20 @@
 .progress-bar .progress-fill {
     z-index: 1;
     border-radius: var(--radius-full);
+}
+
+.progress-track-shell .progress-bar .progress-fill::after {
+    right: -7px;
+    width: 14px;
+    height: 14px;
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .progress-track-shell .progress-bar .progress-fill::after {
+        right: -9px;
+        width: 18px;
+        height: 18px;
+    }
 }
 
 .progress-hover-time {
