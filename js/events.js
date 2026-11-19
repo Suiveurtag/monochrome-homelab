@@ -37,7 +37,8 @@ import {
     SVG_PLUS,
     SVG_SEARCH,
     SVG_MUTE,
-    SVG_QUALITY_LOSSLESS,
+    SVG_QUALITY_CD,
+    SVG_QUALITY_VINYL,
     SVG_QUALITY_WAVE_SAW,
     SVG_QUALITY_WAVE_SINE,
     SVG_QUALITY_WAVE_SQUARE,
@@ -50,6 +51,7 @@ import {
 } from './icons.js';
 import { MusicAPI } from './music-api.js';
 import { LyricsManager } from './lyrics.js';
+import { createScrubLyrics } from './scrub-lyrics.js';
 import { Player } from './player.js';
 import { playerBarEffects } from './player-bar-effects.js';
 import { initializePlayerActionLayout, PLAYER_ACTIONS } from './player-bar-layout.js';
@@ -57,7 +59,7 @@ import { socialManager } from './social.js';
 import { canvasSettings } from './canvas-settings.js';
 import { setupTrackVersionPicker } from './track-version-picker.js';
 import { getTrackDisplayAlbum } from './track-versions.js';
-import { PLAYBACK_QUALITY_OPTIONS } from './player-quality.js';
+import { PLAYBACK_QUALITY_OPTIONS, SANA_QUALITY } from './player-quality.js';
 
 let currentTrackIdForWaveform = null;
 
@@ -291,6 +293,8 @@ function positionPlayerPopover(panel, triggerRect, preferredWidth = 320) {
     if (!triggerRect) return false;
     const gutter = 12;
     const width = Math.min(preferredWidth, window.innerWidth - gutter * 2);
+    // Width first: the height depends on it, and on first open it was still unset.
+    panel.style.width = `${width}px`;
     const panelHeight = panel.offsetHeight || 360;
     const left = Math.min(
         Math.max(gutter, triggerRect.left + triggerRect.width / 2 - width / 2),
@@ -298,8 +302,8 @@ function positionPlayerPopover(panel, triggerRect, preferredWidth = 320) {
     );
     const fitsAbove = triggerRect.top - panelHeight - gutter > gutter;
     const top = fitsAbove
-        ? triggerRect.top - panelHeight - 10
-        : Math.min(triggerRect.bottom + 10, window.innerHeight - panelHeight - gutter);
+        ? triggerRect.top - panelHeight - 14
+        : Math.min(triggerRect.bottom + 14, window.innerHeight - panelHeight - gutter);
 
     panel.style.width = `${width}px`;
     panel.style.left = `${left}px`;
@@ -328,6 +332,9 @@ function setupQualityPopover(player) {
     let qualityChangeInFlight = false;
     let selectionRun = 0;
     let losslessMagicTimer = 0;
+    let iconAnimationTimer = 0;
+    let sanaUnlocked = false;
+    let secretKeys = '';
     let lastTriggerRect = null;
     let lastTriggerRadius = '999px';
     const backdrop = document.createElement('div');
@@ -338,15 +345,17 @@ function setupQualityPopover(player) {
 
     const qualityVisuals = {
         auto: { rgb: '148 163 184', icon: SVG_SETTINGS(20) },
+        SANA: { rgb: '255 65 75', icon: SVG_QUALITY_WAVE_SQUARE(20) },
         LOWEST: { rgb: '148 163 184', icon: SVG_QUALITY_WAVE_SINE(20) },
         LOW: { rgb: '96 165 250', icon: SVG_QUALITY_WAVE_SQUARE(20) },
         NORMAL: { rgb: '168 85 247', icon: SVG_QUALITY_WAVE_SAW(20) },
         HIGH: { rgb: '249 115 22', icon: SVG_QUALITY_WAVES_ELECTRICITY(20) },
-        LOSSLESS: { rgb: '45 212 191', icon: SVG_QUALITY_LOSSLESS(20) },
-        HI_RES_LOSSLESS: { rgb: '45 212 191', icon: SVG_QUALITY_LOSSLESS(20) },
+        LOSSLESS: { rgb: '45 212 191', icon: SVG_QUALITY_CD(20) },
+        HI_RES_LOSSLESS: { rgb: '244 191 84', icon: SVG_QUALITY_VINYL(22) },
     };
 
     const getConnectionMessage = (state) => {
+        if (state.requested === 'SANA') return 'Deliberately degraded, low-bitrate sound. Nothing is added on top.';
         const effectiveLabel =
             state.options.find((option) => option.id === state.effective)?.label || 'a lower quality';
         if (state.fallbackReason) {
@@ -374,13 +383,66 @@ function setupQualityPopover(player) {
         panel.dataset.selectedQuality = selected.dataset.qualityProfile;
     };
 
-    const playLosslessMagic = () => {
+    const playLosslessMagic = (profile) => {
+        const magicClass = profile === 'HI_RES_LOSSLESS' ? 'is-vinyl-magic' : 'is-lossless-magic';
         window.clearTimeout(losslessMagicTimer);
-        panel.classList.remove('is-lossless-magic');
+        panel.classList.remove('is-lossless-magic', 'is-vinyl-magic');
         void panel.offsetWidth;
-        panel.classList.add('is-lossless-magic');
-        losslessMagicTimer = window.setTimeout(() => panel.classList.remove('is-lossless-magic'), 720);
+        panel.classList.add(magicClass);
+        losslessMagicTimer = window.setTimeout(() => panel.classList.remove(magicClass), profile === 'HI_RES_LOSSLESS' ? 2200 : 720);
     };
+
+    // Replays the per-tier icon animation on the freshly selected row.
+    const playIconAnimation = (option) => {
+        window.clearTimeout(iconAnimationTimer);
+        panel.querySelectorAll('.is-just-selected').forEach((el) => el.classList.remove('is-just-selected'));
+        void option.offsetWidth;
+        option.classList.add('is-just-selected');
+        // Wave icons carry their own SMIL animation; Sana keeps its looping CSS one.
+        if (option.dataset.qualityProfile !== 'SANA') {
+            option
+                .querySelectorAll('.quality-tier-icon animate, .quality-tier-icon animateTransform')
+                .forEach((node) => node.beginElement?.());
+        }
+        iconAnimationTimer = window.setTimeout(() => option.classList.remove('is-just-selected'), 2200);
+    };
+
+    // Cut a pill-shaped hole in the blurred backdrop so only the quality badge stays sharp.
+    const updateBackdropHole = (rect = lastTriggerRect) => {
+        if (!rect) return;
+        const pad = 2;
+        const x = rect.left - pad;
+        const y = rect.top - pad;
+        const w = rect.width + pad * 2;
+        const h = rect.height + pad * 2;
+        const r = Math.min(h / 2, w / 2);
+        const W = window.innerWidth;
+        const H = window.innerHeight;
+        backdrop.style.clipPath =
+            `path(evenodd, "M0 0H${W}V${H}H0Z M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w - r} ${y + h}` +
+            `H${x + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z")`;
+    };
+
+    // The badge changes width with the selected tier: follow its rect every frame while open.
+    let holeFrame = 0;
+    let holeKey = '';
+    const trackBadgeHole = () => {
+        cancelAnimationFrame(holeFrame);
+        const tick = () => {
+            if (panel.hidden) return;
+            const rect = getRectSnapshot(getCurrentTrigger());
+            const key = rect ? `${rect.left}|${rect.top}|${rect.width}|${rect.height}` : '';
+            if (rect && key !== holeKey) {
+                holeKey = key;
+                lastTriggerRect = rect;
+                updateBackdropHole(rect);
+            }
+            holeFrame = requestAnimationFrame(tick);
+        };
+        holeKey = '';
+        holeFrame = requestAnimationFrame(tick);
+    };
+    const stopBadgeHole = () => cancelAnimationFrame(holeFrame);
 
     const getCurrentTrigger = () => {
         if (getRectSnapshot(trigger)) return trigger;
@@ -393,6 +455,7 @@ function setupQualityPopover(player) {
         if (currentRect) {
             trigger = currentTrigger;
             lastTriggerRect = currentRect;
+            if (!panel.hidden) updateBackdropHole(currentRect);
             if (!panel.hidden) {
                 trigger.classList.add('is-floating-panel-open');
                 trigger.setAttribute('aria-expanded', 'true');
@@ -435,7 +498,8 @@ function setupQualityPopover(player) {
         indicator.style.setProperty('--quality-tier-rgb', next.dataset.tierRgb || '148 163 184');
         panel.dataset.selectedQuality = profile;
 
-        if (profile.endsWith('LOSSLESS')) playLosslessMagic();
+        playIconAnimation(next);
+        if (profile.endsWith('LOSSLESS')) playLosslessMagic(profile);
 
         if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
             return;
@@ -516,6 +580,7 @@ function setupQualityPopover(player) {
             transform: computedPanel.transform === 'none' ? expanded.transform : computedPanel.transform,
         };
         panelAnimation?.cancel();
+        stopBadgeHole();
         panel.classList.remove('is-open');
         backdrop.classList.remove('is-open');
         trigger?.classList.remove('is-floating-panel-open');
@@ -544,32 +609,34 @@ function setupQualityPopover(player) {
     };
     const render = () => {
         const state = player.getQualityState();
-        const selectedProfile = state.options.some((option) => option.id === state.requested)
+        const isAuto = state.requested === 'auto';
+        const selectedProfile = !isAuto && (state.requested === 'SANA' || state.options.some((option) => option.id === state.requested))
             ? state.requested
             : state.effective;
         const choices = [
-            {
-                id: 'auto',
-                label: 'Auto',
-                description: 'Adjusts to the track and your connection',
-                detail: 'Recommended',
-            },
+            ...(sanaUnlocked || state.requested === 'SANA' ? [SANA_QUALITY] : []),
             ...(state.allOptions || PLAYBACK_QUALITY_OPTIONS),
         ];
         panel.innerHTML = `
             <div class="player-popover-header">
                 <h3 id="quality-popover-title">Playback quality</h3>
+                <label class="quality-auto-toggle" title="Adjusts to the track and your connection">
+                    <span class="quality-auto-label">Auto</span>
+                    <input type="checkbox" role="switch" name="playback-quality-auto" ${isAuto ? 'checked' : ''}
+                        aria-label="Automatic quality, adjusts to the track and your connection" />
+                    <span class="quality-auto-track" aria-hidden="true"><span class="quality-auto-thumb"></span></span>
+                </label>
             </div>
             <div class="quality-radio-group" role="radiogroup" aria-label="Playback quality">
                 <span class="quality-selection-indicator" aria-hidden="true"></span>
                 ${choices
                     .map((option) => {
-                        const isAvailable = option.id === 'auto' || state.options.some((available) => available.id === option.id);
+                        const isAvailable = option.id === 'SANA' || state.options.some((available) => available.id === option.id);
                         const isSelected = option.id === selectedProfile;
                         const visual = qualityVisuals[option.id] || qualityVisuals.auto;
                         return `
                             <label class="quality-radio-option ${isSelected ? 'is-selected' : ''} ${!isAvailable ? 'is-unavailable' : ''} ${
-                                option.id.endsWith('LOSSLESS') ? 'is-lossless' : ''
+                                option.id === 'SANA' ? 'is-sana' : option.id === 'LOSSLESS' ? 'is-lossless is-cd' : option.id === 'HI_RES_LOSSLESS' ? 'is-lossless is-vinyl' : ''
                             }"
                                 data-quality-profile="${option.id}"
                                 data-tier-rgb="${visual.rgb}"
@@ -597,11 +664,14 @@ function setupQualityPopover(player) {
     };
     const open = (badge) => {
         const run = ++animationRun;
+        secretKeys = '';
         trigger = badge;
         lastTriggerRect = getRectSnapshot(badge);
         if (!lastTriggerRect) return;
         lastTriggerRadius = getComputedStyle(badge).borderRadius || '999px';
         render();
+        updateBackdropHole(lastTriggerRect);
+        trackBadgeHole();
         panel.style.visibility = 'hidden';
         panel.hidden = false;
         backdrop.hidden = false;
@@ -652,20 +722,26 @@ function setupQualityPopover(player) {
         else open(badge);
     });
     panel.addEventListener('change', async (event) => {
-        const input = event.target.closest('input[name="playback-quality"]');
+        const input = event.target.closest('input[name="playback-quality"], input[name="playback-quality-auto"]');
         if (!input || qualityChangeInFlight) return;
+        const isAutoSwitch = input.name === 'playback-quality-auto';
+        // Switching Auto off keeps the tier it was playing; switching it on lets the player choose.
+        const nextProfile = isAutoSwitch ? (input.checked ? 'auto' : player.getQualityState().effective) : input.value;
         const run = ++selectionRun;
         qualityChangeInFlight = true;
         const group = panel.querySelector('.quality-radio-group');
         group?.setAttribute('aria-busy', 'true');
-        panel.querySelectorAll('input[name="playback-quality"]').forEach((radio) => {
+        panel.querySelectorAll('input[name^="playback-quality"]').forEach((radio) => {
             radio.disabled = true;
         });
         try {
-            void animateSelection(input.value);
-            await player.selectPlaybackQuality(input.value);
+            if (!isAutoSwitch) void animateSelection(nextProfile);
+            await player.selectPlaybackQuality(nextProfile);
             if (run !== selectionRun || panel.hidden) return;
             const state = player.getQualityState();
+            const autoSwitch = panel.querySelector('input[name="playback-quality-auto"]');
+            if (autoSwitch) autoSwitch.checked = state.requested === 'auto';
+            if (state.requested === 'auto') void animateSelection(state.effective);
             const note = panel.querySelector('.quality-connection-note');
             const noteCopy = panel.querySelector('.quality-connection-copy');
             if (note) {
@@ -687,8 +763,8 @@ function setupQualityPopover(player) {
             if (run === selectionRun) {
                 qualityChangeInFlight = false;
                 group?.removeAttribute('aria-busy');
-                panel.querySelectorAll('input[name="playback-quality"]').forEach((radio) => {
-                    radio.disabled = false;
+                panel.querySelectorAll('input[name^="playback-quality"]').forEach((radio) => {
+                    radio.disabled = radio.closest('.is-unavailable') !== null;
                 });
             }
         }
@@ -716,6 +792,19 @@ function setupQualityPopover(player) {
     });
     document.addEventListener('keydown', (event) => {
         if (panel.hidden) return;
+        if (!event.ctrlKey && !event.altKey && !event.metaKey && event.key.length === 1) {
+            secretKeys = (secretKeys + event.key.toLowerCase()).slice(-4);
+            if (secretKeys === 'sana' && !sanaUnlocked) {
+                sanaUnlocked = true;
+                render();
+                positionPlayerPopover(panel, refreshTriggerRect(), 420);
+                syncSelectionIndicator();
+                panel.querySelector('[value="SANA"]')?.focus({ preventScroll: true });
+                return;
+            }
+            if ('sana'.startsWith(secretKeys)) return;
+            secretKeys = '';
+        }
         if (event.key === 'Escape') {
             close({ restoreFocus: true });
             return;
@@ -1241,8 +1330,11 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
                 const progressFill = document.getElementById('progress-fill');
                 const currentTimeEl = document.getElementById('current-time');
                 const progressBar = document.getElementById('progress-bar');
-                progressFill.style.width = `${(currentTime / duration) * 100}%`;
-                currentTimeEl.textContent = formatTime(currentTime);
+                // While scrubbing, playback continues but the thumb follows the pointer.
+                if (!progressBar?.classList.contains('is-scrubbing')) {
+                    progressFill.style.width = `${(currentTime / duration) * 100}%`;
+                    currentTimeEl.textContent = formatTime(currentTime);
+                }
                 progressBar?.setAttribute('aria-valuemax', String(Math.round(duration)));
                 progressBar?.setAttribute('aria-valuenow', String(Math.round(currentTime)));
                 progressBar?.setAttribute('aria-valuetext', `${formatTime(currentTime)} of ${formatTime(duration)}`);
@@ -1579,9 +1671,17 @@ function initializeSmoothSliders(player) {
     const volumeSlider = document.getElementById('volume-slider');
 
     let isSeeking = false;
-    let wasPlaying = false;
     let isAdjustingVolume = false;
     let lastSeekPosition = 0;
+
+    const scrubLyrics = createScrubLyrics({
+        anchor: progressBar.closest('.progress-track-shell') || progressBar,
+        getTrack: () => player.currentTrack,
+    });
+    const scrubDuration = () => {
+        const duration = player.activeElement?.duration;
+        return Number.isFinite(duration) && duration > 0 ? duration : player.currentTrack?.duration || 0;
+    };
 
     if (volumeSlider) {
         const MAX_OVERFLOW = 50;
@@ -1710,6 +1810,7 @@ function initializeSmoothSliders(player) {
     progressBar.addEventListener('pointerenter', (event) => {
         progressBar.classList.add('is-previewing');
         updateProgressHover(event);
+        scrubLyrics.prefetch();
     });
     progressBar.addEventListener('pointermove', updateProgressHover);
     progressBar.addEventListener('pointerleave', () => progressBar.classList.remove('is-previewing'));
@@ -1735,24 +1836,21 @@ function initializeSmoothSliders(player) {
 
     // Progress bar with smooth dragging
     progressBar.addEventListener('mousedown', (e) => {
-        const activeEl = player.activeElement;
         isSeeking = true;
-        wasPlaying = !activeEl.paused;
-        if (wasPlaying) activeEl.pause();
+        progressBar.classList.add('is-scrubbing');
 
         seek(progressBar, e, (position) => {
             lastSeekPosition = position;
             updateSeekUI(position);
+            scrubLyrics.start(position * scrubDuration());
         });
     });
 
     // Touch events for mobile
     progressBar.addEventListener('touchstart', (e) => {
-        const activeEl = player.activeElement;
         e.preventDefault();
         isSeeking = true;
-        wasPlaying = !activeEl.paused;
-        if (wasPlaying) activeEl.pause();
+        progressBar.classList.add('is-scrubbing');
 
         const touch = e.touches[0];
         const rect = progressBar.getBoundingClientRect();
@@ -1760,6 +1858,7 @@ function initializeSmoothSliders(player) {
 
         lastSeekPosition = position;
         updateSeekUI(position);
+        scrubLyrics.start(position * scrubDuration());
     });
 
     document.addEventListener('mousemove', (e) => {
@@ -1767,6 +1866,7 @@ function initializeSmoothSliders(player) {
             seek(progressBar, e, (position) => {
                 lastSeekPosition = position;
                 updateSeekUI(position);
+                scrubLyrics.update(position * scrubDuration());
             });
         }
 
@@ -1795,6 +1895,7 @@ function initializeSmoothSliders(player) {
 
             lastSeekPosition = position;
             updateSeekUI(position);
+            scrubLyrics.update(position * scrubDuration());
         }
 
         if (isAdjustingVolume) {
@@ -1822,9 +1923,10 @@ function initializeSmoothSliders(player) {
             if (!isNaN(activeEl.duration)) {
                 activeEl.currentTime = lastSeekPosition * activeEl.duration;
                 player.updateMediaSessionPositionState();
-                if (wasPlaying) activeEl.play();
             }
             isSeeking = false;
+            progressBar.classList.remove('is-scrubbing');
+            scrubLyrics.end();
         }
 
         if (isAdjustingVolume) {
@@ -1838,14 +1940,22 @@ function initializeSmoothSliders(player) {
             if (!isNaN(activeEl.duration)) {
                 activeEl.currentTime = lastSeekPosition * activeEl.duration;
                 player.updateMediaSessionPositionState();
-                if (wasPlaying) activeEl.play();
             }
             isSeeking = false;
+            progressBar.classList.remove('is-scrubbing');
+            scrubLyrics.end();
         }
 
         if (isAdjustingVolume) {
             isAdjustingVolume = false;
         }
+    });
+
+    document.addEventListener('touchcancel', () => {
+        if (!isSeeking) return;
+        isSeeking = false;
+        progressBar.classList.remove('is-scrubbing');
+        scrubLyrics.end();
     });
 
     progressBar.addEventListener('click', (e) => {

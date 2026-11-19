@@ -707,6 +707,7 @@ export class Player {
             globalThis.navigator?.connection
         );
         this.qualityFallbackReason = null;
+        audioContextManager.setSanaQuality(this.effectiveQualityProfile === 'SANA');
         this.quality = getApiQuality(this.effectiveQualityProfile);
     }
 
@@ -783,6 +784,7 @@ export class Player {
             globalThis.navigator?.connection
         );
         this.qualityFallbackReason = null;
+        audioContextManager.setSanaQuality(this.effectiveQualityProfile === 'SANA');
         this.quality = getApiQuality(this.effectiveQualityProfile);
         localStorage.setItem('adaptive-playback-quality', normalized);
         localStorage.setItem('playback-quality', this.quality);
@@ -3018,7 +3020,7 @@ export class Player {
 
             let bestVariant = variants[0];
 
-            if (['LOWEST', 'LOW', 'NORMAL', 'HIGH'].includes(quality)) {
+            if (['SANA', 'LOWEST', 'LOW', 'NORMAL', 'HIGH'].includes(quality)) {
                 const targetBandwidth = getQualityOption(quality).targetBandwidth;
                 const aacVariants = variants.filter((v) => v.audioCodec && v.audioCodec.toLowerCase().includes('mp4a'));
                 const searchVariants = aacVariants.length > 0 ? aacVariants : variants;

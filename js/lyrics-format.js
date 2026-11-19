@@ -334,6 +334,108 @@ export function isLineOnlyLyrics(content) {
     return paragraphs.length > 0 && hasParagraphTiming && !hasTimedSpans;
 }
 
+const SKIPPED_TTML_ROLES = /x-translation|x-roman|x-pronunciation/i;
+
+function ttmlRole(element) {
+    return Array.from(element.attributes || []).find((attribute) => attribute.localName === 'role')?.value || '';
+}
+
+function hasTiming(element) {
+    return ['begin', 'end', 'dur'].some((name) => element.hasAttribute(name));
+}
+
+/**
+ * Flatten TTML or LRC into timed lines for lightweight previews.
+ * Word-timed TTML keeps its spans as `words`; LRC and line-timed TTML only
+ * get line ranges. Returns null when nothing is time-synced.
+ */
+export function parseTimedLyrics(content, durationSeconds = 0) {
+    if (typeof content !== 'string' || !content.trim()) return null;
+    const durationMs = Math.max(0, Number(durationSeconds) * 1000 || 0);
+
+    if (!isTtml(content)) {
+        const entries = parseLrc(content);
+        if (!entries.length) return null;
+        const lines = entries.map((entry, index) => {
+            const next = entries[index + 1]?.timestamp;
+            const end = next ?? (durationMs > entry.timestamp ? durationMs : entry.timestamp + 5000);
+            return { begin: entry.timestamp, end: Math.max(entry.timestamp + 1, end), text: entry.text, words: null };
+        });
+        return { kind: 'line', lines };
+    }
+
+    if (typeof DOMParser === 'undefined') return null;
+    const document = new DOMParser().parseFromString(content.replace(/^\uFEFF/, '').trim(), 'application/xml');
+    const timing = getTtmlTimingParameters(document.documentElement);
+    const lineOnly = isLineOnlyLyrics(content);
+    const time = (element, name) => parseTtmlTime(element.getAttribute(name), timing);
+    // Sorted up front so a missing end falls back to the real next line.
+    const paragraphs = Array.from(document.getElementsByTagNameNS('*', 'p'))
+        .filter((paragraph) => time(paragraph, 'begin') != null)
+        .sort((a, b) => time(a, 'begin') - time(b, 'begin'));
+
+    const lines = paragraphs
+        .map((paragraph, index) => {
+            const begin = time(paragraph, 'begin');
+            if (begin == null) return null;
+            const duration = time(paragraph, 'dur');
+            const nextBegin = paragraphs[index + 1] ? time(paragraphs[index + 1], 'begin') : null;
+            const end =
+                time(paragraph, 'end') ?? (duration == null ? null : begin + duration) ?? nextBegin ?? begin + 4000;
+
+            const words = [];
+            const walk = (node, background) => {
+                for (const child of node.childNodes) {
+                    if (child.nodeType === 3) {
+                        // Whitespace between spans marks a word boundary.
+                        if (/\s/u.test(child.nodeValue) && words.length) words[words.length - 1].space = true;
+                        continue;
+                    }
+                    if (child.nodeType !== 1 || child.localName !== 'span') continue;
+                    const role = ttmlRole(child);
+                    if (SKIPPED_TTML_ROLES.test(role)) continue;
+                    const isBackground = background || /x-bg/i.test(role);
+                    const timedChildren = Array.from(child.getElementsByTagNameNS('*', 'span')).some(hasTiming);
+                    if (hasTiming(child) && !timedChildren && !lineOnly) {
+                        const raw = child.textContent || '';
+                        const text = raw.trim();
+                        if (!text) continue;
+                        if (/^\s/u.test(raw) && words.length) words[words.length - 1].space = true;
+                        const wordBegin = time(child, 'begin') ?? begin;
+                        const wordDuration = time(child, 'dur');
+                        words.push({
+                            text,
+                            begin: wordBegin,
+                            end: Math.max(
+                                wordBegin + 1,
+                                time(child, 'end') ?? (wordDuration == null ? end : wordBegin + wordDuration)
+                            ),
+                            background: isBackground,
+                            space: /\s$/u.test(raw),
+                        });
+                    } else {
+                        walk(child, isBackground);
+                    }
+                }
+            };
+            walk(paragraph, false);
+
+            const text = Array.from(paragraph.childNodes)
+                .filter((node) => node.nodeType === 3 || !SKIPPED_TTML_ROLES.test(ttmlRole(node)))
+                .map((node) => node.textContent)
+                .join('')
+                .replace(/\s+/gu, ' ')
+                .trim();
+            if (!text && !words.length) return null;
+            return { begin, end: Math.max(begin + 1, end), text, words: words.length ? words : null };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.begin - b.begin);
+
+    if (!lines.length) return null;
+    return { kind: lines.some((line) => line.words) ? 'word' : 'line', lines };
+}
+
 export function lyricsToTtml(content, durationSeconds = 0) {
     if (isTtml(content)) return normalizeTtmlWordTiming(content);
     return lrcToTtml(content, durationSeconds);

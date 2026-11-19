@@ -940,16 +940,90 @@
     transition-delay: 90ms;
 }
 
-.now-playing-bar .quality-badge.is-floating-panel-open {
-    opacity: 0;
-    transform: scale(0.92);
-}
-
 .player-popover-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0.2rem 0.4rem 0.8rem;
+}
+
+.quality-auto-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: color 160ms ease;
+}
+
+.quality-auto-toggle:has(input:checked) {
+    color: var(--foreground);
+}
+
+.quality-auto-toggle input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.quality-auto-track {
+    /* Sora UI "sm" switch: 36x20 pill, 14px thumb, spring travel (stiffness 500, damping 30). */
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 36px;
+    height: 20px;
+    padding: 2px;
+    box-sizing: border-box;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.16);
+    transition: background-color 150ms ease;
+}
+
+.quality-auto-track::after {
+    content: '';
+    position: absolute;
+    inset: -8px -12px;
+}
+
+.quality-auto-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--foreground);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+    transition:
+        transform 450ms linear(0.0, 0.0725, 0.2366, 0.4313, 0.6176, 0.7744, 0.8936, 0.9757, 1.0256, 1.0507, 1.0583, 1.0549, 1.0457, 1.0344, 1.0234, 1.014, 1.0068, 1.0018, 0.9987, 0.9971, 0.9966, 0.9968, 0.9973, 0.9979, 1),
+        background-color 150ms ease;
+}
+
+.quality-auto-toggle input:checked + .quality-auto-track {
+    background: var(--foreground);
+}
+
+.quality-auto-toggle input:checked + .quality-auto-track .quality-auto-thumb {
+    background: var(--background);
+    transform: translateX(16px);
+}
+
+.quality-auto-toggle:has(input:focus-visible) .quality-auto-track {
+    outline: 3px solid rgb(var(--highlight-rgb), 0.5);
+    outline-offset: 0;
+}
+
+.quality-auto-toggle:has(input:disabled) {
+    cursor: wait;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quality-auto-track,
+    .quality-auto-thumb {
+        transition-duration: 0ms;
+    }
 }
 
 .player-popover-header h3 {
@@ -1132,7 +1206,7 @@
 }
 
 .quality-popover.is-lossless-magic .quality-radio-option.is-selected .quality-tier-icon {
-    animation: quality-lossless-mark 620ms cubic-bezier(0.16, 1, 0.3, 1);
+    animation: none;
 }
 
 @keyframes quality-lossless-wash {
@@ -2004,4 +2078,575 @@
     .player-status-actions button:not([data-player-recovery='browse'], [data-player-recovery='retry']) {
         display: none;
     }
+}
+
+/* A little corrupted signal hidden among the quality tiers. */
+.quality-radio-option.is-sana {
+    overflow: hidden;
+    isolation: isolate;
+    background:
+        linear-gradient(100deg, rgb(255 65 75 / 0.1), transparent 55%),
+        repeating-linear-gradient(0deg, rgb(255 65 75 / 0.05) 0 1px, transparent 1px 4px);
+    box-shadow: inset 0 0 0 1px rgb(255 65 75 / 0.28);
+    animation: sana-reveal 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* A soft scanline sweeping across the row. */
+.quality-radio-option.is-sana::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: -1;
+    width: 38%;
+    background: linear-gradient(90deg, transparent, rgb(255 65 75 / 0.16), transparent);
+    transform: translateX(-120%);
+    animation: sana-sweep 3.6s ease-in-out 600ms infinite;
+    pointer-events: none;
+}
+
+.quality-radio-option.is-sana .quality-radio-copy strong,
+.quality-radio-option.is-sana .quality-radio-bitrate {
+    color: #ff6b73;
+}
+
+.quality-radio-option.is-sana .quality-radio-copy strong {
+    letter-spacing: 0.02em;
+}
+
+.quality-radio-option.is-sana .quality-tier-icon {
+    color: #ff6b73;
+    border-color: rgb(255 65 75 / 0.4);
+    background: rgb(255 65 75 / 0.12);
+}
+
+.quality-radio-option.is-sana .quality-tier-icon svg path:not(.echo) {
+    animation: sana-wave 2.8s ease-in-out infinite;
+}
+
+.quality-radio-option.is-sana.is-selected .quality-tier-icon {
+    animation: sana-pulse 2.4s ease-out infinite;
+}
+
+@keyframes sana-reveal {
+    from { opacity: 0; transform: translateY(-6px) scale(0.98); filter: blur(3px); }
+    to { opacity: 1; transform: none; filter: none; }
+}
+
+@keyframes sana-sweep {
+    0%, 55% { transform: translateX(-120%); }
+    100% { transform: translateX(380%); }
+}
+
+@keyframes sana-wave {
+    0% { stroke-dashoffset: 1; }
+    45%, 80% { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: -1; }
+}
+
+@keyframes sana-pulse {
+    0% { box-shadow: 0 0 0 0 rgb(255 65 75 / 0.45); }
+    70%, 100% { box-shadow: 0 0 0 9px rgb(255 65 75 / 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quality-radio-option.is-sana,
+    .quality-radio-option.is-sana::after,
+    .quality-radio-option.is-sana .quality-tier-icon,
+    .quality-radio-option.is-sana .quality-tier-icon svg path { animation: none; }
+}
+
+/* ---- Wave tiers: the SMIL animation inside each icon is started from JS on selection ---- */
+.quality-tier-icon svg .echo {
+    stroke-opacity: 0.4;
+}
+
+/* ---- Lossless CD: the disc spins up and slows to rest while light refracts across it ---- */
+.quality-radio-option.is-cd .quality-tier-icon {
+    position: relative;
+    overflow: hidden;
+}
+
+.quality-radio-option.is-cd .quality-tier-icon::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: conic-gradient(
+        from 0deg,
+        transparent 0 15%,
+        rgb(var(--quality-tier-rgb) / 0.75) 25%,
+        rgb(190 255 245 / 0.9) 32%,
+        transparent 45% 65%,
+        rgb(var(--quality-tier-rgb) / 0.5) 78%,
+        transparent 90%
+    );
+    -webkit-mask: radial-gradient(circle, transparent 0 24%, #000 26% 62%, transparent 66%);
+    mask: radial-gradient(circle, transparent 0 24%, #000 26% 62%, transparent 66%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.quality-radio-option.is-cd.is-just-selected .quality-tier-icon svg {
+    animation: quality-cd-spin 1.1s cubic-bezier(0.1, 0.6, 0.2, 1) both;
+}
+
+.quality-radio-option.is-cd.is-just-selected .quality-tier-icon::after {
+    animation: quality-cd-refract 1.1s cubic-bezier(0.1, 0.6, 0.2, 1) both;
+}
+
+@keyframes quality-cd-spin {
+    from { transform: rotate(-720deg); }
+    to { transform: rotate(0); }
+}
+
+@keyframes quality-cd-refract {
+    0% { opacity: 0; transform: rotate(-200deg); }
+    25% { opacity: 1; }
+    100% { opacity: 0; transform: rotate(160deg); }
+}
+
+/* ---- Hi-Res Lossless: a golden vinyl, visually apart from the CD ---- */
+.quality-radio-option.is-vinyl {
+    --vinyl-gold: 244 191 84;
+
+    overflow: hidden;
+    isolation: isolate;
+    min-height: 64px;
+    background:
+        radial-gradient(circle at 100% 50%, rgb(var(--vinyl-gold) / 0.16), transparent 58%),
+        repeating-radial-gradient(circle at 100% 50%, transparent 0 5px, rgb(var(--vinyl-gold) / 0.07) 5px 6px);
+    box-shadow: inset 0 0 0 1px rgb(var(--vinyl-gold) / 0.3);
+}
+
+.quality-radio-option.is-vinyl::before {
+    /* Gold foil edge */
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: linear-gradient(115deg, transparent 30%, rgb(255 236 180 / 0.2) 48%, transparent 66%);
+    background-size: 260% 100%;
+    background-position: 130% 0;
+    pointer-events: none;
+}
+
+.quality-radio-option.is-vinyl.is-just-selected::before {
+    animation: vinyl-foil 1.4s cubic-bezier(0.3, 0.6, 0.2, 1) 200ms both;
+}
+
+.quality-radio-option.is-vinyl .quality-tier-icon {
+    width: 38px;
+    height: 38px;
+    margin: -2px;
+    border-radius: 50%;
+    border-color: rgb(var(--vinyl-gold) / 0.55);
+    background: rgb(var(--vinyl-gold) / 0.12);
+    color: rgb(var(--vinyl-gold));
+}
+
+.quality-radio-option.is-vinyl .quality-tier-icon svg {
+    width: 24px;
+    height: 24px;
+    overflow: visible;
+}
+
+.quality-radio-option.is-vinyl .quality-tier-icon svg .record {
+    transform-box: view-box;
+    transform-origin: 11px 13px;
+}
+
+.quality-radio-option.is-vinyl .quality-tier-icon svg .arm {
+    transform-box: view-box;
+    transform-origin: 21px 3.5px;
+    transform: rotate(-24deg);
+    transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.quality-radio-option.is-vinyl .quality-radio-copy strong,
+.quality-radio-option.is-vinyl .quality-radio-bitrate {
+    color: #f4bf54;
+}
+
+.quality-radio-option.is-vinyl .quality-radio-check {
+    color: rgb(var(--vinyl-gold));
+}
+
+/* Selected: the needle rests on a slowly turning record */
+.quality-radio-option.is-vinyl.is-selected .quality-tier-icon svg .record {
+    animation: vinyl-turn 6s linear infinite;
+}
+
+.quality-radio-option.is-vinyl.is-selected .quality-tier-icon svg .arm {
+    transform: rotate(0);
+}
+
+/* Just picked: the record spins up, the needle drops, golden rings ripple out */
+.quality-radio-option.is-vinyl.is-just-selected .quality-tier-icon {
+}
+
+.quality-radio-option.is-vinyl.is-just-selected .quality-tier-icon svg .record {
+    animation: vinyl-spinup 1.6s cubic-bezier(0.1, 0.7, 0.2, 1) both, vinyl-turn 6s linear 1.6s infinite;
+}
+
+.quality-radio-option.is-vinyl.is-just-selected .quality-tier-icon svg .arm {
+    animation: vinyl-needle 900ms cubic-bezier(0.3, 0.8, 0.2, 1) both;
+}
+
+.quality-radio-option.is-vinyl.is-just-selected::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 29px;
+    z-index: -1;
+    width: 36px;
+    height: 36px;
+    margin: -18px;
+    border: 2px solid rgb(var(--vinyl-gold) / 0.7);
+    border-radius: 50%;
+    animation: vinyl-ripple 1.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    pointer-events: none;
+}
+
+.quality-popover.is-vinyl-magic .quality-selection-indicator {
+    animation: vinyl-wash 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes vinyl-turn {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes vinyl-spinup {
+    from { transform: rotate(-900deg) scale(0.6); opacity: 0.2; }
+    to { transform: none; opacity: 1; }
+}
+
+@keyframes vinyl-needle {
+    0% { transform: rotate(-34deg); }
+    55% { transform: rotate(-34deg); }
+    100% { transform: rotate(0); }
+}
+
+@keyframes vinyl-ripple {
+    from { transform: scale(0.6); opacity: 1; }
+    to { transform: scale(9); opacity: 0; border-width: 0.5px; }
+}
+
+@keyframes vinyl-wash {
+    0%, 100% { border-color: rgb(var(--quality-tier-rgb) / 0.2); box-shadow: none; }
+    30% { border-color: rgb(var(--quality-tier-rgb) / 0.7); box-shadow: 0 10px 34px rgb(var(--quality-tier-rgb) / 0.28); }
+}
+
+@keyframes vinyl-foil {
+    from { background-position: 130% 0; }
+    to { background-position: -40% 0; }
+}
+
+/* ---- Now-playing badge: Sana and Hi-Res get a small signature ---- */
+.now-playing-bar .quality-badge[data-quality-profile='SANA'] {
+    --quality-badge-color: #ff6b73;
+
+    border-color: rgb(255 65 75 / 0.5);
+    box-shadow: 0 0 10px rgb(255 65 75 / 0.22);
+}
+
+.now-playing-bar .quality-badge[data-quality-profile='SANA']::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    margin-right: 0.32rem;
+    border-radius: 50%;
+    background: #ff414b;
+    animation: badge-sana-blink 1.4s steps(2, end) infinite;
+}
+
+.now-playing-bar .quality-badge[data-quality-profile='HI_RES_LOSSLESS'] {
+    --quality-badge-color: #f4bf54;
+
+    color: #f4bf54;
+    border-color: rgb(244 191 84 / 0.5);
+    letter-spacing: 0.06em;
+    box-shadow: inset 0 1px 0 rgb(255 240 200 / 0.28);
+}
+
+/* One gold glint crosses the badge when Hi-Res becomes active. */
+.now-playing-bar .quality-badge[data-quality-profile='HI_RES_LOSSLESS']::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(105deg, transparent 38%, rgb(255 236 180 / 0.55) 50%, transparent 62%);
+    background-size: 260% 100%;
+    background-position: 160% 0;
+    animation: badge-gold-glint 1.4s cubic-bezier(0.3, 0.6, 0.2, 1) 400ms both;
+    pointer-events: none;
+}
+
+@keyframes badge-gold-glint {
+    from { background-position: 160% 0; }
+    to { background-position: -60% 0; }
+}
+
+@keyframes badge-sana-blink {
+    0%, 60% { opacity: 1; }
+    61%, 100% { opacity: 0.15; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quality-radio-option.is-vinyl::before,
+    .quality-radio-option.is-cd .quality-tier-icon::after,
+    .now-playing-bar .quality-badge::after,
+    .quality-radio-option.is-vinyl::after,
+    .quality-radio-option.is-just-selected .quality-tier-icon,
+    .quality-radio-option.is-just-selected .quality-tier-icon svg,
+    .quality-radio-option.is-just-selected .quality-tier-icon svg *,
+    .quality-radio-option.is-vinyl.is-selected .quality-tier-icon svg .record,
+    .quality-popover.is-vinyl-magic .quality-selection-indicator,
+    .now-playing-bar .quality-badge::before {
+        animation: none !important;
+    }
+}
+
+/* Lyrics preview above the seek bar while scrubbing.
+   The sweep of ink across each word is the one gesture this panel owns; the frame stays quiet. */
+.scrub-lyrics {
+    --scrub-ink: var(--foreground);
+    --scrub-ink-dim: color-mix(in srgb, var(--foreground) 50%, transparent);
+    position: fixed;
+    z-index: 2110;
+    left: 0;
+    bottom: 0;
+    --scrub-halo: color-mix(in srgb, var(--background) 82%, transparent);
+    box-sizing: border-box;
+    padding: 0.4rem 1.25rem;
+    color: var(--scrub-ink);
+    text-align: center;
+    pointer-events: none;
+    visibility: hidden;
+    transform: translateY(10px) scale(0.97);
+    transform-origin: 50% 100%;
+    /* No opacity here: on the parent it would switch the fog's backdrop blur off mid-fade. */
+    transition:
+        transform 180ms var(--ease-out),
+        visibility 0s linear 180ms;
+}
+
+/* No card: a feathered fog of blur and tint that dissolves into whatever is behind. */
+.scrub-lyrics::before {
+    position: absolute;
+    z-index: -1;
+    inset: -2.4rem -4.5rem;
+    content: '';
+    background: color-mix(in srgb, var(--background) 80%, transparent);
+    -webkit-backdrop-filter: blur(22px) saturate(1.1);
+    backdrop-filter: blur(22px) saturate(1.1);
+    /* Dense core under the text, then a long soft falloff so no edge reads as a box. */
+    -webkit-mask-image: radial-gradient(closest-side, #000 58%, rgb(0 0 0 / 0.55) 78%, transparent);
+    mask-image: radial-gradient(closest-side, #000 58%, rgb(0 0 0 / 0.55) 78%, transparent);
+    opacity: 0;
+    transition: opacity 150ms ease;
+}
+
+.scrub-lyrics.is-visible {
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    transition:
+        transform 340ms cubic-bezier(0.22, 1.3, 0.36, 1),
+        visibility 0s;
+}
+
+.scrub-lyrics.is-visible::before,
+.scrub-lyrics.is-visible .scrub-lyrics-reel {
+    opacity: 1;
+    transition-duration: 200ms;
+}
+
+.scrub-lyrics-reel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.2rem;
+    padding-block: 0.55rem;
+    /* Lines leaving the reel fade at its top and bottom edges instead of being cut. */
+    -webkit-mask-image: linear-gradient(transparent, #000 0.55rem, #000 calc(100% - 0.55rem), transparent);
+    mask-image: linear-gradient(transparent, #000 0.55rem, #000 calc(100% - 0.55rem), transparent);
+    opacity: 0;
+    transition: opacity 150ms ease;
+}
+
+.scrub-lyrics-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    font-family: var(--font-family-key, var(--font-family));
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+}
+
+/* The current line reserves two lines so the panel never jumps in height while scrubbing. */
+.scrub-lyrics-row[data-role='current'] {
+    min-height: 2.6em;
+}
+
+.scrub-lyrics-row.is-leaving {
+    position: absolute;
+    left: 0;
+    right: 0;
+}
+
+.scrub-lyrics-text {
+    display: block;
+    max-width: 100%;
+    /* Halo in the page color keeps glyphs readable over busy artwork. */
+    filter: drop-shadow(0 0 0.3em var(--scrub-halo)) drop-shadow(0 0 0.08em var(--scrub-halo));
+    transition:
+        opacity 240ms ease,
+        transform 340ms cubic-bezier(0.22, 1, 0.36, 1),
+        color 240ms ease;
+}
+
+/* During a fast drag the role change (scale, color) must keep up with the reel. */
+.scrub-lyrics.is-racing .scrub-lyrics-text {
+    transition-duration: 120ms;
+}
+
+.scrub-lyrics-row:not([data-role='current']) .scrub-lyrics-text {
+    overflow: hidden;
+    color: var(--scrub-ink-dim);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transform: scale(0.74);
+}
+
+.scrub-lyrics-row[data-role='prev'] .scrub-lyrics-text {
+    transform-origin: 50% 100%;
+}
+
+.scrub-lyrics-row[data-role='next'] .scrub-lyrics-text {
+    transform-origin: 50% 0;
+}
+
+.scrub-lyrics-row[data-role='current'] .scrub-lyrics-text {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: var(--scrub-ink);
+    text-wrap: balance;
+}
+
+.scrub-lyrics-group {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.scrub-lyrics-word {
+    --p: 0;
+    display: inline-block;
+    transition: transform 220ms var(--ease-out);
+}
+
+.scrub-lyrics-word.is-background {
+    font-size: 0.78em;
+    font-weight: 600;
+}
+
+/* Word-timed lyrics: ink sweeps across each syllable with a soft leading edge. */
+.scrub-lyrics[data-mode='word'] .scrub-lyrics-row[data-role='current'] .scrub-lyrics-word {
+    padding-block: 0.08em;
+    margin-block: -0.08em;
+    color: transparent;
+    background: linear-gradient(
+        90deg,
+        var(--scrub-ink) calc(var(--p) * (100% + 0.55em) - 0.55em),
+        var(--scrub-ink-dim) calc(var(--p) * (100% + 0.55em))
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+.scrub-lyrics[data-mode='word'] .scrub-lyrics-row[data-role='current'] .scrub-lyrics-word.is-singing {
+    transform: translateY(-0.07em);
+}
+
+.scrub-lyrics-row.is-gap {
+    gap: 0.5rem;
+    height: 1.3em;
+}
+
+.scrub-lyrics-row.is-gap[data-role='current'] {
+    height: 2.6em;
+}
+
+.scrub-lyrics-dot {
+    --p: 0;
+    width: 0.42rem;
+    height: 0.42rem;
+    border-radius: 50%;
+    background: var(--scrub-ink);
+    opacity: calc(0.18 + var(--p) * 0.82);
+    transform: scale(calc(0.7 + var(--p) * 0.3));
+}
+
+.scrub-lyrics-row.is-gap:not([data-role='current']) .scrub-lyrics-dot {
+    opacity: 0.18;
+    transform: scale(0.6);
+}
+
+@media (max-width: 768px) {
+    .scrub-lyrics {
+        padding-inline: 1rem;
+    }
+
+    .scrub-lyrics-row {
+        font-size: 1.05rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scrub-lyrics,
+    .scrub-lyrics.is-visible {
+        transform: none;
+        transition: visibility 0s linear 120ms;
+    }
+
+    .scrub-lyrics.is-visible {
+        transition: none;
+    }
+
+    .scrub-lyrics::before,
+    .scrub-lyrics-reel,
+    .scrub-lyrics.is-visible::before,
+    .scrub-lyrics.is-visible .scrub-lyrics-reel {
+        transition-duration: 120ms;
+    }
+
+    .scrub-lyrics-text,
+    .scrub-lyrics-word {
+        transition: none;
+    }
+
+    .scrub-lyrics[data-mode='word'] .scrub-lyrics-row[data-role='current'] .scrub-lyrics-word.is-singing {
+        transform: none;
+    }
+}
+
+.scrub-lyrics-row.is-spacer {
+    visibility: hidden;
+}
+
+/* Hi-Res unavailable for this source: drop the gold surface, keep the row plain. */
+.quality-radio-option.is-vinyl.is-unavailable {
+    background: none;
+    box-shadow: none;
+}
+
+.quality-radio-option.is-vinyl.is-unavailable::before,
+.quality-radio-option.is-vinyl.is-unavailable::after {
+    display: none;
 }
