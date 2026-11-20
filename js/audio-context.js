@@ -102,6 +102,8 @@ class AudioContextManager {
         this.sources = new Map();
         this.sourceGains = new Map();
         this.sourceMixer = null;
+        this.sanaEnabled = false;
+        this.sanaFilter = null;
         this.analyser = null;
         this.filters = [];
         this.outputNode = null;
@@ -529,6 +531,7 @@ class AudioContextManager {
 
             this.monoMergerNode = this.audioContext.createChannelMerger(2);
 
+            this.isInitialized = true;
             this._connectGraph();
 
             // Auto-recover from unexpected suspensions (e.g. background throttling)
@@ -545,7 +548,6 @@ class AudioContextManager {
                 }
             });
 
-            this.isInitialized = true;
         } catch (e) {
             console.warn('[AudioContext] Init failed:', e);
         }
@@ -665,6 +667,12 @@ class AudioContextManager {
      * Uses connect-before-disconnect ordering to avoid audio dropouts:
      * the new chain is wired up first, then the old connections are torn down.
      */
+    setSanaQuality(enabled) {
+        if (this.sanaEnabled === enabled) return;
+        this.sanaEnabled = enabled;
+        if (this.isInitialized) this._connectGraph();
+    }
+
     _connectGraph() {
         if (!this.isInitialized || !this.source || !this.audioContext) return;
 
@@ -673,6 +681,17 @@ class AudioContextManager {
         }
 
         const connectTail = (lastNode) => {
+            if (this.sanaEnabled) {
+                // Low-bitrate feel only: a stereo-safe band limit, no effect layered on top.
+                if (!this.sanaFilter) {
+                    this.sanaFilter = this.audioContext.createBiquadFilter();
+                    this.sanaFilter.type = 'lowpass';
+                    this.sanaFilter.frequency.value = 3200;
+                    this.sanaFilter.Q.value = 0.5;
+                }
+                lastNode.connect(this.sanaFilter);
+                lastNode = this.sanaFilter;
+            }
             if (this.isGraphicEQEnabled && this.geqFilters.length > 0) {
                 lastNode.connect(this.geqPreampNode);
                 this.geqPreampNode.connect(this.geqFilters[0]);
@@ -700,6 +719,7 @@ class AudioContextManager {
                 } catch {}
             };
             safeDisconnect(this.sourceMixer);
+            safeDisconnect(this.sanaFilter);
             safeDisconnect(this.monoGainNode);
             safeDisconnect(this.monoMergerNode);
             if (this.binauralDsp) {

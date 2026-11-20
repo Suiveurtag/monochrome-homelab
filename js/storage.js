@@ -383,6 +383,7 @@ const PLAYER_BAR_EFFECTS = new Set(['none', 'soft-aurora', 'side-rays', 'silk', 
 export const playerBarEffectsSettings = {
     STORAGE_KEY: 'player-bar-background-effect',
     MAGIC_RINGS_KEY: 'player-magic-rings-enabled',
+    SCRUB_LYRICS_KEY: 'player-scrub-lyrics-enabled',
 
     getEffect() {
         try {
@@ -410,6 +411,18 @@ export const playerBarEffectsSettings = {
     setMagicRingsEnabled(enabled) {
         localStorage.setItem(this.MAGIC_RINGS_KEY, String(enabled));
         window.dispatchEvent(new CustomEvent('player-magic-rings-changed', { detail: { enabled } }));
+    },
+
+    areScrubLyricsEnabled() {
+        try {
+            return localStorage.getItem(this.SCRUB_LYRICS_KEY) !== 'false';
+        } catch {
+            return true;
+        }
+    },
+
+    setScrubLyricsEnabled(enabled) {
+        localStorage.setItem(this.SCRUB_LYRICS_KEY, String(enabled));
     },
 };
 
@@ -3368,6 +3381,30 @@ export const contentBlockingSettings = {
         localStorage.removeItem(this.BLOCKED_ARTISTS_KEY);
         localStorage.removeItem(this.BLOCKED_TRACKS_KEY);
         localStorage.removeItem(this.BLOCKED_ALBUMS_KEY);
+    },
+};
+
+export const sleepTimerSettings = {
+    MINUTES_KEY: 'sleep-timer-minutes',
+    FADE_KEY: 'sleep-timer-fade',
+    MIN_MINUTES: 5,
+    MAX_MINUTES: 120,
+
+    getMinutes() {
+        const minutes = parseInt(localStorage.getItem(this.MINUTES_KEY), 10);
+        return minutes >= this.MIN_MINUTES && minutes <= this.MAX_MINUTES ? minutes : 30;
+    },
+
+    setMinutes(minutes) {
+        localStorage.setItem(this.MINUTES_KEY, String(minutes));
+    },
+
+    isFadeEnabled() {
+        return localStorage.getItem(this.FADE_KEY) !== 'false';
+    },
+
+    setFadeEnabled(enabled) {
+        localStorage.setItem(this.FADE_KEY, String(enabled));
     },
 };
 

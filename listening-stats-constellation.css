@@ -673,8 +673,7 @@
 }
 
 /* The chart lives in a panel here, so its light runs while that panel is in view. */
-#page-stats .stats-trend.stats-panel.stats-in-view .stats-chart-sweep,
-#page-stats .stats-trend.stats-panel.stats-in-view .stats-chart-marker i::after {
+#page-stats .stats-trend.stats-panel.stats-in-view .stats-chart-sweep {
     animation-play-state: running;
 }
 

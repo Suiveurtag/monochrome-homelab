@@ -14,6 +14,7 @@ vi.mock('../audio-context.js', () => ({
         startCrossfade: vi.fn(),
         finishCrossfade: vi.fn(),
         cancelCrossfade: vi.fn(),
+        setSanaQuality: vi.fn(),
     },
 }));
 
@@ -66,6 +67,9 @@ vi.mock('../storage.js', () => ({
     crossfadeSettings: {
         isEnabled: vi.fn(() => false),
         getDuration: vi.fn(() => 5),
+    },
+    sleepTimerSettings: {
+        isFadeEnabled: vi.fn(() => true),
     },
 }));
 
@@ -373,5 +377,68 @@ describe('Player', () => {
 
         player.setPlaybackSpeed(0);
         expect(audioEffectsSettings.setSpeed.mock.calls).toContainEqual([0.01]);
+    });
+
+    describe('sleep timer', () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+            player = new Player(audioElement, api);
+            player.setVolume(0.8);
+        });
+
+        afterEach(() => {
+            player.clearSleepTimer({ silent: true });
+            vi.useRealTimers();
+        });
+
+        test('pauses when the duration runs out and restores the volume', () => {
+            const pause = vi.spyOn(player.activeElement, 'pause');
+            const ended = vi.fn();
+            window.addEventListener('sleep-timer-end', ended, { once: true });
+            player.setSleepTimer(5);
+            expect(player.isSleepTimerActive()).toBe(true);
+
+            vi.advanceTimersByTime(5 * 60_000 + 300);
+
+            expect(pause).toHaveBeenCalled();
+            expect(player.isSleepTimerActive()).toBe(false);
+            expect(player.sleepFadeGain).toBe(1);
+            expect(player.activeElement.volume).toBeCloseTo(0.8);
+            expect(ended.mock.calls[0][0].detail).toEqual({ finished: true });
+        });
+
+        test('fades the volume down over the last stretch', () => {
+            player.setSleepTimer(5);
+            vi.advanceTimersByTime(5 * 60_000 - 30_000);
+            expect(player.sleepFadeGain).toBeLessThan(1);
+            expect(player.sleepFadeGain).toBeGreaterThan(0);
+            expect(player.activeElement.volume).toBeLessThan(0.8);
+        });
+
+        test('extending adds time and starts a fresh countdown', () => {
+            player.setSleepTimer(5);
+            vi.advanceTimersByTime(60_000);
+            player.extendSleepTimer(15);
+            const remaining = player.getSleepTimerRemainingMs();
+            expect(remaining).toBeGreaterThan(18 * 60_000);
+            expect(remaining).toBeLessThanOrEqual(19 * 60_000);
+            expect(player.getSleepTimerState().total).toBe(remaining);
+        });
+
+        test('end of track needs something loaded, then holds playback at the end', () => {
+            expect(player.setSleepTimerEndOfTrack()).toBe(false);
+            Object.defineProperty(player.activeElement, 'duration', { value: 200, configurable: true });
+            player.activeElement.currentTime = 0;
+            expect(player.setSleepTimerEndOfTrack()).toBe(true);
+            expect(player.getSleepTimerState().mode).toBe('track');
+            // The next track is loading: no duration, the last known time holds and nothing finishes.
+            Object.defineProperty(player.activeElement, 'duration', { value: NaN, configurable: true });
+            vi.advanceTimersByTime(1000);
+            expect(player.isSleepTimerActive()).toBe(true);
+            expect(player.getSleepTimerRemainingMs()).toBe(200_000);
+            expect(player.consumeSleepTimerAtTrackEnd()).toBe(true);
+            expect(player.isSleepTimerActive()).toBe(false);
+            expect(player.consumeSleepTimerAtTrackEnd()).toBe(false);
+        });
     });
 });

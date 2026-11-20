@@ -602,6 +602,22 @@ class CommandPalette {
                 keywords: ['sleep', 'timer', '120', 'minutes', 'hours'],
                 action: () => this.setSleepTimer(120),
             },
+            {
+                id: 'sleep-track',
+                group: 'Audio',
+                icon: 'clock',
+                label: 'Sleep Timer: end of this track',
+                keywords: ['sleep', 'timer', 'end', 'track', 'song'],
+                action: () => this.setSleepTimerEndOfTrack(),
+            },
+            {
+                id: 'sleep-off',
+                group: 'Audio',
+                icon: 'clock',
+                label: 'Sleep Timer: turn off',
+                keywords: ['sleep', 'timer', 'off', 'cancel', 'stop'],
+                action: () => this.clearSleepTimer(),
+            },
 
             {
                 id: 'lib-create-playlist',
@@ -1242,6 +1258,18 @@ class CommandPalette {
             Player.instance.setSleepTimer(minutes);
             await this.notify(`Sleep timer: ${minutes} minutes`);
         }
+    }
+
+    async setSleepTimerEndOfTrack() {
+        if (!Player.instance) return;
+        const set = Player.instance.setSleepTimerEndOfTrack();
+        await this.notify(set ? 'Sleep timer: pauses at the end of this track' : 'Nothing is playing');
+    }
+
+    async clearSleepTimer() {
+        if (!Player.instance?.isSleepTimerActive()) return;
+        Player.instance.clearSleepTimer();
+        await this.notify('Sleep timer turned off');
     }
 
     async likeAllInQueue() {

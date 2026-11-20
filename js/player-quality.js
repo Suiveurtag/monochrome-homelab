@@ -1,3 +1,5 @@
+export const SANA_QUALITY = { id: 'SANA', label: 'Sana quality', description: 'A deliberately worn-out signal', detail: '1 kb/s', targetBandwidth: 1_000, apiQuality: 'LOW' };
+
 export const PLAYBACK_QUALITY_OPTIONS = [
     {
         id: 'LOWEST',
@@ -35,7 +37,7 @@ export const PLAYBACK_QUALITY_OPTIONS = [
         id: 'LOSSLESS',
         label: 'Lossless',
         description: 'CD quality, lossless audio',
-        detail: 'CD',
+        detail: '16-bit / 44,1 kHz',
         targetBandwidth: 900_000,
         apiQuality: 'LOSSLESS',
     },
@@ -72,7 +74,13 @@ const getTrackBaseQuality = (track) => {
     return null;
 };
 
+// Pretend this track is available in every quality tier (demo / easter egg).
+const FULL_QUALITY_TITLE = /desire,?\s+be\s+desire,?\s+go/i;
+
 export function getTrackQualityAvailability(track, variants = []) {
+    if (FULL_QUALITY_TITLE.test(String(track?.title || track?.name || ''))) {
+        return { lossless: true, hiRes: true, maxLossyQuality: null };
+    }
     const baseQuality = getTrackBaseQuality(track);
     const tags = collectTags(track);
     const flacVariants = variants.filter((variant) => variant.audioCodec?.toLowerCase().includes('flac'));
@@ -115,15 +123,15 @@ export function getAvailableQualityOptions(track, variants = []) {
 }
 
 export function normalizePlaybackQuality(profile) {
-    return profile === 'auto' || QUALITY_IDS.has(profile) ? profile : 'auto';
+    return profile === 'auto' || profile === 'SANA' || QUALITY_IDS.has(profile) ? profile : 'auto';
 }
 
 export function getApiQuality(profile) {
-    return PLAYBACK_QUALITY_OPTIONS.find((option) => option.id === profile)?.apiQuality || 'HIGH';
+    return profile === 'SANA' ? 'LOW' : PLAYBACK_QUALITY_OPTIONS.find((option) => option.id === profile)?.apiQuality || 'HIGH';
 }
 
 export function getQualityOption(profile) {
-    return PLAYBACK_QUALITY_OPTIONS.find((option) => option.id === profile) || PLAYBACK_QUALITY_OPTIONS[3];
+    return profile === 'SANA' ? SANA_QUALITY : PLAYBACK_QUALITY_OPTIONS.find((option) => option.id === profile) || PLAYBACK_QUALITY_OPTIONS[3];
 }
 
 export function suggestPlaybackQuality(connection, track, variants = []) {
@@ -159,6 +167,7 @@ export function resolvePlaybackQuality(profile, track, variants = [], connection
     const normalized = normalizePlaybackQuality(profile);
     const available = getAvailableQualityOptions(track, variants);
     if (normalized === 'auto') return suggestPlaybackQuality(connection, track, variants);
+    if (normalized === 'SANA') return 'SANA';
     if (available.some((option) => option.id === normalized)) return normalized;
 
     const requestedIndex = PLAYBACK_QUALITY_OPTIONS.findIndex((option) => option.id === normalized);

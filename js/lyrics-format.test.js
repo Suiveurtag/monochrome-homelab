@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { isTtml, lrcToTtml, lyricsToTtml, normalizeTtmlWordTiming, parseLrc, plainLyricsToTtml } from './lyrics-format.js';
+import {
+    isTtml,
+    lrcToTtml,
+    lyricsToTtml,
+    normalizeTtmlWordTiming,
+    parseLrc,
+    parseTimedLyrics,
+    plainLyricsToTtml,
+} from './lyrics-format.js';
 
 describe('LRC lyrics formatting', () => {
     it('parses centisecond and millisecond timestamps', () => {
@@ -64,7 +72,7 @@ describe('LRC lyrics formatting', () => {
 
         expect(lines.map((line) => line.getAttribute('itunes:align'))).toEqual(['right', 'right', null]);
         expect(lines.map((line) => line.getAttribute('ttm:agent'))).toEqual(['v2', 'v2', null]);
-        expect(document.querySelector('[*|role="x-bg"]')?.textContent).toBe('(why\'d you wanna go)');
+        expect(document.querySelector('[*|role="x-bg"]')?.textContent).toBe("(why'd you wanna go)");
     });
 
     it('turns plain fallback lyrics into timed TTML', () => {
@@ -73,5 +81,64 @@ describe('LRC lyrics formatting', () => {
         expect(ttml).toContain('begin="00:00:05.000" end="00:00:10.000"');
         expect(ttml).toContain('First &amp; line');
         expect(ttml).toContain('Second &lt;line&gt;');
+    });
+});
+
+describe('timed lyrics for the scrub preview', () => {
+    it('keeps LRC as line timing ending at the next line', () => {
+        expect(parseTimedLyrics('[00:01.00] One\n[00:04.00] Two', 10)).toEqual({
+            kind: 'line',
+            lines: [
+                { begin: 1000, end: 4000, text: 'One', words: null },
+                { begin: 4000, end: 10000, text: 'Two', words: null },
+            ],
+        });
+    });
+
+    it('reads word spans, syllables and background vocals from TTML', () => {
+        const ttml =
+            '<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata"><body><div>' +
+            '<p begin="1s" end="3s"><span begin="1s" end="1.5s">Hel</span><span begin="1.5s" end="2s">lo</span> ' +
+            '<span begin="2s" end="3s">world</span>' +
+            '<span ttm:role="x-bg"><span begin="2.5s" end="3s">(yeah)</span></span>' +
+            '<span ttm:role="x-translation">Bonjour</span></p></div></body></tt>';
+        const parsed = parseTimedLyrics(ttml);
+        expect(parsed.kind).toBe('word');
+        expect(parsed.lines[0].text).toBe('Hello world(yeah)');
+        expect(
+            parsed.lines[0].words.map(({ text, begin, space, background }) => [text, begin, space, background])
+        ).toEqual([
+            ['Hel', 1000, false, false],
+            ['lo', 1500, true, false],
+            ['world', 2000, false, false],
+            ['(yeah)', 2500, false, true],
+        ]);
+    });
+
+    it('treats line-timed TTML as classic line lyrics', () => {
+        const parsed = parseTimedLyrics(lrcToTtml('[00:01.00] One\n[00:02.00] Two', 4));
+        expect(parsed.kind).toBe('line');
+        expect(parsed.lines.map((line) => [line.begin, line.text])).toEqual([
+            [1000, 'One'],
+            [2000, 'Two'],
+        ]);
+    });
+
+    it('ignores plain unsynced text', () => {
+        expect(parseTimedLyrics('Just words\nNo timing')).toBeNull();
+        expect(parseTimedLyrics('')).toBeNull();
+    });
+
+    it('honours span dur and out-of-order paragraphs', () => {
+        const ttml =
+            '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>' +
+            '<p begin="5s"><span begin="5s" dur="0.5s">Later</span></p>' +
+            '<p begin="1s"><span begin="1s" dur="0.4s">First</span></p></div></body></tt>';
+        const { lines } = parseTimedLyrics(ttml);
+        expect(lines.map((line) => [line.begin, line.end])).toEqual([
+            [1000, 5000],
+            [5000, 9000],
+        ]);
+        expect(lines[0].words[0].end).toBe(1400);
     });
 });

@@ -1,4 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest';
+import { userEvent } from 'vitest/browser';
 import { initializeKeyboardNavigation, installKeyboardShortcuts } from './keyboard-navigation.js';
 
 let cleanup;
@@ -41,7 +42,7 @@ test('integrated queue rows support arrows and Enter activates their playback bu
     expect(play).toHaveBeenCalledOnce();
 });
 
-test('native dialogs suppress global playback shortcuts and close on Escape', async () => {
+test('Space controls playback in native dialogs and Escape closes them', async () => {
     document.body.innerHTML =
         '<button id="trigger">Open</button><dialog><p tabindex="0">Details</p><button>Done</button></dialog>';
     const trigger = document.getElementById('trigger');
@@ -55,10 +56,39 @@ test('native dialogs suppress global playback shortcuts and close on Escape', as
     const text = dialog.querySelector('p');
     text.focus();
     key(text, ' ');
-    expect(playPause).not.toHaveBeenCalled();
+    expect(playPause).toHaveBeenCalledOnce();
     key(text, 'Escape');
     expect(dialog.open).toBe(false);
     await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
+});
+
+test('Space controls playback on focused controls but remains available for text entry', async () => {
+    document.body.innerHTML = '<button>Action</button><input><textarea></textarea><div contenteditable="true"></div>';
+    const playPause = vi.fn();
+    const click = vi.fn();
+    const button = document.querySelector('button');
+    button.onclick = click;
+    cleanup = initializeKeyboardNavigation();
+    cleanupShortcuts = installKeyboardShortcuts({ playPause });
+    button.focus();
+    await userEvent.keyboard(' ');
+    expect(playPause).toHaveBeenCalledOnce();
+    expect(click).not.toHaveBeenCalled();
+    for (const input of document.querySelectorAll('input, textarea, [contenteditable]')) {
+        expect(key(input, ' ')).toBe(true);
+    }
+    expect(playPause).toHaveBeenCalledOnce();
+});
+
+test('Space does not interrupt shortcut recording or modified selection keys', () => {
+    document.body.innerHTML = '<div data-shortcut-recording="true"><button>Record</button></div>';
+    const playPause = vi.fn();
+    cleanupShortcuts = installKeyboardShortcuts({ playPause });
+    const button = document.querySelector('button');
+    expect(key(button, ' ')).toBe(true);
+    document.querySelector('div').removeAttribute('data-shortcut-recording');
+    expect(key(button, ' ', { ctrlKey: true })).toBe(true);
+    expect(playPause).not.toHaveBeenCalled();
 });
 
 test('Escape uses the integrated queue close action instead of trapping the user', () => {

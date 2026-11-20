@@ -2601,10 +2601,26 @@ body.site-intro-active {
     width: 100%;
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.header-notifications-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .header-account-control {
     position: relative;
     flex-shrink: 0;
-    margin-left: auto;
 }
 
 #header-account-dropdown {
@@ -6775,14 +6791,12 @@ input:checked + .slider::before {
     -webkit-tap-highlight-color: transparent;
 }
 
-.player-controls .buttons button:hover {
+/* Only the play button still scales as a whole; the other icons move their own parts (js/player-icon-motion.js). */
+.player-controls .buttons button:where(.play-pause-btn):hover {
     transform: scale(1.1);
-
-    /* Pop effect */
 }
 
 .player-controls .buttons button:active {
-    transform: scale(0.9);
     color: var(--foreground);
     background-color: var(--secondary);
 }
@@ -6849,167 +6863,19 @@ input:checked + .slider::before {
     transform-origin: center;
 }
 
-.now-playing-bar button.icon-activated svg {
-    animation: player-icon-pop 420ms var(--ease-out-back);
+/* Press: the glyph sinks under the pointer, then its parts play the click motion on release. */
+.now-playing-bar [data-icon-motion] > svg {
+    transition: transform 140ms var(--ease-out);
 }
 
-#prev-btn.icon-activated svg {
-    animation-name: player-icon-left;
+.now-playing-bar [data-icon-motion]:not(:disabled):active > svg {
+    transform: scale(0.88);
 }
 
-#next-btn.icon-activated svg {
-    animation-name: player-icon-right;
-}
-
-#shuffle-btn.icon-activated svg {
-    animation-name: player-icon-shuffle;
-}
-
-#repeat-btn.icon-activated svg {
-    animation-name: player-icon-spin;
-}
-
-#volume-btn.icon-activated svg {
-    animation-name: player-icon-volume;
-}
-
-.like-btn.icon-activated svg {
-    animation-name: player-icon-heart;
-}
-
-#download-current-btn.icon-activated svg {
-    animation-name: player-icon-download;
-}
-
-#cast-btn.icon-activated svg {
-    animation-name: player-icon-cast;
-}
-
-#queue-btn.icon-activated svg {
-    animation-name: player-icon-lines;
-}
-
-#toggle-lyrics-btn.icon-activated svg {
-    animation-name: player-icon-mic;
-}
-
-#sleep-timer-btn.icon-activated svg {
-    animation-name: player-icon-clock;
-}
-
-#now-playing-mix-btn.icon-activated svg {
-    animation-name: player-icon-mix;
-}
-
-#equalizer-player-btn.icon-activated svg {
-    animation-name: player-icon-equalizer;
-}
-
-@keyframes player-icon-pop {
-    45% {
-        transform: scale(1.28) rotate(-7deg);
-    }
-}
-
-@keyframes player-icon-left {
-    45% {
-        transform: translateX(-5px);
-        opacity: 0.55;
-    }
-}
-
-@keyframes player-icon-right {
-    45% {
-        transform: translateX(5px);
-        opacity: 0.55;
-    }
-}
-
-@keyframes player-icon-shuffle {
-    40% {
-        transform: skewX(-18deg) scaleX(1.15);
-    }
-}
-
+/* Still used by the queue loop button in the now playing panel. */
 @keyframes player-icon-spin {
     to {
         transform: rotate(360deg);
-    }
-}
-
-@keyframes player-icon-volume {
-    35% {
-        transform: scale(0.78);
-    }
-
-    65% {
-        transform: scale(1.22);
-    }
-}
-
-@keyframes player-icon-heart {
-    35% {
-        transform: scale(1.38);
-    }
-
-    60% {
-        transform: scale(0.9);
-    }
-}
-
-@keyframes player-icon-download {
-    45% {
-        transform: translateY(5px);
-    }
-}
-
-@keyframes player-icon-cast {
-    45% {
-        transform: scale(1.18);
-        filter: drop-shadow(0 0 5px currentcolor);
-    }
-}
-
-@keyframes player-icon-lines {
-    45% {
-        transform: translateX(4px) scaleX(1.08);
-    }
-}
-
-@keyframes player-icon-mic {
-    35% {
-        transform: rotate(-10deg);
-    }
-
-    70% {
-        transform: rotate(9deg);
-    }
-}
-
-@keyframes player-icon-clock {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-@keyframes player-icon-mix {
-    50% {
-        transform: rotate(180deg) scale(1.12);
-    }
-}
-
-@keyframes player-icon-equalizer {
-    30% {
-        transform: scaleY(0.7);
-    }
-
-    55% {
-        transform: scaleY(1.22);
-        filter: drop-shadow(0 0 5px currentcolor);
-    }
-
-    78% {
-        transform: scaleY(0.88);
     }
 }
 
@@ -7389,7 +7255,7 @@ input:checked + .slider::before {
 
 @media (prefers-reduced-motion: reduce) {
     .now-playing-bar::before,
-    .now-playing-bar button.icon-activated svg,
+    .now-playing-bar [data-icon-motion] > svg,
     .player-magic-rings {
         transition: none !important;
     }
@@ -7451,36 +7317,6 @@ input:checked + .slider::before {
     background-color: var(--highlight);
     border-radius: var(--radius-full);
     box-shadow: 0 2px 4px rgb(0, 0, 0, 0.3);
-}
-
-/* Sleep Timer Button */
-#sleep-timer-btn {
-    position: relative;
-    font-size: 0.8rem;
-    font-weight: bold;
-    transition: all var(--transition);
-}
-
-#sleep-timer-btn:hover {
-    color: var(--highlight);
-}
-
-#sleep-timer-btn.active {
-    color: var(--primary);
-    text-shadow: 0 0 8px rgb(var(--highlight-rgb), 0.5);
-}
-
-#sleep-timer-btn svg {
-    width: 20px;
-    height: 20px;
-}
-
-#sleep-timer-btn span {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
 }
 
 #context-menu,
