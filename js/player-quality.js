@@ -37,7 +37,7 @@ export const PLAYBACK_QUALITY_OPTIONS = [
         id: 'LOSSLESS',
         label: 'Lossless',
         description: 'CD quality, lossless audio',
-        detail: 'CD',
+        detail: '16-bit / 44,1 kHz',
         targetBandwidth: 900_000,
         apiQuality: 'LOSSLESS',
     },

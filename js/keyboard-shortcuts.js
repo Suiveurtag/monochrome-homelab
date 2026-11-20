@@ -121,6 +121,8 @@ export function formatShortcut(shortcut, { mac = /Mac|iPhone|iPad/.test(globalTh
 export function reservedShortcutReason(shortcut, action) {
     const value = normalizeShortcut(shortcut);
     if (!value.key) return null;
+    if (value.key === ' ' && !value.ctrl && !value.alt && !value.shift && action !== 'playPause')
+        return 'Space is reserved for play / pause.';
     if (value.key === 'tab') return 'Tab is reserved for moving keyboard focus.';
     if (MODIFIER_KEYS.has(value.key) && !SELECTION_ACTIONS.has(action))
         return 'Choose a key together with this modifier.';

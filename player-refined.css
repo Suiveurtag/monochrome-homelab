@@ -79,7 +79,7 @@
 .version-switch-button:focus-visible::after {
     position: absolute;
     inset: -4px;
-    border: 2px solid rgb(var(--highlight-rgb) / 0.9);
+    border: 2px solid rgb(var(--highlight-rgb), 0.9);
     border-radius: 50%;
     content: '';
 }
@@ -93,20 +93,98 @@
     display: block;
     width: 100%;
     height: 100%;
+    border-radius: 50%;
+    box-shadow: 0 8px 18px rgb(0 0 0 / 0.42);
+    isolation: isolate;
+}
+
+/* Light position for the disc hologram, set from the pointer on the version panel. Registered so it
+   eases between positions instead of jumping. */
+@property --holo-angle {
+    syntax: '<angle>';
+    inherits: true;
+    initial-value: 210deg;
+}
+
+/* The disc: a clear polycarbonate edge, art printed almost to the centre, and a small hole the sleeve
+   shows through. The face carries the hole as a mask. */
+.version-disc-face {
+    position: absolute;
+    inset: 0;
     overflow: hidden;
     border-radius: 50%;
-    background: conic-gradient(
-        from 18deg,
-        rgb(255 255 255 / 0.72),
-        rgb(var(--version-accent-rgb) / 0.34),
-        rgb(255 255 255 / 0.2),
-        rgb(130 154 255 / 0.24),
-        rgb(255 255 255 / 0.72)
+    background: radial-gradient(
+        circle closest-side,
+        rgb(222 226 236 / 0.2) 0 94%,
+        rgb(255 255 255 / 0.62) 96.5%,
+        rgb(150 156 168 / 0.7) 100%
     );
-    box-shadow:
-        0 8px 18px rgb(0 0 0 / 0.42),
-        inset 0 0 0 1px rgb(255 255 255 / 0.38);
-    isolation: isolate;
+    mask: radial-gradient(circle closest-side, transparent 8%, #000 calc(8% + 0.75px));
+}
+
+/* Diffraction, on the rim only: where the clear edge catches the light, two opposite arcs of spectrum
+   that turn with the light source. Hues are the cover's own, turned either way and to its complement,
+   so a grey pressing glints silver and nothing on the disc is invented. Off by default: it shows on the
+   playing disc, more on the one under the pointer or focus, and faintly on the player's disc. */
+.version-disc-face::after {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    border-radius: inherit;
+    background: conic-gradient(
+        from var(--holo-angle),
+        transparent 0 3%,
+        hsl(from rgb(var(--version-accent-rgb)) calc(h - 50) calc(s * 1.1) 68% / 0.9) 9%,
+        rgb(255 255 255 / 0.85) 13%,
+        hsl(from rgb(var(--version-accent-rgb)) calc(h + 60) calc(s * 1.1) 66% / 0.85) 18%,
+        hsl(from rgb(var(--version-accent-rgb)) calc(h + 180) calc(s * 0.9) 64% / 0.7) 24%,
+        transparent 31% 50%,
+        hsl(from rgb(var(--version-accent-rgb)) calc(h - 50) calc(s * 1.1) 68% / 0.75) 57%,
+        rgb(255 255 255 / 0.7) 61%,
+        hsl(from rgb(var(--version-accent-rgb)) calc(h + 60) calc(s * 1.1) 66% / 0.7) 66%,
+        hsl(from rgb(var(--version-accent-rgb)) calc(h + 180) calc(s * 0.9) 64% / 0.55) 72%,
+        transparent 79% 100%
+    );
+    content: '';
+    mask: radial-gradient(circle closest-side, transparent 85%, #000 92.5% 100%);
+    mix-blend-mode: screen;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.version-switch-button .version-disc-face::after {
+    opacity: 0.4;
+}
+
+.track-version-option.is-active .version-disc-face::after {
+    opacity: 0.55;
+}
+
+.track-version-option:not(:disabled):hover .version-disc-face::after,
+.track-version-option:not(:disabled):focus-visible .version-disc-face::after {
+    opacity: 0.9;
+}
+
+/* One disc catches the light at a time: pointing at another version takes it off the playing one. */
+.track-version-list:has(.track-version-option:not(.is-active, :disabled):is(:hover, :focus-visible))
+    .track-version-option.is-active
+    .version-disc-face::after {
+    opacity: 0;
+}
+
+/* Fixed studio light: it stays put while the printed art turns beneath it. */
+.version-disc-face::before {
+    position: absolute;
+    z-index: 3;
+    inset: 0;
+    border-radius: inherit;
+    background:
+        linear-gradient(128deg, transparent 28%, rgb(255 255 255 / 0.2) 44%, transparent 58%),
+        radial-gradient(circle at 30% 22%, rgb(255 255 255 / 0.16), transparent 42%);
+    content: '';
+    mix-blend-mode: screen;
+    pointer-events: none;
 }
 
 /* The cover hides the lower half of the CD; shade the visible edge just above that overlap. */
@@ -124,46 +202,34 @@
     pointer-events: none;
 }
 
-.version-disc::before {
-    position: absolute;
-    z-index: 2;
-    inset: 0;
-    border-radius: inherit;
-    background: conic-gradient(
-        from 230deg,
-        transparent 0 12%,
-        rgb(255 255 255 / 0.38) 16%,
-        transparent 22% 46%,
-        rgb(var(--version-accent-rgb) / 0.24) 52%,
-        transparent 61% 100%
-    );
-    content: '';
-    mix-blend-mode: screen;
-    pointer-events: none;
-}
-
 .version-disc img {
     position: absolute;
     z-index: 1;
-    inset: 2px;
-    width: calc(100% - 4px);
-    height: calc(100% - 4px);
+    inset: 3%;
+    width: 94%;
+    height: 94%;
     border-radius: 50%;
-    filter: saturate(0.94) contrast(1.02);
+    filter: saturate(0.96) contrast(1.03);
     object-fit: cover;
+    backface-visibility: hidden;
 }
 
+/* Centre: just a bright lip around the hole and a faint clamping ring over the art. */
 .version-disc-hub {
     position: absolute;
-    z-index: 4;
+    z-index: 2;
     top: 50%;
     left: 50%;
-    width: 18%;
-    height: 18%;
-    border: 2px solid rgb(255 255 255 / 0.72);
+    width: 24%;
+    height: 24%;
     border-radius: 50%;
-    background: color-mix(in srgb, var(--card) 72%, transparent);
-    box-shadow: 0 1px 4px rgb(0 0 0 / 0.45);
+    background: radial-gradient(
+        circle closest-side,
+        transparent 0 65%,
+        rgb(255 255 255 / 0.78) 67.5% 73%,
+        rgb(0 0 0 / 0.12) 76% 90%,
+        rgb(255 255 255 / 0.26) 95% 100%
+    );
     transform: translate(-50%, -50%);
 }
 
@@ -182,9 +248,7 @@
 }
 
 .version-switch-button .version-disc {
-    box-shadow:
-        0 4px 9px rgb(0 0 0 / 0.3),
-        inset 0 0 0 1px rgb(255 255 255 / 0.34);
+    box-shadow: 0 4px 9px rgb(0 0 0 / 0.3);
 }
 
 .version-switch-button.is-panel-open {
@@ -196,6 +260,26 @@
     will-change: transform;
 }
 
+.version-flight-shade {
+    position: absolute;
+    z-index: 6;
+    top: calc(50% - 9px);
+    right: 6px;
+    left: 6px;
+    height: 13px;
+    border-radius: 50%;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0.24) 42%, transparent 88%);
+    filter: blur(1.5px);
+    pointer-events: none;
+}
+
+/* Right after a landing the hover lift must not kick in mid-swap; it eases in once the disc has settled. */
+.version-switch-button.is-landing {
+    filter: none;
+    transform: none;
+    transition: none;
+}
+
 .version-disc.is-in-transit {
     opacity: 0;
 }
@@ -204,17 +288,18 @@
     max-height: calc(100vh - 20px);
     padding: 0;
     overflow: hidden;
+    border-color: var(--border);
     border-radius: 16px;
-    background:
-        radial-gradient(circle at 14% 8%, rgb(var(--highlight-rgb), 0.09), transparent 34%),
-        color-mix(in srgb, var(--card) 96%, black 4%);
-    box-shadow:
-        0 22px 58px rgb(0 0 0 / 0.52),
-        inset 0 1px 0 rgb(255 255 255 / 0.045);
+
+    /* Floating overlays are opaque; the shadow is the one marker that lifts it above the player bar. */
+    background: var(--card);
+    box-shadow: 0 22px 58px rgb(0 0 0 / 0.52);
     clip-path: inset(0 round 16px);
-    backdrop-filter: blur(20px) saturate(1.06);
+    backdrop-filter: none;
     transform-origin: top left;
-    transition: none;
+
+    /* Only the hologram light eases here; the panel's own morph is driven from JS. */
+    transition: --holo-angle 900ms cubic-bezier(0.22, 1, 0.36, 1);
     will-change: transform, opacity, clip-path, border-radius;
 }
 
@@ -225,153 +310,264 @@
 }
 
 .track-version-panel-header {
-    display: flex;
     flex: 0 0 auto;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
     padding: 1rem 1rem 0.8rem;
-    border-bottom: 1px solid rgb(255 255 255 / 0.065);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
 }
 
 .track-version-panel-header h3 {
     margin: 0;
     font-size: 0.98rem;
-    font-weight: 640;
+    font-weight: 700;
     letter-spacing: -0.018em;
 }
 
+/* Song first in ink, artist after it in muted: one line that names what every row below is a version of. */
 .track-version-panel-header p {
-    max-width: 29ch;
     margin: 0.2rem 0 0;
     overflow: hidden;
-    color: var(--muted-foreground);
-    font-size: 0.72rem;
+    color: var(--foreground);
+    font-size: 0.8rem;
+    font-weight: 550;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.track-version-count {
-    flex: 0 0 auto;
+.track-version-panel-header p span {
+    margin-inline-start: 0.45em;
     color: var(--muted-foreground);
-    font-size: 0.66rem;
-    font-variant-numeric: tabular-nums;
-    font-weight: 520;
+    font-weight: 400;
 }
 
 .track-version-list {
     display: grid;
     min-height: 0;
-    gap: 0;
-    padding: 0 8px 8px var(--track-version-list-inset, 8px);
+    gap: 2px;
+    padding: 6px 8px 8px var(--track-version-list-inset, 8px);
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;
 }
 
 .track-version-option {
-    position: relative;
     display: grid;
     width: 100%;
     min-height: 72px;
-    grid-template-columns: var(--track-version-disc-size, 56px) minmax(0, 1fr) auto;
+    grid-template-columns: calc(var(--track-version-disc-size, 56px) * 1.74) minmax(0, 1fr) auto;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.85rem;
     padding: 8px;
-    overflow: hidden;
     border: 0;
-    border-bottom: 1px solid rgb(255 255 255 / 0.055);
-    border-radius: 9px;
+    border-radius: 12px;
     background: transparent;
     color: var(--foreground);
     text-align: left;
+    position: relative;
     cursor: pointer;
     isolation: isolate;
     transition: background-color 160ms ease;
 }
 
+/* The playing pressing spills its cover's color as a soft light around its disc: the only colored
+   light in the panel. Hovering another version lights it at a lower level, a glimpse of its mood.
+   Still the cover saying what is pressed, never a state color: the wash marks the current row. */
 .track-version-option::before {
     position: absolute;
-    z-index: 2;
-    top: 16px;
-    bottom: 16px;
-    left: 0;
-    width: 2px;
-    border-radius: 2px;
-    background: rgb(var(--version-accent-rgb) / 0.82);
-    content: '';
-    opacity: 0;
-    transition: opacity 180ms ease;
-}
-
-.track-version-option::after {
-    position: absolute;
-    z-index: 0;
+    z-index: -1;
     inset: 0;
     border-radius: inherit;
     background: radial-gradient(
-        circle at calc(var(--track-version-disc-size, 56px) / 2 + 8px) 50%,
+        circle at calc(8px + var(--track-version-disc-size, 56px) * 1.24) 50%,
         rgb(var(--version-accent-rgb) / 0.2),
-        transparent 62%
+        rgb(var(--version-accent-rgb) / 0.05) 22%,
+        transparent 40%
     );
     content: '';
     opacity: 0;
     pointer-events: none;
-    transition: opacity 180ms ease;
-}
-
-.track-version-option > * {
-    position: relative;
-    z-index: 1;
-}
-
-.track-version-option:hover,
-.track-version-option:focus-visible {
-    outline: none;
-    background: rgb(255 255 255 / 0.04);
-}
-
-.track-version-option:hover::after,
-.track-version-option:focus-visible::after {
-    opacity: 0.85;
+    transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .track-version-option.is-active::before {
     opacity: 1;
 }
 
-.track-version-option:focus-visible {
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
+.track-version-option:not(.is-active, :disabled):hover::before {
+    opacity: 0.55;
+}
+
+/* State is ink and wash, never the cover's color: the cover only says what is pressed on each disc. */
+.track-version-option:hover {
+    background: color-mix(in srgb, var(--foreground) 6%, transparent);
 }
 
 .track-version-option.is-active {
-    background: rgb(var(--version-accent-rgb) / 0.08);
+    background: color-mix(in srgb, var(--foreground) 11%, transparent);
 }
 
-.track-version-option.is-active::after {
-    opacity: 0.62;
+.track-version-option:focus-visible {
+    outline: 2px solid rgb(var(--highlight-rgb), 0.9);
+    outline-offset: -2px;
 }
 
 .track-version-option:disabled {
+    background: transparent;
     cursor: not-allowed;
-    filter: grayscale(0.75);
-    opacity: 0.48;
+    opacity: 0.5;
+}
+
+/* Sleeves: each version is the player's cover-and-disc turned on its side. In the player the disc
+   peeks up out of the cover; here it slides out of its sleeve to the right. The sleeve sits on the
+   same x as the player cover, so the panel reads as the record shelf behind it. */
+.track-version-art {
+    --pull: 0.48;
+    --pull-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    position: relative;
+    width: calc(var(--track-version-disc-size, 56px) * 1.74);
+    height: var(--track-version-disc-size, 56px);
+}
+
+/* The current disc is already all the way out and turning, so hover leaves it where it is. */
+.track-version-option:not(:disabled, .is-active):hover .track-version-art,
+.track-version-option:not(:disabled, .is-active):focus-visible .track-version-art {
+    --pull: 0.66;
+
+    /* The one springy curve: a hand tugging the disc. Leaving the row eases it back without it. */
+    --pull-ease: cubic-bezier(0.3, 1.32, 0.5, 1);
+}
+
+.track-version-option.is-active .track-version-art {
+    --pull: 0.74;
+}
+
+/* Not on this server: the disc stays tucked in a faded sleeve. */
+.track-version-option:disabled .track-version-art {
+    --pull: 0.12;
+
+    filter: grayscale(1);
+}
+
+.track-version-sleeve {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    left: 0;
+    width: var(--track-version-disc-size, 56px);
+    height: var(--track-version-disc-size, 56px);
+    overflow: hidden;
+    border-radius: 3px;
+    background: var(--muted);
+
+    /* Offset shadow to the right: the sleeve's open edge shades the disc tucked under it. */
+    box-shadow:
+        5px 0 9px -4px rgb(0 0 0 / 0.62),
+        0 3px 8px rgb(0 0 0 / 0.32);
+    transition: transform 460ms var(--pull-ease);
+}
+
+.track-version-sleeve img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Printed card: a soft top-left light and a hairline edge, so the sleeve reads as stock, not a photo. */
+.track-version-sleeve::after {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgb(255 255 255 / 0.16), transparent 38%);
+    box-shadow:
+        inset 0 0 0 1px rgb(255 255 255 / 0.1),
+        inset -1px 0 0 rgb(0 0 0 / 0.35);
+    content: '';
+    pointer-events: none;
+}
+
+/* Pulling the disc nudges the sleeve the other way, a millimetre of counterforce. */
+.track-version-option:not(:disabled, .is-active):hover .track-version-sleeve,
+.track-version-option:not(:disabled, .is-active):focus-visible .track-version-sleeve {
+    transform: translateX(-2px);
 }
 
 .version-disc-row {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    left: 0;
     width: var(--track-version-disc-size, 56px);
     height: var(--track-version-disc-size, 56px);
+    transform: translateX(calc(var(--track-version-disc-size, 56px) * var(--pull)));
+    transition: transform 460ms var(--pull-ease);
+}
+
+/* Same value as SHADOW_IN_LIST in track-version-picker.js, so a landing disc does not change shadow. */
+.track-version-art .version-disc {
+    box-shadow: 0 3px 8px rgb(0 0 0 / 0.36);
+}
+
+/* The flight's copy of the sleeve: placed every frame from JS, so it must not transition or offset. */
+.version-flight-sleeve {
+    z-index: 2;
+    margin: 0;
+    transform: none;
+    transition: none;
+}
+
+/* The disc rolls rather than slides: its turn is the distance travelled over its circumference
+   (pull x diameter / (pi x diameter) x 360deg = pull x 114.59deg). */
+.version-disc-row img {
+    --roll: calc(var(--pull) * 114.59deg);
+
+    transform: rotate(var(--roll));
+    transition: transform 460ms var(--pull-ease);
+}
+
+/* Opening the panel pulls every other pressing out of its sleeve in turn, top to bottom. The current
+   one arrives by flight from the player instead. Backwards fill hands control to hover once landed. */
+.track-version-popover.is-unsleeving .track-version-option:not(.is-active, :disabled) .version-disc-row {
+    animation: version-disc-pull-out 640ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation-delay: calc(150ms + var(--pull-order, 0) * 60ms);
+}
+
+.track-version-popover.is-unsleeving .track-version-option:not(.is-active, :disabled) .version-disc-row img {
+    animation: version-disc-roll-out 640ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation-delay: calc(150ms + var(--pull-order, 0) * 60ms);
+}
+
+/* The current version's disc keeps turning while it is heard, at the Social booth's 7.2s per turn.
+   The delay lets the disc land from the player before it starts turning. */
+.track-version-option.is-active .version-disc-row img {
+    animation: version-disc-turn 7.2s linear 520ms infinite;
+    animation-play-state: paused;
+}
+
+.track-version-popover.is-playing .track-version-option.is-active .version-disc-row img {
+    animation-play-state: running;
+}
+
+@keyframes version-disc-pull-out {
+    from {
+        transform: translateX(calc(var(--track-version-disc-size, 56px) * 0.04));
+    }
+}
+
+@keyframes version-disc-roll-out {
+    from {
+        transform: rotate(4.6deg);
+    }
 }
 
 .track-version-copy {
     display: grid;
     min-width: 0;
-    gap: 0.1rem;
+    gap: 0.15rem;
 }
 
 .track-version-copy strong,
-.track-version-copy span,
-.track-version-copy small {
+.track-version-copy span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -379,40 +575,41 @@
 
 .track-version-copy strong {
     color: var(--foreground);
-    font-size: 0.78rem;
-    font-weight: 640;
-}
-
-.track-version-copy span {
-    color: color-mix(in srgb, var(--foreground) 78%, var(--muted-foreground));
-    font-size: 0.84rem;
-    font-weight: 500;
+    font-size: 0.9rem;
+    font-weight: 650;
     letter-spacing: -0.012em;
 }
 
-.track-version-copy small {
+.track-version-copy span {
     color: var(--muted-foreground);
-    font-size: 0.67rem;
+    font-size: 0.76rem;
+}
+
+.track-version-meta {
+    display: grid;
+    justify-items: end;
+    gap: 0.2rem;
+    padding-inline-end: 4px;
+    color: var(--muted-foreground);
+    font-size: 0.76rem;
+    font-variant-numeric: tabular-nums;
 }
 
 .track-version-state {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    color: var(--muted-foreground);
-    font-size: 0.68rem;
-    font-weight: 560;
+    color: var(--foreground);
+    font-size: 0.72rem;
+    font-weight: 600;
 }
 
-.track-version-state i {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: rgb(var(--version-accent-rgb));
-}
+/* Turns from wherever the roll left the disc, so the spin never snaps it upright first. */
+@keyframes version-disc-turn {
+    from {
+        transform: rotate(var(--roll, 0deg));
+    }
 
-.track-version-option.is-active .track-version-state {
-    color: color-mix(in srgb, rgb(var(--version-accent-rgb)) 42%, var(--foreground));
+    to {
+        transform: rotate(calc(var(--roll, 0deg) + 360deg));
+    }
 }
 
 .track-version-popover .track-version-panel-header,
@@ -626,7 +823,7 @@
 
 .progress-track-shell .progress-bar:hover,
 .progress-track-shell .progress-bar:active {
-    height: 12px;
+    height: 8px;
     background-color: color-mix(in srgb, var(--muted-foreground) 24%, var(--secondary));
     box-shadow: 0 0 0 1px rgb(255 255 255 / 0.04);
 }
@@ -650,6 +847,20 @@
 .progress-bar .progress-fill {
     z-index: 1;
     border-radius: var(--radius-full);
+}
+
+.progress-track-shell .progress-bar .progress-fill::after {
+    right: -7px;
+    width: 14px;
+    height: 14px;
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .progress-track-shell .progress-bar .progress-fill::after {
+        right: -9px;
+        width: 18px;
+        height: 18px;
+    }
 }
 
 .progress-hover-time {
@@ -699,25 +910,82 @@
     gap: 0.45rem !important;
 }
 
-.elastic-volume #volume-slider.is-grabbing {
+/* js/elastic-volume.js drives height, scale, opacity and fill width every frame with springs, so
+   no CSS transition may compete with it. The range input stays only for keyboard and screen readers. */
+.volume-controls .elastic-volume,
+.volume-controls .elastic-volume:hover,
+.volume-controls .elastic-volume:focus-within {
+    height: 6px;
+    opacity: 0.7;
+    transition: none;
+    cursor: grab;
+}
+
+/* The engine also writes the volume icon's and the action row's transform every frame; the generic
+   `transition: all` on .volume-controls buttons would make the icon trail the row. */
+.volume-controls #volume-btn {
+    transition:
+        color var(--transition),
+        background-color var(--transition);
+}
+
+.volume-controls .player-actions-row {
+    transition: none;
+}
+
+.volume-controls .elastic-volume[data-dragging] {
     cursor: grabbing;
 }
 
-.volume-controls .elastic-volume:hover:not(.is-release-reset),
-.volume-controls .elastic-volume.is-stretched {
-    height: 12px;
+.volume-controls .elastic-volume::before {
+    position: absolute;
+    content: '';
+    inset: -10px 0;
 }
 
-.volume-controls .elastic-volume.is-release-reset,
-.volume-controls .elastic-volume.is-release-reset:hover,
-.volume-controls .elastic-volume.is-release-reset:focus-within {
-    height: 6px;
+.elastic-volume #volume-slider {
+    pointer-events: none;
 }
 
-.volume-controls .elastic-volume.is-mute-animating .volume-fill {
-    transition:
-        width 320ms cubic-bezier(0.4, 0, 0.2, 1),
-        background-color 200ms ease;
+.volume-controls .elastic-volume .volume-fill {
+    overflow: hidden;
+}
+
+/* 100%: one sheen crosses the fill. */
+.volume-controls .elastic-volume .volume-fill::before {
+    position: absolute;
+    content: '';
+    inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.85) 50%, transparent 70%);
+    transform: translateX(-110%);
+    pointer-events: none;
+}
+
+.volume-controls .elastic-volume.is-maxed .volume-fill::before {
+    animation: volume-max-sheen 620ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.volume-controls .elastic-volume.is-maxed .volume-fill {
+    animation: volume-max-glow 620ms ease-out;
+}
+
+@keyframes volume-max-sheen {
+    to {
+        transform: translateX(110%);
+    }
+}
+
+@keyframes volume-max-glow {
+    30% {
+        box-shadow: 0 0 18px rgb(var(--highlight-rgb, 245 245 245) / 0.7);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .volume-controls .elastic-volume.is-maxed .volume-fill,
+    .volume-controls .elastic-volume.is-maxed .volume-fill::before {
+        animation: none;
+    }
 }
 
 /* Preview the prospective volume beneath the committed level without affecting slider input. */
@@ -887,6 +1155,11 @@
     opacity: 1;
     pointer-events: auto;
     backdrop-filter: blur(4px);
+}
+
+/* Trial, 2026-11-19: no background blur behind the version panel. Delete this rule to bring it back. */
+.track-version-backdrop.is-open {
+    backdrop-filter: none;
 }
 
 .quality-popover {
@@ -1272,8 +1545,652 @@
     color: #fbbf24;
 }
 
+/* Sleep timer panel. The dial is the one focal point: a 2-hour clock face whose ink arc is the
+   length you set and, once running, the fraction of time left. Everything else is quiet
+   ink-on-card controls in the player's own vocabulary. */
 .sleep-timer-popover {
-    padding: 1rem;
+    --sleep-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --sleep-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+    --sleep-wash: color-mix(in srgb, var(--foreground) 7%, transparent);
+    --sleep-rule: color-mix(in srgb, var(--foreground) 10%, transparent);
+    --sleep-accent: rgb(var(--highlight-rgb, 245 245 245));
+    --sleep-accent-ink: var(--primary-foreground, var(--background));
+
+    padding: 0.9rem 1rem 1rem;
+}
+
+.sleep-timer-popover .player-popover-header {
+    padding: 0 0 0.2rem 0.15rem;
+}
+
+.sleep-dial-wrap {
+    display: grid;
+    place-items: center;
+    padding-top: 0.2rem;
+}
+
+.sleep-dial {
+    position: relative;
+    width: min(192px, 60vw);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.sleep-dial:focus {
+    outline: none;
+}
+
+.sleep-dial:focus-visible {
+    outline: 2px solid var(--sleep-accent);
+    outline-offset: 3px;
+}
+
+.sleep-dial.is-dragging {
+    cursor: grabbing;
+}
+
+.sleep-timer-popover.is-running .sleep-dial {
+    cursor: default;
+}
+
+.sleep-dial-face {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.sleep-tick {
+    stroke: color-mix(in srgb, var(--foreground) 16%, transparent);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    transition: stroke 260ms ease;
+}
+
+.sleep-tick-major {
+    stroke: color-mix(in srgb, var(--foreground) 30%, transparent);
+    stroke-width: 2.2;
+}
+
+.sleep-tick.is-lit {
+    stroke: color-mix(in srgb, var(--sleep-accent) 62%, transparent);
+}
+
+.sleep-tick-major.is-lit {
+    stroke: var(--sleep-accent);
+}
+
+.sleep-dial-track,
+.sleep-dial-arc {
+    fill: none;
+    stroke-width: 10;
+}
+
+.sleep-dial-track {
+    stroke: var(--sleep-wash);
+}
+
+.sleep-dial-arc {
+    stroke: var(--sleep-accent);
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: 100px 100px;
+    transition: stroke 600ms ease;
+}
+
+.sleep-dial-hand {
+    transform-origin: 100px 100px;
+}
+
+.sleep-dial-knob {
+    fill: var(--background);
+    stroke: var(--sleep-accent);
+    stroke-width: 3.5;
+    filter: drop-shadow(0 3px 6px rgb(0 0 0 / 0.35));
+    transition:
+        r 260ms var(--sleep-spring),
+        fill 240ms ease;
+}
+
+.sleep-dial:hover .sleep-dial-knob,
+.sleep-dial.is-dragging .sleep-dial-knob {
+    r: 12px;
+}
+
+.sleep-timer-popover.is-running .sleep-dial-knob {
+    r: 6px;
+    fill: var(--sleep-accent);
+}
+
+/* Running: the player ticks every 250ms, these transitions join the steps into one glide. */
+.sleep-dial.is-ticking .sleep-dial-arc {
+    transition:
+        stroke-dasharray 250ms linear,
+        stroke 600ms ease;
+}
+
+.sleep-dial.is-ticking .sleep-dial-hand {
+    transition: transform 250ms linear;
+}
+
+.sleep-timer-popover.is-fading .sleep-dial-arc {
+    stroke: color-mix(in srgb, var(--sleep-accent) 50%, transparent);
+}
+
+.sleep-dial-readout {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 0.3rem;
+    pointer-events: none;
+    text-align: center;
+}
+
+.sleep-dial-value {
+    font-family: var(--font-family-key);
+    font-size: 2.75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.035em;
+    line-height: 1;
+}
+
+.sleep-timer-popover.is-running .sleep-dial-value {
+    font-size: 1.85rem;
+    letter-spacing: -0.025em;
+}
+
+/* Under the number: the unit while setting, a bell with the pause time once running. Both sit in
+   one grid cell and cross-fade, so the readout never jumps. */
+.sleep-dial-sub {
+    display: grid;
+    justify-items: center;
+}
+
+.sleep-dial-unit,
+.sleep-dial-alarm {
+    grid-area: 1 / 1;
+    transition:
+        opacity 260ms ease,
+        transform 360ms var(--sleep-ease),
+        filter 260ms ease;
+}
+
+.sleep-dial-unit {
+    color: var(--muted-foreground);
+    font-size: 0.78rem;
+    font-weight: 550;
+}
+
+.sleep-dial-alarm {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--muted-foreground);
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    opacity: 0;
+    filter: blur(3px);
+    transform: translateY(5px);
+}
+
+.sleep-dial-alarm svg {
+    flex: none;
+    transform-origin: 50% 15%;
+}
+
+.sleep-timer-popover.is-running .sleep-dial-unit {
+    opacity: 0;
+    filter: blur(3px);
+    transform: translateY(-5px);
+}
+
+.sleep-timer-popover.is-running .sleep-dial-alarm {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+}
+
+/* The bell swings once when the timer starts (not on every reopen), like an alarm being set. */
+.sleep-dial-alarm.is-set svg {
+    animation: sleep-bell-set 720ms var(--sleep-ease) 120ms;
+}
+
+.sleep-timer-popover.is-fading .sleep-dial-alarm {
+    color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+}
+
+@keyframes sleep-bell-set {
+    20% {
+        transform: rotate(16deg);
+    }
+
+    45% {
+        transform: rotate(-11deg);
+    }
+
+    70% {
+        transform: rotate(5deg);
+    }
+
+    100% {
+        transform: rotate(0);
+    }
+}
+
+/* The "Pauses at" line only serves setup; running, the bell in the dial says it, so it folds away. */
+.sleep-timer-ends {
+    height: 1.25em;
+    margin: 0.5rem 0 0.85rem;
+    overflow: hidden;
+    color: var(--muted-foreground);
+    font-size: 0.8rem;
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    transition:
+        height 380ms var(--sleep-ease),
+        margin 380ms var(--sleep-ease),
+        opacity 200ms ease,
+        visibility 0s linear 0s;
+}
+
+.sleep-timer-popover.is-running .sleep-timer-ends {
+    height: 0;
+    margin: 0.35rem 0 0.4rem;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+        height 380ms var(--sleep-ease),
+        margin 380ms var(--sleep-ease),
+        opacity 200ms ease,
+        visibility 0s linear 0s;
+}
+
+/* Presets and "end of track" fold away once the timer runs; the panel grows and shrinks upward. */
+.sleep-setup {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition:
+        grid-template-rows 380ms var(--sleep-ease),
+        opacity 220ms ease;
+}
+
+.sleep-setup-inner {
+    display: grid;
+    min-height: 0;
+    gap: 0.45rem;
+    padding-bottom: 0.7rem;
+    overflow: hidden;
+}
+
+.sleep-timer-popover.is-running .sleep-setup {
+    grid-template-rows: 0fr;
+    opacity: 0;
+}
+
+/* End of this track. Selecting it pours the accent out from the press point (a clip-path circle on
+   ::before); deselecting drains it back to where you pressed. The label inks over once the fill has
+   reached it, so text never sits dark-on-dark mid-pour. */
+.sleep-track-option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 40px;
+    padding: 0 0.85rem;
+    overflow: hidden;
+    isolation: isolate;
+    border: 1px solid var(--sleep-rule);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--foreground);
+    font: 600 0.84rem/1.2 var(--font-family);
+    cursor: pointer;
+    transition:
+        background-color 180ms ease,
+        border-color 260ms ease,
+        color 160ms ease,
+        transform 220ms var(--sleep-spring);
+}
+
+.sleep-track-option::before {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    content: '';
+    background: var(--sleep-accent);
+    clip-path: circle(0 at var(--fill-x, 50%) var(--fill-y, 50%));
+    transition:
+        clip-path 420ms var(--sleep-ease),
+        background-color 180ms ease;
+}
+
+.sleep-track-option:hover:not(:disabled, .is-selected) {
+    background: var(--sleep-wash);
+}
+
+.sleep-track-option:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.sleep-track-left {
+    color: var(--muted-foreground);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    transition: color 160ms ease;
+}
+
+.sleep-track-option.is-selected {
+    border-color: transparent;
+    color: var(--sleep-accent-ink);
+    transition:
+        background-color 180ms ease,
+        border-color 260ms ease,
+        color 220ms ease 170ms,
+        transform 220ms var(--sleep-spring);
+}
+
+.sleep-track-option.is-selected::before {
+    clip-path: circle(150% at var(--fill-x, 50%) var(--fill-y, 50%));
+    transition:
+        clip-path 640ms var(--sleep-ease),
+        background-color 180ms ease;
+}
+
+.sleep-track-option.is-selected:hover::before {
+    background: color-mix(in srgb, var(--sleep-accent) 94%, var(--background));
+}
+
+.sleep-track-option.is-selected .sleep-track-left {
+    color: color-mix(in srgb, var(--sleep-accent-ink) 68%, transparent);
+    transition: color 220ms ease 170ms;
+}
+
+.sleep-track-option:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.sleep-timer-popover .sleep-fade-row {
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    padding: 0.7rem 0.1rem 0.75rem;
+    border-top: 1px solid var(--sleep-rule);
+    color: var(--foreground);
+    font-size: 0.86rem;
+}
+
+/* Same switch as the quality panel's Auto, but on the theme's accent: only this one takes the hue. */
+.sleep-timer-popover .quality-auto-toggle input:checked + .quality-auto-track {
+    background: var(--sleep-accent);
+}
+
+.sleep-timer-popover .quality-auto-toggle input:checked + .quality-auto-track .quality-auto-thumb {
+    background: var(--sleep-accent-ink);
+}
+
+.sleep-fade-copy {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.sleep-fade-hint {
+    color: var(--muted-foreground);
+    font-size: 0.74rem;
+    font-weight: 450;
+}
+
+.sleep-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.sleep-action {
+    position: relative;
+    flex: 1;
+    height: 42px;
+    padding: 0 1rem;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--foreground) 16%, transparent);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--foreground);
+    font: 650 0.88rem/1 var(--font-family);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition:
+        background-color 180ms ease,
+        border-color 180ms ease,
+        color 180ms ease,
+        transform 260ms var(--sleep-spring);
+}
+
+.sleep-action[hidden] {
+    display: none;
+}
+
+.sleep-action:hover {
+    border-color: color-mix(in srgb, var(--foreground) 26%, transparent);
+    background: var(--sleep-wash);
+}
+
+/* Press sinks quickly; release springs back through the slower spring above. */
+.sleep-action:active {
+    transform: scale(0.95);
+    transition-duration: 180ms, 180ms, 180ms, 90ms;
+}
+
+.sleep-action-label {
+    display: inline-block;
+}
+
+/* +15 min: the label rolls over like a counter ticking up while the pill flashes the accent. */
+.sleep-action.is-bumped {
+    animation: sleep-bump-flash 560ms var(--sleep-ease);
+}
+
+.sleep-action.is-bumped .sleep-action-label {
+    animation: sleep-bump-roll 480ms var(--sleep-ease);
+}
+
+/* Turn off: a quiet warning tone on hover, the only destructive action in the panel. */
+.sleep-action-stop:hover {
+    border-color: color-mix(in srgb, var(--foreground) 30%, transparent);
+    background: color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+/* Start, stop or timer end while open: the new row rises in, one pill after the other. */
+.sleep-actions.is-swapping .sleep-action:not([hidden], .is-bumped) {
+    animation: sleep-action-in 520ms var(--sleep-ease) both;
+}
+
+.sleep-actions.is-swapping .sleep-action:not([hidden]) + .sleep-action:not([hidden], .is-bumped) {
+    animation-delay: 60ms;
+}
+
+@keyframes sleep-action-in {
+    from {
+        opacity: 0;
+        filter: blur(4px);
+        transform: translateY(8px) scale(0.94);
+    }
+}
+
+@keyframes sleep-bump-flash {
+    18% {
+        border-color: transparent;
+        background: color-mix(in srgb, var(--sleep-accent) 22%, transparent);
+    }
+}
+
+@keyframes sleep-bump-roll {
+    0% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    40% {
+        transform: translateY(-120%);
+        opacity: 0;
+    }
+
+    41% {
+        transform: translateY(120%);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.sleep-action-primary {
+    border-color: transparent;
+    background: var(--sleep-accent);
+    color: var(--sleep-accent-ink);
+}
+
+.sleep-action-primary:hover {
+    background: color-mix(in srgb, var(--sleep-accent) 86%, var(--background));
+}
+
+.sleep-timer-popover :is(.sleep-track-option, .sleep-action):focus-visible {
+    outline: 2px solid var(--sleep-accent);
+    outline-offset: 2px;
+}
+
+/* Start: the dial settles like a record dropping onto the platter. */
+.sleep-timer-popover.is-starting .sleep-dial-face {
+    animation: sleep-settle 620ms var(--sleep-spring);
+}
+
+@keyframes sleep-settle {
+    30% {
+        transform: scale(0.95);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@media (max-width: 768px) {
+    .sleep-track-option,
+    .sleep-action {
+        min-height: 44px;
+    }
+}
+
+/* Player bar button: the moon fills and a thin ring around it runs down with the timer. */
+.now-playing-bar .sleep-timer-button {
+    position: relative;
+}
+
+.now-playing-bar .sleep-timer-button .sleep-timer-icon {
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.now-playing-bar .sleep-timer-button .s-moon {
+    transition: fill 320ms ease;
+}
+
+.now-playing-bar .sleep-timer-button.is-sleep-active {
+    color: var(--foreground);
+}
+
+.now-playing-bar .sleep-timer-button.is-sleep-active .sleep-timer-icon {
+    transform: scale(0.76);
+}
+
+.now-playing-bar .sleep-timer-button.is-sleep-active .s-moon {
+    fill: currentcolor;
+}
+
+/* The ring is a clock: the arc is the time left, running from 12 o'clock clockwise to a hand tip
+   that winds back toward 12 as the timer runs, the same reading as the panel's dial. Starting the
+   timer winds it up from zero. */
+.now-playing-bar .sleep-timer-button svg.sleep-timer-ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.82);
+    transition:
+        opacity 260ms ease,
+        transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.now-playing-bar .sleep-timer-button.is-sleep-active svg.sleep-timer-ring {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.sleep-ring-track,
+.sleep-ring-fill {
+    fill: none;
+    stroke-width: 2.2;
+}
+
+.sleep-ring-track {
+    stroke: color-mix(in srgb, currentcolor 16%, transparent);
+}
+
+.sleep-ring-fill {
+    stroke: currentcolor;
+    stroke-linecap: round;
+    stroke-dasharray: 100 100;
+    stroke-dashoffset: calc((1 - var(--sleep-left, 1)) * 100);
+    transform: rotate(-90deg);
+    transform-origin: 18px 18px;
+    transition: stroke-dashoffset 250ms linear;
+}
+
+.sleep-ring-hand {
+    transform: rotate(calc(var(--sleep-left, 1) * 360deg));
+    transform-origin: 18px 18px;
+    transition: transform 250ms linear;
+}
+
+.sleep-ring-tip {
+    fill: currentcolor;
+    stroke: var(--background);
+    stroke-width: 1.2;
+}
+
+.now-playing-bar .sleep-timer-button.is-sleep-active .sleep-ring-fill {
+    animation: sleep-ring-wind-arc 760ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.now-playing-bar .sleep-timer-button.is-sleep-active .sleep-ring-hand {
+    animation: sleep-ring-wind-hand 760ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes sleep-ring-wind-arc {
+    from {
+        stroke-dashoffset: 100;
+    }
+}
+
+@keyframes sleep-ring-wind-hand {
+    from {
+        transform: rotate(0deg);
+    }
 }
 
 .player-popover-close {
@@ -1289,103 +2206,12 @@
     cursor: pointer;
     transition:
         color 160ms ease,
-        background-color 160ms ease,
-        transform 180ms var(--ease-out-back);
+        background-color 160ms ease;
 }
 
 .player-popover-close:hover {
     background: rgb(255 255 255 / 0.1);
     color: var(--foreground);
-    transform: rotate(5deg) scale(1.04);
-}
-
-.sleep-timer-description {
-    margin: -0.1rem 0 0.85rem;
-    color: var(--muted-foreground);
-    font-size: 0.74rem;
-}
-
-.sleep-timer-popover .timer-options {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.38rem;
-}
-
-.sleep-timer-popover .timer-option {
-    display: flex;
-    min-width: 0;
-    min-height: 54px;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 0.05rem;
-    padding: 0.45rem 0.2rem;
-    border: 1px solid rgb(255 255 255 / 0.08);
-    border-radius: 11px;
-    background: rgb(255 255 255 / 0.035);
-    color: var(--foreground);
-    cursor: pointer;
-    transition:
-        transform 220ms var(--ease-out-back),
-        border-color 180ms ease,
-        background-color 180ms ease,
-        box-shadow 180ms ease;
-}
-
-.sleep-timer-popover .timer-option:hover,
-.sleep-timer-popover .timer-option:focus-visible {
-    border-color: rgb(var(--highlight-rgb) / 0.38);
-    background: rgb(var(--highlight-rgb) / 0.1);
-    box-shadow: 0 8px 24px rgb(var(--highlight-rgb) / 0.08);
-    transform: translateY(-3px);
-    outline: none;
-}
-
-.sleep-timer-popover .timer-option strong {
-    font-size: 0.92rem;
-}
-
-.sleep-timer-popover .timer-option span {
-    color: var(--muted-foreground);
-    font-size: 0.62rem;
-}
-
-.custom-timer-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid rgb(255 255 255 / 0.07);
-    font-size: 0.74rem;
-}
-
-.custom-timer-control {
-    display: flex;
-    align-items: center;
-    gap: 0.36rem;
-}
-
-.custom-timer-control input {
-    width: 58px;
-    height: 34px;
-    padding: 0 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    background: rgb(255 255 255 / 0.04);
-    color: var(--foreground);
-    text-align: right;
-}
-
-.custom-timer-control > span {
-    color: var(--muted-foreground);
-    font-size: 0.68rem;
-}
-
-.custom-timer-control #custom-timer-btn {
-    min-height: 34px;
-    padding-inline: 0.7rem;
 }
 
 @media (max-width: 768px) {
@@ -1772,7 +2598,9 @@
     .quality-radio-bitrate,
     .quality-selection-indicator,
     .quality-lossless-magic *,
-    .sleep-timer-popover .timer-option,
+    .sleep-timer-popover *,
+    .sleep-track-option::before,
+    .now-playing-bar .sleep-timer-button *,
     .progress-hover-time {
         animation: none !important;
         transition-duration: 0ms !important;
@@ -2186,17 +3014,13 @@
     pointer-events: none;
 }
 
-.quality-radio-option.is-cd.is-just-selected .quality-tier-icon svg {
-    animation: quality-cd-spin 1.1s cubic-bezier(0.1, 0.6, 0.2, 1) both;
+/* The disc rotation itself is driven from events.js (momentum, so it can be interrupted at any time). */
+.quality-radio-option.is-cd .quality-tier-icon svg {
+    transform-origin: 50% 50%;
 }
 
 .quality-radio-option.is-cd.is-just-selected .quality-tier-icon::after {
     animation: quality-cd-refract 1.1s cubic-bezier(0.1, 0.6, 0.2, 1) both;
-}
-
-@keyframes quality-cd-spin {
-    from { transform: rotate(-720deg); }
-    to { transform: rotate(0); }
 }
 
 @keyframes quality-cd-refract {
@@ -2260,7 +3084,7 @@
     transform-box: view-box;
     transform-origin: 21px 3.5px;
     transform: rotate(-24deg);
-    transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: transform 420ms cubic-bezier(0.3, 0.9, 0.3, 1.15);
 }
 
 .quality-radio-option.is-vinyl .quality-radio-copy strong,
@@ -2272,11 +3096,7 @@
     color: rgb(var(--vinyl-gold));
 }
 
-/* Selected: the needle rests on a slowly turning record */
-.quality-radio-option.is-vinyl.is-selected .quality-tier-icon svg .record {
-    animation: vinyl-turn 6s linear infinite;
-}
-
+/* Selected: the needle rests on the record, which turns slowly (rotation driven from events.js) */
 .quality-radio-option.is-vinyl.is-selected .quality-tier-icon svg .arm {
     transform: rotate(0);
 }
@@ -2285,12 +3105,9 @@
 .quality-radio-option.is-vinyl.is-just-selected .quality-tier-icon {
 }
 
-.quality-radio-option.is-vinyl.is-just-selected .quality-tier-icon svg .record {
-    animation: vinyl-spinup 1.6s cubic-bezier(0.1, 0.7, 0.2, 1) both, vinyl-turn 6s linear 1.6s infinite;
-}
-
+/* The needle is a plain transition, so leaving mid-drop just reverses it smoothly */
 .quality-radio-option.is-vinyl.is-just-selected .quality-tier-icon svg .arm {
-    animation: vinyl-needle 900ms cubic-bezier(0.3, 0.8, 0.2, 1) both;
+    transition-delay: 260ms;
 }
 
 .quality-radio-option.is-vinyl.is-just-selected::after {
@@ -2310,21 +3127,6 @@
 
 .quality-popover.is-vinyl-magic .quality-selection-indicator {
     animation: vinyl-wash 1.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes vinyl-turn {
-    to { transform: rotate(360deg); }
-}
-
-@keyframes vinyl-spinup {
-    from { transform: rotate(-900deg) scale(0.6); opacity: 0.2; }
-    to { transform: none; opacity: 1; }
-}
-
-@keyframes vinyl-needle {
-    0% { transform: rotate(-34deg); }
-    55% { transform: rotate(-34deg); }
-    100% { transform: rotate(0); }
 }
 
 @keyframes vinyl-ripple {
@@ -2401,7 +3203,6 @@
     .quality-radio-option.is-just-selected .quality-tier-icon,
     .quality-radio-option.is-just-selected .quality-tier-icon svg,
     .quality-radio-option.is-just-selected .quality-tier-icon svg *,
-    .quality-radio-option.is-vinyl.is-selected .quality-tier-icon svg .record,
     .quality-popover.is-vinyl-magic .quality-selection-indicator,
     .now-playing-bar .quality-badge::before {
         animation: none !important;
@@ -2649,4 +3450,198 @@
 .quality-radio-option.is-vinyl.is-unavailable::before,
 .quality-radio-option.is-vinyl.is-unavailable::after {
     display: none;
+}
+
+/* Player icon hover poses (js/player-icon-motion.js). While hovered, the staged copy of the icon
+   takes a held pose through these transitions and eases back on leave; .is-clicking hands the
+   icon to the click motion, so poses and transitions are off for its length. Geometry is in
+   viewBox units (transform-box: view-box). */
+.now-playing-bar [data-icon-motion] .motion-stage,
+.now-playing-bar [data-icon-motion] .motion-stage * {
+    transform-box: view-box;
+    transition:
+        transform 420ms cubic-bezier(0.16, 1, 0.3, 1),
+        d 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.now-playing-bar [data-icon-motion].is-clicking .motion-stage,
+.now-playing-bar [data-icon-motion].is-clicking .motion-stage * {
+    transition: none;
+}
+
+.now-playing-bar [data-icon-motion].is-staged:not(.is-clicking) .motion-stage {
+    opacity: 1;
+}
+
+.now-playing-bar [data-icon-motion].is-staged:not(.is-clicking) .motion-original {
+    opacity: 0;
+}
+
+/* Skip: the arrow leans into its bar, the bar braces. */
+.now-playing-bar #prev-btn.is-posed:not(.is-clicking) .m-arrow {
+    transform: translateX(-3px);
+}
+
+.now-playing-bar #next-btn.is-posed:not(.is-clicking) .m-arrow {
+    transform: translateX(3px);
+}
+
+.now-playing-bar #prev-btn .m-bar {
+    transform-origin: 3px 12px;
+}
+
+.now-playing-bar #next-btn .m-bar {
+    transform-origin: 21px 12px;
+}
+
+.now-playing-bar :is(#prev-btn, #next-btn).is-posed:not(.is-clicking) .m-bar {
+    transform: scaleY(1.18);
+}
+
+/* Shuffle: both arrowheads pull ahead, one after the other. */
+.now-playing-bar #shuffle-btn.is-posed:not(.is-clicking) .m-head {
+    transform: translateX(2.5px);
+}
+
+.now-playing-bar #shuffle-btn .m-head-low {
+    transition-delay: 60ms;
+}
+
+/* Repeat: both arrowheads glide on along the loop, the cycle about to run (the spin is for the click). */
+.now-playing-bar #repeat-btn.is-posed:not(.is-clicking) .m-head-top {
+    transform: translateX(2.5px);
+}
+
+.now-playing-bar #repeat-btn.is-posed:not(.is-clicking) .m-head-bottom {
+    transform: translateX(-2.5px);
+}
+
+.now-playing-bar #repeat-btn .m-head-bottom {
+    transition-delay: 60ms;
+}
+
+/* Lyrics: the mic tips toward the singer, its head swells. */
+.now-playing-bar #toggle-lyrics-btn .m-mic {
+    transform-origin: 7px 17px;
+}
+
+.now-playing-bar #toggle-lyrics-btn .m-mic-head {
+    transform-origin: 16px 7px;
+}
+
+.now-playing-bar #toggle-lyrics-btn.is-posed:not(.is-clicking) .m-mic {
+    transform: rotate(-16deg);
+}
+
+.now-playing-bar #toggle-lyrics-btn.is-posed:not(.is-clicking) .m-mic-head {
+    transform: scale(1.1);
+}
+
+/* Download: the arrow hangs over the tray. */
+.now-playing-bar #download-current-btn.is-posed:not(.is-clicking) .m-arrow {
+    transform: translateY(3px);
+}
+
+.now-playing-bar #download-current-btn .m-tray {
+    transform-origin: 12px 21px;
+}
+
+.now-playing-bar #download-current-btn.is-posed:not(.is-clicking) .m-tray {
+    transform: scaleX(1.1);
+}
+
+/* Cast: the waves spread away from the source. */
+.now-playing-bar #cast-btn.is-posed:not(.is-clicking) .m-wave-small {
+    transform: translate(1.2px, -1.2px);
+}
+
+.now-playing-bar #cast-btn.is-posed:not(.is-clicking) .m-wave-big {
+    transform: translate(2.4px, -2.4px);
+}
+
+.now-playing-bar #cast-btn .m-wave-big {
+    transition-delay: 50ms;
+}
+
+/* Queue: the note lifts, the lines draw back in a cascade. */
+.now-playing-bar #queue-btn.is-posed:not(.is-clicking) .m-note {
+    transform: translateY(-3px) rotate(-8deg);
+}
+
+.now-playing-bar #queue-btn .m-note {
+    transform-origin: 18px 16px;
+}
+
+.now-playing-bar #queue-btn.is-posed:not(.is-clicking) .m-line {
+    transform: translateX(-2px);
+}
+
+.now-playing-bar #queue-btn .m-line-2 {
+    transition-delay: 40ms;
+}
+
+.now-playing-bar #queue-btn .m-line-3 {
+    transition-delay: 80ms;
+}
+
+/* Sleep timer: the moon leans back into the night, its z lifts a little. */
+.now-playing-bar .sleep-timer-button .m-moon {
+    transform-origin: 10px 14px;
+}
+
+.now-playing-bar .sleep-timer-button.is-posed:not(.is-clicking) .m-moon {
+    transform: rotate(-14deg);
+}
+
+.now-playing-bar .sleep-timer-button.is-posed:not(.is-clicking) .m-z {
+    transform: translate(1px, -1.6px);
+}
+
+/* Equalizer: the faders slide to an even level. */
+.now-playing-bar #equalizer-player-btn.is-posed:not(.is-clicking) .m-eq {
+    d: path('M4 18V10M4 6V4M12 18V15M12 11V4M20 18V10M20 6V4M2 10h4M10 11h4M18 10h4');
+}
+
+/* Track mix: the note jumps and tilts. */
+.now-playing-bar :is(#now-playing-mix-btn, #compact-mix-btn) .m-note {
+    transform-origin: 12px 14px;
+}
+
+.now-playing-bar :is(#now-playing-mix-btn, #compact-mix-btn).is-posed:not(.is-clicking) .m-note {
+    transform: translateY(-2.5px) rotate(-10deg);
+}
+
+/* Volume: the cone pulls back and the waves open; muted, the cross turns and tightens. */
+.now-playing-bar #volume-btn.is-posed:not(.is-clicking) .m-speaker {
+    transform: translateX(-1px);
+}
+
+.now-playing-bar #volume-btn.is-posed:not(.is-clicking) .m-wave-1 {
+    transform: translateX(1.5px);
+}
+
+.now-playing-bar #volume-btn.is-posed:not(.is-clicking) .m-wave-2 {
+    transform: translateX(2.5px);
+}
+
+.now-playing-bar #volume-btn .m-cross {
+    transform-origin: 19px 12px;
+}
+
+.now-playing-bar #volume-btn.is-posed:not(.is-clicking) .m-cross {
+    transform: rotate(90deg) scale(0.8);
+}
+
+/* Save: shared icon, posed directly. The plus turns a quarter, the filled disc swells. */
+.now-playing-bar #now-playing-like-btn .track-save-symbol--plus,
+.now-playing-bar #now-playing-like-btn .track-save-circle {
+    transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.now-playing-bar #now-playing-like-btn.is-posed .track-save-symbol--plus {
+    transform: rotate(90deg);
+}
+
+.now-playing-bar #now-playing-like-btn.is-posed .track-save-circle {
+    transform: scale(1.1);
 }

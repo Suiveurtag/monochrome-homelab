@@ -1113,15 +1113,6 @@
     translate: -50% -50%;
 }
 
-.stats-chart-marker i::after {
-    content: '';
-    position: absolute;
-    inset: -4px;
-    border: 1px solid var(--stats-point);
-    border-radius: 50%;
-    opacity: 0;
-}
-
 .stats-chart-tooltip {
     z-index: 2;
     bottom: calc(100% - var(--stats-y) + 16px);
@@ -1961,13 +1952,7 @@
     animation-play-state: paused;
 }
 
-#page-stats .stats-chart-marker i::after {
-    animation: stats-pulse 2.6s ease-out infinite;
-    animation-play-state: paused;
-}
-
-#page-stats .stats-scene.stats-in-view .stats-chart-sweep,
-#page-stats .stats-scene.stats-in-view .stats-chart-marker i::after {
+#page-stats .stats-scene.stats-in-view .stats-chart-sweep {
     animation-play-state: running;
 }
 
@@ -2099,18 +2084,6 @@
     45%,
     100% {
         transform: translateX(1100px);
-    }
-}
-
-@keyframes stats-pulse {
-    0% {
-        opacity: 0.9;
-        transform: scale(0.6);
-    }
-
-    100% {
-        opacity: 0;
-        transform: scale(2.4);
     }
 }
 

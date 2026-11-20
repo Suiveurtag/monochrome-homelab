@@ -1,4 +1,5 @@
 import { playerBarEffectsSettings } from './storage.js';
+import { initPlayerIconMotion } from './player-icon-motion.js';
 import {
     DarkVeilRenderer,
     MagicRingsRenderer,
@@ -43,7 +44,7 @@ class PlayerBarEffects {
         this.magicRingsEnabled = playerBarEffectsSettings.areMagicRingsEnabled();
         this.setEffect(playerBarEffectsSettings.getEffect());
         this.installMorphIcon();
-        this.animateButtons();
+        initPlayerIconMotion(this.bar);
         this.resizeObserver = new ResizeObserver(() => this.resize());
         this.resizeObserver.observe(this.bar);
         this.resize();
@@ -120,16 +121,6 @@ class PlayerBarEffects {
 
     playMagicRings() {
         if (this.magicRingsEnabled) this.magicRings?.burst(this.getColorRgb());
-    }
-
-    animateButtons() {
-        this.bar.querySelectorAll('button').forEach((button) => {
-            button.addEventListener('click', () => {
-                button.classList.remove('icon-activated');
-                void button.offsetWidth;
-                button.classList.add('icon-activated');
-            });
-        });
     }
 
     resize() {

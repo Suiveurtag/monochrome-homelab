@@ -10,6 +10,7 @@ import {
     escapeHtml,
 } from './utils.js';
 import { buildSharePath, copyShareLink } from './share.js';
+import { setupSleepNightfall } from './sleep-nightfall.js';
 import {
     lastFMStorage,
     libreFmSettings,
@@ -17,6 +18,7 @@ import {
     waveformSettings,
     keyboardShortcuts,
     recentActivityManager,
+    sleepTimerSettings,
 } from './storage.js';
 import { showNotification, downloadTrackWithMetadata, downloadAlbum, downloadPlaylist } from './downloads.js';
 import { downloadQualitySettings } from './storage.js';
@@ -47,6 +49,7 @@ import {
     SVG_SETTINGS,
     SVG_SHUFFLE,
     SVG_VOLUME,
+    SVG_VOLUME_1,
     SVG_USER,
 } from './icons.js';
 import { MusicAPI } from './music-api.js';
@@ -54,6 +57,7 @@ import { LyricsManager } from './lyrics.js';
 import { createScrubLyrics } from './scrub-lyrics.js';
 import { Player } from './player.js';
 import { playerBarEffects } from './player-bar-effects.js';
+import { createElasticVolume } from './elastic-volume.js';
 import { initializePlayerActionLayout, PLAYER_ACTIONS } from './player-bar-layout.js';
 import { socialManager } from './social.js';
 import { canvasSettings } from './canvas-settings.js';
@@ -262,17 +266,35 @@ const volumeBtn = document.getElementById('volume-btn');
 
 initializePlayerActionLayout();
 
+let elasticVolume = null;
+const VOLUME_ICONS = { mute: SVG_MUTE, low: SVG_VOLUME_1, high: SVG_VOLUME };
+
+// Three icon states follow the level; the SVG is only replaced when the state changes, so dragging
+// the slider doesn't rebuild it every frame and the icon can animate the change.
+const syncVolumeIcon = (level) => {
+    if (!volumeBtn) return;
+    const state = level <= 0 ? 'mute' : level < 0.5 ? 'low' : 'high';
+    if (volumeBtn.dataset.volumeState === state) return;
+    volumeBtn.dataset.volumeFrom = volumeBtn.dataset.volumeState || '';
+    volumeBtn.dataset.volumeState = state;
+    volumeBtn.innerHTML = VOLUME_ICONS[state](20);
+};
+
 const updateVolumeUI = () => {
     const activeEl = Player.instance.activeElement;
     const { muted } = activeEl;
     const volume = Player.instance.userVolume;
-    volumeBtn.innerHTML = muted || volume === 0 ? SVG_MUTE(20) : SVG_VOLUME(20);
-    const effectiveVolume = muted ? 0 : volume * 100;
-    volumeFill.style.setProperty('--volume-level', `${effectiveVolume}%`);
-    volumeFill.style.width = `${effectiveVolume}%`;
-    _volumeBar?.style.setProperty('--volume-level', `${effectiveVolume}%`);
+    const level = muted ? 0 : volume;
+    syncVolumeIcon(level);
+    volumeFill.style.setProperty('--volume-level', `${level * 100}%`);
+    _volumeBar?.style.setProperty('--volume-level', `${level * 100}%`);
+    if (elasticVolume) {
+        elasticVolume.sync(level);
+        return;
+    }
+    volumeFill.style.width = `${level * 100}%`;
     const slider = document.getElementById('volume-slider');
-    if (slider) slider.value = String(effectiveVolume);
+    if (slider) slider.value = String(level * 100);
 };
 
 function getRectSnapshot(element) {
@@ -352,6 +374,71 @@ function setupQualityPopover(player) {
         HIGH: { rgb: '249 115 22', icon: SVG_QUALITY_WAVES_ELECTRICITY(20) },
         LOSSLESS: { rgb: '45 212 191', icon: SVG_QUALITY_CD(20) },
         HI_RES_LOSSLESS: { rgb: '244 191 84', icon: SVG_QUALITY_VINYL(22) },
+    };
+
+    // Disc/record rotation driven by momentum: ω relaxes exponentially toward a cruise speed,
+    // so a new kick, a deselect or a close/reopen always continues from the current angle and speed.
+    const SPIN = {
+        LOSSLESS: { kick: 1500, friction: 2.6, cruise: 0, target: (icon) => icon.querySelector('svg') },
+        HI_RES_LOSSLESS: { kick: 1900, friction: 1.7, cruise: 60, target: (icon) => icon.querySelector('svg .record') },
+    };
+    const spinStates = {};
+    let spinFrame = 0;
+    const spinNow = (profile, now = performance.now()) => {
+        const s = spinStates[profile] || { theta: 0, omega: 0, target: 0, k: SPIN[profile].friction, t0: now };
+        const dt = (now - s.t0) / 1000;
+        const decay = Math.exp(-s.k * dt);
+        return {
+            theta: s.theta + s.target * dt + ((s.omega - s.target) / s.k) * (1 - decay),
+            omega: s.target + (s.omega - s.target) * decay,
+        };
+    };
+    const setSpin = (profile, { kick = 0, cruising = false }) => {
+        const now = performance.now();
+        const cfg = SPIN[profile];
+        const cur = spinNow(profile, now);
+        const target = cruising ? cfg.cruise : 0;
+        let omega = cur.omega + kick;
+        // A free-spinning disc coasts to an upright rest instead of stopping at a random angle.
+        if (target === 0 && omega > 1) {
+            const end = cur.theta + omega / cfg.friction;
+            omega = Math.max(omega, (Math.ceil(end / 360) * 360 - cur.theta) * cfg.friction);
+        }
+        spinStates[profile] = { theta: cur.theta % 360, omega, target, k: cfg.friction, t0: now };
+    };
+    const tickSpin = () => {
+        spinFrame = 0;
+        if (panel.hidden) return;
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let active = false;
+        for (const profile of Object.keys(SPIN)) {
+            const icon = panel.querySelector(`.quality-radio-option[data-quality-profile="${profile}"] .quality-tier-icon`);
+            const el = icon && SPIN[profile].target(icon);
+            const { theta, omega } = spinNow(profile);
+            const s = spinStates[profile];
+            if (!s || reduce) continue;
+            const settled = s.target === 0 && Math.abs(omega) < 0.4;
+            if (settled) {
+                spinStates[profile] = { theta: 0, omega: 0, target: 0, k: s.k, t0: performance.now() };
+                if (el) el.style.transform = '';
+                continue;
+            }
+            if (el) el.style.transform = `rotate(${theta % 360}deg)`;
+            active = true;
+        }
+        if (active) spinFrame = requestAnimationFrame(tickSpin);
+    };
+    const startSpinLoop = () => {
+        if (!spinFrame) spinFrame = requestAnimationFrame(tickSpin);
+    };
+    // After every render: resume from the stored angle/speed; the selected record keeps cruising.
+    const syncSpinToPanel = (selectedProfile) => {
+        for (const profile of Object.keys(SPIN)) {
+            const wantsCruise = profile === selectedProfile && SPIN[profile].cruise > 0;
+            if (spinStates[profile] && (spinStates[profile].target !== 0) !== wantsCruise) setSpin(profile, { cruising: wantsCruise });
+            else if (!spinStates[profile] && wantsCruise) setSpin(profile, { cruising: true });
+        }
+        startSpinLoop();
     };
 
     const getConnectionMessage = (state) => {
@@ -500,6 +587,13 @@ function setupQualityPopover(player) {
 
         playIconAnimation(next);
         if (profile.endsWith('LOSSLESS')) playLosslessMagic(profile);
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            for (const other of Object.keys(SPIN)) {
+                if (other === profile) setSpin(other, { kick: SPIN[other].kick, cruising: SPIN[other].cruise > 0 });
+                else if (spinStates[other]) setSpin(other, { cruising: false });
+            }
+            startSpinLoop();
+        }
 
         if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
             return;
@@ -661,6 +755,7 @@ function setupQualityPopover(player) {
                 <span class="quality-connection-icon" aria-hidden="true">${SVG_INFORMATION_CIRCLE(18)}</span>
                 <span class="quality-connection-copy">${getConnectionMessage(state)}</span>
             </div>`;
+        syncSpinToPanel(isAuto ? null : selectedProfile);
     };
     const open = (badge) => {
         const run = ++animationRun;
@@ -1316,6 +1411,7 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
             listeningTracker.onTrackEnd();
             listeningTracker.forceFlush();
             _previousTrackId = null;
+            if (player.consumeSleepTimerAtTrackEnd()) return;
             void player.playNext(0, { preserveGestureToken: true });
         });
 
@@ -1505,29 +1601,7 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
         }
     });
 
-    // Sleep Timer for desktop
-    if (sleepTimerBtnDesktop) {
-        sleepTimerBtnDesktop.addEventListener('click', () => {
-            if (player.isSleepTimerActive()) {
-                player.clearSleepTimer();
-                showNotification('Sleep timer cancelled');
-            } else {
-                showSleepTimerPopover(player, sleepTimerBtnDesktop);
-            }
-        });
-    }
-
-    // Sleep Timer for mobile
-    if (sleepTimerBtnMobile) {
-        sleepTimerBtnMobile.addEventListener('click', () => {
-            if (player.isSleepTimerActive()) {
-                player.clearSleepTimer();
-                showNotification('Sleep timer cancelled');
-            } else {
-                showSleepTimerPopover(player, sleepTimerBtnMobile);
-            }
-        });
-    }
+    setupSleepTimer(player, [sleepTimerBtnDesktop, sleepTimerBtnMobile]);
 
     // Waveform Masking Logic
     const updateWaveform = async () => {
@@ -1633,9 +1707,6 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
     if (volumeBtn) {
         volumeBtn.addEventListener('click', () => {
             const activeEl = player.activeElement;
-            _volumeBar?.classList.remove('is-mute-animating');
-            void _volumeBar?.offsetWidth;
-            _volumeBar?.classList.add('is-mute-animating');
             activeEl.muted = !activeEl.muted;
             localStorage.setItem('muted', activeEl.muted);
 
@@ -1644,7 +1715,6 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
             });
 
             updateVolumeUI();
-            window.setTimeout(() => _volumeBar?.classList.remove('is-mute-animating'), 360);
         });
     }
     const isMuted = localStorage.getItem('muted') === 'true';
@@ -1684,44 +1754,10 @@ function initializeSmoothSliders(player) {
     };
 
     if (volumeSlider) {
-        const MAX_OVERFLOW = 50;
-        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
         let volumeFrame = 0;
         let pendingVolume = player.userVolume;
-        let returnAnimation = null;
-        const decayOverflow = (value) => 2 * (1 / (1 + Math.exp(-(value / MAX_OVERFLOW))) - 0.5) * MAX_OVERFLOW;
-        const updateElasticShape = (clientX) => {
-            const rect = volumeBar.getBoundingClientRect();
-            const raw = clientX < rect.left ? clientX - rect.left : clientX > rect.right ? clientX - rect.right : 0;
-            const overflow = decayOverflow(Math.abs(raw));
-            const direction = raw < 0 ? -1 : raw > 0 ? 1 : 0;
-            const scaleX = 1 + overflow / rect.width;
-            const scaleY = 1 - (overflow / MAX_OVERFLOW) * 0.2;
-            volumeBar.style.transformOrigin = direction < 0 ? 'right' : 'left';
-            volumeBar.style.transform = reduceMotion.matches
-                ? 'none'
-                : `translateX(${direction * overflow * 0.5}px) scale(${scaleX}, ${scaleY})`;
-        };
-        const releaseElasticShape = (event) => {
-            volumeBar.classList.remove('is-stretched');
-            volumeBar.classList.add('is-release-reset');
-            volumeSlider.classList.remove('is-grabbing');
-            if (event?.pointerId != null && volumeSlider.hasPointerCapture(event.pointerId)) {
-                volumeSlider.releasePointerCapture(event.pointerId);
-            }
-            volumeSlider.blur();
-            returnAnimation?.cancel();
-            if (!reduceMotion.matches) {
-                returnAnimation = volumeBar.animate(
-                    [{ transform: volumeBar.style.transform || 'none' }, { transform: 'translateX(0) scale(1)' }],
-                    { duration: 520, easing: 'cubic-bezier(.22, 1.45, .36, 1)' }
-                );
-            }
-            volumeBar.style.transform = '';
-        };
         const commitVolume = () => {
             volumeFrame = 0;
-            const position = pendingVolume;
             const activeEl = player.activeElement;
             if (activeEl.muted) {
                 activeEl.muted = false;
@@ -1729,39 +1765,23 @@ function initializeSmoothSliders(player) {
                 if (inactiveEl) inactiveEl.muted = false;
                 localStorage.setItem('muted', 'false');
             }
-            player.setVolume(position);
-            volumeFill.style.width = `${position * 100}%`;
-            volumeBar.style.setProperty('--volume-level', `${position * 100}%`);
-        };
-        const setElasticVolume = () => {
-            pendingVolume = Number(volumeSlider.value) / 100;
-            volumeFill.style.width = `${pendingVolume * 100}%`;
+            player.setVolume(pendingVolume);
             volumeBar.style.setProperty('--volume-level', `${pendingVolume * 100}%`);
-            if (!volumeFrame) volumeFrame = requestAnimationFrame(commitVolume);
+            syncVolumeIcon(pendingVolume);
         };
-        volumeSlider.value = String(player.userVolume * 100);
-        volumeSlider.addEventListener('input', setElasticVolume);
-        volumeSlider.addEventListener('pointerdown', (event) => {
-            event.stopPropagation();
-            returnAnimation?.cancel();
-            volumeBar.classList.remove('is-release-reset');
-            volumeSlider.setPointerCapture(event.pointerId);
-            volumeBar.classList.add('is-stretched');
-            volumeSlider.classList.add('is-grabbing');
+        elasticVolume = createElasticVolume({
+            bar: volumeBar,
+            fill: volumeFill,
+            input: volumeSlider,
+            startIcon: volumeBtn,
+            pushed: [volumeBar.closest('.volume-controls')?.querySelector('.player-actions-row')].filter(Boolean),
+            onInput: (fraction) => {
+                pendingVolume = fraction;
+                if (!volumeFrame) volumeFrame = requestAnimationFrame(commitVolume);
+            },
         });
-        volumeSlider.addEventListener('pointermove', (event) => {
-            if (volumeSlider.hasPointerCapture(event.pointerId)) updateElasticShape(event.clientX);
-        });
-        volumeSlider.addEventListener('pointerup', (event) => {
-            event.stopPropagation();
-            releaseElasticShape(event);
-        });
-        volumeSlider.addEventListener('pointercancel', releaseElasticShape);
-        volumeSlider.addEventListener('lostpointercapture', releaseElasticShape);
-        window.addEventListener('pointerup', releaseElasticShape);
-        window.addEventListener('blur', releaseElasticShape);
-        volumeBar.addEventListener('pointerleave', () => volumeBar.classList.remove('is-release-reset'));
-        volumeSlider.addEventListener('click', (event) => event.stopPropagation());
+        const activeEl = player.activeElement;
+        elasticVolume.jump(activeEl?.muted ? 0 : player.userVolume);
     }
 
     const updateVolumeHover = (event) => {
@@ -1993,8 +2013,7 @@ function initializeSmoothSliders(player) {
             }
 
             player.setVolume(newVolume);
-            volumeFill.style.width = `${newVolume * 100}%`;
-            volumeBar.style.setProperty('--volume-level', `${newVolume * 100}%`);
+            updateVolumeUI();
         },
         { passive: false }
     );
@@ -2016,8 +2035,7 @@ function initializeSmoothSliders(player) {
             }
 
             player.setVolume(newVolume);
-            volumeFill.style.width = `${newVolume * 100}%`;
-            volumeBar.style.setProperty('--volume-level', `${newVolume * 100}%`);
+            updateVolumeUI();
         },
         { passive: false }
     );
@@ -4253,69 +4271,448 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
     });
 }
 
-function showSleepTimerPopover(player, trigger) {
-    const popover = document.getElementById('sleep-timer-popover');
-    if (!popover || !trigger) return;
+// Sleep timer panel. The dial selects up to 120 minutes, then shows the fraction of time remaining.
+const SLEEP_DIAL_STEP = 5;
+const SLEEP_DEG_PER_MINUTE = 3;
 
+function formatSleepClock(ms) {
+    const total = Math.ceil(ms / 1000);
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = String(total % 60).padStart(2, '0');
+    return hours ? `${hours}:${String(minutes).padStart(2, '0')}:${seconds}` : `${minutes}:${seconds}`;
+}
+
+function formatWallClock(timestamp) {
+    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function describeSleepMinutes(minutes) {
+    if (minutes < 60) return `${minutes} minutes`;
+    const hours = Math.floor(minutes / 60);
+    const rest = minutes % 60;
+    return `${hours} hour${hours > 1 ? 's' : ''}${rest ? ` ${rest} minutes` : ''}`;
+}
+
+function setupSleepTimer(player, triggers) {
+    const panel = document.getElementById('sleep-timer-popover');
+    const dial = document.getElementById('sleep-dial');
+    if (!panel || !dial) return;
+
+    const arc = dial.querySelector('.sleep-dial-arc');
+    const hand = dial.querySelector('.sleep-dial-hand');
+    const tickGroup = dial.querySelector('.sleep-dial-ticks');
+    const valueEl = document.getElementById('sleep-dial-value');
+    const unitEl = document.getElementById('sleep-dial-unit');
+    const alarmTimeEl = document.getElementById('sleep-dial-alarm-time');
+    const endsEl = document.getElementById('sleep-timer-ends');
+    const actions = panel.querySelector('.sleep-actions');
+    const setup = document.getElementById('sleep-setup');
+    const trackOption = document.getElementById('sleep-track-option');
+    const trackLeft = document.getElementById('sleep-track-left');
+    const fadeToggle = document.getElementById('sleep-fade-toggle');
+    const startButton = document.getElementById('sleep-start');
+    const extendButton = document.getElementById('sleep-extend');
+    const stopButton = document.getElementById('sleep-stop');
+    const closeButton = document.getElementById('cancel-sleep-timer');
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    const { MIN_MINUTES, MAX_MINUTES } = sleepTimerSettings;
+
+    // One tick per 5 minutes; quarter hours run longer.
+    const NS = 'http://www.w3.org/2000/svg';
+    const ticks = Array.from({ length: 24 }, (_, index) => {
+        const angle = (index / 24) * Math.PI * 2;
+        const major = index % 6 === 0;
+        const inner = major ? 85 : 88;
+        const tick = document.createElementNS(NS, 'line');
+        tick.setAttribute('class', major ? 'sleep-tick sleep-tick-major' : 'sleep-tick');
+        tick.setAttribute('x1', String(100 + inner * Math.sin(angle)));
+        tick.setAttribute('y1', String(100 - inner * Math.cos(angle)));
+        tick.setAttribute('x2', String(100 + 93 * Math.sin(angle)));
+        tick.setAttribute('y2', String(100 - 93 * Math.cos(angle)));
+        tickGroup.append(tick);
+        return { tick, minutes: index * SLEEP_DIAL_STEP };
+    });
+
+    let trigger = null;
+    let refreshTimer = 0;
     let closeTimer = 0;
-    const closePopover = () => {
-        popover.classList.remove('is-open');
-        trigger.setAttribute('aria-expanded', 'false');
-        window.clearTimeout(closeTimer);
-        closeTimer = window.setTimeout(() => {
-            popover.hidden = true;
-            cleanup();
-        }, 180);
+    let tween = 0;
+    let gliding = false;
+    let shown = sleepTimerSettings.getMinutes();
+    let draftMinutes = shown;
+    let draftTrack = false;
+    let wasRunning = false;
+
+    const paint = (minutes) => {
+        shown = minutes;
+        const clamped = Math.min(MAX_MINUTES, Math.max(0, minutes));
+        arc.style.strokeDasharray = `${clamped} 120`;
+        hand.style.transform = `rotate(${clamped * SLEEP_DEG_PER_MINUTE}deg)`;
+        for (const { tick, minutes: at } of ticks) tick.classList.toggle('is-lit', at <= clamped && clamped > 0);
     };
 
-    const handleOptionClick = (e) => {
-        if (e.target.closest('#cancel-sleep-timer')) {
-            closePopover();
+    // Drag follower: a critically damped spring chasing the snapped target. Retargeting mid-flight keeps
+    // the current velocity, so crossing several notches reads as one continuous motion, never a restart.
+    let velocity = 0;
+    const FOLLOW_OMEGA = 26;
+    const followTo = (target) => {
+        if (reduceMotion.matches) {
+            cancelAnimationFrame(tween);
+            gliding = false;
+            paint(target);
             return;
         }
-        const timerOption = e.target.closest('.timer-option');
-        if (timerOption) {
-            let minutes;
-            if (timerOption.id === 'custom-timer-btn') {
-                const customInput = document.getElementById('custom-minutes');
-                minutes = parseInt(customInput.value);
-                if (!minutes || minutes < 1) {
-                    showNotification('Please enter a valid number of minutes');
-                    return;
-                }
-            } else {
-                minutes = parseInt(timerOption.dataset.minutes);
+        if (gliding && followTarget !== null) {
+            followTarget = target;
+            return;
+        }
+        cancelAnimationFrame(tween);
+        followTarget = target;
+        velocity = 0;
+        gliding = true;
+        dial.classList.remove('is-ticking');
+        let last = performance.now();
+        const step = (now) => {
+            const dt = Math.min(0.032, (now - last) / 1000);
+            last = now;
+            const offset = shown - followTarget;
+            velocity += (-2 * FOLLOW_OMEGA * velocity - FOLLOW_OMEGA * FOLLOW_OMEGA * offset) * dt;
+            const next = shown + velocity * dt;
+            if (Math.abs(next - followTarget) < 0.02 && Math.abs(velocity) < 0.2) {
+                paint(followTarget);
+                followTarget = null;
+                velocity = 0;
+                gliding = false;
+                return;
             }
+            paint(next);
+            tween = requestAnimationFrame(step);
+        };
+        tween = requestAnimationFrame(step);
+    };
+    let followTarget = null;
 
-            if (minutes) {
-                player.setSleepTimer(minutes);
-                showNotification(`Sleep timer set for ${minutes} minute${minutes === 1 ? '' : 's'}`);
-                closePopover();
-            }
+    const glideTo = (target, duration = 420) => {
+        cancelAnimationFrame(tween);
+        followTarget = null;
+        velocity = 0;
+        if (reduceMotion.matches || Math.abs(target - shown) < 0.5) {
+            gliding = false;
+            paint(target);
+            return;
+        }
+        const from = shown;
+        const start = performance.now();
+        gliding = true;
+        dial.classList.remove('is-ticking');
+        const step = (now) => {
+            const t = Math.min(1, (now - start) / duration);
+            paint(from + (target - from) * (1 - (1 - t) ** 4));
+            if (t < 1) tween = requestAnimationFrame(step);
+            else gliding = false;
+        };
+        tween = requestAnimationFrame(step);
+    };
+
+    const setAttr = (name, value) => {
+        if (value === null) dial.removeAttribute(name);
+        else if (dial.getAttribute(name) !== value) dial.setAttribute(name, value);
+    };
+
+    // Idle, the dial is a slider; running, it only reports the time left.
+    const setDialSemantics = (running, label) => {
+        setAttr('role', running ? 'timer' : 'slider');
+        setAttr('tabindex', running ? null : '0');
+        setAttr('aria-label', running ? label : 'Timer length');
+        setAttr('aria-valuemin', running ? null : String(MIN_MINUTES));
+        setAttr('aria-valuemax', running ? null : String(MAX_MINUTES));
+        setAttr('aria-valuenow', running ? null : String(draftMinutes));
+        setAttr(
+            'aria-valuetext',
+            running ? null : draftTrack ? 'End of this track' : describeSleepMinutes(draftMinutes)
+        );
+    };
+
+    const setText = (element, text) => {
+        if (element.textContent !== text) element.textContent = text;
+    };
+
+    // Restarts a one-shot keyframe class, then drops it so a later hidden -> shown flip cannot replay it.
+    const replay = (element, className, ms) => {
+        element.classList.remove(className);
+        void element.offsetWidth;
+        element.classList.add(className);
+        clearTimeout(element._replayTimer);
+        element._replayTimer = setTimeout(() => element.classList.remove(className), ms);
+    };
+
+    // Brings every part of the panel in line with the player, idle or running.
+    const sync = ({ animate = false } = {}) => {
+        const state = player.getSleepTimerState();
+        const running = Boolean(state);
+        const trackRemaining = player.getTrackRemainingMs();
+        panel.classList.toggle('is-running', running);
+        panel.classList.toggle('is-fading', Boolean(state?.fading));
+
+        if (running) {
+            const leftMinutes = state.remaining / 60_000;
+            const progress = (state.remaining / state.total) * MAX_MINUTES;
+            if (!wasRunning || animate) glideTo(progress);
+            else if (!gliding) paint(progress);
+            const pausesAt = formatWallClock(state.endsAt);
+            setText(valueEl, formatSleepClock(state.remaining));
+            setText(alarmTimeEl, pausesAt);
+            setDialSemantics(true, `${describeSleepMinutes(Math.ceil(leftMinutes))} left, pauses at ${pausesAt}`);
+        } else {
+            if (draftTrack && trackRemaining === null) draftTrack = false;
+            const target = draftTrack ? trackRemaining / 60_000 : draftMinutes;
+            if (wasRunning || animate) glideTo(target);
+            else if (draftTrack && !gliding) paint(target);
+            setText(valueEl, draftTrack ? formatSleepClock(trackRemaining) : String(draftMinutes));
+            setText(unitEl, draftTrack ? 'left in this track' : 'min');
+            const endsAt = Date.now() + (draftTrack ? trackRemaining : draftMinutes * 60_000);
+            setText(endsEl, `Pauses at ${formatWallClock(endsAt)}`);
+            setDialSemantics(false);
+        }
+        setup.inert = running;
+
+        trackOption.disabled = trackRemaining === null;
+        trackOption.setAttribute('aria-pressed', String(!running && draftTrack));
+        trackOption.classList.toggle('is-selected', !running && draftTrack);
+        setText(trackLeft, trackRemaining === null ? 'Nothing playing' : formatSleepClock(trackRemaining));
+        fadeToggle.checked = sleepTimerSettings.isFadeEnabled();
+        startButton.hidden = running;
+        extendButton.hidden = !running;
+        stopButton.hidden = !running;
+        dial.classList.toggle('is-ticking', running && wasRunning && !gliding);
+        // Start / stop / timer end while open: the new action row arrives instead of snapping in.
+        if (running !== wasRunning && panel.classList.contains('is-open')) {
+            replay(actions, 'is-swapping', 700);
+            if (running) replay(alarmTimeEl.parentElement, 'is-set', 900);
+        }
+        wasRunning = running;
+    };
+
+    const chooseMinutes = (minutes, { glide = true, follow = false } = {}) => {
+        const snapped = Math.round(minutes / SLEEP_DIAL_STEP) * SLEEP_DIAL_STEP;
+        const next = Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, snapped));
+        const changed = next !== draftMinutes || draftTrack;
+        draftMinutes = next;
+        draftTrack = false;
+        sleepTimerSettings.setMinutes(next);
+        if (follow) followTo(next);
+        else if (glide) glideTo(next);
+        else {
+            cancelAnimationFrame(tween);
+            paint(next);
+        }
+        sync();
+        return changed;
+    };
+
+    const placePanel = () => {
+        panel.style.bottom = '';
+        const rect =
+            getRectSnapshot(trigger) ?? getRectSnapshot(document.getElementById('more-player-actions-btn'));
+        if (!rect) {
+            // Opened from a hidden button (the mobile actions menu): centre it just above the player bar.
+            const width = Math.min(320, window.innerWidth - 24);
+            const barTop = document.querySelector('.now-playing-bar')?.getBoundingClientRect().top ?? window.innerHeight;
+            panel.style.width = `${width}px`;
+            panel.style.left = `${(window.innerWidth - width) / 2}px`;
+            panel.style.top = 'auto';
+            panel.style.bottom = `${window.innerHeight - barTop + 12}px`;
+            panel.style.setProperty('--panel-origin-x', '50%');
+            panel.style.setProperty('--panel-origin-y', '100%');
+            return;
+        }
+        positionPlayerPopover(panel, rect, 320);
+        // Opened above its button: pin the bottom edge so the panel grows upward when its content changes.
+        if (panel.style.getPropertyValue('--panel-origin-y') === '100%') {
+            const top = parseFloat(panel.style.top);
+            panel.style.bottom = `${window.innerHeight - top - panel.offsetHeight}px`;
+            panel.style.top = 'auto';
         }
     };
 
-    const handlePointerDown = (e) => {
-        if (!popover.contains(e.target) && !trigger.contains(e.target)) closePopover();
+    const onPointerDownOutside = (event) => {
+        if (panel.contains(event.target) || triggers.some((button) => button?.contains(event.target))) return;
+        close();
     };
-    const handleKeyDown = (e) => {
-        if (e.key === 'Escape') closePopover();
+    const onKeyDown = (event) => {
+        if (event.key === 'Escape') close({ restoreFocus: true });
     };
 
-    const cleanup = () => {
-        popover.removeEventListener('click', handleOptionClick);
-        document.removeEventListener('pointerdown', handlePointerDown);
-        document.removeEventListener('keydown', handleKeyDown);
-        window.removeEventListener('resize', reposition);
-    };
-    const reposition = () => positionPlayerPopover(popover, getRectSnapshot(trigger), 340);
+    function open(button) {
+        clearTimeout(closeTimer);
+        trigger = button;
+        triggers.forEach((item) => item?.setAttribute('aria-expanded', String(item === button)));
+        // The opening moment: the dial winds up from 12 to the current length.
+        const remaining = player.getSleepTimerRemainingMs();
+        const trackRemaining = player.getTrackRemainingMs();
+        if (draftTrack && trackRemaining === null) draftTrack = false;
+        wasRunning = remaining !== null;
+        panel.hidden = false;
+        cancelAnimationFrame(tween);
+        paint(0);
+        glideTo(wasRunning ? remaining / 60_000 : draftTrack ? trackRemaining / 60_000 : draftMinutes, 640);
+        sync();
+        placePanel();
+        clearInterval(refreshTimer);
+        refreshTimer = setInterval(() => sync(), 250);
+        document.addEventListener('pointerdown', onPointerDownOutside);
+        document.addEventListener('keydown', onKeyDown);
+        window.addEventListener('resize', placePanel);
+        requestAnimationFrame(() => {
+            panel.classList.add('is-open');
+            (player.isSleepTimerActive() ? stopButton : dial).focus({ preventScroll: true });
+        });
+    }
 
-    popover.addEventListener('click', handleOptionClick);
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('resize', reposition);
-    popover.hidden = false;
-    trigger.setAttribute('aria-expanded', 'true');
-    reposition();
-    requestAnimationFrame(() => popover.classList.add('is-open'));
+    function close({ restoreFocus = false } = {}) {
+        if (panel.hidden || !panel.classList.contains('is-open')) return;
+        panel.classList.remove('is-open');
+        triggers.forEach((item) => item?.setAttribute('aria-expanded', 'false'));
+        clearInterval(refreshTimer);
+        document.removeEventListener('pointerdown', onPointerDownOutside);
+        document.removeEventListener('keydown', onKeyDown);
+        window.removeEventListener('resize', placePanel);
+        closeTimer = setTimeout(() => {
+            panel.hidden = true;
+        }, 200);
+        if (restoreFocus && trigger?.offsetParent) trigger.focus({ preventScroll: true });
+    }
+
+    triggers.forEach((button) =>
+        button?.addEventListener('click', () => {
+            if (!panel.hidden && panel.classList.contains('is-open') && trigger === button) close();
+            else open(button);
+        })
+    );
+    closeButton?.addEventListener('click', () => close({ restoreFocus: true }));
+
+    // The fill grows from where the option was pressed; from the keyboard it grows from the centre.
+    trackOption.addEventListener('pointerdown', (event) => {
+        const box = trackOption.getBoundingClientRect();
+        trackOption.style.setProperty('--fill-x', `${event.clientX - box.left}px`);
+        trackOption.style.setProperty('--fill-y', `${event.clientY - box.top}px`);
+    });
+    trackOption.addEventListener('click', (event) => {
+        if (player.getTrackRemainingMs() === null) return;
+        if (event.detail === 0) {
+            trackOption.style.setProperty('--fill-x', '50%');
+            trackOption.style.setProperty('--fill-y', '50%');
+        }
+        draftTrack = !draftTrack;
+        sync({ animate: true });
+    });
+
+    fadeToggle.addEventListener('change', () => {
+        sleepTimerSettings.setFadeEnabled(fadeToggle.checked);
+        player.tickSleepTimer();
+    });
+
+    startButton.addEventListener('click', () => {
+        if (draftTrack) {
+            if (!player.setSleepTimerEndOfTrack()) return;
+        } else {
+            player.setSleepTimer(draftMinutes);
+        }
+        panel.classList.remove('is-starting');
+        void panel.offsetWidth;
+        panel.classList.add('is-starting');
+        sync();
+        stopButton.focus({ preventScroll: true });
+    });
+
+    extendButton.addEventListener('click', () => {
+        player.extendSleepTimer(15);
+        replay(extendButton, 'is-bumped', 560);
+        sync({ animate: true });
+    });
+
+    stopButton.addEventListener('click', () => {
+        player.clearSleepTimer();
+        sync({ animate: true });
+        dial.focus({ preventScroll: true });
+    });
+
+    // Dragging the dial: the angle from 12 o'clock picks the minutes, snapped to 5. Dragging across
+    // 12 o'clock does not wrap from 120 to 5 (or back): the value holds at the end it came from until
+    // the pointer crosses back. Only a step across the seam counts, never a large jump elsewhere.
+    let lastTurn = null;
+    let pinnedAt = null;
+    const turnAt = (event) => {
+        const box = dial.getBoundingClientRect();
+        const angle = Math.atan2(event.clientX - (box.left + box.width / 2), box.top + box.height / 2 - event.clientY);
+        return (angle < 0 ? angle + Math.PI * 2 : angle) / (Math.PI * 2);
+    };
+    const minutesAt = (event) => {
+        const turn = turnAt(event);
+        if (lastTurn !== null) {
+            const forwardOverTop = lastTurn > 0.75 && turn < 0.25;
+            const backOverTop = lastTurn < 0.25 && turn > 0.75;
+            if (forwardOverTop) pinnedAt = pinnedAt === MIN_MINUTES ? null : MAX_MINUTES;
+            else if (backOverTop) pinnedAt = pinnedAt === MAX_MINUTES ? null : MIN_MINUTES;
+        }
+        lastTurn = turn;
+        return pinnedAt ?? Math.round((turn * MAX_MINUTES) / SLEEP_DIAL_STEP) * SLEEP_DIAL_STEP;
+    };
+
+    dial.addEventListener('pointerdown', (event) => {
+        if (player.isSleepTimerActive() || event.button > 0) return;
+        event.preventDefault();
+        dial.setPointerCapture(event.pointerId);
+        dial.classList.add('is-dragging');
+        dial.focus({ preventScroll: true });
+        lastTurn = null;
+        pinnedAt = null;
+        chooseMinutes(minutesAt(event), { follow: true });
+    });
+    dial.addEventListener('pointermove', (event) => {
+        if (!dial.hasPointerCapture(event.pointerId)) return;
+        if (chooseMinutes(minutesAt(event), { follow: true })) navigator.vibrate?.(4);
+    });
+    const endDrag = (event) => {
+        if (dial.hasPointerCapture(event.pointerId)) dial.releasePointerCapture(event.pointerId);
+        dial.classList.remove('is-dragging');
+    };
+    dial.addEventListener('pointerup', endDrag);
+    dial.addEventListener('pointercancel', endDrag);
+
+    dial.addEventListener('keydown', (event) => {
+        if (player.isSleepTimerActive()) return;
+        const base = draftTrack ? Math.round(shown / SLEEP_DIAL_STEP) * SLEEP_DIAL_STEP : draftMinutes;
+        const moves = {
+            ArrowUp: base + 5,
+            ArrowRight: base + 5,
+            ArrowDown: base - 5,
+            ArrowLeft: base - 5,
+            PageUp: base + 15,
+            PageDown: base - 15,
+            Home: MIN_MINUTES,
+            End: MAX_MINUTES,
+        };
+        if (event.key in moves) {
+            event.preventDefault();
+            chooseMinutes(moves[event.key]);
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            startButton.click();
+        }
+    });
+
+    const nightfall = setupSleepNightfall(player, { onExtend: () => !panel.hidden && sync({ animate: true }) });
+
+    window.addEventListener('sleep-timer-end', (event) => {
+        if (event.detail?.finished) nightfall.show();
+        if (panel.hidden) return;
+        const hadFocus = panel.contains(document.activeElement);
+        sync({ animate: true });
+        // Turn off / +15 just disappeared: keep keyboard focus inside the panel.
+        if (hadFocus && !panel.contains(document.activeElement)) dial.focus({ preventScroll: true });
+    });
+
+    paint(draftMinutes);
 }
