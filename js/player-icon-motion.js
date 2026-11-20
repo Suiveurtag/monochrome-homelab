@@ -13,6 +13,8 @@
 // Volume, repeat and save replace their SVG at runtime, so everything is built lazily on the SVG
 // present at trigger time.
 
+import { spinLoop } from './loop-vortex.js';
+
 const NS = 'http://www.w3.org/2000/svg';
 const OUT = '0.16 1 0.3 1';
 const IN = '0.5 0 0.75 0';
@@ -148,7 +150,8 @@ function shuffle(svg) {
     arrive(lowerHead, { offset: '-3 0', t0: 0.6, t1: 0.92, dur });
 }
 
-// Repeat: no part motion on click, the whole icon spins (see SPIN). The stage carries the hover pose.
+// Repeat: no part motion on click, the whole icon spins (spring and easter egg in loop-vortex.js).
+// The stage carries the hover pose.
 function repeat(svg) {
     const isOne = /11 10h1v4/.test(svg.innerHTML);
     stage(svg, CANON.repeat + (isOne ? CANON.repeatOne : ''));
@@ -334,8 +337,6 @@ function volume(svg) {
 // whole app; only the hover pose (CSS) applies here, so nothing is staged.
 function save() {}
 
-const SPIN = { duration: 420, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' };
-
 const RECIPES = [
     ['#prev-btn', { build: skip(-1) }],
     ['#next-btn', { build: skip(1) }],
@@ -368,20 +369,13 @@ function markClicking(button, duration) {
     button.motionClickTimer = setTimeout(() => button.classList.remove('is-clicking'), duration);
 }
 
-function spin(button, svg, from = 0) {
-    const animation = svg.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }], SPIN);
-    animation.currentTime = from;
-    button.motionSpin = animation;
-    markClicking(button, SPIN.duration - from);
-}
-
 function playClick(button, recipe) {
     if (reduceMotion.matches || button.disabled) return;
     const svg = iconOf(button);
     if (!svg) return;
     prepare(svg, recipe);
     if (recipe.spin) {
-        spin(button, svg);
+        spinLoop(button);
         return;
     }
     const animations = [...svg.querySelectorAll('[data-motion]')];
@@ -445,13 +439,7 @@ function bindButton(button, recipe) {
             if (!replaced) return;
             const svg = iconOf(button);
             if (svg && button.classList.contains('is-staged')) prepare(svg, recipe);
-            const running = button.motionSpin;
-            if (recipe.spin && svg && running?.playState === 'running') {
-                const elapsed = Number(running.currentTime) || 0;
-                running.cancel();
-                if (!reduceMotion.matches) spin(button, svg, elapsed);
-                return;
-            }
+            // A spinning repeat icon needs nothing here: loop-vortex.js rotates whichever SVG is present.
             if (recipe.replayOnSwap) playClick(button, recipe);
         }).observe(button, { childList: true });
     }
