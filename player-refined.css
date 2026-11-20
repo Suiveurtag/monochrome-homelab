@@ -2060,7 +2060,7 @@
 }
 
 .now-playing-bar .sleep-timer-button.is-sleep-active {
-    color: var(--foreground);
+    color: var(--active-highlight);
 }
 
 .now-playing-bar .sleep-timer-button.is-sleep-active .sleep-timer-icon {
@@ -3409,24 +3409,24 @@
    takes a held pose through these transitions and eases back on leave; .is-clicking hands the
    icon to the click motion, so poses and transitions are off for its length. Geometry is in
    viewBox units (transform-box: view-box). */
-.now-playing-bar [data-icon-motion] .motion-stage,
-.now-playing-bar [data-icon-motion] .motion-stage * {
+:is(.now-playing-bar, .now-playing-panel-header) [data-icon-motion] .motion-stage,
+:is(.now-playing-bar, .now-playing-panel-header) [data-icon-motion] .motion-stage * {
     transform-box: view-box;
     transition:
         transform 420ms cubic-bezier(0.16, 1, 0.3, 1),
         d 420ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.now-playing-bar [data-icon-motion].is-clicking .motion-stage,
-.now-playing-bar [data-icon-motion].is-clicking .motion-stage * {
+:is(.now-playing-bar, .now-playing-panel-header) [data-icon-motion].is-clicking .motion-stage,
+:is(.now-playing-bar, .now-playing-panel-header) [data-icon-motion].is-clicking .motion-stage * {
     transition: none;
 }
 
-.now-playing-bar [data-icon-motion].is-staged:not(.is-clicking) .motion-stage {
+:is(.now-playing-bar, .now-playing-panel-header) [data-icon-motion].is-staged:not(.is-clicking) .motion-stage {
     opacity: 1;
 }
 
-.now-playing-bar [data-icon-motion].is-staged:not(.is-clicking) .motion-original {
+:is(.now-playing-bar, .now-playing-panel-header) [data-icon-motion].is-staged:not(.is-clicking) .motion-original {
     opacity: 0;
 }
 
@@ -3517,23 +3517,23 @@
 }
 
 /* Queue: the note lifts, the lines draw back in a cascade. */
-.now-playing-bar #queue-btn.is-posed:not(.is-clicking) .m-note {
+:is(.now-playing-bar #queue-btn, .now-playing-panel-open-queue).is-posed:not(.is-clicking) .m-note {
     transform: translateY(-3px) rotate(-8deg);
 }
 
-.now-playing-bar #queue-btn .m-note {
+:is(.now-playing-bar #queue-btn, .now-playing-panel-open-queue) .m-note {
     transform-origin: 18px 16px;
 }
 
-.now-playing-bar #queue-btn.is-posed:not(.is-clicking) .m-line {
+:is(.now-playing-bar #queue-btn, .now-playing-panel-open-queue).is-posed:not(.is-clicking) .m-line {
     transform: translateX(-2px);
 }
 
-.now-playing-bar #queue-btn .m-line-2 {
+:is(.now-playing-bar #queue-btn, .now-playing-panel-open-queue) .m-line-2 {
     transition-delay: 40ms;
 }
 
-.now-playing-bar #queue-btn .m-line-3 {
+:is(.now-playing-bar #queue-btn, .now-playing-panel-open-queue) .m-line-3 {
     transition-delay: 80ms;
 }
 

@@ -2,6 +2,7 @@ import { mountSpicyDynamicBackground } from './spicy-dynamic-background.js';
 import { loadEdgeLight } from './edge-light.js';
 import { buildNowPlayingPanelModel, normalizeSourceContext } from './now-playing-panel-model.js';
 import { clearLyricsContainerSync, renderLyricsInContainer, renderLyricsInNowPanel } from './lyrics.js';
+import { bindIconMotion } from './player-icon-motion.js';
 import { createTrackSaveIconHTML } from './track-save-ui.js';
 import { escapeHtml, getTrackArtists, getTrackTitle, REPEAT_MODE } from './utils.js';
 import { copyShareLink } from './share.js';
@@ -601,6 +602,7 @@ export class NowPlayingPanel {
     syncHeader() {
         const header = this.content?.querySelector(':scope > .now-playing-panel-header');
         if (header && this.headerSlot) this.headerSlot.replaceChildren(header);
+        bindIconMotion(header?.querySelector('.now-playing-panel-open-queue'), '#queue-btn');
     }
 
     syncPlaybackElement() {

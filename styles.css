@@ -6527,6 +6527,17 @@ input:checked + .slider::before {
     color: var(--active-highlight);
 }
 
+.now-playing-bar #queue-btn {
+    transition:
+        color 0.2s ease,
+        background-color 0.2s ease;
+}
+
+body.queue-panel-open .now-playing-bar #queue-btn {
+    color: var(--active-highlight);
+    background-color: var(--secondary);
+}
+
 .player-controls .buttons button#repeat-btn.repeat-one::after {
     content: '1';
     position: absolute;

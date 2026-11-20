@@ -80,7 +80,12 @@ export function initializeUIInteractions(player, _api, ui) {
     // Queue is rendered exclusively by the integrated Now Playing panel.
     const queueBtn = document.getElementById('queue-btn');
     queueBtn?.addEventListener('click', () => {
-        window.nowPlayingPanel?.openQueue?.();
+        const panel = window.nowPlayingPanel;
+        if (panel?.activeView === 'queue' && !panel.root?.classList.contains('is-queue-closing')) {
+            panel.closeQueue();
+            return;
+        }
+        panel?.openQueue?.();
     });
 
     // Expose queue updates to the integrated Now Playing panel.

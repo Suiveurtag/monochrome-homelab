@@ -410,11 +410,23 @@ function pose(button, recipe, on) {
     button.motionPoseTimer = setTimeout(() => button.classList.remove('is-staged'), POSE_RELEASE);
 }
 
+// Binds one recipe's motion to a button outside the player bar (e.g. the Now Playing panel header).
+export function bindIconMotion(button, selector) {
+    const recipe = RECIPES.find(([key]) => key === selector)?.[1];
+    if (button && recipe) bindButton(button, recipe);
+}
+
 export function initPlayerIconMotion(bar) {
     if (!bar) return;
     for (const [selector, recipe] of RECIPES) {
         const button = bar.querySelector(selector);
-        if (!button || button.dataset.iconMotion !== undefined) continue;
+        if (button) bindButton(button, recipe);
+    }
+}
+
+function bindButton(button, recipe) {
+    {
+        if (button.dataset.iconMotion !== undefined) return;
         button.dataset.iconMotion = '';
         button.addEventListener('pointerenter', (event) => {
             if (event.pointerType === 'mouse' && fineHover.matches && !reduceMotion.matches && !button.disabled) {
