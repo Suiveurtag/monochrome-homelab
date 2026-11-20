@@ -1235,68 +1235,20 @@
     color: var(--foreground);
 }
 
-.quality-auto-toggle input {
+.quality-auto-toggle .toggle-switch input {
     position: absolute;
     width: 1px;
     height: 1px;
     opacity: 0;
 }
 
-.quality-auto-track {
-    /* Sora UI "sm" switch: 36x20 pill, 14px thumb, spring travel (stiffness 500, damping 30). */
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    width: 36px;
-    height: 20px;
-    padding: 2px;
-    box-sizing: border-box;
-    border: 1px solid transparent;
-    border-radius: 999px;
-    background: rgb(255 255 255 / 0.16);
-    transition: background-color 150ms ease;
-}
-
-.quality-auto-track::after {
-    content: '';
-    position: absolute;
-    inset: -8px -12px;
-}
-
-.quality-auto-thumb {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: var(--foreground);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
-    transition:
-        transform 450ms linear(0.0, 0.0725, 0.2366, 0.4313, 0.6176, 0.7744, 0.8936, 0.9757, 1.0256, 1.0507, 1.0583, 1.0549, 1.0457, 1.0344, 1.0234, 1.014, 1.0068, 1.0018, 0.9987, 0.9971, 0.9966, 0.9968, 0.9973, 0.9979, 1),
-        background-color 150ms ease;
-}
-
-.quality-auto-toggle input:checked + .quality-auto-track {
-    background: var(--foreground);
-}
-
-.quality-auto-toggle input:checked + .quality-auto-track .quality-auto-thumb {
-    background: var(--background);
-    transform: translateX(16px);
-}
-
-.quality-auto-toggle:has(input:focus-visible) .quality-auto-track {
+.quality-auto-toggle:has(input:focus-visible) .slider {
     outline: 3px solid rgb(var(--highlight-rgb), 0.5);
     outline-offset: 0;
 }
 
 .quality-auto-toggle:has(input:disabled) {
     cursor: wait;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .quality-auto-track,
-    .quality-auto-thumb {
-        transition-duration: 0ms;
-    }
 }
 
 .player-popover-header h3 {
@@ -1933,11 +1885,11 @@
 }
 
 /* Same switch as the quality panel's Auto, but on the theme's accent: only this one takes the hue. */
-.sleep-timer-popover .quality-auto-toggle input:checked + .quality-auto-track {
+.sleep-timer-popover .quality-auto-toggle input:checked + .slider {
     background: var(--sleep-accent);
 }
 
-.sleep-timer-popover .quality-auto-toggle input:checked + .quality-auto-track .quality-auto-thumb {
+.sleep-timer-popover .quality-auto-toggle input:checked + .slider::before {
     background: var(--sleep-accent-ink);
 }
 
@@ -2147,15 +2099,16 @@
     stroke-width: 2.2;
 }
 
+/* No faint full circle: the elapsed part vanishes behind the dot like a countdown. */
 .sleep-ring-track {
-    stroke: color-mix(in srgb, currentcolor 16%, transparent);
+    stroke: none;
 }
 
 .sleep-ring-fill {
     stroke: currentcolor;
     stroke-linecap: round;
-    stroke-dasharray: 100 100;
-    stroke-dashoffset: calc((1 - var(--sleep-left, 1)) * 100);
+    stroke-dasharray: 100px 100px;
+    stroke-dashoffset: calc((1 - var(--sleep-left, 1)) * 100px);
     transform: rotate(-90deg);
     transform-origin: 18px 18px;
     transition: stroke-dashoffset 250ms linear;
@@ -2183,7 +2136,7 @@
 
 @keyframes sleep-ring-wind-arc {
     from {
-        stroke-dashoffset: 100;
+        stroke-dashoffset: 100px;
     }
 }
 
@@ -3632,16 +3585,15 @@
     transform: rotate(90deg) scale(0.8);
 }
 
-/* Save: shared icon, posed directly. The plus turns a quarter, the filled disc swells. */
-.now-playing-bar #now-playing-like-btn .track-save-symbol--plus,
-.now-playing-bar #now-playing-like-btn .track-save-circle {
+/* Save: shared icon, posed directly. The ring swells a touch and an unsaved plus turns a quarter. */
+.now-playing-bar #now-playing-like-btn .track-save-body {
     transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.now-playing-bar #now-playing-like-btn.is-posed .track-save-symbol--plus {
-    transform: rotate(90deg);
+.now-playing-bar #now-playing-like-btn.is-posed .track-save-body {
+    transform: scale(1.08);
 }
 
-.now-playing-bar #now-playing-like-btn.is-posed .track-save-circle {
-    transform: scale(1.1);
+.now-playing-bar #now-playing-like-btn.is-posed .track-save-icon:not(.is-saved) .track-save-glyph {
+    transform: rotate(90deg);
 }

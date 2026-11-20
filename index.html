@@ -1499,8 +1499,10 @@
                     <span>Fade out</span>
                     <span class="sleep-fade-hint">Volume eases down over the last minute</span>
                 </span>
-                <input id="sleep-fade-toggle" type="checkbox" role="switch" />
-                <span class="quality-auto-track" aria-hidden="true"><span class="quality-auto-thumb"></span></span>
+                <span class="toggle-switch">
+                    <input id="sleep-fade-toggle" type="checkbox" role="switch" />
+                    <span class="slider"></span>
+                </span>
             </label>
             <div class="sleep-actions">
                 <button type="button" class="sleep-action sleep-action-primary" id="sleep-start">Start timer</button>
@@ -5338,6 +5340,19 @@
                                         />
                                         <output id="crossfade-duration-value" for="crossfade-duration">5 s</output>
                                     </div>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="info">
+                                        <span class="label">Sleep timer night screen</span>
+                                        <span class="description"
+                                            >Fill the screen with a night sky when the sleep timer pauses. Off: the
+                                            music just stops, with a notification</span
+                                        >
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="sleep-nightfall-toggle" checked />
+                                        <span class="slider"></span>
+                                    </label>
                                 </div>
                             </div>
 

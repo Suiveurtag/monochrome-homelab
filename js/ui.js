@@ -8,7 +8,6 @@ import {
     getTrackArtists,
     getTrackArtistsHTML,
     getTrackTitle,
-    getTrackYearDisplay,
     createQualityBadgeHTML,
     calculateTotalDuration,
     formatDuration,
@@ -709,7 +708,6 @@ export class UIRenderer {
             showCover = false;
         }
 
-        const yearDisplay = getTrackYearDisplay(track);
         const albumTitle = displayAlbum?.title || displayAlbum?.name || track.albumTitle || '—';
         const addedDate = formatRelativeDate(track.addedAt || track.dateAdded);
         const playCount = getGlobalStreamCount(track.id);
@@ -773,7 +771,7 @@ export class UIRenderer {
                             ${explicitBadge}
                             ${qualityBadge}
                         </div>
-                        <div class="artist">${getTrackArtistsHTML(track)}${yearDisplay}</div>
+                        <div class="artist">${getTrackArtistsHTML(track)}</div>
                     </div>
                 </div>
                 ${
@@ -3742,14 +3740,13 @@ export class UIRenderer {
         const qualityBadge = createQualityBadgeHTML(track);
         const isCompact = cardSettings.isCompactAlbum();
         const likeType = track.type === 'video' ? 'video' : 'track';
-        const yearDisplay = getTrackYearDisplay(track);
 
         return this.createBaseCardHTML({
             type: 'track',
             id: track.id,
             href: `/track/${track.id}`,
             title: `${escapeHtml(getTrackTitle(track))} ${explicitBadge} ${qualityBadge}`,
-            subtitle: `${escapeHtml(getTrackArtists(track))}${yearDisplay}`,
+            subtitle: `${escapeHtml(getTrackArtists(track))}`,
             imageHTML: this.getCoverHTML(track.album?.cover, escapeHtml(track.title), 'card-image', 'lazy', null),
             actionButtonsHTML: `
                 <button class="like-btn track-save-btn card-like-btn" data-action="toggle-like" data-type="${likeType}" data-track-save-id="${escapeHtml(String(track.id))}" title="Add to Liked Songs">

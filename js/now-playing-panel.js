@@ -1424,7 +1424,7 @@ export class NowPlayingPanel {
                 <section class="now-playing-panel-metadata" aria-label="Current track">
                     <div class="now-playing-panel-track-copy">
                         <h2>${getTrackDisplayAlbum(this.currentTrack)?.id ? `<button type="button" class="now-playing-panel-track-title" data-album-id="${escapeHtml(getTrackDisplayAlbum(this.currentTrack).id)}" aria-label="Open ${escapeHtml(getTrackDisplayAlbum(this.currentTrack).title || model.title)} album">${escapeHtml(model.title)}</button>` : escapeHtml(model.title)}</h2>
-                        <p>${artistLinks || escapeHtml(model.artistLine)}${model.releaseYear ? `<span aria-hidden="true"> · </span><span>${escapeHtml(model.releaseYear)}</span>` : ''}${model.explicit ? '<span class="now-playing-panel-explicit" aria-label="Explicit">E</span>' : ''}</p>
+                        <p>${artistLinks || escapeHtml(model.artistLine)}${model.explicit ? '<span class="now-playing-panel-explicit" aria-label="Explicit">E</span>' : ''}</p>
                     </div>
                     <div class="now-playing-panel-track-actions">
                         <button type="button" class="now-playing-panel-icon now-playing-panel-share panel-hover-action" aria-label="Share current track">${icon('share-2')}</button>

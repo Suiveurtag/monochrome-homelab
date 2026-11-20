@@ -1,6 +1,53 @@
 import { getTrackArtists, getTrackTitle } from './utils.js';
 
 const CLOSE_MS = 540;
+const DOZE_MS = 4800;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const MOON_PATH =
+    'M17.827 14.348a7.92 7.92 0 1 1-8.336-8.335c.356-.019.543.405.354.707a5.28 5.28 0 0 0 7.276 7.276c.303-.189.726-.004.707.353';
+const DOZE_Z = ['M16 5.5h2.6l-2.6 2.6h2.6', 'M17 6h2.2l-2.2 2.2h2.2', 'M15.5 6.5h1.9l-1.9 1.9h1.9'];
+
+function svgEl(tag, attrs = {}) {
+    const element = document.createElementNS(SVG_NS, tag);
+    for (const [key, value] of Object.entries(attrs)) element.setAttribute(key, value);
+    return element;
+}
+
+function buildDoze() {
+    const scene = document.createElement('span');
+    scene.className = 'sleep-doze';
+    scene.setAttribute('aria-hidden', 'true');
+    for (const part of ['sky', 'ripple', 'stars', 'cloud']) {
+        const layer = document.createElement('span');
+        layer.className = `sleep-doze__${part}`;
+        scene.append(layer);
+    }
+    const moon = svgEl('svg', { class: 'sleep-doze__moon', viewBox: '0 0 24 24' });
+    moon.append(svgEl('path', { class: 'sleep-doze__crescent', d: MOON_PATH }));
+    DOZE_Z.forEach((d) => moon.append(svgEl('path', { class: 'sleep-doze__z', d })));
+    scene.append(moon);
+    return scene;
+}
+
+// Night screen turned off: the same night falls, but only inside the player bar's sleep button.
+// A little sky opens around the icon, the moon settles in and rocks, z's float up out of the bar,
+// then the sky closes back onto the resting icon.
+export function playSleepDoze() {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    for (const button of document.querySelectorAll('.now-playing-bar .sleep-timer-button')) {
+        if (!button.offsetParent) continue;
+        let scene = button.querySelector(':scope > .sleep-doze');
+        if (!scene) {
+            scene = buildDoze();
+            button.append(scene);
+        }
+        clearTimeout(button.sleepDozeTimer);
+        button.classList.remove('is-dozing');
+        void button.offsetWidth;
+        button.classList.add('is-dozing');
+        button.sleepDozeTimer = setTimeout(() => button.classList.remove('is-dozing'), DOZE_MS);
+    }
+}
 
 // Full-screen "lights out" scene shown when the sleep timer pauses playback.
 export function setupSleepNightfall(player, { onExtend } = {}) {

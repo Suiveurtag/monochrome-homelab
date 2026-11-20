@@ -1,116 +1,97 @@
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+// The plus and the check share one command structure, so CSS can morph `d` between them: the
+// plus's vertical bar tips over into the check's long stroke, the horizontal bar folds into the
+// short one. Both strokes of the check end on the same vertex, where their round caps meet.
+const GLYPH_PLUS = 'M8 5.1L8 10.9M5.1 8L10.9 8';
+const GLYPH_CHECK = 'M11.3 5.75L7.05 10.5M4.75 8.25L7.05 10.5';
+
+// Spectrum sweep on save: bars around the disc, a few tall peaks among shorter ones, rotated by a
+// random step each time so two saves never look the same.
+const SPECTRUM = [1, 0.5, 0.78, 0.42, 0.92, 0.58, 0.84, 0.46, 0.96, 0.54, 0.72, 0.62];
+const SPECTRUM_INNER = 9.2; // icon units; the disc ends at 7.25
+const SPECTRUM_SPAN = 44; // overlay viewBox width, icon units
+const SPECTRUM_LIFETIME = 900;
+
+// A save button the user just pressed, so only that one bursts (a liked track can be on screen in
+// a list, the player bar and fullscreen at once).
+const recentPresses = new WeakMap();
+const PRESS_WINDOW = 2500;
+
+if (typeof document !== 'undefined') {
+    document.addEventListener(
+        'click',
+        (event) => {
+            const button = event.target instanceof Element ? event.target.closest('.track-save-btn') : null;
+            if (button) recentPresses.set(button, performance.now());
+        },
+        true
+    );
+}
+
 function isReducedMotion() {
     return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
 
-// Contour pulse: a thin ring that expands just past the button edge and fades
-function spawnShockwave(button, delay = 0) {
-    if (!button || !button.isConnected || isReducedMotion()) return;
-    if (delay) {
-        window.setTimeout(() => spawnShockwave(button), delay);
-        return;
-    }
-    const rect = button.getBoundingClientRect();
+function takeRecentPress(button) {
+    const pressedAt = recentPresses.get(button);
+    recentPresses.delete(button);
+    return pressedAt !== undefined && performance.now() - pressedAt < PRESS_WINDOW;
+}
+
+// Only burst where the button is actually visible on top (not under the fullscreen view).
+function isOnTop(button, x, y) {
+    const hit = document.elementFromPoint?.(x, y);
+    return !hit || hit === button || button.contains(hit);
+}
+
+function spawnSpectrum(button) {
+    if (!button.isConnected) return;
+    const icon = button.querySelector('.track-save-icon') || button;
+    const rect = icon.getBoundingClientRect();
+    if (!rect.width) return;
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
-    const ring = document.createElement('span');
-    ring.className = 'track-save-shockwave';
-    ring.setAttribute('aria-hidden', 'true');
-    ring.style.left = `${cx}px`;
-    ring.style.top = `${cy}px`;
-    const size = Math.max(rect.width, rect.height) * 1.65;
-    ring.style.width = `${size}px`;
-    ring.style.height = `${size}px`;
-    ring.style.marginLeft = `${-size / 2}px`;
-    ring.style.marginTop = `${-size / 2}px`;
-    document.body.appendChild(ring);
-    ring.addEventListener('animationend', () => ring.remove(), { once: true });
-    window.setTimeout(() => ring.remove(), 700);
+    if (!isOnTop(button, cx, cy)) return;
+
+    const size = (rect.width / 16) * SPECTRUM_SPAN;
+    const half = SPECTRUM_SPAN / 2;
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('class', 'track-save-spectrum');
+    svg.setAttribute('viewBox', `${-half} ${-half} ${SPECTRUM_SPAN} ${SPECTRUM_SPAN}`);
+    svg.setAttribute('aria-hidden', 'true');
+    svg.style.left = `${cx - size / 2}px`;
+    svg.style.top = `${cy - size / 2}px`;
+    svg.style.width = `${size}px`;
+    svg.style.height = `${size}px`;
+    const accent = getComputedStyle(button).getPropertyValue('--track-save-accent').trim();
+    if (accent) svg.style.color = accent;
+
+    const shift = Math.floor(Math.random() * SPECTRUM.length);
+    SPECTRUM.forEach((_, index) => {
+        const level = SPECTRUM[(index + shift) % SPECTRUM.length] * (0.85 + Math.random() * 0.3);
+        const angle = (index / SPECTRUM.length) * Math.PI * 2 - Math.PI / 2;
+        const outer = SPECTRUM_INNER + 0.6 + level * 3;
+        const bar = document.createElementNS(SVG_NS, 'path');
+        const point = (radius) => `${(Math.cos(angle) * radius).toFixed(2)} ${(Math.sin(angle) * radius).toFixed(2)}`;
+        bar.setAttribute('d', `M${point(SPECTRUM_INNER)}L${point(outer)}`);
+        bar.setAttribute('pathLength', '1');
+        // Clockwise sweep from twelve o'clock.
+        bar.style.setProperty('--i', String(index));
+        svg.append(bar);
+    });
+
+    document.body.append(svg);
+    window.setTimeout(() => svg.remove(), SPECTRUM_LIFETIME);
 }
 
-// Confetti: a full circle of small squares and dots that bursts out and fades
-function spawnConfetti(button, delay = 0) {
-    if (!button || !button.isConnected || isReducedMotion()) return;
-    if (delay) {
-        window.setTimeout(() => spawnConfetti(button), delay);
-        return;
-    }
-    const rect = button.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const layer = document.createElement('span');
-    layer.className = 'track-save-confetti-layer';
-    layer.setAttribute('aria-hidden', 'true');
-    layer.style.left = `${cx}px`;
-    layer.style.top = `${cy}px`;
-    const count = 16;
-    const radius = Math.max(rect.width, rect.height) / 2;
-    // Green, white and teal, as in the reference recording
-    const colors = ['var(--highlight)', 'rgba(255, 255, 255, 0.8)', '#3fd6a8'];
-    for (let i = 0; i < count; i++) {
-        const piece = document.createElement('span');
-        piece.className = i % 2 ? 'track-save-confetti track-save-confetti--square' : 'track-save-confetti';
-        // Full circle with jitter. Pieces appear near the rim and drift outwards, they do not fly from the centre.
-        const angle = (360 / count) * i + (Math.random() - 0.5) * 16;
-        const rad = (angle * Math.PI) / 180;
-        const startDist = radius * (1.25 + Math.random() * 0.15);
-        const endDist = radius * (1.8 + Math.random() * 0.2);
-        const size = 1.8 + Math.random() * 1.2;
-        piece.style.setProperty('--sx', `${(Math.cos(rad) * startDist).toFixed(1)}px`);
-        piece.style.setProperty('--sy', `${(Math.sin(rad) * startDist).toFixed(1)}px`);
-        piece.style.setProperty('--tx', `${(Math.cos(rad) * endDist).toFixed(1)}px`);
-        piece.style.setProperty('--ty', `${(Math.sin(rad) * endDist).toFixed(1)}px`);
-        piece.style.setProperty('--rot', `${Math.round(Math.random() * 360)}deg`);
-        piece.style.setProperty('--delay', `${Math.round(Math.random() * 30)}ms`);
-        piece.style.setProperty('--dur', `${260 + Math.random() * 70}ms`);
-        piece.style.setProperty('--c', colors[Math.floor(Math.random() * colors.length)]);
-        piece.style.width = `${size.toFixed(1)}px`;
-        piece.style.height = `${size.toFixed(1)}px`;
-        layer.appendChild(piece);
-    }
-    document.body.appendChild(layer);
-    // Remove on a timer covering the longest piece: animationend bubbles up from every
-    // child, so listening to it would cut the burst short when the first piece lands.
-    window.setTimeout(() => layer.remove(), 800);
-}
-
-// Unlike: the filled disc shrinks to a dot before the outline comes back
-function spawnUnlikeDot(button) {
-    if (!button || !button.isConnected || isReducedMotion()) return;
-    const rect = button.getBoundingClientRect();
-    const dot = document.createElement('span');
-    dot.className = 'track-save-unlike-dot';
-    dot.setAttribute('aria-hidden', 'true');
-    const size = Math.min(rect.width, rect.height) * 0.7;
-    dot.style.left = `${rect.left + rect.width / 2}px`;
-    dot.style.top = `${rect.top + rect.height / 2}px`;
-    dot.style.width = `${size}px`;
-    dot.style.height = `${size}px`;
-    dot.style.marginLeft = `${-size / 2}px`;
-    dot.style.marginTop = `${-size / 2}px`;
-    document.body.appendChild(dot);
-    dot.addEventListener('animationend', () => dot.remove(), { once: true });
-    window.setTimeout(() => dot.remove(), 500);
-}
-
-// Pale disc behind the icon on click: a light flash before the fill takes over
-function spawnFlash(button, delay = 0) {
-    if (!button || isReducedMotion()) return;
-    window.setTimeout(() => {
-        if (!button.isConnected) return;
-        const rect = button.getBoundingClientRect();
-        const flash = document.createElement('span');
-        flash.className = 'track-save-flash';
-        flash.setAttribute('aria-hidden', 'true');
-        const size = Math.min(rect.width, rect.height);
-        flash.style.left = `${rect.left + rect.width / 2}px`;
-        flash.style.top = `${rect.top + rect.height / 2}px`;
-        flash.style.width = `${size}px`;
-        flash.style.height = `${size}px`;
-        flash.style.marginLeft = `${-size / 2}px`;
-        flash.style.marginTop = `${-size / 2}px`;
-        document.body.appendChild(flash);
-        window.setTimeout(() => flash.remove(), 150);
-    }, delay);
+// Liked a track that was already saved in a playlist: the state does not change, so the disc
+// takes a short press instead of the fill.
+function thump(icon) {
+    icon.classList.remove('track-save-thump');
+    void icon.getBoundingClientRect();
+    icon.classList.add('track-save-thump');
+    icon.addEventListener('animationend', () => icon.classList.remove('track-save-thump'), { once: true });
 }
 
 export function buildTrackSaveStateSnapshot(likedTracks = [], likedVideos = [], playlists = []) {
@@ -144,23 +125,44 @@ export function getTrackSaveStateFromSnapshot(snapshot, type, id) {
     };
 }
 
+// One SVG for both states: the ring is the unsaved outline, the disc fills over it (its edge sits
+// exactly on the ring's outer edge, so the silhouette never changes size), and the glyph morphs.
 export function createTrackSaveIconHTML(saved = false, size = 22) {
     const s = Number(size) || 22;
-    if (saved) {
-        return `<svg viewBox="0 0 16 16" width="${s}" height="${s}" class="track-save-icon track-save-icon--saved" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="7" class="track-save-circle track-save-circle--filled" fill="currentColor"/><path d="M4.9 8.2 L7.05 10.45 L11.35 5.7" class="track-save-symbol track-save-symbol--check" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.45" pathLength="1"/></svg>`;
+    return `<svg viewBox="0 0 16 16" width="${s}" height="${s}" class="track-save-icon${saved ? ' is-saved' : ''}" fill="none" aria-hidden="true" focusable="false"><g class="track-save-body"><circle cx="8" cy="8" r="6.6" class="track-save-ring" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="7.25" class="track-save-disc" fill="currentColor"/></g><path d="${saved ? GLYPH_CHECK : GLYPH_PLUS}" class="track-save-glyph" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+}
+
+// Drives an icon built by createTrackSaveIconHTML. Without `animate` (renders, track changes) it
+// jumps straight to its state; with it, the ring fills and the plus morphs into the check.
+export function setTrackSaveIconState(icon, saved, { animate = false } = {}) {
+    if (!icon) return;
+    const motion = animate && !isReducedMotion();
+    if (!motion) icon.classList.add('track-save-icon--instant');
+    icon.classList.toggle('is-saved', saved);
+    // The attribute is the fallback where CSS `d` is unsupported (Safari): the glyph swaps there.
+    icon.querySelector('.track-save-glyph')?.setAttribute('d', saved ? GLYPH_CHECK : GLYPH_PLUS);
+    if (!motion) {
+        void icon.getBoundingClientRect();
+        icon.classList.remove('track-save-icon--instant');
     }
-    return `<svg viewBox="0 0 16 16" width="${s}" height="${s}" class="track-save-icon track-save-icon--unsaved" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.55" class="track-save-circle track-save-circle--outline" fill="none" stroke="currentColor" stroke-width="1.25"/><path d="M8 5.1 L8 10.9 M5.1 8 L10.9 8" class="track-save-symbol track-save-symbol--plus" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" pathLength="1"/></svg>`;
 }
 
 export function applyTrackSaveStateToButton(button, state, { animate = false } = {}) {
     if (!button) return;
     const wasSaved = button.dataset.isSaved === 'true' || button.classList.contains('active');
+    const wasFavorite = button.dataset.isFavorite === 'true';
     const willBeSaved = !!state.isSaved;
-    const shouldAnimate = animate && wasSaved !== willBeSaved && !isReducedMotion();
+    const motion = animate && !isReducedMotion();
 
-    // Update markup first so the new SVG can be targeted by the entrance animation
-    button.innerHTML = createTrackSaveIconHTML(willBeSaved);
+    let icon = button.querySelector(':scope > .track-save-icon');
+    if (!icon?.querySelector('.track-save-glyph')) {
+        button.innerHTML = createTrackSaveIconHTML(willBeSaved);
+        icon = button.firstElementChild;
+    }
+
+    setTrackSaveIconState(icon, willBeSaved, { animate: motion });
     button.classList.toggle('active', willBeSaved);
+
     button.dataset.isFavorite = String(state.isFavorite);
     button.dataset.isSaved = String(willBeSaved);
     button.dataset.playlistCount = String(state.playlistIds.length);
@@ -174,27 +176,14 @@ export function applyTrackSaveStateToButton(button, state, { animate = false } =
     button.setAttribute('aria-label', button.title);
     button.setAttribute('aria-pressed', String(state.isFavorite));
 
-    if (shouldAnimate) {
-        // Clean any prior fill animation so it can retrigger
-        button.classList.remove('track-save-animate-in', 'track-save-animate-out', 'track-save-transition');
-        void button.offsetWidth;
-        if (willBeSaved) {
-            button.classList.add('track-save-animate-in');
-            spawnFlash(button);
-            spawnShockwave(button, 120);
-            spawnConfetti(button, 180);
-            window.setTimeout(() => button.classList.remove('track-save-animate-in'), 620);
-        } else {
-            button.classList.add('track-save-animate-out');
-            spawnUnlikeDot(button);
-            window.setTimeout(() => button.classList.remove('track-save-animate-out'), 520);
+    if (motion) {
+        const pressed = takeRecentPress(button);
+        if (!wasSaved && willBeSaved) {
+            if (pressed) spawnSpectrum(button);
+        } else if (wasSaved && willBeSaved && !wasFavorite && state.isFavorite) {
+            thump(icon);
+            if (pressed) spawnSpectrum(button);
         }
-    } else if (animate && !isReducedMotion()) {
-        // Fallback pop if state didn't change but caller requested animate (e.g. refresh)
-        button.classList.remove('track-save-transition');
-        void button.offsetWidth;
-        button.classList.add('track-save-transition');
-        window.setTimeout(() => button.classList.remove('track-save-transition'), 460);
     }
 
     button.closest('.track-item')?.classList.toggle('track-save-is-saved', willBeSaved);

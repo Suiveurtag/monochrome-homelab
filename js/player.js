@@ -4,7 +4,6 @@ import {
     getTrackArtists,
     getTrackTitle,
     getTrackArtistsHTML,
-    getTrackYearDisplay,
     createQualityBadgeHTML,
     escapeHtml,
     deriveTrackQuality,
@@ -12,7 +11,6 @@ import {
 import {
     queueManager,
     replayGainSettings,
-    trackDateSettings,
     exponentialVolumeSettings,
     audioEffectsSettings,
     radioSettings,
@@ -420,8 +418,6 @@ export class Player {
                 const track = this.currentTrack;
                 const trackTitle = getTrackTitle(track);
                 const trackArtistsHTML = getTrackArtistsHTML(track, { asButtons: true });
-                const yearDisplay = getTrackYearDisplay(track);
-
                 const coverEl = document.querySelector('.now-playing-bar .cover');
                 const titleEl = document.querySelector('.now-playing-bar .title');
                 const albumEl = document.querySelector('.now-playing-bar .album');
@@ -494,12 +490,7 @@ export class Player {
                         albumEl.style.display = 'none';
                     }
                 }
-                if (artistEl) artistEl.innerHTML = trackArtistsHTML + yearDisplay;
-
-                // Fetch album release date in background if missing
-                if (!yearDisplay && getTrackDisplayAlbum(track)?.id) {
-                    this.loadAlbumYear(track, trackArtistsHTML, artistEl);
-                }
+                if (artistEl) artistEl.innerHTML = trackArtistsHTML;
 
                 const mixBtn = document.getElementById('now-playing-mix-btn');
                 const compactMixBtn = document.getElementById('compact-mix-btn');
@@ -1403,8 +1394,6 @@ export class Player {
         const trackTitle = getTrackTitle(track);
         const artistName = getTrackArtists(track);
         const trackArtistsHTML = getTrackArtistsHTML(track, { asButtons: true });
-        const yearDisplay = getTrackYearDisplay(track);
-
         if (track.type !== 'video' && !getTrackPlayerCanvas(track)) {
             this.api.getVideoArtwork(trackTitle, artistName).then((result) => {
                 if (this.currentTrack?.id === track.id && result && (result.videoUrl || result.hlsUrl)) {
@@ -1575,12 +1564,7 @@ export class Player {
             }
         }
         const artistEl = document.querySelector('.now-playing-bar .artist');
-        artistEl.innerHTML = trackArtistsHTML + yearDisplay;
-
-        // Fetch album release date in background if missing
-        if (!yearDisplay && getTrackDisplayAlbum(track)?.id) {
-            this.loadAlbumYear(track, trackArtistsHTML, artistEl);
-        }
+        artistEl.innerHTML = trackArtistsHTML;
 
         const mixBtn = document.getElementById('now-playing-mix-btn');
         const compactMixBtn = document.getElementById('compact-mix-btn');
@@ -2762,25 +2746,6 @@ export class Player {
             return currentQueue[0];
         }
         return null;
-    }
-
-    loadAlbumYear(track, trackArtistsHTML, artistEl) {
-        if (!trackDateSettings.useAlbumYear()) return;
-        const displayAlbum = getTrackDisplayAlbum(track);
-        if (!displayAlbum?.id) return;
-
-        this.api
-            .getAlbum(displayAlbum.id)
-            .then(({ album }) => {
-                if (album?.releaseDate && this.currentTrack?.id === track.id) {
-                    displayAlbum.releaseDate = album.releaseDate;
-                    const year = new Date(album.releaseDate).getFullYear();
-                    if (!isNaN(year) && artistEl) {
-                        artistEl.innerHTML = `${trackArtistsHTML} • ${year}`;
-                    }
-                }
-            })
-            .catch(() => {});
     }
 
     updatePlayingTrackIndicator() {

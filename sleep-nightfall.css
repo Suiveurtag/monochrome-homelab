@@ -574,3 +574,305 @@
         transition-delay: 0ms !important;
     }
 }
+
+/* Night screen off: the same night, folded into the player bar's sleep button. A small sky opens
+   around the icon with a ripple, stars come out, a cloud rises under the moon, the moon settles in
+   and rocks while three z's float up out of the bar, then the sky closes back onto the icon. */
+.sleep-doze {
+    --night-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --night-deep: #07071a;
+    --night-indigo: #15134a;
+    --night-violet: #3b2b78;
+    --night-cloud-front: #8a7fd0;
+    --night-moon: #efeaff;
+    --doze-size: 64px;
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 5;
+    width: var(--doze-size);
+    height: var(--doze-size);
+    margin: calc(var(--doze-size) / -2) 0 0 calc(var(--doze-size) / -2);
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.sleep-timer-button.is-dozing .sleep-doze {
+    visibility: visible;
+}
+
+.sleep-doze > [class] {
+    position: absolute;
+    opacity: 0;
+}
+
+/* The resting icon and the clock ring step aside while the scene plays. */
+.now-playing-bar .sleep-timer-button > :is(.sleep-timer-icon, .sleep-timer-ring) {
+    transition: opacity 300ms var(--night-ease, ease);
+}
+
+.now-playing-bar .sleep-timer-button.is-dozing > :is(.sleep-timer-icon, .sleep-timer-ring) {
+    opacity: 0 !important;
+}
+
+.sleep-doze__sky {
+    inset: 0;
+    overflow: hidden;
+    border-radius: 50%;
+    background:
+        radial-gradient(90% 60% at 50% 110%, var(--night-violet), transparent 70%),
+        linear-gradient(180deg, var(--night-deep), var(--night-indigo) 60%, var(--night-violet));
+    box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--night-cloud-front) 40%, transparent),
+        0 0 22px 4px color-mix(in srgb, var(--night-violet) 70%, transparent),
+        0 6px 28px color-mix(in srgb, var(--night-deep) 60%, transparent);
+}
+
+.sleep-doze__ripple {
+    inset: 0;
+    border: 2px solid var(--night-cloud-front);
+    border-radius: 50%;
+}
+
+.sleep-doze__stars {
+    top: 0;
+    left: 0;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    color: var(--night-moon);
+    box-shadow:
+        14px 14px,
+        46px 12px,
+        22px 30px 0 -0.5px,
+        52px 28px 0 -0.5px,
+        34px 8px 0 -0.5px,
+        10px 40px 0 -0.5px,
+        44px 44px 0 -0.5px;
+}
+
+.sleep-doze__cloud {
+    right: 6px;
+    bottom: 8px;
+    left: 6px;
+    height: 16px;
+    border-radius: 50%;
+    background:
+        radial-gradient(
+            circle at 25% 70%,
+            color-mix(in srgb, var(--night-cloud-front) 80%, transparent) 0 40%,
+            transparent 42%
+        ),
+        radial-gradient(
+            circle at 55% 45%,
+            color-mix(in srgb, var(--night-cloud-front) 70%, transparent) 0 46%,
+            transparent 48%
+        ),
+        radial-gradient(
+            circle at 80% 72%,
+            color-mix(in srgb, var(--night-cloud-front) 75%, transparent) 0 38%,
+            transparent 40%
+        );
+    filter: blur(2px);
+}
+
+.sleep-doze__moon {
+    inset: 14px;
+    width: calc(100% - 28px);
+    height: calc(100% - 28px);
+    overflow: visible;
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--night-moon) 55%, transparent));
+}
+
+.sleep-doze__crescent {
+    fill: var(--night-moon);
+    transform-box: view-box;
+    transform-origin: 50% 50%;
+}
+
+.sleep-doze__z {
+    fill: none;
+    stroke: var(--night-moon);
+    stroke-width: 1.3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+}
+
+.sleep-timer-button.is-dozing .sleep-doze__sky {
+    animation: sleep-doze-sky 4.8s var(--night-ease) both;
+}
+
+.sleep-timer-button.is-dozing .sleep-doze__ripple {
+    animation: sleep-doze-ripple 1.1s var(--night-ease) 120ms both;
+}
+
+.sleep-timer-button.is-dozing .sleep-doze__stars {
+    animation: sleep-doze-stars 4.8s ease-in-out both;
+}
+
+.sleep-timer-button.is-dozing .sleep-doze__cloud {
+    animation: sleep-doze-cloud 4.8s var(--night-ease) both;
+}
+
+.sleep-timer-button.is-dozing .sleep-doze__moon {
+    animation: sleep-doze-moon 4.8s var(--night-ease) both;
+}
+
+.sleep-timer-button.is-dozing .sleep-doze__crescent {
+    animation: sleep-doze-rock 1.6s ease-in-out 500ms 3 alternate both;
+}
+
+.sleep-timer-button.is-dozing .sleep-doze__z {
+    animation: sleep-doze-z 2s var(--night-ease) 700ms both;
+}
+
+.sleep-timer-button.is-dozing .sleep-doze__z:nth-of-type(3) {
+    animation-delay: 1.4s;
+}
+
+.sleep-timer-button.is-dozing .sleep-doze__z:nth-of-type(4) {
+    animation-delay: 2.1s;
+}
+
+@keyframes sleep-doze-sky {
+    0% {
+        opacity: 0;
+        transform: scale(0.35);
+    }
+
+    12% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+
+    20%,
+    84% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(0.4);
+    }
+}
+
+@keyframes sleep-doze-ripple {
+    from {
+        opacity: 0.9;
+        transform: scale(0.9);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(1.9);
+    }
+}
+
+@keyframes sleep-doze-stars {
+    0%,
+    14% {
+        opacity: 0;
+    }
+
+    26%,
+    46%,
+    66% {
+        opacity: 1;
+    }
+
+    36%,
+    56%,
+    76% {
+        opacity: 0.4;
+    }
+
+    84%,
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes sleep-doze-cloud {
+    0%,
+    10% {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+
+    30%,
+    82% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+}
+
+@keyframes sleep-doze-moon {
+    0%,
+    6% {
+        opacity: 0;
+        filter: blur(4px) drop-shadow(0 0 6px transparent);
+        transform: translateY(-18px) scale(1.5);
+    }
+
+    22% {
+        opacity: 1;
+        filter: blur(0) drop-shadow(0 0 6px color-mix(in srgb, var(--night-moon) 55%, transparent));
+        transform: translateY(0) scale(1);
+    }
+
+    84% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(2px) scale(0.7);
+    }
+}
+
+@keyframes sleep-doze-rock {
+    from {
+        transform: rotate(-12deg);
+    }
+
+    to {
+        transform: rotate(8deg);
+    }
+}
+
+@keyframes sleep-doze-z {
+    0% {
+        opacity: 0;
+        transform: translate3d(0, 4px, 0) scale(0.6) rotate(-8deg);
+    }
+
+    15% {
+        opacity: 1;
+    }
+
+    70% {
+        opacity: 0.7;
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate3d(9px, -26px, 0) scale(1.8) rotate(12deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sleep-doze {
+        display: none;
+    }
+}

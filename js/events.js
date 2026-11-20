@@ -10,14 +10,14 @@ import {
     escapeHtml,
 } from './utils.js';
 import { buildSharePath, copyShareLink } from './share.js';
-import { setupSleepNightfall } from './sleep-nightfall.js';
+import { setupTrackSavePanel } from './track-save-panel.js';
+import { setupSleepNightfall, playSleepDoze } from './sleep-nightfall.js';
 import {
     lastFMStorage,
     libreFmSettings,
     listenBrainzSettings,
     waveformSettings,
     keyboardShortcuts,
-    recentActivityManager,
     sleepTimerSettings,
 } from './storage.js';
 import { showNotification, downloadTrackWithMetadata, downloadAlbum, downloadPlaylist } from './downloads.js';
@@ -33,11 +33,8 @@ import {
     SVG_CHECK,
     SVG_CHECKBOX,
     SVG_CHECKBOX_CHECKED,
-    SVG_CLOSE,
     SVG_INFORMATION_CIRCLE,
     SVG_LEFT_ARROW,
-    SVG_PLUS,
-    SVG_SEARCH,
     SVG_MUTE,
     SVG_QUALITY_CD,
     SVG_QUALITY_VINYL,
@@ -716,9 +713,11 @@ function setupQualityPopover(player) {
                 <h3 id="quality-popover-title">Playback quality</h3>
                 <label class="quality-auto-toggle" title="Adjusts to the track and your connection">
                     <span class="quality-auto-label">Auto</span>
-                    <input type="checkbox" role="switch" name="playback-quality-auto" ${isAuto ? 'checked' : ''}
-                        aria-label="Automatic quality, adjusts to the track and your connection" />
-                    <span class="quality-auto-track" aria-hidden="true"><span class="quality-auto-thumb"></span></span>
+                    <span class="toggle-switch">
+                        <input type="checkbox" role="switch" name="playback-quality-auto" ${isAuto ? 'checked' : ''}
+                            aria-label="Automatic quality, adjusts to the track and your connection" />
+                        <span class="slider"></span>
+                    </span>
                 </label>
             </div>
             <div class="quality-radio-group" role="radiogroup" aria-label="Playback quality">
@@ -2041,469 +2040,6 @@ function initializeSmoothSliders(player) {
     );
 }
 
-function setupTrackSaveFloatingPanel(player, api, ui) {
-    const panel = document.getElementById('track-save-floating-panel');
-    if (!panel || panel.dataset.initialized === 'true') return;
-    panel.dataset.initialized = 'true';
-
-    let currentTrack = null;
-    let currentTrigger = null;
-    let currentQuery = '';
-    let panelAnimation = null;
-    let animationRun = 0;
-    let renderRun = 0;
-
-    const getPlaylistCoverUrl = (playlist) => {
-        const candidate =
-            playlist.cover ||
-            playlist.images?.[0] ||
-            playlist.tracks?.find((track) => track.album?.cover)?.album?.cover ||
-            null;
-        if (!candidate) return '/assets/appicon.png';
-        const value = String(candidate);
-        if (/^(?:data:|blob:|https?:|\/)/.test(value)) return value;
-        return api.getCoverUrl(candidate);
-    };
-
-    const playlistRowHTML = (playlist, isSaved) => `
-        <button
-            type="button"
-            class="track-save-playlist-row${isSaved ? ' is-saved' : ''}"
-            data-playlist-id="${escapeHtml(String(playlist.id))}"
-            role="checkbox"
-            aria-checked="${String(isSaved)}"
-        >
-            <img src="${escapeHtml(getPlaylistCoverUrl(playlist))}" alt="" class="track-save-playlist-cover" />
-            <span class="track-save-playlist-copy">
-                <strong>${escapeHtml(playlist.name || playlist.title || 'Untitled playlist')}</strong>
-                <small>${playlist.tracks?.length || playlist.numberOfTracks || 0} songs</small>
-            </span>
-            <span class="track-save-playlist-check" aria-hidden="true">${isSaved ? SVG_CHECK(13) : ''}</span>
-        </button>
-    `;
-
-    const likedSongsRowHTML = (isFavorite) => `
-        <button
-            type="button"
-            class="track-save-playlist-row track-save-liked-row${isFavorite ? ' is-saved' : ''}"
-            data-save-location="liked"
-            role="checkbox"
-            aria-checked="${String(isFavorite)}"
-        >
-            <img src="/assets/appicon.png" alt="" class="track-save-playlist-cover" />
-            <span class="track-save-playlist-copy">
-                <strong>Liked Songs</strong>
-                <small>Your liked tracks</small>
-            </span>
-            <span class="track-save-playlist-check" aria-hidden="true">${isFavorite ? SVG_CHECK(13) : ''}</span>
-        </button>
-    `;
-
-    const sortRecentPlaylists = (playlists) => {
-        const recentIds = new Map(
-            (recentActivityManager.getRecents().playlists || []).map((playlist, index) => [String(playlist.id), index])
-        );
-        return [...playlists].sort((a, b) => {
-            const rankA = recentIds.has(String(a.id)) ? recentIds.get(String(a.id)) : Number.MAX_SAFE_INTEGER;
-            const rankB = recentIds.has(String(b.id)) ? recentIds.get(String(b.id)) : Number.MAX_SAFE_INTEGER;
-            if (rankA !== rankB) return rankA - rankB;
-            return Number(b.updatedAt || b.createdAt || 0) - Number(a.updatedAt || a.createdAt || 0);
-        });
-    };
-
-    const render = async ({ animateResults = false } = {}) => {
-        if (!currentTrack) return;
-        const run = ++renderRun;
-        const renderedQuery = currentQuery;
-        const trackType = currentTrack.type === 'video' ? 'video' : 'track';
-        const [playlists, saveState] = await Promise.all([
-            db.getPlaylists(true),
-            ui.getTrackSaveState(trackType, currentTrack.id),
-        ]);
-        if (run !== renderRun) return false;
-        const savedIds = new Set(saveState.playlistIds.map(String));
-        const query = renderedQuery.trim().toLocaleLowerCase();
-        const matches = (playlist) => (playlist.name || playlist.title || '').toLocaleLowerCase().includes(query);
-        const savedPlaylists = playlists.filter((playlist) => savedIds.has(String(playlist.id)) && matches(playlist));
-        const recentPlaylists = sortRecentPlaylists(playlists)
-            .filter((playlist) => !savedIds.has(String(playlist.id)) && matches(playlist))
-            .slice(0, query ? playlists.length : 8);
-        const likedMatches = 'liked songs'.includes(query);
-
-        const sections = [];
-        if (!query && (saveState.isFavorite || savedPlaylists.length)) {
-            sections.push(`
-                <section class="track-save-panel-section" aria-labelledby="track-save-saved-label">
-                    <h4 id="track-save-saved-label">Saved in</h4>
-                    ${saveState.isFavorite ? likedSongsRowHTML(true) : ''}
-                    ${savedPlaylists.map((playlist) => playlistRowHTML(playlist, true)).join('')}
-                </section>
-            `);
-        }
-
-        if (query) {
-            const filteredPlaylists = sortRecentPlaylists(playlists).filter(matches);
-            sections.push(`
-                <section class="track-save-panel-section" aria-labelledby="track-save-results-label">
-                    <h4 id="track-save-results-label">Playlists</h4>
-                    ${likedMatches ? likedSongsRowHTML(saveState.isFavorite) : ''}
-                    ${filteredPlaylists
-                        .map((playlist) => playlistRowHTML(playlist, savedIds.has(String(playlist.id))))
-                        .join('')}
-                    ${!likedMatches && filteredPlaylists.length === 0 ? `<p class="track-save-empty">No playlists match “${escapeHtml(renderedQuery.trim())}”.</p>` : ''}
-                </section>
-            `);
-        } else {
-            sections.push(`
-                <section class="track-save-panel-section" aria-labelledby="track-save-recent-label">
-                    <h4 id="track-save-recent-label">Recent playlists</h4>
-                    ${recentPlaylists.map((playlist) => playlistRowHTML(playlist, false)).join('')}
-                    ${recentPlaylists.length === 0 ? '<p class="track-save-empty">Create a playlist to save this track somewhere new.</p>' : ''}
-                </section>
-            `);
-        }
-
-        const resultCount = query
-            ? sortRecentPlaylists(playlists).filter(matches).length + Number(likedMatches)
-            : savedPlaylists.length + Number(saveState.isFavorite) + recentPlaylists.length;
-        panel.innerHTML = `
-            <div class="track-save-panel-shell">
-                <header class="track-save-panel-header">
-                    <div class="track-save-panel-title-row">
-                        <div class="track-save-panel-title-copy">
-                            <h3 id="track-save-floating-title">Add to playlist</h3>
-                            <p title="${escapeHtml(currentTrack.title || 'Current track')}">${escapeHtml(currentTrack.title || 'Current track')}</p>
-                        </div>
-                        <span class="track-save-title-mark${panel.hidden ? ' is-entering' : ''}" aria-hidden="true">
-                            <i></i><i></i><i></i><i></i>
-                        </span>
-                    </div>
-                    <div class="track-save-search${query ? ' has-query' : ''}">
-                        <span class="track-save-search-icon" aria-hidden="true">${SVG_SEARCH(19)}</span>
-                        <input type="search" value="${escapeHtml(renderedQuery)}" placeholder="Find a playlist" aria-label="Find a playlist" />
-                        ${query ? `<output class="track-save-result-count" aria-label="${resultCount} results">${resultCount}</output>` : ''}
-                        ${query ? `<button type="button" class="track-save-search-clear" aria-label="Clear search">${SVG_CLOSE(15)}</button>` : ''}
-                    </div>
-                    <button type="button" class="track-save-new-playlist">
-                        <span class="track-save-new-playlist-icon" aria-hidden="true">${SVG_PLUS(21)}</span>
-                        <span class="track-save-new-playlist-copy">
-                            <strong>New playlist</strong>
-                            <small>Start with this track</small>
-                        </span>
-                    </button>
-                </header>
-                <div class="track-save-panel-list">${sections.join('')}</div>
-                <footer class="track-save-panel-footer">
-                    <button type="button" class="track-save-panel-cancel">Cancel</button>
-                </footer>
-            </div>
-        `;
-
-        if (animateResults && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            const list = panel.querySelector('.track-save-panel-list');
-            const resultAnimation = list?.animate(
-                [
-                    { opacity: 0.25, clipPath: 'inset(0 0 14% 0)', transform: 'translateY(-5px)' },
-                    { opacity: 1, clipPath: 'inset(0 0 0 0)', transform: 'translateY(0)' },
-                ],
-                { duration: 220, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
-            );
-            if (resultAnimation) void resultAnimation.finished.catch(() => {});
-        }
-        return true;
-    };
-
-    const animateRowConfirmation = (row, isSaved) => {
-        row.classList.toggle('is-saved', isSaved);
-        row.classList.toggle('is-releasing', !isSaved);
-        row.classList.add('is-confirming');
-        row.setAttribute('aria-checked', String(isSaved));
-        row.setAttribute('aria-busy', 'true');
-        row.querySelector('.track-save-playlist-check').innerHTML = isSaved ? SVG_CHECK(13) : '';
-
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
-        const animation = row.animate(
-            [{ transform: 'scale(1)' }, { transform: 'scale(0.985)', offset: 0.35 }, { transform: 'scale(1)' }],
-            { duration: 260, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
-        );
-        return animation.finished.catch(() => {});
-    };
-
-    const animateNewPlaylist = (button) => {
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
-        const icon = button.querySelector('.track-save-new-playlist-icon');
-        const animation = icon.animate(
-            [
-                { transform: 'rotate(0deg) scale(1)' },
-                { transform: 'rotate(90deg) scale(1.12)' },
-                { transform: 'rotate(90deg) scale(1)' },
-            ],
-            { duration: 210, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
-        );
-        return animation.finished.catch(() => {});
-    };
-
-    const position = () => {
-        const triggerRect = getRectSnapshot(currentTrigger);
-        if (!triggerRect) return null;
-        const mobile = window.matchMedia('(max-width: 600px)').matches;
-        const gutter = mobile ? 0 : 10;
-        const width = mobile ? window.innerWidth - gutter * 2 : Math.min(360, window.innerWidth - gutter * 2);
-        panel.style.width = `${width}px`;
-        panel.style.maxHeight = `${Math.min(520, window.innerHeight - gutter * 2)}px`;
-
-        const panelHeight = panel.offsetHeight || Math.min(500, window.innerHeight - gutter * 2);
-        let left = gutter;
-        let top = window.innerHeight - panelHeight - gutter;
-        if (!mobile) {
-            left = Math.min(Math.max(gutter, triggerRect.right - width), window.innerWidth - width - gutter);
-            const fitsAbove = triggerRect.top - panelHeight - 8 >= gutter;
-            top = fitsAbove ? triggerRect.top - panelHeight - 8 : triggerRect.bottom + 8;
-            top = Math.min(Math.max(gutter, top), window.innerHeight - panelHeight - gutter);
-        }
-
-        panel.style.left = `${left}px`;
-        panel.style.top = `${top}px`;
-        return triggerRect;
-    };
-
-    const getFrames = (triggerRect) => {
-        const panelRect = panel.getBoundingClientRect();
-        return {
-            collapsed: {
-                opacity: 0,
-                borderRadius: '999px',
-                clipPath: 'inset(0 round 999px)',
-                transform: `translate(${triggerRect.left - panelRect.left}px, ${triggerRect.top - panelRect.top}px) scale(${Math.max(0.06, triggerRect.width / panelRect.width)}, ${Math.max(0.035, triggerRect.height / panelRect.height)})`,
-            },
-            expanded: {
-                opacity: 1,
-                borderRadius: '16px',
-                clipPath: 'inset(0 round 16px)',
-                transform: 'translate(0, 0) scale(1)',
-            },
-        };
-    };
-
-    const close = ({ restoreFocus = false } = {}) => {
-        if (panel.hidden) return;
-        const run = ++animationRun;
-        const triggerRect = getRectSnapshot(currentTrigger);
-        panel.classList.remove('is-open');
-        currentTrigger?.classList.remove('is-floating-panel-open');
-        currentTrigger?.setAttribute('aria-expanded', 'false');
-        panelAnimation?.cancel();
-
-        if (!triggerRect || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            panel.hidden = true;
-            if (restoreFocus) currentTrigger?.focus({ preventScroll: true });
-            return;
-        }
-
-        const { collapsed, expanded } = getFrames(triggerRect);
-        panelAnimation = panel.animate([expanded, collapsed], {
-            duration: 240,
-            easing: 'cubic-bezier(0.4, 0, 0.7, 0.2)',
-            fill: 'both',
-        });
-        void panelAnimation.finished
-            .then(() => {
-                if (run !== animationRun) return;
-                panel.hidden = true;
-                panelAnimation?.cancel();
-                if (restoreFocus) currentTrigger?.focus({ preventScroll: true });
-            })
-            .catch(() => {});
-    };
-
-    const open = async (track, trigger) => {
-        const run = ++animationRun;
-        currentTrack = track;
-        currentTrigger?.classList.remove('is-floating-panel-open');
-        currentTrigger = trigger;
-        currentQuery = '';
-        await render();
-        if (run !== animationRun) return;
-
-        panel.hidden = false;
-        panel.style.visibility = 'hidden';
-        const triggerRect = position();
-        if (!triggerRect) {
-            panel.hidden = true;
-            return;
-        }
-
-        currentTrigger.classList.add('is-floating-panel-open');
-        currentTrigger.setAttribute('aria-haspopup', 'dialog');
-        currentTrigger.setAttribute('aria-expanded', 'true');
-        panelAnimation?.cancel();
-        const { collapsed, expanded } = getFrames(triggerRect);
-        panel.style.visibility = '';
-        panel.classList.add('is-open');
-
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            panel.style.opacity = '1';
-            panel.querySelector('input')?.focus({ preventScroll: true });
-            return;
-        }
-
-        panelAnimation = panel.animate([collapsed, expanded], {
-            duration: 400,
-            easing: 'cubic-bezier(0.2, 0.9, 0.24, 1.08)',
-            fill: 'both',
-        });
-        void panelAnimation.finished
-            .then(() => {
-                if (run !== animationRun) return;
-                panelAnimation?.cancel();
-                panel.querySelector('input')?.focus({ preventScroll: true });
-            })
-            .catch(() => {});
-    };
-
-    const resolveTrack = (button) => {
-        if (
-            button.id === 'now-playing-like-btn' ||
-            button.id === 'fs-like-btn' ||
-            button.classList.contains('now-playing-panel-save')
-        )
-            return player.currentTrack;
-        const queueItem = button.closest('.queue-track-row');
-        if (queueItem) return player.getCurrentQueue()[Number(queueItem.dataset.queueIndex)];
-        const itemElement = button.closest('.track-item, .card');
-        return trackDataStore.get(itemElement) || trackDataStore.get(button) || null;
-    };
-
-    const removeFromSourcePlaylist = async (button, track) => {
-        const playlistId = button.dataset.sourcePlaylistId;
-        const trackType = track.type === 'video' ? 'video' : 'track';
-        if (!playlistId) return false;
-
-        await db.removeTrackFromPlaylist(playlistId, track.id, trackType);
-        const updatedPlaylist = await db.getPlaylist(playlistId);
-        await syncManager.syncUserPlaylist(updatedPlaylist, 'update');
-        showNotification(`Removed from playlist: ${updatedPlaylist.name}`);
-        await ui.renderPlaylistPage(playlistId, 'user');
-        return true;
-    };
-
-    const openCreatePlaylist = () => {
-        const createModal = document.getElementById('playlist-modal');
-        if (!createModal || !currentTrack) return;
-        document.getElementById('playlist-modal-title').textContent = 'Create Playlist';
-        document.getElementById('playlist-name-input').value = '';
-        document.getElementById('playlist-cover-input').value = '';
-        document.getElementById('playlist-cover-file-input').value = '';
-        document.getElementById('playlist-description-input').value = '';
-        createModal.dataset.editingId = '';
-        document.getElementById('import-section').style.display = 'none';
-        createModal._pendingTracks = [currentTrack];
-        createModal.classList.add('active');
-        document.getElementById('playlist-name-input').focus();
-    };
-
-    document.addEventListener(
-        'contextmenu',
-        async (event) => {
-            const button = event.target.closest('.track-save-btn');
-            if (!button) return;
-            const track = resolveTrack(button);
-            if (!track) return;
-            event.preventDefault();
-            event.stopImmediatePropagation();
-
-            const trackType = track.type === 'video' ? 'video' : 'track';
-            if (await db.isFavorite(trackType, track.id)) {
-                if (await removeFromSourcePlaylist(button, track)) return;
-                await handleTrackAction('toggle-like', track, player, api, null, trackType, ui, null);
-                return;
-            }
-            void open(track, button);
-        },
-        true
-    );
-
-    document.addEventListener('track-save-panel-open', (event) => {
-        const button = event.detail?.button;
-        const track = button && resolveTrack(button);
-        if (track) void open(track, button);
-    });
-
-    panel.addEventListener('input', (event) => {
-        if (!event.target.matches('.track-save-search input')) return;
-        currentQuery = event.target.value;
-        const selectionStart = event.target.selectionStart;
-        void render({ animateResults: true }).then((didRender) => {
-            if (!didRender) return;
-            const input = panel.querySelector('.track-save-search input');
-            input?.focus({ preventScroll: true });
-            input?.setSelectionRange(selectionStart, selectionStart);
-        });
-    });
-
-    panel.addEventListener('click', async (event) => {
-        if (event.target.closest('.track-save-panel-cancel')) {
-            close({ restoreFocus: true });
-            return;
-        }
-        if (event.target.closest('.track-save-search-clear')) {
-            currentQuery = '';
-            await render({ animateResults: true });
-            panel.querySelector('.track-save-search input')?.focus({ preventScroll: true });
-            return;
-        }
-        const newPlaylistButton = event.target.closest('.track-save-new-playlist');
-        if (newPlaylistButton) {
-            await animateNewPlaylist(newPlaylistButton);
-            close();
-            openCreatePlaylist();
-            return;
-        }
-        if (!currentTrack) return;
-
-        const trackType = currentTrack.type === 'video' ? 'video' : 'track';
-        const likedRow = event.target.closest('[data-save-location="liked"]');
-        if (likedRow) {
-            const isSaved = likedRow.getAttribute('aria-checked') === 'true';
-            const feedback = animateRowConfirmation(likedRow, !isSaved);
-            const added = await db.toggleFavorite(trackType, currentTrack);
-            await syncManager.syncLibraryItem(trackType, currentTrack, added);
-            await ui.refreshTrackSaveButtons(trackType, currentTrack.id, { animate: true });
-            showNotification(
-                added ? `Added to Liked: ${currentTrack.title}` : `Removed from Liked: ${currentTrack.title}`
-            );
-            await feedback;
-            await render();
-            return;
-        }
-
-        const playlistRow = event.target.closest('[data-playlist-id]');
-        if (!playlistRow) return;
-        const playlistId = playlistRow.dataset.playlistId;
-        const isSaved = playlistRow.getAttribute('aria-checked') === 'true';
-        const feedback = animateRowConfirmation(playlistRow, !isSaved);
-        if (isSaved) await db.removeTrackFromPlaylist(playlistId, currentTrack.id, trackType);
-        else await db.addTrackToPlaylist(playlistId, currentTrack);
-        const updatedPlaylist = await db.getPlaylist(playlistId);
-        await syncManager.syncUserPlaylist(updatedPlaylist, 'update');
-        await ui.refreshTrackSaveButtons(trackType, currentTrack.id, { animate: true });
-        showNotification(`${isSaved ? 'Removed from' : 'Added to'} playlist: ${updatedPlaylist.name}`);
-        await feedback;
-        await render();
-    });
-
-    document.addEventListener('pointerdown', (event) => {
-        if (panel.hidden || panel.contains(event.target) || currentTrigger?.contains(event.target)) return;
-        close();
-    });
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !panel.hidden) close({ restoreFocus: true });
-    });
-    window.addEventListener('resize', () => {
-        if (!panel.hidden) position();
-    });
-}
-
 // Standalone function to show add to playlist modal
 export async function showAddToPlaylistModal(track) {
     const modal = document.getElementById('playlist-select-modal');
@@ -3574,7 +3110,7 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
     });
     let contextTrack = null;
 
-    setupTrackSaveFloatingPanel(player, api, ui);
+    setupTrackSavePanel({ player, api, ui, handleTrackAction });
     setupTrackVersionPicker(player, api);
 
     document.addEventListener('open-current-track-context-menu', async (event) => {
@@ -4706,7 +4242,14 @@ function setupSleepTimer(player, triggers) {
     const nightfall = setupSleepNightfall(player, { onExtend: () => !panel.hidden && sync({ animate: true }) });
 
     window.addEventListener('sleep-timer-end', (event) => {
-        if (event.detail?.finished) nightfall.show();
+        if (event.detail?.finished) {
+            if (sleepTimerSettings.isNightfallEnabled()) {
+                nightfall.show();
+            } else {
+                showNotification('Paused by the sleep timer');
+                playSleepDoze();
+            }
+        }
         if (panel.hidden) return;
         const hadFocus = panel.contains(document.activeElement);
         sync({ animate: true });

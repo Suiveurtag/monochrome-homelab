@@ -33,6 +33,7 @@ import {
     contentBlockingSettings,
     musicProviderSettings,
     gaplessPlaybackSettings,
+    sleepTimerSettings,
     crossfadeSettings,
     analyticsSettings,
     modalSettings,
@@ -1201,6 +1202,14 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         gaplessPlaybackToggle.checked = gaplessPlaybackSettings.isEnabled();
         gaplessPlaybackToggle.addEventListener('change', (e) => {
             gaplessPlaybackSettings.setEnabled(e.target.checked);
+        });
+    }
+
+    const sleepNightfallToggle = document.getElementById('sleep-nightfall-toggle');
+    if (sleepNightfallToggle) {
+        sleepNightfallToggle.checked = sleepTimerSettings.isNightfallEnabled();
+        sleepNightfallToggle.addEventListener('change', (e) => {
+            sleepTimerSettings.setNightfallEnabled(e.target.checked);
         });
     }
 

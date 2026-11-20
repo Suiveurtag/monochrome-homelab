@@ -24,8 +24,9 @@ describe('track save button', () => {
 
         expect(button.classList.contains('active')).toBe(false);
         expect(button.getAttribute('aria-pressed')).toBe('false');
-        expect(button.innerHTML).toContain('track-save-symbol--plus');
-        expect(button.innerHTML).toContain('track-save-circle--outline');
+        const icon = button.querySelector('.track-save-icon');
+        expect(icon.classList.contains('is-saved')).toBe(false);
+        expect(icon.querySelector('.track-save-glyph').getAttribute('d')).toBe('M8 5.1L8 10.9M5.1 8L10.9 8');
         expect(button.title).toContain('Add to Liked Songs');
     });
 
@@ -39,8 +40,11 @@ describe('track save button', () => {
         expect(button.classList.contains('active')).toBe(true);
         expect(button.dataset.playlistCount).toBe('1');
         expect(button.getAttribute('aria-pressed')).toBe('false');
-        expect(button.innerHTML).toContain('track-save-symbol--check');
-        expect(button.innerHTML).toContain('track-save-circle--filled');
+        const icon = button.querySelector('.track-save-icon');
+        expect(icon.classList.contains('is-saved')).toBe(true);
+        expect(icon.querySelector('.track-save-glyph').getAttribute('d')).toBe(
+            'M11.3 5.75L7.05 10.5M4.75 8.25L7.05 10.5'
+        );
         expect(button.title).toContain('Saved in a playlist');
     });
 
@@ -55,6 +59,18 @@ describe('track save button', () => {
         expect(button.getAttribute('aria-pressed')).toBe('true');
         expect(button.title).toContain('Add to playlist');
         expect(button.title).toContain('Right-click to remove');
+    });
+
+    test('keeps one icon across state changes so the plus can morph into the check', () => {
+        const state = { isFavorite: false, isSaved: false, playlistIds: [] };
+        applyTrackSaveStateToButton(button, state);
+        const icon = button.querySelector('.track-save-icon');
+
+        applyTrackSaveStateToButton(button, { ...state, isFavorite: true, isSaved: true }, { animate: true });
+
+        expect(button.querySelector('.track-save-icon')).toBe(icon);
+        expect(icon.classList.contains('is-saved')).toBe(true);
+        expect(icon.classList.contains('track-save-icon--instant')).toBe(false);
     });
 
     test('marks a track saved when it exists only in a playlist', () => {

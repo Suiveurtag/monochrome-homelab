@@ -3406,6 +3406,16 @@ export const sleepTimerSettings = {
     setFadeEnabled(enabled) {
         localStorage.setItem(this.FADE_KEY, String(enabled));
     },
+
+    NIGHTFALL_KEY: 'sleep-timer-nightfall',
+
+    isNightfallEnabled() {
+        return localStorage.getItem(this.NIGHTFALL_KEY) !== 'false';
+    },
+
+    setNightfallEnabled(enabled) {
+        localStorage.setItem(this.NIGHTFALL_KEY, String(enabled));
+    },
 };
 
 export { keyboardShortcuts } from './keyboard-shortcuts.js';

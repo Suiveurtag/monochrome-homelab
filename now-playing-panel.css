@@ -738,8 +738,10 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     transform: translateX(0) scale(1);
 }
 
-.now-playing-panel-save.active {
-    color: #1ed760;
+/* Panel icons are white over the artwork; the saved disc follows them instead of the theme. */
+.now-playing-panel-save.track-save-btn {
+    --track-save-accent: #fff;
+    --track-save-ink: #0a0a0a;
 }
 
 .now-playing-panel-card {
