@@ -627,6 +627,27 @@ export const fullscreenCoverNoRoundSettings = {
     },
 };
 
+export const popoverBackdropBlurSettings = {
+    STORAGE_KEY: 'popover-backdrop-blur',
+
+    isEnabled() {
+        try {
+            return localStorage.getItem(this.STORAGE_KEY) === 'true';
+        } catch {
+            return false;
+        }
+    },
+
+    setEnabled(enabled) {
+        localStorage.setItem(this.STORAGE_KEY, enabled ? 'true' : 'false');
+        this.apply();
+    },
+
+    apply() {
+        document.documentElement.classList.toggle('popover-backdrop-blur', this.isEnabled());
+    },
+};
+
 export const fullscreenCoverVanillaTiltSettings = {
     STORAGE_KEY: 'fullscreen-cover-vanilla-tilt',
 

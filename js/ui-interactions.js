@@ -2,8 +2,10 @@
 import { db } from './db.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { showNotification } from './downloads.js';
+import { popoverBackdropBlurSettings } from './storage.js';
 
 export function initializeUIInteractions(player, _api, ui) {
+    popoverBackdropBlurSettings.apply();
     const sidebar = document.querySelector('.sidebar');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
     const hamburgerBtn = document.getElementById('hamburger-btn');

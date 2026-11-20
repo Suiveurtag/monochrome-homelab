@@ -86,6 +86,7 @@
         <link rel="stylesheet" href="/social.css" />
         <link rel="stylesheet" href="/soggy-easter-egg.css" />
         <link rel="stylesheet" href="/metallic-logo-easter-egg.css" />
+        <link rel="stylesheet" href="/loop-vortex.css" />
         <link rel="stylesheet" href="/sleep-nightfall.css" />
         <link rel="stylesheet" href="/admin-debug.css" />
     </head>
@@ -4227,6 +4228,18 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="info">
+                                        <span class="label">Blur Behind Quality & Version Panels</span>
+                                        <span class="description"
+                                            >Blur the page behind the playback quality and version pickers</span
+                                        >
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="popover-backdrop-blur-toggle" />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="info">
                                         <span class="label">No Round Album Cover</span>
                                         <span class="description">Do not round the album cover in fullscreen view</span>
                                     </div>
@@ -7536,7 +7549,7 @@
                             <svg class="sleep-timer-ring" viewBox="0 0 36 36" aria-hidden="true">
                                 <circle class="sleep-ring-track" cx="18" cy="18" r="16.5" />
                                 <circle class="sleep-ring-fill" cx="18" cy="18" r="16.5" pathLength="100" />
-                                <g class="sleep-ring-hand"><circle class="sleep-ring-tip" cx="18" cy="1.5" r="2.4" /></g>
+                                <g class="sleep-ring-hand"><circle class="sleep-ring-tip" cx="18" cy="1.5" r="3.4" /></g>
                             </svg>
                         </button>
                         <button
@@ -7569,7 +7582,7 @@
                             <svg class="sleep-timer-ring" viewBox="0 0 36 36" aria-hidden="true">
                                 <circle class="sleep-ring-track" cx="18" cy="18" r="16.5" />
                                 <circle class="sleep-ring-fill" cx="18" cy="18" r="16.5" pathLength="100" />
-                                <g class="sleep-ring-hand"><circle class="sleep-ring-tip" cx="18" cy="1.5" r="2.4" /></g>
+                                <g class="sleep-ring-hand"><circle class="sleep-ring-tip" cx="18" cy="1.5" r="3.4" /></g>
                             </svg>
                         </button>
                         <button id="queue-btn" data-player-action="queue" title="Queue" aria-label="Open queue">

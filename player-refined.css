@@ -1157,8 +1157,8 @@
     backdrop-filter: blur(4px);
 }
 
-/* Trial, 2026-11-19: no background blur behind the version panel. Delete this rule to bring it back. */
-.track-version-backdrop.is-open {
+/* The page blur behind the quality and version panels is opt-in (Settings > Appearance). */
+html:not(.popover-backdrop-blur) .quality-floating-backdrop.is-open {
     backdrop-filter: none;
 }
 
@@ -2121,9 +2121,10 @@
 }
 
 .sleep-ring-tip {
-    fill: currentcolor;
-    stroke: var(--background);
-    stroke-width: 1.2;
+    fill: var(--foreground);
+    stroke: var(--active-highlight);
+    stroke-width: 1.4;
+    filter: drop-shadow(0 0 2px var(--active-highlight));
 }
 
 .now-playing-bar .sleep-timer-button.is-sleep-active .sleep-ring-fill {

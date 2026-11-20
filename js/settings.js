@@ -40,6 +40,7 @@ import {
     preferDolbyAtmosSettings,
     binauralDspSettings,
     fullscreenCoverNoRoundSettings,
+    popoverBackdropBlurSettings,
     fullscreenCoverVanillaTiltSettings,
     fullscreenCoverTiltDistanceSettings,
     fullscreenCoverTiltSpeedSettings,
@@ -5859,6 +5860,15 @@ export async function initializeSettings(scrobbler, player, api, ui) {
                 // Reset colors immediately when disabled
                 window.dispatchEvent(new CustomEvent('reset-dynamic-color'));
             }
+        });
+    }
+
+    // Popover Backdrop Blur Toggle
+    const popoverBackdropBlurToggle = document.getElementById('popover-backdrop-blur-toggle');
+    if (popoverBackdropBlurToggle) {
+        popoverBackdropBlurToggle.checked = popoverBackdropBlurSettings.isEnabled();
+        popoverBackdropBlurToggle.addEventListener('change', (e) => {
+            popoverBackdropBlurSettings.setEnabled(e.target.checked);
         });
     }
 
