@@ -291,5 +291,12 @@
         "reason": "Claude triage: DESIGN.md type ramp is scoped to Social/Admin; the sleep nightfall scene is a one-off full-screen moment with its own fluid title size"
       }
     ]
+  },
+  "hook": {
+    "enabled": false,
+    "limits": {
+      "maxFindings": 5,
+      "maxChars": 8000
+    }
   }
 }
