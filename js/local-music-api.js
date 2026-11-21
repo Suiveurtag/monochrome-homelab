@@ -4,6 +4,11 @@ import { db } from './db.js';
 import { getSelfHostedStream, listSelfHostedTracks } from './selfhost-server-api.js';
 import { isVideoArtwork } from './animated-artwork.js';
 import { getTrackDisplayAlbum, hydrateTrackVersionDisplayMetadata } from './track-versions.js';
+import { buildSearchIndex, popularTracks, searchLibrary } from './search-engine.js';
+import { getGlobalStreamCount, loadAllStreamCounts } from './listening-sync.js';
+
+// Live suggestions query on every keystroke: keep the catalogue index warm instead of refetching it.
+const SEARCH_INDEX_TTL = 45_000;
 
 const FALLBACK_COVER = '/assets/appicon.png';
 
@@ -98,6 +103,16 @@ export function mergeServerTrackWithLocalMetadata(track, local) {
 export class LocalMusicAPI {
     constructor(settings) {
         this.settings = settings;
+        this.searchIndex = null;
+        this.searchIndexAt = 0;
+        this.searchIndexPending = null;
+        this.searchIndexGeneration = 0;
+        if (typeof window !== 'undefined') {
+            const invalidate = () => this.invalidateSearchIndex();
+            window.addEventListener('local-library-updated', invalidate);
+            window.addEventListener('library-changed', invalidate);
+            window.addEventListener('playlist-tracks-changed', invalidate);
+        }
     }
 
     async ensureLocalCache() {
@@ -227,8 +242,10 @@ export class LocalMusicAPI {
         );
     }
 
-    async getAlbums() {
-        const tracks = (await this.getTracks()).filter((track) => !track.hideFromArtistPage && track.album);
+    async getAlbums(allTracks) {
+        const tracks = (allTracks || (await this.getTracks())).filter(
+            (track) => !track.hideFromArtistPage && track.album
+        );
         const customAlbums = await db.getLocalAlbums().catch(() => []);
         const grouped = new Map();
         for (const track of tracks) {
@@ -246,8 +263,8 @@ export class LocalMusicAPI {
             .sort((a, b) => a.title.localeCompare(b.title));
     }
 
-    async getArtists() {
-        const tracks = await this.getTracks();
+    async getArtists(allTracks) {
+        const tracks = allTracks || (await this.getTracks());
         const customArtists = await db.getLocalArtists().catch(() => []);
         const grouped = new Map();
         for (const track of tracks) {
@@ -279,31 +296,63 @@ export class LocalMusicAPI {
         }));
     }
 
-    async search(query) {
-        const q = normalizeText(query);
-        const [tracks, albums, artists, playlists] = await Promise.all([
-            this.getTracks(),
-            this.getAlbums(),
-            this.getArtists(),
+    async buildSearchIndex() {
+        const generation = this.searchIndexGeneration;
+        const tracks = await this.getTracks();
+        const [albums, artists, playlists] = await Promise.all([
+            this.getAlbums(tracks),
+            this.getArtists(tracks),
             this.getUserPlaylists(),
+            loadAllStreamCounts().catch((error) => console.warn('[Search] Stream counts unavailable:', error)),
         ]);
+        this.searchIndex = buildSearchIndex({ tracks, albums, artists, playlists });
+        // A library change during the build leaves the result stale, so the next query rebuilds.
+        this.searchIndexAt = generation === this.searchIndexGeneration ? Date.now() : 0;
+        return this.searchIndex;
+    }
 
-        const matches = (...parts) => normalizeText(parts.filter(Boolean).join(' ')).includes(q);
-        const limit = (items, predicate, count = 24) => items.filter(predicate).slice(0, count);
+    /** Cached index; a stale one is served while a fresh one builds in the background. */
+    async getSearchIndex({ fresh = false } = {}) {
+        const stale = !this.searchIndex || Date.now() - this.searchIndexAt > SEARCH_INDEX_TTL;
+        if (stale && !this.searchIndexPending) {
+            this.searchIndexPending = this.buildSearchIndex().finally(() => (this.searchIndexPending = null));
+            // A background rebuild failing keeps the previous index; only awaiting callers see the error.
+            this.searchIndexPending.catch((error) => console.warn('[Search] Index rebuild failed:', error));
+        }
+        if (this.searchIndex && !fresh) return this.searchIndex;
+        return this.searchIndexPending || this.searchIndex;
+    }
 
+    invalidateSearchIndex() {
+        this.searchIndexGeneration++;
+        this.searchIndexAt = 0;
+    }
+
+    async search(query) {
+        const index = await this.getSearchIndex({ fresh: true });
+        const results = searchLibrary(index, query, {
+            streams: getGlobalStreamCount,
+            limits: { tracks: 50, albums: 24, artists: 24, playlists: 24 },
+        });
+        const items = (list) => ({ items: list.map((result) => result.item) });
         return {
-            tracks: {
-                items: limit(tracks, (track) => matches(track.title, getArtistName(track), getAlbumTitle(track)), 50),
-            },
+            tracks: items(results.tracks),
             videos: { items: [] },
-            artists: { items: limit(artists, (artist) => matches(artist.name), 24) },
-            albums: {
-                items: limit(albums, (album) => matches(album.title, album.artist?.name), 24),
-            },
-            playlists: {
-                items: limit(playlists, (playlist) => matches(playlist.title, playlist.name), 24),
-            },
+            artists: items(results.artists),
+            albums: items(results.albums),
+            playlists: items(results.playlists),
         };
+    }
+
+    /** Ranked matches with match metadata, for the live suggestion panel. */
+    async suggest(query, limits = { tracks: 4, albums: 3, artists: 3, playlists: 0 }) {
+        const index = await this.getSearchIndex();
+        return searchLibrary(index, query, { streams: getGlobalStreamCount, limits });
+    }
+
+    async getPopularTracks(limit = 5) {
+        const index = await this.getSearchIndex();
+        return popularTracks(index, getGlobalStreamCount, limit);
     }
 
     async searchTracks(query) {

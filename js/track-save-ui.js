@@ -1,17 +1,17 @@
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-// The plus and the check share one command structure, so CSS can morph `d` between them: the
-// plus's vertical bar tips over into the check's long stroke, the horizontal bar folds into the
-// short one. Both strokes of the check end on the same vertex, where their round caps meet.
 const GLYPH_PLUS = 'M8 5.1L8 10.9M5.1 8L10.9 8';
-const GLYPH_CHECK = 'M11.3 5.75L7.05 10.5M4.75 8.25L7.05 10.5';
+// Drawn left to right in one stroke (short leg, then long), so the check can be drawn in.
+const GLYPH_CHECK = 'M4.75 8.25L7.05 10.5L11.3 5.75';
 
-// Spectrum sweep on save: bars around the disc, a few tall peaks among shorter ones, rotated by a
-// random step each time so two saves never look the same.
-const SPECTRUM = [1, 0.5, 0.78, 0.42, 0.92, 0.58, 0.84, 0.46, 0.96, 0.54, 0.72, 0.62];
-const SPECTRUM_INNER = 9.2; // icon units; the disc ends at 7.25
-const SPECTRUM_SPAN = 44; // overlay viewBox width, icon units
-const SPECTRUM_LIFETIME = 900;
+// Burst on save: a halo leaves the disc edge while sparks fly out, mostly over the top and the
+// sides. A few are four-point twinkles, the rest square flecks in accent, mint and white.
+const BURST_SPAN = 44; // overlay viewBox width, icon units; the disc ends at 7.25
+const BURST_LIFETIME = 900;
+const BURST_PARTICLES = 14;
+const BURST_TONES = ['accent', 'accent', 'mint', 'mint', 'white'];
+const ENTER_DURATION = 200; // ring tint pass (mint, then accent)
+const LEAVE_DURATION = 340; // check fade + hold + ring hollowing back out
 
 // A save button the user just pressed, so only that one bursts (a liked track can be on screen in
 // a list, the player bar and fullscreen at once).
@@ -45,7 +45,7 @@ function isOnTop(button, x, y) {
     return !hit || hit === button || button.contains(hit);
 }
 
-function spawnSpectrum(button) {
+function spawnBurst(button) {
     if (!button.isConnected) return;
     const icon = button.querySelector('.track-save-icon') || button;
     const rect = icon.getBoundingClientRect();
@@ -54,35 +54,58 @@ function spawnSpectrum(button) {
     const cy = rect.top + rect.height / 2;
     if (!isOnTop(button, cx, cy)) return;
 
-    const size = (rect.width / 16) * SPECTRUM_SPAN;
-    const half = SPECTRUM_SPAN / 2;
+    const size = (rect.width / 16) * BURST_SPAN;
+    const half = BURST_SPAN / 2;
     const svg = document.createElementNS(SVG_NS, 'svg');
-    svg.setAttribute('class', 'track-save-spectrum');
-    svg.setAttribute('viewBox', `${-half} ${-half} ${SPECTRUM_SPAN} ${SPECTRUM_SPAN}`);
+    svg.setAttribute('class', 'track-save-burst');
+    svg.setAttribute('viewBox', `${-half} ${-half} ${BURST_SPAN} ${BURST_SPAN}`);
     svg.setAttribute('aria-hidden', 'true');
     svg.style.left = `${cx - size / 2}px`;
     svg.style.top = `${cy - size / 2}px`;
     svg.style.width = `${size}px`;
     svg.style.height = `${size}px`;
     const accent = getComputedStyle(button).getPropertyValue('--track-save-accent').trim();
-    if (accent) svg.style.color = accent;
+    if (accent) svg.style.setProperty('--track-save-accent', accent);
 
-    const shift = Math.floor(Math.random() * SPECTRUM.length);
-    SPECTRUM.forEach((_, index) => {
-        const level = SPECTRUM[(index + shift) % SPECTRUM.length] * (0.85 + Math.random() * 0.3);
-        const angle = (index / SPECTRUM.length) * Math.PI * 2 - Math.PI / 2;
-        const outer = SPECTRUM_INNER + 0.6 + level * 3;
-        const bar = document.createElementNS(SVG_NS, 'path');
-        const point = (radius) => `${(Math.cos(angle) * radius).toFixed(2)} ${(Math.sin(angle) * radius).toFixed(2)}`;
-        bar.setAttribute('d', `M${point(SPECTRUM_INNER)}L${point(outer)}`);
-        bar.setAttribute('pathLength', '1');
-        // Clockwise sweep from twelve o'clock.
-        bar.style.setProperty('--i', String(index));
-        svg.append(bar);
-    });
+    const halo = document.createElementNS(SVG_NS, 'circle');
+    halo.setAttribute('r', '7.9');
+    halo.setAttribute('class', 'track-save-burst-halo');
+    svg.append(halo);
+
+    const twinkles = new Set([0, 5, 10].map((n) => (n + Math.floor(Math.random() * 5)) % BURST_PARTICLES));
+    for (let index = 0; index < BURST_PARTICLES; index++) {
+        // Spread from just below the left side, over the top, to just below the right side.
+        const slot = (index + 0.2 + Math.random() * 0.6) / BURST_PARTICLES;
+        const angle = (-200 + slot * 220) * (Math.PI / 180);
+        const from = 7.6 + Math.random() * 0.8;
+        const to = 9.6 + Math.random() * 6.2;
+        const far = to + 0.8 + Math.random() * 1.4; // keeps creeping outward while it lingers
+        const spark = document.createElementNS(SVG_NS, 'path');
+        const twinkle = twinkles.has(index);
+        const s = twinkle ? 1.1 + Math.random() * 0.4 : 0.4 + Math.random() * 0.3;
+        spark.setAttribute(
+            'd',
+            twinkle
+                ? `M0 ${-s}L${s * 0.28} ${-s * 0.28}L${s} 0L${s * 0.28} ${s * 0.28}L0 ${s}L${-s * 0.28} ${s * 0.28}L${-s} 0L${-s * 0.28} ${-s * 0.28}Z`
+                : `M${-s} ${-s}h${s * 2}v${s * 2}h${-s * 2}Z`
+        );
+        spark.setAttribute(
+            'class',
+            `track-save-burst-spark track-save-burst-spark--${twinkle ? 'white' : BURST_TONES[Math.floor(Math.random() * BURST_TONES.length)]}`
+        );
+        spark.style.setProperty('--x0', `${(Math.cos(angle) * from).toFixed(2)}px`);
+        spark.style.setProperty('--y0', `${(Math.sin(angle) * from).toFixed(2)}px`);
+        spark.style.setProperty('--x1', `${(Math.cos(angle) * to).toFixed(2)}px`);
+        spark.style.setProperty('--y1', `${(Math.sin(angle) * to).toFixed(2)}px`);
+        spark.style.setProperty('--x2', `${(Math.cos(angle) * far).toFixed(2)}px`);
+        spark.style.setProperty('--y2', `${(Math.sin(angle) * far - 0.6 - Math.random() * 0.9).toFixed(2)}px`);
+        spark.style.setProperty('--delay', `${Math.round(Math.random() * 45)}ms`);
+        spark.style.setProperty('--spin', `${Math.round(Math.random() * 90 - 45)}deg`);
+        svg.append(spark);
+    }
 
     document.body.append(svg);
-    window.setTimeout(() => svg.remove(), SPECTRUM_LIFETIME);
+    window.setTimeout(() => svg.remove(), BURST_LIFETIME);
 }
 
 // Liked a track that was already saved in a playlist: the state does not change, so the disc
@@ -125,22 +148,40 @@ export function getTrackSaveStateFromSnapshot(snapshot, type, id) {
     };
 }
 
-// One SVG for both states: the ring is the unsaved outline, the disc fills over it (its edge sits
-// exactly on the ring's outer edge, so the silhouette never changes size), and the glyph morphs.
+// One SVG for both states: the ring is the unsaved outline and thickens inward until it is a
+// solid disc (its outer edge never moves), the plus shrinks to nothing inside it, then the check
+// is drawn on top.
 export function createTrackSaveIconHTML(saved = false, size = 22) {
     const s = Number(size) || 22;
-    return `<svg viewBox="0 0 16 16" width="${s}" height="${s}" class="track-save-icon${saved ? ' is-saved' : ''}" fill="none" aria-hidden="true" focusable="false"><g class="track-save-body"><circle cx="8" cy="8" r="6.6" class="track-save-ring" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="7.25" class="track-save-disc" fill="currentColor"/></g><path d="${saved ? GLYPH_CHECK : GLYPH_PLUS}" class="track-save-glyph" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+    return `<svg viewBox="0 0 16 16" width="${s}" height="${s}" class="track-save-icon${saved ? ' is-saved' : ''}" fill="none" aria-hidden="true" focusable="false"><g class="track-save-body"><circle cx="8" cy="8" r="6.6" class="track-save-ring" stroke="currentColor" stroke-width="1.3"/></g><path d="${GLYPH_PLUS}" class="track-save-plus" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="${GLYPH_CHECK}" class="track-save-check" pathLength="1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
 
+const phaseTimers = new WeakMap();
+
 // Drives an icon built by createTrackSaveIconHTML. Without `animate` (renders, track changes) it
-// jumps straight to its state; with it, the ring fills and the plus morphs into the check.
+// jumps straight to its state; with it, saving fills the ring and draws the check (--entering adds
+// the mint tint pass), unsaving fades the check and hollows the disc back out from the centre
+// (--leaving holds the delays). Both are transient so a re-render never replays them.
 export function setTrackSaveIconState(icon, saved, { animate = false } = {}) {
     if (!icon) return;
     const motion = animate && !isReducedMotion();
+    const wasSaved = icon.classList.contains('is-saved');
+    const entering = motion && !wasSaved && saved;
+    const leaving = motion && wasSaved && !saved;
+    window.clearTimeout(phaseTimers.get(icon));
+    icon.classList.toggle('track-save-icon--entering', entering);
+    icon.classList.toggle('track-save-icon--leaving', leaving);
+    if (entering || leaving) {
+        phaseTimers.set(
+            icon,
+            window.setTimeout(
+                () => icon.classList.remove('track-save-icon--entering', 'track-save-icon--leaving'),
+                entering ? ENTER_DURATION : LEAVE_DURATION
+            )
+        );
+    }
     if (!motion) icon.classList.add('track-save-icon--instant');
     icon.classList.toggle('is-saved', saved);
-    // The attribute is the fallback where CSS `d` is unsupported (Safari): the glyph swaps there.
-    icon.querySelector('.track-save-glyph')?.setAttribute('d', saved ? GLYPH_CHECK : GLYPH_PLUS);
     if (!motion) {
         void icon.getBoundingClientRect();
         icon.classList.remove('track-save-icon--instant');
@@ -155,8 +196,8 @@ export function applyTrackSaveStateToButton(button, state, { animate = false } =
     const motion = animate && !isReducedMotion();
 
     let icon = button.querySelector(':scope > .track-save-icon');
-    if (!icon?.querySelector('.track-save-glyph')) {
-        button.innerHTML = createTrackSaveIconHTML(willBeSaved);
+    if (!icon?.querySelector('.track-save-check')) {
+        button.innerHTML = createTrackSaveIconHTML(wasSaved); // built in the old state so setState animates
         icon = button.firstElementChild;
     }
 
@@ -179,10 +220,10 @@ export function applyTrackSaveStateToButton(button, state, { animate = false } =
     if (motion) {
         const pressed = takeRecentPress(button);
         if (!wasSaved && willBeSaved) {
-            if (pressed) spawnSpectrum(button);
+            if (pressed) spawnBurst(button);
         } else if (wasSaved && willBeSaved && !wasFavorite && state.isFavorite) {
             thump(icon);
-            if (pressed) spawnSpectrum(button);
+            if (pressed) spawnBurst(button);
         }
     }
 

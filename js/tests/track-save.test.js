@@ -26,7 +26,7 @@ describe('track save button', () => {
         expect(button.getAttribute('aria-pressed')).toBe('false');
         const icon = button.querySelector('.track-save-icon');
         expect(icon.classList.contains('is-saved')).toBe(false);
-        expect(icon.querySelector('.track-save-glyph').getAttribute('d')).toBe('M8 5.1L8 10.9M5.1 8L10.9 8');
+        expect(icon.querySelector('.track-save-plus').getAttribute('d')).toBe('M8 5.1L8 10.9M5.1 8L10.9 8');
         expect(button.title).toContain('Add to Liked Songs');
     });
 
@@ -42,9 +42,7 @@ describe('track save button', () => {
         expect(button.getAttribute('aria-pressed')).toBe('false');
         const icon = button.querySelector('.track-save-icon');
         expect(icon.classList.contains('is-saved')).toBe(true);
-        expect(icon.querySelector('.track-save-glyph').getAttribute('d')).toBe(
-            'M11.3 5.75L7.05 10.5M4.75 8.25L7.05 10.5'
-        );
+        expect(icon.querySelector('.track-save-check').getAttribute('d')).toBe('M4.75 8.25L7.05 10.5L11.3 5.75');
         expect(button.title).toContain('Saved in a playlist');
     });
 
@@ -61,7 +59,7 @@ describe('track save button', () => {
         expect(button.title).toContain('Right-click to remove');
     });
 
-    test('keeps one icon across state changes so the plus can morph into the check', () => {
+    test('keeps one icon across state changes so the ring can fill and the check draw in', () => {
         const state = { isFavorite: false, isSaved: false, playlistIds: [] };
         applyTrackSaveStateToButton(button, state);
         const icon = button.querySelector('.track-save-icon');

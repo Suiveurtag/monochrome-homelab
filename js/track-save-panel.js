@@ -237,7 +237,13 @@ export function setupTrackSavePanel({ player, api, ui, handleTrackAction }) {
         if (status) status.textContent = statusText();
     };
 
+    // The panel keeps the height it opened with, so filtering the list never shrinks it.
+    const lockHeight = () => {
+        panel.style.height = `${panel.offsetHeight}px`;
+    };
+
     const position = () => {
+        panel.style.height = '';
         const anchor = rectOf(trigger);
         if (isSheet()) {
             panel.style.left = '0px';
@@ -245,6 +251,7 @@ export function setupTrackSavePanel({ player, api, ui, handleTrackAction }) {
             panel.style.width = '';
             panel.style.maxHeight = '';
             panel.dataset.placement = 'sheet';
+            lockHeight();
             return true;
         }
         if (!anchor) return false;
@@ -260,9 +267,8 @@ export function setupTrackSavePanel({ player, api, ui, handleTrackAction }) {
         panel.style.left = `${left}px`;
         panel.style.top = `${top}px`;
         panel.dataset.placement = above ? 'above' : 'below';
-        // Grow out of the button that opened it.
-        const originX = Math.min(Math.max(anchor.left + anchor.width / 2 - left, 0), width);
-        panel.style.transformOrigin = `${originX}px ${above ? '100%' : '0%'}`;
+        panel.style.transformOrigin = 'top left';
+        lockHeight();
         return true;
     };
 
@@ -291,19 +297,79 @@ export function setupTrackSavePanel({ player, api, ui, handleTrackAction }) {
         });
     };
 
+    // The floating panel grows out of its button as a capsule, like the player's quality and sleep panels.
+    const morphFrames = () => {
+        const panelRect = panel.getBoundingClientRect();
+        const rect = rectOf(trigger) ?? {
+            left: panelRect.left + panelRect.width / 2,
+            top: panelRect.top + panelRect.height,
+            width: 1,
+            height: 1,
+        };
+        return {
+            collapsed: {
+                opacity: 0,
+                borderRadius: '999px',
+                clipPath: 'inset(0 round 999px)',
+                transform: `translate(${rect.left - panelRect.left}px, ${rect.top - panelRect.top}px) scale(${Math.max(
+                    0.08,
+                    rect.width / panelRect.width
+                )}, ${Math.max(0.06, rect.height / panelRect.height)})`,
+            },
+            expanded: {
+                opacity: 1,
+                borderRadius: '14px',
+                clipPath: 'inset(0 round 14px)',
+                transform: 'translate(0, 0) scale(1)',
+            },
+        };
+    };
+
+    // Header, search and footer arrive after the shape has started opening.
+    const fadeChrome = () => {
+        panel.querySelectorAll('.track-save-panel-head, .track-save-panel-foot').forEach((el, index) => {
+            el.animate(
+                [
+                    { opacity: 0, transform: 'translateY(6px)' },
+                    { opacity: 1, transform: 'none' },
+                ],
+                { duration: 260, delay: index * 30, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'backwards' }
+            );
+        });
+    };
+
+    // The only motion the field has: it unfurls from its lens, a round disc first, then the pill stretching out.
+    const unfurlSearch = () => {
+        const search = panel.querySelector('.track-save-search');
+        if (!search) return;
+        const closed = Math.max(0, search.offsetWidth - search.offsetHeight);
+        search.animate(
+            [{ clipPath: `inset(0 ${closed}px 0 0 round 999px)` }, { clipPath: 'inset(0 0 0 0 round 999px)' }],
+            { duration: 440, delay: 90, easing: EASE_OUT, fill: 'backwards' }
+        );
+        search.querySelector('input')?.animate([{ opacity: 0 }, { opacity: 1 }], {
+            duration: 200,
+            delay: 220,
+            easing: 'ease',
+            fill: 'backwards',
+        });
+    };
+
     const playOpen = () => {
         motion?.cancel();
         if (reduceMotion()) return;
         const sheet = panel.dataset.placement === 'sheet';
-        motion = panel.animate(
-            sheet
-                ? [SHEET_HIDDEN, SHEET_SHOWN]
-                : [
-                      { opacity: 0, transform: 'scale(0.96)' },
-                      { opacity: 1, transform: 'scale(1)' },
-                  ],
-            { duration: sheet ? 380 : 200, easing: sheet ? EASE_DRAWER : EASE_OUT }
-        );
+        if (sheet) {
+            motion = panel.animate([SHEET_HIDDEN, SHEET_SHOWN], { duration: 380, easing: EASE_DRAWER });
+        } else {
+            const { collapsed, expanded } = morphFrames();
+            motion = panel.animate([collapsed, expanded], {
+                duration: 380,
+                easing: 'cubic-bezier(0.2, 0.9, 0.24, 1.04)',
+            });
+            fadeChrome();
+        }
+        unfurlSearch();
         staggerRows();
     };
 
@@ -337,15 +403,27 @@ export function setupTrackSavePanel({ player, api, ui, handleTrackAction }) {
         }
         panel.classList.add('is-closing');
         const sheet = panel.dataset.placement === 'sheet';
-        motion = panel.animate(
-            sheet
-                ? [SHEET_SHOWN, SHEET_HIDDEN]
-                : [
-                      { opacity: 1, transform: 'scale(1)' },
-                      { opacity: 0, transform: 'scale(0.97)' },
-                  ],
-            { duration: sheet ? 240 : 140, easing: sheet ? EASE_DRAWER : EASE_OUT, fill: 'forwards' }
-        );
+        if (sheet) {
+            motion = panel.animate([SHEET_SHOWN, SHEET_HIDDEN], {
+                duration: 240,
+                easing: EASE_DRAWER,
+                fill: 'forwards',
+            });
+        } else {
+            const computed = getComputedStyle(panel);
+            const { collapsed, expanded } = morphFrames();
+            const from = {
+                opacity: Number.parseFloat(computed.opacity) || 1,
+                borderRadius: expanded.borderRadius,
+                clipPath: expanded.clipPath,
+                transform: computed.transform === 'none' ? expanded.transform : computed.transform,
+            };
+            motion = panel.animate([from, collapsed], {
+                duration: 200,
+                easing: 'cubic-bezier(0.4, 0, 1, 1)',
+                fill: 'forwards',
+            });
+        }
         void motion.finished.then(finish).catch(() => {});
     };
 
