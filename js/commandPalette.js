@@ -63,7 +63,6 @@ const SHORTCUT_ACTIONS = {
     'play-vol-down': 'volumeDown',
     'like-current': 'like',
     'queue-open': 'queue',
-    'lyrics-toggle': 'lyrics',
     'fullscreen-open': 'fullscreen',
 };
 
@@ -356,17 +355,6 @@ class CommandPalette {
             },
 
             {
-                id: 'lyrics-toggle',
-                group: 'View',
-                icon: 'text',
-                label: 'Toggle Lyrics',
-                keywords: ['lyrics', 'words', 'text', 'karaoke'],
-                shortcut: 'L',
-                action: () => {
-                    document.getElementById('toggle-lyrics-btn')?.click();
-                },
-            },
-            {
                 id: 'fullscreen-open',
                 group: 'View',
                 icon: 'maximize',
@@ -436,7 +424,7 @@ class CommandPalette {
                 group: 'Theme',
                 icon: 'moon',
                 label: 'Theme: Monochrome',
-                keywords: ['theme', 'monochrome', 'black', 'dark', 'amoled'],
+                keywords: ['theme', 'monochrome', 'black', 'dark'],
                 action: () => this.setTheme('monochrome'),
             },
             {
@@ -448,14 +436,6 @@ class CommandPalette {
                 action: () => this.setTheme('cover'),
             },
             {
-                id: 'theme-dark',
-                group: 'Theme',
-                icon: 'moon',
-                label: 'Theme: Dark',
-                keywords: ['theme', 'dark'],
-                action: () => this.setTheme('dark'),
-            },
-            {
                 id: 'theme-white',
                 group: 'Theme',
                 icon: 'sun',
@@ -464,60 +444,12 @@ class CommandPalette {
                 action: () => this.setTheme('white'),
             },
             {
-                id: 'theme-ocean',
+                id: 'theme-amoled',
                 group: 'Theme',
-                icon: 'palette',
-                label: 'Theme: Ocean',
-                keywords: ['theme', 'ocean', 'blue', 'sea'],
-                action: () => this.setTheme('ocean'),
-            },
-            {
-                id: 'theme-purple',
-                group: 'Theme',
-                icon: 'palette',
-                label: 'Theme: Purple',
-                keywords: ['theme', 'purple', 'violet'],
-                action: () => this.setTheme('purple'),
-            },
-            {
-                id: 'theme-forest',
-                group: 'Theme',
-                icon: 'palette',
-                label: 'Theme: Forest',
-                keywords: ['theme', 'forest', 'green', 'nature'],
-                action: () => this.setTheme('forest'),
-            },
-            {
-                id: 'theme-mocha',
-                group: 'Theme',
-                icon: 'palette',
-                label: 'Theme: Mocha',
-                keywords: ['theme', 'mocha', 'catppuccin', 'brown', 'warm'],
-                action: () => this.setTheme('mocha'),
-            },
-            {
-                id: 'theme-macchiato',
-                group: 'Theme',
-                icon: 'palette',
-                label: 'Theme: Macchiato',
-                keywords: ['theme', 'macchiato', 'catppuccin'],
-                action: () => this.setTheme('machiatto'),
-            },
-            {
-                id: 'theme-frappe',
-                group: 'Theme',
-                icon: 'palette',
-                label: 'Theme: Frapp\u00e9',
-                keywords: ['theme', 'frappe', 'catppuccin'],
-                action: () => this.setTheme('frappe'),
-            },
-            {
-                id: 'theme-latte',
-                group: 'Theme',
-                icon: 'palette',
-                label: 'Theme: Latte',
-                keywords: ['theme', 'latte', 'catppuccin', 'light'],
-                action: () => this.setTheme('latte'),
+                icon: 'moon',
+                label: 'Theme: AMOLED',
+                keywords: ['theme', 'amoled', 'oled', 'black', 'pure', 'dark'],
+                action: () => this.setTheme('amoled'),
             },
             {
                 id: 'theme-store',
@@ -825,7 +757,6 @@ class CommandPalette {
                     'play-prev',
                     'play-shuffle',
                     'queue-open',
-                    'lyrics-toggle',
                     'fullscreen-open',
                     'sys-search-setting',
                 ];
