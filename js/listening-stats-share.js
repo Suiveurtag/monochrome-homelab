@@ -97,6 +97,12 @@ export function buildShareModel({ data, period, anchor, label, colors, user }) {
             [s.tracks, 'tracks'],
         ].map(([value, noun]) => [n.format(value), value === 1 ? noun.slice(0, -1) : noun]),
         hours: data.hours || Array(24).fill(0),
+        // Text-only top fives, for styles that list rankings instead of tiling artwork.
+        title: label,
+        ranked: {
+            artists: data.top.artists.slice(0, 5).map((artist) => artist.name),
+            tracks: data.top.tracks.slice(0, 5).map((track) => track.title),
+        },
         handle: user?.username ? `@${user.username}` : user?.name || '',
         // Edition props: the VHS counter and the ticket serial come from the period itself.
         timecode: `${Math.floor(clock / 3600)}:${String(Math.floor((clock % 3600) / 60)).padStart(2, '0')}:${String(clock % 60).padStart(2, '0')}`,
@@ -406,6 +412,13 @@ export async function drawShareCard(canvas, model, picks) {
     ctx.save();
     theme.paint(ctx, width, height);
     ctx.restore();
+    // A style with its own composition (Present Red) lays out the whole card, footer included.
+    if (theme.layout) {
+        ctx.save();
+        theme.layout(ctx, { width, height, model, picks, art: { artists, tracks } });
+        ctx.restore();
+        return;
+    }
     const parts = sections(model, picks, width, theme);
     parts[0].measure(ctx);
     // Sections share the space above the footer; gaps grow first, and only a crowded card scales down.

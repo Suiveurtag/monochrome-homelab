@@ -400,6 +400,7 @@
 }
 
 .stats-recap-number {
+    max-width: 100%;
     margin: 0;
     font-size: 34cqw;
     font-variant-numeric: tabular-nums;
@@ -756,6 +757,11 @@
 .stats-recap-prop .stats-recap-art {
     position: absolute;
     inset: 0;
+}
+
+/* Extra artwork on list slides that only an edition stages; the neutral skin keeps its thumbnails. */
+.stats-recap-cover {
+    display: none;
 }
 
 /* ---------- Motion ---------- */
@@ -1385,6 +1391,515 @@
     animation-play-state: paused !important;
 }
 
+/* ---------- Present Red (monthly edition) ----------
+   Oxblood velvet, salmon extra-condensed type, the period's letters set huge and cropped behind it all,
+   and a band along the bottom, like its share card. The background is the show: every slide re-stages
+   the four letterforms (step-driven transitions that retarget when you tap fast), they keep drifting on
+   their own in between, a warm light wanders across the velvet, and each new slide catches a sheen. */
+
+.stats-ed-present-red {
+    --recap-bg: #5e141b;
+    --recap-ink: #e0b2a6;
+    --recap-strong: #f1d3ca;
+    --recap-muted: rgb(227 188 177 / 78%);
+    --recap-accent: #c99a8f;
+    --recap-accent-2: #f1d3ca;
+    --recap-on-accent: #4a0f15;
+    --recap-surface: rgb(30 0 6 / 30%);
+    --recap-line: rgb(227 188 177 / 24%);
+    --recap-display: archivo, switzer, inter, system-ui, sans-serif;
+    --recap-display-weight: 800;
+    --recap-display-tracking: -0.012em;
+    --recap-enter: pr-rise;
+    --recap-enter-big: pr-type;
+    --recap-ease: cubic-bezier(0.23, 1, 0.32, 1);
+    --recap-art-radius: 0;
+    --recap-chip-radius: 0;
+    --recap-bar-radius: 0;
+    --recap-top-shade: 0%;
+    --recap-grain: 0.13;
+    --pr-move: cubic-bezier(0.77, 0, 0.175, 1);
+    --pr-shadow: 0 4cqw 10cqw rgb(20 0 4 / 50%);
+}
+
+/* Only the 62% width of Archivo is fetched; the stretch is stated so a wider cut never sneaks in. */
+.stats-ed-present-red
+    :is(
+        .stats-recap-title,
+        .stats-recap-number,
+        .stats-recap-unit,
+        .stats-recap-name,
+        .stats-recap-lineup p,
+        .stats-recap-figures dd,
+        .stats-recap-kicker,
+        .stats-recap-chip,
+        .stats-recap-notice-text strong,
+        .stats-recap-unlock-name
+    ),
+.stats-recap-unlock.stats-ed-present-red .stats-recap-unlock-name {
+    font-stretch: 62%;
+}
+
+.stats-ed-present-red .stats-recap-frame :is(.stats-recap-kicker, .stats-recap-chip),
+.stats-ed-present-red .stats-recap-scene i::before {
+    font-family: var(--recap-display) !important;
+}
+
+/* Rankings read like the reference: plain numbers in the body face, the leader in bold. */
+.stats-ed-present-red .stats-recap-frame .stats-recap-list b {
+    font-family: var(--recap-body) !important;
+}
+
+/* The velvet: a raked gradient, darker at the edges. */
+.stats-ed-present-red .stats-recap-scene {
+    background:
+        radial-gradient(130% 75% at 50% 42%, transparent 45%, rgb(30 0 6 / 50%)),
+        linear-gradient(172deg, #4c0e15, #62151d 38%, #6e1a23 62%, #58121a);
+}
+
+/* A warm pool of light wandering under the letterforms. */
+.stats-ed-present-red .stats-recap-scene::before {
+    content: '';
+    position: absolute;
+    inset: -40%;
+    background:
+        radial-gradient(26% 20% at 36% 38%, rgb(168 48 60 / 44%), transparent 70%),
+        radial-gradient(22% 18% at 66% 66%, rgb(150 40 52 / 30%), transparent 70%);
+    animation: pr-light 19s ease-in-out infinite alternate;
+}
+
+/* Four letterforms. Each slide step sends them somewhere new along its own sine path; the shared
+   transition gives the move a camera-like ease-in-out and a small per-layer lag. */
+.stats-ed-present-red .stats-recap-scene i {
+    top: var(--y);
+    left: var(--x);
+    translate: calc(sin(var(--recap-step, 0) * var(--fx) + var(--px)) * 12cqw)
+        calc(cos(var(--recap-step, 0) * var(--fy) + var(--px)) * 7cqh);
+    rotate: calc(var(--r) + sin(var(--recap-step, 0) * var(--fy) + var(--px)) * 10deg);
+    scale: calc(1 + sin(var(--recap-step, 0) * 0.9 + var(--px)) * 0.1);
+    transition:
+        translate 1.9s var(--pr-move) var(--lag),
+        rotate 2.1s var(--pr-move) var(--lag),
+        scale 2.1s var(--pr-move) var(--lag),
+        opacity 1.4s ease-out var(--lag);
+}
+
+@starting-style {
+    .stats-ed-present-red .stats-recap-scene i {
+        opacity: 0;
+        scale: 1.3;
+    }
+}
+
+.stats-ed-present-red .stats-recap-scene i::before {
+    content: var(--g);
+    display: block;
+    color: var(--c);
+    font-size: var(--s);
+    font-stretch: 62%;
+    font-weight: 800;
+    line-height: 0.8;
+    animation: pr-drift var(--t) ease-in-out calc(var(--lag) * -40) infinite alternate;
+}
+
+.stats-ed-present-red .stats-recap-scene i:nth-child(1) {
+    --g: 'O';
+    --x: -34%;
+    --y: -24%;
+    --s: 96cqmax;
+    --r: -14deg;
+    --c: rgb(40 3 9 / 55%);
+    --fx: 1.9;
+    --fy: 1.3;
+    --px: 0.4;
+    --t: 23s;
+    --lag: 0ms;
+}
+
+.stats-ed-present-red .stats-recap-scene i:nth-child(2) {
+    --g: 'S';
+    --x: 26%;
+    --y: 4%;
+    --s: 112cqmax;
+    --r: 11deg;
+    --c: rgb(140 38 48 / 46%);
+    --fx: -1.4;
+    --fy: 2.1;
+    --px: 2.1;
+    --t: 29s;
+    --lag: 90ms;
+}
+
+.stats-ed-present-red .stats-recap-scene i:nth-child(3) {
+    --g: '2';
+    --x: -24%;
+    --y: 40%;
+    --s: 92cqmax;
+    --r: 18deg;
+    --c: rgb(40 3 9 / 46%);
+    --fx: 1.2;
+    --fy: -1.7;
+    --px: 4;
+    --t: 26s;
+    --lag: 160ms;
+}
+
+.stats-ed-present-red .stats-recap-scene i:nth-child(4) {
+    --g: 'C';
+    --x: 40%;
+    --y: 52%;
+    --s: 88cqmax;
+    --r: -9deg;
+    --c: rgb(40 3 9 / 40%);
+    --fx: -2.3;
+    --fy: 1.1;
+    --px: 5.3;
+    --t: 31s;
+    --lag: 230ms;
+}
+
+/* The blurred surround follows the steps but does not drift: re-blurring every frame is costly. */
+.stats-ed-present-red .stats-recap-surround .stats-recap-scene::before,
+.stats-ed-present-red .stats-recap-surround .stats-recap-scene i::before,
+.stats-ed-swatch.stats-ed-present-red .stats-recap-scene i::before {
+    animation-play-state: paused !important;
+}
+
+/* Each new slide catches a sheen across the velvet. */
+.stats-ed-present-red .stats-recap-slide::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: -10% -60%;
+    background: linear-gradient(
+        105deg,
+        transparent 38%,
+        rgb(255 196 180 / 8%) 46%,
+        rgb(255 210 196 / 13%) 50%,
+        transparent 60%
+    );
+    pointer-events: none;
+    transform: translateX(-70%);
+    animation: pr-sheen 1.6s var(--pr-move) 100ms both;
+}
+
+/* The band: Monochrome mark and label on the left, the period on the right. */
+.stats-ed-present-red .stats-recap-frame::before,
+.stats-ed-present-red .stats-recap-frame::after {
+    position: absolute;
+    z-index: 4;
+    bottom: 0;
+    display: flex;
+    box-sizing: border-box;
+    align-items: center;
+    height: calc(7cqh + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    color: var(--recap-on-accent);
+    font: 800 4.9cqw/1 var(--recap-display);
+    font-family: var(--recap-display) !important;
+    font-stretch: 62%;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    pointer-events: none;
+    animation: pr-band 900ms var(--recap-ease) 450ms both;
+}
+
+.stats-ed-present-red .stats-recap-frame::after {
+    content: attr(data-recap-label);
+    right: 0;
+    left: 0;
+    justify-content: flex-end;
+    padding-right: 5cqw;
+    background: var(--recap-accent);
+}
+
+.stats-ed-present-red .stats-recap-frame::before {
+    content: 'Listening stats';
+    z-index: 5;
+    left: 0;
+    padding-left: calc(5cqw + 4.2cqh + 2.6cqw);
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><path fill='%234a0f15' d='M0 0h20v20H0zM20 20h20v20H20z'/><rect x='1.25' y='1.25' width='37.5' height='37.5' fill='none' stroke='%234a0f15' stroke-width='2.5'/></svg>")
+        no-repeat 5cqw calc(50% - env(safe-area-inset-bottom) / 2) / 4.2cqh;
+}
+
+.stats-ed-present-red .stats-recap-slide {
+    gap: 2cqh;
+    padding: 15cqh 7cqw 13cqh;
+}
+
+.stats-ed-present-red .stats-recap-kicker {
+    max-width: none;
+    color: var(--recap-ink);
+    font: 800 7.4cqw/1 var(--recap-display);
+    font-stretch: 62%;
+    letter-spacing: -0.01em;
+}
+
+.stats-ed-present-red .stats-recap-title {
+    font-size: 17cqw;
+    line-height: 0.88;
+}
+
+.stats-ed-present-red .stats-recap-slide-intro .stats-recap-title {
+    font-size: 21cqw;
+    text-transform: uppercase;
+}
+
+.stats-ed-present-red :is(.stats-recap-number, .stats-recap-figures dd) {
+    font-variant-numeric: proportional-nums;
+}
+
+.stats-ed-present-red .stats-recap-number {
+    font-size: 46cqw;
+    line-height: 0.8;
+}
+
+.stats-ed-present-red .stats-recap-unit {
+    font-size: 12cqw;
+}
+
+.stats-ed-present-red .stats-recap-name {
+    font-size: 13cqw;
+    line-height: 0.92;
+}
+
+.stats-ed-present-red .stats-recap-chip {
+    padding: 1.3cqh 3.6cqw 1.1cqh;
+    font: 800 5cqw/1 var(--recap-display);
+    font-stretch: 62%;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+}
+
+.stats-ed-present-red .stats-recap-figures dd {
+    font-size: 19cqw;
+}
+
+/* Intro: the cover as a portrait cropped by the left edge, irised open. */
+.stats-ed-present-red .stats-recap-prop {
+    top: 12cqh;
+    left: -14cqw;
+    width: 66cqw;
+    translate: none;
+    animation: pr-portrait 1.6s var(--recap-ease) 150ms both;
+}
+
+.stats-ed-present-red .stats-recap-prop > i {
+    display: none;
+}
+
+.stats-ed-present-red
+    :is(.stats-recap-prop, .stats-recap-hero.is-artist, .stats-recap-cover.is-artist)
+    .stats-recap-art {
+    border-radius: 50%;
+    box-shadow: none;
+}
+
+.stats-ed-present-red .stats-recap-prop img {
+    animation: pr-push 9s ease-out both;
+}
+
+/* Heroes: a song or album is a tilted sleeve bleeding off the right, an artist a portrait off the left. */
+.stats-ed-present-red .stats-recap-hero {
+    justify-self: end;
+    width: 66cqw;
+    margin: 0 -9cqw 2cqh 0;
+    rotate: 6deg;
+    animation-name: pr-sleeve;
+    animation-duration: 1.3s;
+}
+
+.stats-ed-present-red .stats-recap-hero .stats-recap-art,
+.stats-ed-present-red .stats-recap-cover .stats-recap-art {
+    width: 100%;
+    height: 100%;
+    box-shadow: var(--pr-shadow);
+}
+
+.stats-ed-present-red .stats-recap-hero.is-artist {
+    justify-self: start;
+    margin: 0 0 2cqh -16cqw;
+    rotate: 0deg;
+    animation-name: pr-portrait;
+}
+
+/* On repeat: the ranking up top, the number-one sleeve in the corner. */
+.stats-ed-present-red .stats-recap-slide-onRepeat {
+    align-content: start;
+    padding-top: 17cqh;
+}
+
+.stats-ed-present-red .stats-recap-cover {
+    position: absolute;
+    z-index: -1;
+    right: -9cqw;
+    bottom: 11cqh;
+    display: block;
+    width: 50cqw;
+    aspect-ratio: 1;
+    rotate: 7deg;
+    animation:
+        pr-sleeve 1.4s var(--recap-ease) 700ms both,
+        pr-sway 9s ease-in-out 2.1s infinite alternate;
+}
+
+.stats-ed-present-red .stats-recap-list {
+    gap: 1.3cqh;
+    width: 62cqw;
+}
+
+.stats-ed-present-red .stats-recap-list li {
+    grid-template-columns: 6cqw minmax(0, 1fr);
+    align-items: baseline;
+    gap: 1.4cqw;
+}
+
+.stats-ed-present-red .stats-recap-list :is(.stats-recap-art, em) {
+    display: none;
+}
+
+.stats-ed-present-red .stats-recap-list b,
+.stats-ed-present-red .stats-recap-list strong {
+    color: var(--recap-ink);
+    font: 500 5.4cqw/1.15 var(--recap-body);
+    letter-spacing: 0;
+}
+
+.stats-ed-present-red .stats-recap-list li:first-child :is(b, strong) {
+    color: var(--recap-strong);
+    font-weight: 700;
+}
+
+.stats-ed-present-red .stats-recap-list small {
+    font-size: 3.4cqw;
+}
+
+/* Lineup: the headliner's portrait off the top-left, the bill below. */
+.stats-ed-present-red .stats-recap-slide-lineup {
+    align-content: end;
+}
+
+.stats-ed-present-red .stats-recap-cover.is-artist {
+    top: 12cqh;
+    right: auto;
+    bottom: auto;
+    left: -14cqw;
+    width: 56cqw;
+    rotate: 0deg;
+    animation: pr-portrait 1.5s var(--recap-ease) 250ms both;
+}
+
+.stats-ed-present-red .stats-recap-lineup .is-headliner {
+    color: var(--recap-strong);
+}
+
+.stats-ed-present-red .stats-recap-slide-outro {
+    padding-top: 13cqh;
+}
+
+.stats-ed-present-red .stats-recap-card {
+    height: 52cqh;
+}
+
+.stats-ed-present-red .stats-recap-card canvas {
+    border-radius: 0;
+    box-shadow: var(--pr-shadow);
+}
+
+.stats-ed-present-red .stats-recap-clock line.is-peak {
+    filter: none;
+}
+
+@keyframes pr-rise {
+    from {
+        opacity: 0;
+        transform: translateY(3.5cqh);
+    }
+}
+
+/* Display type rises out of a slot at its own baseline. */
+@keyframes pr-type {
+    from {
+        clip-path: inset(-20% -10% 100% -10%);
+        transform: translateY(100%);
+    }
+
+    to {
+        clip-path: inset(-20% -10% -20% -10%);
+    }
+}
+
+@keyframes pr-sleeve {
+    from {
+        opacity: 0;
+        transform: translate(34cqw, 8cqh) rotate(12deg) scale(0.96);
+    }
+}
+
+@keyframes pr-portrait {
+    from {
+        clip-path: circle(0% at 30% 50%);
+        transform: translateX(-8cqw);
+    }
+
+    to {
+        clip-path: circle(75% at 50% 50%);
+    }
+}
+
+@keyframes pr-push {
+    from {
+        transform: scale(1.14);
+    }
+}
+
+@keyframes pr-sway {
+    from {
+        rotate: 5.5deg;
+    }
+
+    to {
+        rotate: 8.5deg;
+    }
+}
+
+@keyframes pr-band {
+    from {
+        transform: translateY(100%);
+    }
+}
+
+@keyframes pr-sheen {
+    to {
+        transform: translateX(70%);
+    }
+}
+
+@keyframes pr-drift {
+    from {
+        transform: translate3d(-2.5cqw, 1.5cqh, 0) rotate(-2.5deg);
+    }
+
+    to {
+        transform: translate3d(2.5cqw, -2cqh, 0) rotate(2.5deg);
+    }
+}
+
+@keyframes pr-light {
+    0% {
+        transform: translate3d(-8%, -6%, 0) rotate(0deg);
+    }
+
+    50% {
+        transform: translate3d(6%, 4%, 0) rotate(8deg);
+    }
+
+    100% {
+        transform: translate3d(-4%, 9%, 0) rotate(-6deg);
+    }
+}
+
 /* ---------- Small screens: the story fills the phone ---------- */
 
 @media (max-width: 560px) {
@@ -1430,6 +1945,22 @@
     }
 
     .stats-recap-notice::before {
+        display: none;
+    }
+
+    /* Present Red keeps its letterforms still and in place; only content fades remain. */
+    .stats-ed-present-red .stats-recap-scene i {
+        translate: none;
+        rotate: var(--r);
+        scale: none;
+    }
+
+    .stats-ed-present-red .stats-recap-scene::before,
+    .stats-ed-present-red .stats-recap-scene i::before {
+        animation: none !important;
+    }
+
+    .stats-ed-present-red .stats-recap-slide::before {
         display: none;
     }
 }

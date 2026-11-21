@@ -76,6 +76,17 @@ export function initializeListeningSync(tracker) {
 export function getGlobalStreamCount(id) {
     return counts.get(String(id)) || 0;
 }
+/** Every counted track of the instance, for ranking search results by popularity. */
+export async function loadAllStreamCounts() {
+    if (!pb.authStore.isValid) return counts;
+    const uid = pb.authStore.record?.id;
+    const result = await pb
+        .collection('listening_totals')
+        .getFullList({ batch: 1000, fields: 'track_id,streams', requestKey: null });
+    if (pb.authStore.record?.id !== uid) return counts;
+    for (const record of result) counts.set(record.track_id, record.streams);
+    return counts;
+}
 export async function loadGlobalStreamCounts(ids) {
     const unique = [...new Set(ids.map(String))];
     for (let i = 0; i < unique.length; i += 100) {

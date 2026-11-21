@@ -3,6 +3,15 @@ import { expect, test, vi } from 'vitest';
 vi.mock('../accounts/config.js', () => ({ pb: { authStore: { record: null } } }));
 vi.mock('../accounts/pocketbase.js', () => ({ syncManager: {} }));
 import { EDITIONS, POOLS, editionFor } from '../listening-recap-editions.js';
+import { hasShareTheme, themeFor } from '../listening-share-themes.js';
+
+test('every edition paints its own share card', () => {
+    for (const id of Object.keys(EDITIONS)) {
+        expect(hasShareTheme(id), id).toBe(true);
+        expect(typeof themeFor(id, ['#c00', '#0c0', '#00c']).paint, id).toBe('function');
+    }
+    expect(POOLS.month).toContain('present-red');
+});
 
 test('editions are stable per listener and period, and weekly and monthly pools never mix', () => {
     expect(editionFor('a', 'week', '2026-10-19')).toBe(editionFor('a', 'week', '2026-10-19'));

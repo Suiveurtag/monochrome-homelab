@@ -176,9 +176,258 @@ const CLASSIC = {
 
 // ---------- Collectible editions ----------
 
-// None ship right now. An edition is a theme like the classic ones above, keyed by its id in
-// listening-recap-editions.js; it may also draw its own decorations and treat the artwork.
-const EDITION = {};
+// An edition is a theme like the classic ones above, keyed by its id in listening-recap-editions.js; it may
+// also draw its own decorations, treat the artwork, or take over the whole composition with `layout`.
+
+// Present Red: oxblood velvet, salmon type, giant cropped letterforms behind. Its card has a fixed
+// composition: artist portrait and top artists, the period set huge, top songs beside a tilted cover,
+// and a band along the bottom.
+const PR = {
+    ink: '#dcaa9e',
+    list: '#e3bcb1',
+    strong: '#f1d3ca',
+    muted: 'rgb(227 188 177 / 0.74)',
+    band: '#c99a8f',
+    onBand: '#4a0f15',
+    hollow: '#3e0a10',
+    dark: [40, 3, 9],
+    light: [134, 36, 46],
+};
+const PR_DISPLAY = { family: 'Archivo, Switzer, Inter, system-ui, sans-serif', weight: 800, style: 'normal' };
+const PR_TILT = (7 * Math.PI) / 180;
+
+// The period's own letters, set larger than the card and cropped, darker and lighter than the velvet.
+function presentRedGlyphs(ctx, w, h, title) {
+    const chars = [...String(title).replace(/[^\p{L}\p{N}]/gu, '')];
+    const glyph = (i) => (chars.length ? chars[(i * 3) % chars.length] : 'OS2C'[i]).toLocaleUpperCase();
+    [
+        [-0.24, -0.17, 0.66, -0.22, PR.dark, 0.42],
+        [0.34, 0.1, 0.76, 0.14, PR.light, 0.3],
+        [-0.18, 0.43, 0.62, 0.24, PR.dark, 0.34],
+        [0.42, 0.6, 0.6, -0.1, PR.dark, 0.3],
+    ].forEach(([x, y, size, angle, color, alpha], i) => {
+        ctx.save();
+        ctx.translate(x * w, y * h);
+        ctx.rotate(angle);
+        ctx.font = font(PR_DISPLAY, size * h);
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = css(color, alpha);
+        ctx.fillText(glyph(i), 0, 0);
+        ctx.restore();
+    });
+}
+
+// Cover-fit artwork inside the current clip, or the initial on a hollow when there is none.
+function presentRedImage(ctx, img, x, y, size, initial) {
+    if (img) {
+        const scale = Math.max(size / img.naturalWidth, size / img.naturalHeight);
+        const w = img.naturalWidth * scale,
+            h = img.naturalHeight * scale;
+        ctx.drawImage(img, x + (size - w) / 2, y + (size - h) / 2, w, h);
+        return;
+    }
+    ctx.fillStyle = PR.hollow;
+    ctx.fillRect(x, y, size, size);
+    write(ctx, String(initial || '?').toUpperCase(), x + size / 2, y + size * 0.3, {
+        size: size * 0.44,
+        ...PR_DISPLAY,
+        color: PR.muted,
+        align: 'center',
+    });
+}
+
+function presentRedLayout(ctx, { width: w, height: h, model, picks, art }) {
+    const story = h / w > 1.6,
+        square = h === w;
+    const M = 40;
+    const bandHeight = story ? 112 : 96,
+        bandTop = h - bandHeight;
+    const count = square ? 3 : 5;
+    const artists = picks.artists ? model.ranked.artists.slice(0, count) : [];
+    const tracks = picks.tracks ? model.ranked.tracks.slice(0, count) : [];
+    const title = String(model.title || '').toLocaleUpperCase();
+    const [value, unit] = model.headlines[picks.headline];
+    const subline =
+        picks.headline === 'minutes' ? `${value} ${value === '1' ? 'minute' : 'minutes'} listened` : `${value} ${unit}`;
+
+    presentRedGlyphs(ctx, w, h, model.title || '');
+    paintGrain(ctx, w, h, 'overlay', 0.1);
+
+    // The title fills the width; everything else follows one scale factor, k.
+    ctx.font = font(PR_DISPLAY, 100);
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '-1px';
+    const titleFit = ((w - M * 2) / Math.max(1, ctx.measureText(title).width)) * 100;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    const portrait = (k) => (count === 3 ? 400 : 490) * k;
+    const sleeve = (k) => (count === 3 ? 380 : 470) * k;
+    const list = (n, k) => 118 * k + (n - 1) * 66 * k + 50 * k;
+    const titleSize = (k) => Math.min(titleFit, 232 * Math.max(k, 0.72));
+    const middle = (k) =>
+        titleSize(k) * 0.78 +
+        26 * k +
+        84 * k * 0.76 +
+        (picks.totals ? 34 * k + 38 * k : 0) +
+        (picks.clock ? 44 * k + 96 * k : 0);
+    const blocks = (k) =>
+        [
+            artists.length && { kind: 'artists', height: Math.max(portrait(k), list(artists.length, k)) },
+            { kind: 'middle', height: middle(k) },
+            tracks.length && { kind: 'tracks', height: Math.max(sleeve(k) * 1.1, list(tracks.length, k)) },
+        ].filter(Boolean);
+    const top = story ? 112 : square ? 56 : 72,
+        bottom = bandTop - (story ? 92 : square ? 44 : 56);
+    const room = bottom - top;
+    const minGap = square ? 28 : 40;
+    let k = 1,
+        parts = blocks(1);
+    for (let i = 0; i < 4; i++) {
+        const natural = parts.reduce((sum, part) => sum + part.height, 0) + minGap * (parts.length - 1);
+        if (natural <= room) break;
+        k *= room / natural;
+        parts = blocks(k);
+    }
+    const natural = parts.reduce((sum, part) => sum + part.height, 0);
+    const gap = parts.length > 1 ? Math.min(story ? 190 : 120, (room - natural) / (parts.length - 1)) : 0;
+    let y = top + Math.max(0, room - natural - gap * (parts.length - 1)) / 2;
+
+    const ranking = (heading, names, x, listTop, max) => {
+        write(ctx, heading, x, listTop, { size: 86 * k, ...PR_DISPLAY, color: PR.ink, tracking: -1.2 * k });
+        names.forEach((name, i) => {
+            const itemTop = listTop + 118 * k + i * 66 * k;
+            const style = {
+                size: 50 * k,
+                family: SANS,
+                weight: i ? 500 : 700,
+                color: i ? PR.list : PR.strong,
+            };
+            write(ctx, String(i + 1), x, itemTop, style);
+            write(ctx, name, x + 52 * k, itemTop, { ...style, max: max - 52 * k });
+        });
+    };
+
+    for (const part of parts) {
+        if (part.kind === 'artists') {
+            const size = portrait(k),
+                x = -50 * k,
+                cy = y + part.height / 2;
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(x + size / 2, cy, size / 2, 0, TAU);
+            ctx.clip();
+            presentRedImage(ctx, art.artists[0], x, cy - size / 2, size, artists[0]?.[0]);
+            ctx.restore();
+            const listX = x + size + 2 * k;
+            ranking('Top artists', artists, listX, y + (part.height - list(artists.length, k)) / 2, w - listX - M);
+        } else if (part.kind === 'middle') {
+            const size = titleSize(k);
+            write(ctx, title, M - size * 0.02, y - size * 0.04, {
+                size,
+                ...PR_DISPLAY,
+                color: PR.ink,
+                tracking: -1 * (size / 100),
+                max: w - M * 2 + size * 0.04,
+            });
+            let line = y + size * 0.78 + 26 * k;
+            write(ctx, subline, M, line, {
+                size: 84 * k,
+                ...PR_DISPLAY,
+                color: PR.ink,
+                tracking: -1.4 * k,
+                max: w - M * 2,
+            });
+            line += 84 * k * 0.76;
+            if (picks.totals) {
+                line += 34 * k;
+                write(ctx, model.totals.map(([n, noun]) => `${n} ${noun}`).join('   '), M, line, {
+                    size: 38 * k,
+                    family: SANS,
+                    weight: 500,
+                    color: PR.muted,
+                    max: w - M * 2,
+                });
+                line += 38 * k;
+            }
+            if (picks.clock) {
+                line += 44 * k;
+                const barGap = 8 * k,
+                    bar = (w - M * 2 - barGap * 23) / 24,
+                    tall = 96 * k;
+                const max = Math.max(1, ...model.hours);
+                const peak = model.hours.indexOf(max);
+                model.hours.forEach((seconds, hour) => {
+                    const height = Math.max(6 * k, (seconds / max) * tall);
+                    ctx.fillStyle = seconds && hour === peak ? PR.band : 'rgb(227 188 177 / 0.26)';
+                    ctx.fillRect(M + hour * (bar + barGap), line + tall - height, bar, height);
+                });
+            }
+        } else {
+            const size = sleeve(k),
+                cx = w - size * 0.447,
+                cy = y + part.height / 2;
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(PR_TILT);
+            ctx.shadowColor = 'rgb(20 0 4 / 0.5)';
+            ctx.shadowBlur = 50 * k;
+            ctx.shadowOffsetY = 18 * k;
+            ctx.fillStyle = PR.hollow;
+            ctx.fillRect(-size / 2, -size / 2, size, size);
+            ctx.shadowColor = 'transparent';
+            ctx.beginPath();
+            ctx.rect(-size / 2, -size / 2, size, size);
+            ctx.clip();
+            presentRedImage(ctx, art.tracks[0], -size / 2, -size / 2, size, tracks[0]?.[0]);
+            ctx.restore();
+            // Names stop short of the sleeve's tilted left edge, the way the reference cuts them off.
+            const edge = cx - (size / 2) * (Math.cos(PR_TILT) + Math.sin(PR_TILT));
+            ranking('Top songs', tracks, M, y + (part.height - list(tracks.length, k)) / 2, edge - M - 20 * k);
+        }
+        y += part.height + gap;
+    }
+
+    // The band: the Monochrome mark and the label on the left, the period (or your name) on the right.
+    ctx.fillStyle = PR.band;
+    ctx.fillRect(0, bandTop, w, bandHeight);
+    const mid = bandTop + bandHeight / 2,
+        mark = story ? 44 : 38,
+        type = story ? 56 : 48;
+    ctx.fillStyle = PR.onBand;
+    ctx.fillRect(M, mid - mark / 2, mark / 2, mark / 2);
+    ctx.fillRect(M + mark / 2, mid, mark / 2, mark / 2);
+    ctx.strokeStyle = PR.onBand;
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(M + 1.25, mid - mark / 2 + 1.25, mark - 2.5, mark - 2.5);
+    const band = { size: type, ...PR_DISPLAY, color: PR.onBand, tracking: 0.5 };
+    write(ctx, 'LISTENING STATS', M + mark + 26, mid - type * 0.4, { ...band, max: w / 2 - M - mark });
+    const right = picks.handle && model.handle ? model.handle.toLocaleUpperCase() : title;
+    write(ctx, right, w - M, mid - type * 0.4, { ...band, align: 'right', max: w / 2 - M - 20 });
+}
+
+const EDITION = {
+    'present-red': () => ({
+        ...dark([201, 154, 143]),
+        text: PR.ink,
+        muted: PR.muted,
+        surface: 'rgb(30 0 6 / 0.3)',
+        line: 'rgb(227 188 177 / 0.22)',
+        accent: PR.band,
+        onAccent: PR.onBand,
+        display: PR_DISPLAY,
+        shapes: { artist: 'circle', track: 'square' },
+        radius: 0,
+        tile: 0,
+        badge: 'square',
+        paint(ctx, w, h) {
+            ctx.fillStyle = linear(ctx, 0, 0, w * 0.35, h, ['#4c0e15', '#62151d', '#6e1a23', '#58121a']);
+            ctx.fillRect(0, 0, w, h);
+            glow(ctx, w * 0.78, h * 0.42, w * 0.8, PR.light, 0.26);
+            glow(ctx, w * 0.1, h * 0.04, w * 0.7, PR.dark, 0.4);
+        },
+        layout: presentRedLayout,
+    }),
+};
+
+export const hasShareTheme = (style) => Boolean(EDITION[style] || CLASSIC[style]);
 
 export function themeFor(style, colors) {
     const palette = colors.map((color) => rgb(color));

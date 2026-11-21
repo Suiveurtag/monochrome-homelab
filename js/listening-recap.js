@@ -132,6 +132,9 @@ export function recapModel(recap, data, uid) {
 
 const art = (url, extra = '') =>
     `<span class="stats-recap-art${extra}">${url ? `<img src="${escape(url)}" alt="" decoding="async" />` : `<span class="stats-recap-art-empty">${I_MUSIC(32)}</span>`}</span>`;
+// Decorative artwork only an edition shows (hidden in the neutral skin): the list keeps its own thumbnails.
+const cover = (url, extra = '') =>
+    url ? `<div class="stats-recap-cover${extra}" aria-hidden="true">${art(url)}</div>` : '';
 const at = (ms) => `style="--d:${ms}ms"`;
 const counter = (value, delay, label) =>
     `<span data-recap-count="${value}" data-recap-delay="${delay}" aria-hidden="true">${count(value)}</span><span class="sr-only">${escape(label ?? count(value))}</span>`;
@@ -224,7 +227,7 @@ const SLIDES = {
     onRepeat: (m) => ({
         duration: 7600,
         track: m.tracks[0].id,
-        html: `<p class="stats-recap-kicker stats-recap-in" ${at(200)}>On repeat</p>
+        html: `${cover(m.tracks[0].cover)}<p class="stats-recap-kicker stats-recap-in" ${at(200)}>On repeat</p>
             <ol class="stats-recap-list">${m.tracks
                 .map(
                     (t, i) =>
@@ -246,7 +249,7 @@ const SLIDES = {
     lineup: (m) => ({
         duration: 7800,
         track: m.artists[1]?.track || m.tracks[0]?.id,
-        html: `<p class="stats-recap-kicker stats-recap-in" ${at(200)}>Your ${escape(m.label.short)} lineup</p>
+        html: `${cover(m.artists[0].cover, ' is-artist')}<p class="stats-recap-kicker stats-recap-in" ${at(200)}>Your ${escape(m.label.short)} lineup</p>
             <div class="stats-recap-lineup">${m.artists
                 .map(
                     (a, i) =>
@@ -457,7 +460,7 @@ class RecapPlayer {
         this.root.className = `stats-recap${model.edition ? ` stats-ed-${model.edition}` : ''}`;
         this.root.setAttribute('aria-label', `Your ${model.period} recap, ${model.label.long}`);
         this.root.innerHTML = `<div class="stats-recap-surround" aria-hidden="true">${scene}</div>
-            <div class="stats-recap-frame" tabindex="-1">${scene}
+            <div class="stats-recap-frame" tabindex="-1" data-recap-label="${escape(model.label.long)}">${scene}
                 <button type="button" class="stats-recap-zone is-prev" data-recap-step="-1" aria-label="Previous"></button>
                 <button type="button" class="stats-recap-zone is-next" data-recap-step="1" aria-label="Next"></button>
                 <div class="stats-recap-slides" aria-live="polite"></div>
@@ -574,6 +577,9 @@ class RecapPlayer {
         this.index = index;
         this.elapsed = 0;
         const slide = this.slides[index];
+        // Editions choreograph their scene from the step: every slide moves the background somewhere new.
+        this.root.style.setProperty('--recap-step', String(index));
+        this.root.dataset.recapSlide = slide.name;
         const element = document.createElement('section');
         element.className = `stats-recap-slide is-active stats-recap-slide-${slide.name}${forward ? '' : ' is-back'}`;
         element.setAttribute('aria-roledescription', 'slide');
@@ -727,7 +733,12 @@ function fitText(slide) {
         '.stats-recap-title, .stats-recap-name, .stats-recap-number, .stats-recap-lineup p'
     )) {
         node.style.removeProperty('font-size');
+        // A refit can land mid count-up; counters are measured at the value they will end on.
+        const counters = [...node.querySelectorAll('[data-recap-count]')];
+        const shown = counters.map((counter) => counter.textContent);
+        for (const counter of counters) counter.textContent = count(Number(counter.dataset.recapCount));
         const over = node.scrollWidth / node.clientWidth;
+        counters.forEach((counter, i) => (counter.textContent = shown[i]));
         if (over > 1.01) node.style.fontSize = `${parseFloat(getComputedStyle(node).fontSize) / over}px`;
     }
 }

@@ -3,10 +3,13 @@ import { syncManager } from './accounts/pocketbase.js';
 
 // Collectible share-card editions. Every recap is pressed in one edition, picked per listener and period;
 // watching the recap to its end adds that edition to the collection. Weekly and monthly pools never overlap.
-// None ship right now. Add one as `id: { name, period: 'week' | 'month', font: [family, axes] | null, face }`,
-// where `face` is the CSS font shorthand used to wait for the display font; then skin it in
-// listening-recap.css (`.stats-ed-<id>`) and paint its share card in listening-share-themes.js.
-export const EDITIONS = {};
+// Add one as `id: { name, period: 'week' | 'month', font: [family, axes] | null, face }`, where `face` is the
+// CSS font shorthand used to wait for the display font; then skin it in listening-recap.css (`.stats-ed-<id>`)
+// and paint its share card in listening-share-themes.js.
+export const EDITIONS = {
+    // Only the extra-condensed cut is requested, so plain `Archivo` resolves to it on the page and on canvas.
+    'present-red': { name: 'Present Red', period: 'month', font: ['Archivo', 'wdth,wght@62,800'], face: '800' },
+};
 export const POOLS = {
     week: Object.keys(EDITIONS).filter((id) => EDITIONS[id].period === 'week'),
     month: Object.keys(EDITIONS).filter((id) => EDITIONS[id].period === 'month'),
