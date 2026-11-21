@@ -1,6 +1,6 @@
 import { syncManager } from './accounts/pocketbase.js';
 import { authManager } from './accounts/auth.js';
-import { socialManager } from './social.js';
+import { renderProfilePresence, renderProfileSocial } from './community/community-profile.js';
 import { navigate } from './router.js';
 import { MusicAPI } from './music-api.js';
 import { apiSettings } from './storage.js';
@@ -346,7 +346,7 @@ export async function loadProfile(username) {
         webEl.style.display = 'inline-block';
     }
 
-    socialManager.renderProfilePresence(username).catch(console.error);
+    renderProfilePresence(username).catch(console.error);
 
     if (favoriteAlbums.length > 0) {
         if (favAlbumsSection && favAlbumsContainer) {
@@ -599,7 +599,7 @@ export async function loadProfile(username) {
         editProfileBtn.style.display = 'inline-flex';
     }
     if (!isOwner && authManager.user) {
-        socialManager.renderProfileSocial(username).catch(console.error);
+        renderProfileSocial(username).catch(console.error);
     }
 
     if (profile.privacy?.playlists !== 'private' || isOwner) {

@@ -536,10 +536,8 @@ const syncManager = {
         const updateData = { ...data };
 
         const updated = await this.pb.collection('DB_users').update(record.id, updateData, { f_id: user.$id });
+        // The server mirrors the public profile into social_profiles (pb_hooks/social.pb.js).
         this._userRecordCache = updated;
-        import('../social.js')
-            .then(({ syncSocialProfile }) => syncSocialProfile(updated))
-            .catch((error) => console.warn('[Social] Could not sync public profile:', error));
     },
 
     async isUsernameTaken(username) {

@@ -1,0 +1,3400 @@
+/* stylelint-disable no-descending-specificity, declaration-no-important -- Every rule is scoped to separate Social components; the signed-out hide and reduced-motion overrides must win. */
+
+/* Social (community) — js/community/*. Notes on top, live listening, then a stream.
+   Colour comes from album artwork; everything else derives from the active theme tokens. */
+
+@property --cm-spin {
+    syntax: '<angle>';
+    inherits: false;
+    initial-value: 0deg;
+}
+
+.cm {
+    --cm-ink: var(--foreground);
+    --cm-soft: var(--muted-foreground);
+    --cm-wash: color-mix(in oklab, var(--foreground) 6%, transparent);
+    --cm-wash-2: color-mix(in oklab, var(--foreground) 10%, transparent);
+    --cm-wash-3: color-mix(in oklab, var(--foreground) 16%, transparent);
+    --cm-rule: color-mix(in oklab, var(--foreground) 9%, transparent);
+    --cm-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --cm-display: var(--font-family-key);
+
+    container: cm / inline-size;
+    max-width: 1240px;
+    margin: 0 auto;
+    color: var(--cm-ink);
+    padding-bottom: 2rem;
+}
+
+.cm a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.cm a:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+}
+
+.cm :where(button) {
+    font: inherit;
+    color: inherit;
+}
+
+.cm-dim {
+    color: var(--cm-soft);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ controls */
+
+.cm-btn,
+.cm-dialog .cm-btn,
+.cm-drawer .cm-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 40px;
+    padding: 0 1.05rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--cm-wash-2, color-mix(in oklab, var(--foreground) 10%, transparent));
+    color: var(--foreground);
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        background-color 180ms ease,
+        transform 160ms ease,
+        opacity 180ms ease;
+}
+
+.cm-btn:hover {
+    background: color-mix(in oklab, var(--foreground) 15%, transparent);
+}
+
+.cm-btn:active,
+.cm-icon-btn:active {
+    transform: scale(0.95);
+}
+
+.cm-btn.is-primary {
+    background: var(--foreground);
+    color: var(--background);
+}
+
+.cm-btn.is-primary:hover {
+    background: color-mix(in oklab, var(--foreground) 86%, var(--background));
+}
+
+.cm-btn.is-soft {
+    background: color-mix(in oklab, var(--foreground) 8%, transparent);
+}
+
+.cm-btn.is-ghost {
+    background: transparent;
+}
+
+.cm-btn.is-ghost:hover {
+    background: color-mix(in oklab, var(--foreground) 8%, transparent);
+}
+
+.cm-btn.is-danger {
+    color: color-mix(in oklab, #ff5d5d 75%, var(--foreground));
+}
+
+.cm-btn.is-small {
+    height: 32px;
+    padding: 0 0.8rem;
+    font-size: 0.82rem;
+    gap: 0.4rem;
+}
+
+.cm-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+    transform: none;
+}
+
+.cm-btn svg,
+.cm-icon-btn svg,
+.cm-pill svg {
+    flex: none;
+}
+
+.cm-icon-btn {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border: 0;
+    border-radius: 50%;
+    background: color-mix(in oklab, var(--foreground) 8%, transparent);
+    color: var(--foreground);
+    cursor: pointer;
+    transition:
+        background-color 180ms ease,
+        color 180ms ease,
+        transform 160ms ease;
+}
+
+.cm-icon-btn:hover {
+    background: color-mix(in oklab, var(--foreground) 15%, transparent);
+}
+
+.cm-icon-btn[aria-pressed='true'],
+.cm-icon-btn.is-solid {
+    background: var(--foreground);
+    color: var(--background);
+}
+
+.cm-icon-btn[data-save-track][aria-pressed='true'] {
+    background: color-mix(in oklab, var(--foreground) 8%, transparent);
+    color: var(--foreground);
+}
+
+.cm-icon-btn[data-save-track][aria-pressed='true'] svg {
+    fill: currentcolor;
+}
+
+.cm-icon-btn.is-quiet {
+    background: transparent;
+}
+
+.cm-icon-btn.is-quiet:hover {
+    background: color-mix(in oklab, var(--foreground) 9%, transparent);
+}
+
+.cm-icon-btn.is-small {
+    width: 32px;
+    height: 32px;
+}
+
+.cm-icon-btn:disabled {
+    opacity: 0.5;
+}
+
+.cm-link-btn {
+    border: 0;
+    padding: 0.2rem 0.35rem;
+    background: none;
+    color: var(--muted-foreground);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+.cm-link-btn:hover {
+    color: var(--foreground);
+}
+
+.cm-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    height: 40px;
+    padding: 0 1rem 0 0.85rem;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--foreground) 8%, transparent);
+    font-size: 0.86rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 180ms ease;
+}
+
+.cm-pill:hover {
+    background: color-mix(in oklab, var(--foreground) 14%, transparent);
+}
+
+.cm-badge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--foreground);
+    color: var(--background);
+    box-shadow: 0 0 0 2px var(--background);
+    font-size: 0.68rem;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+
+.cm :focus-visible,
+.cm-dialog :focus-visible,
+.cm-drawer :focus-visible,
+.cm-picker :focus-visible,
+.cm-menu :focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: 3px;
+}
+
+/* ------------------------------------------------------------------ avatars */
+
+.cm-avatar {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: var(--size, 32px);
+    height: var(--size, 32px);
+    flex: none;
+    border-radius: 50%;
+    overflow: hidden;
+    background: color-mix(in oklab, var(--foreground) 14%, var(--background));
+    vertical-align: middle;
+}
+
+.cm-avatar img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
+
+.cm-avatar-initial {
+    font-size: calc(var(--size, 32px) * 0.42);
+    font-weight: 700;
+    color: color-mix(in oklab, var(--foreground) 70%, transparent);
+    line-height: 1;
+}
+
+.cm-ring {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    border-radius: 50%;
+    padding: 3px;
+}
+
+.cm-ring > .cm-avatar {
+    box-shadow: 0 0 0 2.5px var(--background);
+}
+
+.cm-ring.is-live {
+    background: conic-gradient(
+        from var(--cm-spin),
+        var(--foreground),
+        color-mix(in oklab, var(--foreground) 20%, transparent) 40%,
+        var(--foreground) 70%,
+        color-mix(in oklab, var(--foreground) 35%, transparent),
+        var(--foreground)
+    );
+    animation: cm-spin 9s linear infinite;
+}
+
+.cm-ring.is-live.is-paused {
+    animation: none;
+    background: color-mix(in oklab, var(--foreground) 35%, transparent);
+}
+
+@keyframes cm-spin {
+    to {
+        --cm-spin: 360deg;
+    }
+}
+
+.cm-live-badge {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 20px;
+    padding: 5px;
+    border-radius: 999px;
+    background: var(--foreground);
+    box-shadow: 0 0 0 2.5px var(--background);
+}
+
+.cm-live-badge i {
+    display: block;
+    width: 2.5px;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--background);
+    transform-origin: bottom;
+    animation: cm-eq 1.1s ease-in-out infinite;
+}
+
+.cm-live-badge i:nth-child(2) {
+    animation-delay: -0.4s;
+}
+
+.cm-live-badge i:nth-child(3) {
+    animation-delay: -0.75s;
+}
+
+.is-paused .cm-live-badge i {
+    animation: none;
+    transform: scaleY(0.4);
+}
+
+@keyframes cm-eq {
+    0%,
+    100% {
+        transform: scaleY(0.35);
+    }
+
+    50% {
+        transform: scaleY(1);
+    }
+}
+
+.cm-stack {
+    display: inline-flex;
+    padding-left: 6px;
+}
+
+.cm-stack .cm-avatar {
+    margin-left: -6px;
+    box-shadow: 0 0 0 2px var(--background);
+}
+
+/* ------------------------------------------------------------------ header */
+
+.cm-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem 1.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.1rem;
+    animation: cm-rise 520ms var(--cm-ease) both;
+}
+
+.cm-title {
+    margin: 0;
+    font-family: var(--cm-display);
+    font-size: clamp(2.2rem, 4.4cqi, 3.1rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+}
+
+.cm-sub {
+    margin: 0.5rem 0 0;
+    color: var(--cm-soft);
+    font-size: 0.92rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.cm-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.cm-ghostband {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0 0 1.25rem;
+    padding: 0.7rem 0.75rem 0.7rem 1rem;
+    border-radius: 16px;
+    background: color-mix(in oklab, var(--foreground) 7%, transparent);
+    animation: cm-rise 420ms var(--cm-ease) both;
+}
+
+.cm-ghostband p {
+    flex: 1;
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.4;
+}
+
+.cm-ghostband.is-consent {
+    background: color-mix(in oklab, var(--foreground) 5%, transparent);
+    color: var(--cm-soft);
+}
+
+.cm-ghostband.is-consent p {
+    color: var(--foreground);
+}
+
+/* ------------------------------------------------------------------ notes */
+
+.cm-notes {
+    margin: 0 calc(var(--spacing-xl, 2rem) * -1) 1.6rem;
+    animation: cm-rise 560ms var(--cm-ease) 60ms both;
+}
+
+.cm-notes-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0.25rem var(--spacing-xl, 2rem) 0.5rem;
+    list-style: none;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+}
+
+.cm-notes-row::-webkit-scrollbar {
+    display: none;
+}
+
+.cm-note {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: none;
+    width: 104px;
+    scroll-snap-align: start;
+}
+
+.cm-note-bubble {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    max-width: 112px;
+    min-height: 40px;
+    margin-bottom: -12px;
+    padding: 0.5rem 0.7rem;
+    border: 0;
+    border-radius: 18px;
+    background: color-mix(in oklab, var(--foreground) 15%, var(--background));
+    color: var(--foreground);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 22%);
+    font-size: 0.76rem;
+    line-height: 1.25;
+    text-align: center;
+    cursor: pointer;
+    transform-origin: 50% 100%;
+    transition: transform 220ms var(--cm-ease);
+    animation: cm-pop 520ms var(--cm-ease) both;
+}
+
+.cm-note:nth-child(2) .cm-note-bubble {
+    animation-delay: 60ms;
+}
+
+.cm-note:nth-child(3) .cm-note-bubble {
+    animation-delay: 110ms;
+}
+
+.cm-note:nth-child(n + 4) .cm-note-bubble {
+    animation-delay: 150ms;
+}
+
+/* Thought-bubble tail: two small dots rather than a speech point. */
+.cm-note-bubble::before,
+.cm-note-bubble::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    border-radius: 50%;
+    background: inherit;
+}
+
+.cm-note-bubble::before {
+    bottom: -6px;
+    width: 9px;
+    height: 9px;
+    margin-left: -9px;
+}
+
+.cm-note-bubble::after {
+    bottom: -11px;
+    width: 5px;
+    height: 5px;
+    margin-left: -14px;
+}
+
+.cm-note-bubble:hover {
+    transform: translateY(-2px) scale(1.03);
+}
+
+.cm-note-bubble.is-prompt {
+    background: color-mix(in oklab, var(--foreground) 8%, var(--background));
+    color: var(--cm-soft);
+    box-shadow: none;
+}
+
+.cm-note-bubble.is-empty {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.cm-bubble-text {
+    display: -webkit-box;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+.cm-bubble-music {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    max-width: 100%;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: color-mix(in oklab, var(--foreground) 78%, transparent);
+}
+
+.cm-bubble-music span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-bubble-music img {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    object-fit: cover;
+    flex: none;
+}
+
+.cm-bubble-music img.is-round,
+.cm-attach-chip img.is-round,
+.cm-search-item img.is-round,
+.cm-share-art img.is-round,
+.cm-note-view-music img.is-round,
+.cm-poll-option img.is-round {
+    border-radius: 50%;
+}
+
+.cm-note-person {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.cm a.cm-note-person:hover {
+    text-decoration: none;
+}
+
+.cm-note-name {
+    max-width: 96px;
+    overflow: hidden;
+    color: var(--cm-soft);
+    font-size: 0.76rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-note-plus {
+    position: absolute;
+    right: 6px;
+    top: 52px;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--foreground);
+    color: var(--background);
+    box-shadow: 0 0 0 2.5px var(--background);
+}
+
+@keyframes cm-pop {
+    from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.85);
+    }
+}
+
+/* ------------------------------------------------------------------ sections */
+
+.cm-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 0.9rem;
+}
+
+.cm-h2 {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0;
+    font-family: var(--cm-display);
+    font-size: 1.35rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+}
+
+.cm-live-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--foreground);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--foreground) 40%, transparent);
+    animation: cm-breathe 2.4s ease-out infinite;
+}
+
+@keyframes cm-breathe {
+    0% {
+        box-shadow: 0 0 0 0 color-mix(in oklab, var(--foreground) 45%, transparent);
+    }
+
+    70%,
+    100% {
+        box-shadow: 0 0 0 9px transparent;
+    }
+}
+
+.cm-live {
+    margin-bottom: 2.6rem;
+    animation: cm-rise 600ms var(--cm-ease) 120ms both;
+}
+
+.cm-live-hint {
+    margin: -0.4rem 0 0.9rem;
+    color: var(--cm-soft);
+    font-size: 0.88rem;
+}
+
+/* The stage: the biggest room, in its own artwork's light. */
+.cm-stage {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: clamp(180px, 27cqi, 300px) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(1.25rem, 3.2cqi, 2.6rem);
+    padding: clamp(1.25rem, 3cqi, 2.25rem);
+    border-radius: 26px;
+    background: color-mix(in oklab, var(--foreground) 5%, var(--background));
+}
+
+.cm-stage-ambience {
+    position: absolute;
+    inset: -25%;
+    z-index: -2;
+    width: 150%;
+    height: 150%;
+    object-fit: cover;
+    filter: blur(72px) saturate(1.5);
+    opacity: 0.5;
+    transform: scale(1.05);
+    animation: cm-ambient 18s ease-in-out infinite alternate;
+    pointer-events: none;
+}
+
+.cm-stage::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        radial-gradient(120% 90% at 85% 100%, color-mix(in oklab, var(--background) 65%, transparent), transparent 70%),
+        linear-gradient(100deg, color-mix(in oklab, var(--background) 10%, transparent), color-mix(in oklab, var(--background) 45%, transparent));
+    pointer-events: none;
+}
+
+@keyframes cm-ambient {
+    to {
+        transform: scale(1.18) translate(3%, -2%);
+    }
+}
+
+.cm-stage.is-new {
+    animation: cm-rise 560ms var(--cm-ease) both;
+}
+
+.cm-stage-cover,
+.cm-room-cover,
+.cm-lastheard-cover,
+.cm-common-cover,
+.cm-chart-cover,
+.cm-profile-live-cover {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    background: color-mix(in oklab, var(--foreground) 10%, var(--background));
+    cursor: pointer;
+}
+
+.cm-stage-cover {
+    border-radius: 12px;
+    box-shadow:
+        0 28px 50px rgb(0 0 0 / 38%),
+        0 2px 6px rgb(0 0 0 / 25%);
+    transform: rotate(-2deg);
+    transition:
+        transform 420ms var(--cm-ease),
+        box-shadow 420ms var(--cm-ease);
+}
+
+.cm-stage-cover:hover,
+.cm-stage-cover:focus-visible {
+    transform: rotate(0deg) translateY(-4px) scale(1.015);
+    box-shadow:
+        0 36px 60px rgb(0 0 0 / 45%),
+        0 2px 6px rgb(0 0 0 / 25%);
+}
+
+.cm-stage-cover img,
+.cm-room-cover img,
+.cm-lastheard-cover img,
+.cm-common-cover img,
+.cm-chart-cover img,
+.cm-profile-live-cover img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.cm-cover-blank {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, color-mix(in oklab, var(--foreground) 14%, transparent), transparent);
+}
+
+.cm-cover-play {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    display: grid;
+    place-items: center;
+    width: 30%;
+    max-width: 60px;
+    min-width: 30px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--foreground);
+    color: var(--background);
+    box-shadow: 0 8px 20px rgb(0 0 0 / 35%);
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.85);
+    transition:
+        opacity 200ms ease,
+        transform 260ms var(--cm-ease);
+}
+
+.cm-cover-play svg {
+    fill: currentcolor;
+    margin-left: 2px;
+}
+
+:is(.cm-stage-cover, .cm-room-cover, .cm-lastheard-cover, .cm-common-cover, .cm-chart-cover, .cm-profile-live-cover):is(:hover, :focus-visible) .cm-cover-play {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.cm-stage-info {
+    min-width: 0;
+}
+
+.cm-room-who {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin: 0 0 0.85rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+
+.cm-live-tag {
+    padding: 0.18rem 0.5rem;
+    border-radius: 999px;
+    background: var(--foreground);
+    color: var(--background);
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.cm-live-tag.is-paused {
+    background: color-mix(in oklab, var(--foreground) 16%, transparent);
+    color: var(--foreground);
+}
+
+.cm-stage-title {
+    margin: 0;
+    font-family: var(--cm-display);
+    font-size: clamp(1.9rem, 4.6cqi, 3.2rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow-wrap: anywhere;
+}
+
+.cm-stage-meta {
+    margin: 0.45rem 0 0;
+    color: color-mix(in oklab, var(--foreground) 75%, transparent);
+    font-size: 1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Everyone in the room, placed where they are in the song. */
+.cm-timeline {
+    position: relative;
+    margin: 1.4rem 0 0.35rem;
+    padding-top: 15px;
+}
+
+.cm-timeline-line {
+    position: relative;
+    display: block;
+    height: 4px;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--foreground) 18%, transparent);
+    overflow: hidden;
+}
+
+.cm-timeline-fill,
+.cm-mini-progress > span {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: calc(var(--p, 0) * 100%);
+    border-radius: inherit;
+    background: var(--foreground);
+    transition: width 1s linear;
+}
+
+.cm-playhead {
+    position: absolute;
+    top: 2px;
+    left: calc(var(--p, 0) * 100%);
+    z-index: 1;
+    display: block;
+    border-radius: 50%;
+    transform: translateX(-50%);
+    transition:
+        left 1s linear,
+        transform 220ms var(--cm-ease);
+}
+
+.cm-playhead .cm-avatar {
+    box-shadow:
+        0 0 0 2.5px var(--foreground),
+        0 4px 12px rgb(0 0 0 / 35%);
+}
+
+.cm-playhead.is-paused .cm-avatar {
+    box-shadow: 0 0 0 2.5px color-mix(in oklab, var(--foreground) 40%, transparent);
+    filter: grayscale(0.6);
+}
+
+.cm-playhead:hover,
+.cm-playhead:focus-visible {
+    z-index: 2;
+    transform: translateX(-50%) scale(1.15);
+}
+
+.cm-timeline-times {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.95rem;
+    color: color-mix(in oklab, var(--foreground) 60%, transparent);
+    font-size: 0.74rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.cm-room-lines {
+    display: grid;
+    gap: 0.6rem;
+    margin: 1.1rem 0 0.2rem;
+    padding: 0;
+    list-style: none;
+}
+
+.cm-room-lines li {
+    display: grid;
+    grid-template-columns: minmax(0, 9rem) minmax(0, 1fr);
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+}
+
+.cm-room-lines .cm-mini-progress {
+    grid-column: 1 / -1;
+}
+
+.cm-room-line-who {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    font-weight: 600;
+    font-size: 0.88rem;
+}
+
+.cm-room-line-track {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.88rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: color-mix(in oklab, var(--foreground) 80%, transparent);
+}
+
+.cm-mini-progress {
+    position: relative;
+    display: block;
+    height: 3px;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--foreground) 14%, transparent);
+    overflow: hidden;
+}
+
+.cm-room-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+}
+
+.cm-stage .cm-room-actions .cm-btn.is-primary {
+    height: 46px;
+    padding: 0 1.4rem 0 1.15rem;
+    font-size: 0.95rem;
+}
+
+.cm-stage .cm-room-actions .cm-btn.is-primary svg {
+    fill: currentcolor;
+}
+
+.cm-stage .cm-room-actions .cm-icon-btn {
+    width: 46px;
+    height: 46px;
+    background: color-mix(in oklab, var(--foreground) 12%, transparent);
+}
+
+.cm-stage .cm-room-actions .cm-icon-btn:hover {
+    background: color-mix(in oklab, var(--foreground) 20%, transparent);
+}
+
+.cm-stage .cm-reactions {
+    margin-left: auto;
+}
+
+/* Other rooms */
+.cm-rooms {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 1.6rem 1.25rem;
+    margin: 1.6rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cm-rooms.is-scroll {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    padding-bottom: 0.5rem;
+}
+
+.cm-rooms.is-scroll > .cm-room {
+    flex: 0 0 210px;
+    scroll-snap-align: start;
+}
+
+.cm-room {
+    min-width: 0;
+}
+
+.cm-room.is-new {
+    animation: cm-rise 520ms var(--cm-ease) both;
+}
+
+.cm-room-art {
+    position: relative;
+    margin-bottom: 1.05rem;
+}
+
+.cm-room-cover {
+    border-radius: 10px;
+    box-shadow: 0 14px 30px rgb(0 0 0 / 28%);
+    transition: transform 320ms var(--cm-ease);
+}
+
+.cm-room-cover:hover {
+    transform: translateY(-3px);
+}
+
+.cm-room-faces {
+    position: absolute;
+    left: 10px;
+    bottom: -14px;
+    display: flex;
+}
+
+.cm-room-faces > a + a {
+    margin-left: -10px;
+}
+
+.cm-room-who-small {
+    margin: 0 0 0.2rem;
+    color: var(--cm-soft);
+    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-room-title {
+    margin: 0;
+    font-family: var(--cm-display);
+    font-size: 1.06rem;
+    font-weight: 750;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-room-meta {
+    margin: 0.15rem 0 0.6rem;
+    color: var(--cm-soft);
+    font-size: 0.84rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-room .cm-room-actions {
+    margin-top: 0.7rem;
+    gap: 0.35rem;
+}
+
+.cm-room .cm-room-actions .cm-icon-btn {
+    width: 34px;
+    height: 34px;
+}
+
+.cm-room .cm-room-actions svg {
+    width: 16px;
+    height: 16px;
+}
+
+.cm-room .cm-room-actions .cm-icon-btn.is-solid svg {
+    fill: currentcolor;
+}
+
+/* Quiet and invite states */
+.cm-quiet,
+.cm-invite,
+.cm-error {
+    padding: clamp(1.25rem, 3cqi, 2rem);
+    border-radius: 24px;
+    background: color-mix(in oklab, var(--foreground) 4%, transparent);
+}
+
+.cm-quiet-title,
+.cm-invite-title {
+    margin: 0;
+    font-family: var(--cm-display);
+    font-size: clamp(1.4rem, 3cqi, 1.9rem);
+    font-weight: 750;
+    letter-spacing: -0.025em;
+}
+
+.cm-quiet-text,
+.cm-invite-text {
+    max-width: 52ch;
+    margin: 0.45rem 0 0;
+    color: var(--cm-soft);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.cm-invite .cm-btn {
+    margin-top: 1.2rem;
+}
+
+.cm-lastheard {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem 1.25rem;
+    margin: 1.1rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cm-lastheard-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    min-width: 0;
+}
+
+.cm-lastheard-cover {
+    width: 56px;
+    flex: none;
+    border-radius: 7px;
+}
+
+.cm-lastheard-text {
+    display: grid;
+    min-width: 0;
+}
+
+.cm-lastheard-text strong,
+.cm-lastheard-text small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-lastheard-text strong {
+    font-size: 0.92rem;
+}
+
+.cm-lastheard-text small {
+    color: var(--cm-soft);
+    font-size: 0.8rem;
+}
+
+/* ------------------------------------------------------------------ stream + rail */
+
+.cm-body {
+    display: block;
+    animation: cm-rise 640ms var(--cm-ease) 180ms both;
+}
+
+.cm-body-rail {
+    display: none;
+}
+
+@container cm (min-width: 1000px) {
+    .cm-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) clamp(300px, 30cqi, 360px);
+        gap: clamp(2rem, 4cqi, 3.5rem);
+        align-items: start;
+    }
+
+    .cm-body-rail {
+        display: block;
+        position: sticky;
+        top: 0;
+    }
+
+    .cm-insight {
+        display: none;
+    }
+}
+
+.cm-stream {
+    min-width: 0;
+    max-width: 760px;
+}
+
+.cm-composer {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 1.1rem;
+    border-bottom: 1px solid var(--cm-rule);
+}
+
+.cm-composer-input {
+    flex: 1;
+    min-width: 0;
+    height: 46px;
+    padding: 0 1.1rem;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--foreground) 6%, transparent);
+    color: var(--cm-soft);
+    font-size: 0.92rem;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: text;
+    transition: background-color 180ms ease;
+}
+
+.cm-composer-input:hover {
+    background: color-mix(in oklab, var(--foreground) 10%, transparent);
+}
+
+.cm-feed {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cm-day h3 {
+    margin: 1.6rem 0 0.25rem;
+    font-family: var(--cm-display);
+    font-size: 1.02rem;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+    color: var(--cm-soft);
+}
+
+.cm-item {
+    padding: 1.05rem 0 1.15rem;
+    border-bottom: 1px solid var(--cm-rule);
+}
+
+.cm-item-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.cm-item-avatar {
+    flex: none;
+    border-radius: 50%;
+}
+
+.cm-item-line {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.cm-who {
+    font-weight: 700;
+}
+
+.cm-em {
+    font-weight: 650;
+}
+
+.cm-item-head time {
+    flex: none;
+    color: var(--cm-soft);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.cm-item-foot {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.85rem;
+    padding-left: calc(40px + 0.75rem);
+}
+
+.cm-item-foot .cm-reactions {
+    margin-left: auto;
+}
+
+.cm-session {
+    display: grid;
+    grid-template-columns: 104px minmax(0, 1fr);
+    gap: 1rem;
+    margin-top: 0.8rem;
+    padding-left: calc(40px + 0.75rem);
+}
+
+.cm-single {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.6rem 0.5rem 0.5rem;
+    margin-left: calc(40px + 0.75rem);
+    border-radius: 16px;
+    background: color-mix(in oklab, var(--foreground) 4%, transparent);
+}
+
+.cm-single-cover {
+    position: relative;
+    width: 64px;
+    flex: none;
+    aspect-ratio: 1;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: color-mix(in oklab, var(--foreground) 10%, var(--background));
+    cursor: pointer;
+}
+
+.cm-single-cover img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.cm-single-cover:is(:hover, :focus-visible) .cm-cover-play {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.cm-single-text {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+}
+
+.cm-single-text > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-single-text strong {
+    font-size: 0.98rem;
+    font-weight: 650;
+}
+
+.cm-single-text small {
+    color: var(--cm-soft);
+    font-size: 0.84rem;
+}
+
+.cm-single .cm-reactions {
+    flex: none;
+    justify-content: flex-end;
+    max-width: 40%;
+}
+
+.cm-session-art {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 9px;
+    overflow: hidden;
+    background: color-mix(in oklab, var(--foreground) 8%, transparent);
+    box-shadow: 0 10px 22px rgb(0 0 0 / 22%);
+}
+
+.cm-session-art img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.cm-session-art.is-mosaic {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+}
+
+.cm-session-art.is-mosaic img {
+    position: static;
+    aspect-ratio: 1;
+}
+
+.cm-session-art.is-mosaic[data-count='2'] {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr;
+}
+
+.cm-session-art.is-mosaic[data-count='2'] img {
+    aspect-ratio: auto;
+    height: 100%;
+}
+
+.cm-session-art.is-mosaic[data-count='3'] img:first-child {
+    grid-row: span 2;
+    aspect-ratio: auto;
+    height: 100%;
+}
+
+.cm-session-sub {
+    margin: 0 0 0.35rem;
+    color: var(--cm-soft);
+    font-size: 0.82rem;
+}
+
+.cm-tracklets {
+    display: grid;
+    gap: 0.1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cm-tracklets li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+    padding: 0.18rem 0.35rem 0.18rem 0.15rem;
+    border-radius: 8px;
+    transition: background-color 160ms ease;
+}
+
+.cm-tracklets li:hover {
+    background: color-mix(in oklab, var(--foreground) 6%, transparent);
+}
+
+.cm-tracklet {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    flex: none;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--cm-soft);
+    cursor: pointer;
+}
+
+.cm-tracklet svg {
+    fill: currentcolor;
+}
+
+.cm-tracklets li:hover .cm-tracklet,
+.cm-tracklet:focus-visible {
+    background: var(--foreground);
+    color: var(--background);
+}
+
+.cm-tracklet-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.88rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-tracklet-text small {
+    margin-left: 0.45rem;
+    color: var(--cm-soft);
+    font-size: 0.8rem;
+}
+
+.cm-more-line {
+    margin: 0.3rem 0 0 0.25rem;
+    font-size: 0.8rem;
+}
+
+.cm-item--quiet .cm-item-foot {
+    margin-top: 0.6rem;
+}
+
+.cm-common {
+    display: flex;
+    gap: 1rem;
+    margin: 0.8rem 0 0;
+    padding: 0 0 0 calc(40px + 0.75rem);
+    list-style: none;
+    overflow-x: auto;
+}
+
+.cm-common li {
+    display: grid;
+    gap: 0.45rem;
+    width: 120px;
+    flex: none;
+    font-size: 0.84rem;
+}
+
+.cm-common li > span {
+    display: grid;
+    min-width: 0;
+}
+
+.cm-common li > span > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-common small {
+    color: var(--cm-soft);
+    font-size: 0.76rem;
+}
+
+.cm-common-cover {
+    border-radius: 8px;
+}
+
+.cm-stream-empty {
+    padding: 1.5rem 0;
+}
+
+.cm-insight {
+    padding: 1.1rem 0;
+    border-bottom: 1px solid var(--cm-rule);
+}
+
+/* Polls */
+.cm-poll {
+    margin: 0.85rem 0 0 calc(40px + 0.75rem);
+    padding: 1.05rem;
+    border-radius: 18px;
+    background: color-mix(in oklab, var(--foreground) 5%, transparent);
+}
+
+.cm-poll-q {
+    margin: 0 0 0.8rem;
+    font-family: var(--cm-display);
+    font-size: 1.15rem;
+    font-weight: 750;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+}
+
+.cm-poll-options {
+    display: grid;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cm-poll-options li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.cm-poll-option {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex: 1;
+    min-width: 0;
+    min-height: 46px;
+    padding: 0.45rem 0.9rem;
+    border: 0;
+    border-radius: 12px;
+    background: color-mix(in oklab, var(--foreground) 7%, transparent);
+    text-align: left;
+    overflow: hidden;
+    cursor: pointer;
+    transition:
+        background-color 180ms ease,
+        box-shadow 180ms ease;
+}
+
+.cm-poll-option:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--foreground) 11%, transparent);
+}
+
+.cm-poll-option:disabled {
+    cursor: default;
+}
+
+.cm-poll-option[aria-pressed='true'] {
+    box-shadow: inset 0 0 0 1.5px var(--foreground);
+}
+
+.cm-poll-bar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: -1;
+    width: 0;
+    background: color-mix(in oklab, var(--foreground) 12%, transparent);
+    transition: width 700ms var(--cm-ease);
+}
+
+.cm-poll-option.is-revealed .cm-poll-bar {
+    width: calc(var(--v, 0) * 100%);
+}
+
+.cm-poll-option.is-top .cm-poll-bar {
+    background: color-mix(in oklab, var(--foreground) 22%, transparent);
+}
+
+.cm-poll-option img {
+    width: 30px;
+    height: 30px;
+    flex: none;
+    border-radius: 5px;
+    object-fit: cover;
+}
+
+.cm-poll-label {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.92rem;
+    font-weight: 550;
+    overflow-wrap: anywhere;
+}
+
+.cm-poll-pct {
+    font-size: 0.86rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.cm-poll-ref {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    border-radius: 50%;
+    color: var(--cm-soft);
+}
+
+.cm-poll-ref svg {
+    fill: currentcolor;
+}
+
+.cm-poll-ref:hover {
+    background: color-mix(in oklab, var(--foreground) 8%, transparent);
+    color: var(--foreground);
+}
+
+.cm-poll-foot {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+    margin: 0.75rem 0 0;
+    color: var(--cm-soft);
+    font-size: 0.8rem;
+}
+
+.cm-poll-foot > span {
+    flex: 1;
+}
+
+.cm-item--poll .cm-item-foot {
+    margin-top: 0.6rem;
+}
+
+/* Rail cards */
+.cm-card {
+    padding: 1.15rem 1.15rem 1.2rem;
+    border-radius: 22px;
+    background: color-mix(in oklab, var(--foreground) 4%, transparent);
+}
+
+.cm-body-rail .cm-card + .cm-card {
+    margin-top: 1rem;
+}
+
+.cm-card.is-in-stream {
+    padding: 1.1rem;
+}
+
+.cm-card-title {
+    margin: 0;
+    font-family: var(--cm-display);
+    font-size: 1.08rem;
+    font-weight: 750;
+    letter-spacing: -0.015em;
+}
+
+.cm-card-sub,
+.cm-card-foot,
+.cm-card-empty {
+    margin: 0.3rem 0 0;
+    color: var(--cm-soft);
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.cm-card-foot {
+    margin-top: 0.85rem;
+}
+
+.cm-card-empty {
+    margin-top: 0.6rem;
+    font-size: 0.86rem;
+}
+
+.cm-match-list,
+.cm-chart-list,
+.cm-people-list {
+    display: grid;
+    gap: 0.2rem;
+    margin: 0.8rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cm-match {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.35rem 0.3rem;
+    border-radius: 14px;
+}
+
+.cm-match-who,
+.cm-person-who {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.cm a.cm-match-who:hover,
+.cm a.cm-person-who:hover {
+    text-decoration: none;
+}
+
+.cm-match-who > span,
+.cm-person-who > span {
+    display: grid;
+    min-width: 0;
+}
+
+.cm-match-who strong,
+.cm-person-who strong {
+    overflow: hidden;
+    font-size: 0.92rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-match-who small,
+.cm-person-who small {
+    overflow: hidden;
+    color: var(--cm-soft);
+    font-size: 0.78rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-match-who:hover strong,
+.cm-person-who:hover strong {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.cm-match-score {
+    flex: none;
+    font-family: var(--cm-display);
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+}
+
+.cm-match-score small {
+    margin-left: 1px;
+    color: var(--cm-soft);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.cm-chart-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
+    padding: 0.3rem 0;
+}
+
+.cm-chart-rank {
+    width: 1.3rem;
+    flex: none;
+    font-family: var(--cm-display);
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--cm-soft);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.cm-chart-row:first-child .cm-chart-rank {
+    color: var(--foreground);
+}
+
+.cm-chart-cover {
+    width: 44px;
+    flex: none;
+    border-radius: 6px;
+}
+
+.cm-chart-text {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    font-size: 0.88rem;
+}
+
+.cm-chart-text > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-chart-text small {
+    color: var(--cm-soft);
+    font-size: 0.78rem;
+}
+
+.cm-chart-people {
+    display: flex;
+    flex: none;
+    padding-left: 6px;
+}
+
+.cm-chart-people .cm-avatar {
+    margin-left: -6px;
+    box-shadow: 0 0 0 2px var(--background);
+}
+
+.cm-chart-artists {
+    margin: 0.8rem 0 0;
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+.cm-chart .cm-reactions {
+    margin-top: 0.8rem;
+}
+
+.cm-person {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.3rem 0;
+}
+
+.cm-person.is-extra {
+    display: none;
+}
+
+.cm-people.is-open .cm-person.is-extra {
+    display: flex;
+}
+
+.cm-people .cm-link-btn {
+    margin-top: 0.5rem;
+}
+
+/* ------------------------------------------------------------------ reactions */
+
+.cm-reactions {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.cm-react-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    height: 34px;
+    padding: 0 0.7rem 0 0.55rem;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--foreground) 8%, transparent);
+    cursor: pointer;
+    transition:
+        background-color 160ms ease,
+        transform 200ms var(--cm-ease),
+        box-shadow 160ms ease;
+}
+
+.cm-react-chip:hover {
+    background: color-mix(in oklab, var(--foreground) 14%, transparent);
+}
+
+.cm-react-chip[aria-pressed='true'] {
+    background: color-mix(in oklab, var(--foreground) 18%, transparent);
+    box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--foreground) 55%, transparent);
+}
+
+.cm-react-emoji {
+    font-size: 1.02rem;
+    line-height: 1;
+}
+
+.cm-react-count {
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.cm-react-chip.is-bump {
+    animation: cm-bump 420ms var(--cm-ease);
+}
+
+@keyframes cm-bump {
+    40% {
+        transform: scale(1.18);
+    }
+}
+
+.cm-react-add {
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--cm-soft);
+    cursor: pointer;
+    transition:
+        background-color 160ms ease,
+        color 160ms ease;
+}
+
+.cm-react-add:hover,
+.cm-react-add[aria-expanded='true'] {
+    background: color-mix(in oklab, var(--foreground) 9%, transparent);
+    color: var(--foreground);
+}
+
+.cm-stage .cm-react-add {
+    width: 46px;
+    height: 46px;
+    background: color-mix(in oklab, var(--foreground) 12%, transparent);
+    color: var(--foreground);
+}
+
+.cm-stage .cm-react-chip {
+    height: 46px;
+    padding: 0 0.85rem 0 0.7rem;
+    background: color-mix(in oklab, var(--foreground) 12%, transparent);
+}
+
+.cm-stage .cm-react-emoji {
+    font-size: 1.2rem;
+}
+
+.cm-reactions.is-compact .cm-react-chip {
+    height: 30px;
+    padding: 0 0.6rem 0 0.45rem;
+}
+
+.cm-reactions.is-compact .cm-react-add {
+    width: 30px;
+    height: 30px;
+}
+
+.cm-react-burst {
+    position: fixed;
+    z-index: 2500;
+    font-size: 30px;
+    line-height: 1;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    animation: cm-burst 900ms var(--cm-ease, cubic-bezier(0.16, 1, 0.3, 1)) forwards;
+}
+
+@keyframes cm-burst {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.4);
+    }
+
+    25% {
+        opacity: 1;
+        transform: translate(-50%, -110%) scale(1.25);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -260%) scale(0.9);
+    }
+}
+
+.cm-picker {
+    position: fixed;
+    z-index: 2400;
+    width: max-content;
+    max-width: min(360px, calc(100vw - 24px));
+    padding: 0.45rem;
+    border: 1px solid color-mix(in oklab, var(--foreground) 10%, transparent);
+    border-radius: 22px;
+    background: var(--card);
+    color: var(--foreground);
+    box-shadow:
+        0 24px 60px rgb(0 0 0 / 40%),
+        0 2px 8px rgb(0 0 0 / 20%);
+    animation: cm-picker-in 220ms var(--cm-ease, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+@keyframes cm-picker-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.96);
+    }
+}
+
+.cm-picker-quick {
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
+}
+
+.cm-picker-emoji,
+.cm-picker-more {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--foreground);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+        transform 200ms var(--cm-ease, cubic-bezier(0.16, 1, 0.3, 1)),
+        background-color 160ms ease;
+}
+
+.cm-picker-emoji:hover,
+.cm-picker-emoji:focus-visible {
+    background: color-mix(in oklab, var(--foreground) 9%, transparent);
+    transform: scale(1.18);
+}
+
+.cm-picker-emoji[aria-pressed='true'] {
+    background: color-mix(in oklab, var(--foreground) 16%, transparent);
+}
+
+.cm-picker-more {
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    background: color-mix(in oklab, var(--foreground) 7%, transparent);
+}
+
+.cm-picker-full {
+    margin-top: 0.4rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid color-mix(in oklab, var(--foreground) 9%, transparent);
+}
+
+.cm-picker-search {
+    width: 100%;
+    height: 38px;
+    padding: 0 0.9rem;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--foreground) 7%, transparent);
+    color: var(--foreground);
+    font: inherit;
+    font-size: 0.88rem;
+}
+
+.cm-picker-scroll {
+    max-height: 240px;
+    margin-top: 0.4rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.cm-picker-label {
+    margin: 0.45rem 0.4rem 0.15rem;
+    color: var(--muted-foreground);
+    font-size: 0.72rem;
+    font-weight: 650;
+}
+
+.cm-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 44px);
+}
+
+.cm-picker-none {
+    margin: 0.8rem;
+    color: var(--muted-foreground);
+    font-size: 0.85rem;
+}
+
+.cm-picker-remove {
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 0.55rem;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--muted-foreground);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.cm-picker-remove:hover {
+    background: color-mix(in oklab, var(--foreground) 7%, transparent);
+    color: var(--foreground);
+}
+
+.cm-picker.is-sheet {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: auto;
+    max-width: none;
+    padding: 0.75rem 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
+    border-radius: 24px 24px 0 0;
+}
+
+.cm-picker.is-sheet .cm-picker-quick {
+    justify-content: space-between;
+}
+
+.cm-picker.is-sheet .cm-picker-grid {
+    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+}
+
+/* ------------------------------------------------------------------ dialogs + menus */
+
+.cm-dialog {
+    max-width: none;
+    max-height: none;
+    margin: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--foreground);
+    overflow: visible;
+}
+
+.cm-dialog::backdrop {
+    background: rgb(0 0 0 / 55%);
+    backdrop-filter: blur(6px);
+}
+
+.cm-dialog[open] .cm-dialog-card {
+    animation: cm-dialog-in 300ms var(--ease-drawer, cubic-bezier(0.32, 0.72, 0, 1)) both;
+}
+
+@keyframes cm-dialog-in {
+    from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.98);
+    }
+}
+
+.cm-dialog-card {
+    display: grid;
+    gap: 1rem;
+    width: min(480px, calc(100vw - 32px));
+    max-height: calc(100dvh - 48px);
+    padding: 1.35rem;
+    overflow-y: auto;
+    border: 1px solid color-mix(in oklab, var(--foreground) 9%, transparent);
+    border-radius: 24px;
+    background: var(--card);
+    box-shadow: 0 30px 80px rgb(0 0 0 / 45%);
+    font-family: var(--font-family);
+}
+
+.cm-dialog-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.cm-dialog-head h2 {
+    margin: 0;
+    font-family: var(--font-family-key);
+    font-size: 1.35rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+}
+
+.cm-dialog-lede,
+.cm-dialog-note {
+    margin: -0.35rem 0 0;
+    color: var(--muted-foreground);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.cm-dialog-note {
+    margin: 0;
+    font-size: 0.8rem;
+}
+
+.cm-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.cm-dialog-actions [data-delete] {
+    margin-right: auto;
+}
+
+.cm-choice-list {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.cm-choice {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.85rem 1rem;
+    border-radius: 16px;
+    background: color-mix(in oklab, var(--foreground) 5%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--foreground) 8%, transparent);
+    cursor: pointer;
+    transition:
+        background-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.cm-choice:hover {
+    background: color-mix(in oklab, var(--foreground) 8%, transparent);
+}
+
+.cm-choice:has(input:checked) {
+    background: color-mix(in oklab, var(--foreground) 10%, transparent);
+    box-shadow: inset 0 0 0 2px var(--foreground);
+}
+
+.cm-choice:has(input:focus-visible) {
+    outline: 2px solid var(--foreground);
+    outline-offset: 3px;
+}
+
+.cm-choice input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.cm-choice-icon {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex: none;
+    border-radius: 50%;
+    background: color-mix(in oklab, var(--foreground) 9%, transparent);
+}
+
+.cm-choice:has(input:checked) .cm-choice-icon {
+    background: var(--foreground);
+    color: var(--background);
+}
+
+.cm-choice-text {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.cm-choice-text strong {
+    font-size: 0.95rem;
+}
+
+.cm-choice-text small {
+    color: var(--muted-foreground);
+    font-size: 0.82rem;
+    line-height: 1.35;
+}
+
+.cm-note-editor {
+    position: relative;
+}
+
+.cm-note-editor textarea,
+.cm-field input,
+.cm-field select,
+.cm-poll-option-edit input {
+    width: 100%;
+    border: 0;
+    border-radius: 16px;
+    background: color-mix(in oklab, var(--foreground) 7%, transparent);
+    color: var(--foreground);
+    font: inherit;
+}
+
+.cm-note-editor textarea {
+    min-height: 96px;
+    padding: 0.9rem 1rem;
+    font-size: 1.15rem;
+    line-height: 1.4;
+    resize: none;
+}
+
+.cm-counter {
+    position: absolute;
+    right: 0.8rem;
+    bottom: 0.6rem;
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.cm-attach-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.cm-attach-actions .cm-btn span {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cm-attach-chip,
+.cm-share-card {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
+    padding: 0.45rem 0.5rem 0.45rem 0.45rem;
+    border-radius: 14px;
+    background: color-mix(in oklab, var(--foreground) 7%, transparent);
+}
+
+.cm-attach-chip img,
+.cm-share-art img {
+    width: 44px;
+    height: 44px;
+    flex: none;
+    border-radius: 7px;
+    object-fit: cover;
+}
+
+.cm-attach-icon {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex: none;
+    border-radius: 7px;
+    background: color-mix(in oklab, var(--foreground) 9%, transparent);
+}
+
+.cm-attach-text,
+.cm-share-text {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+}
+
+.cm-attach-text strong,
+.cm-attach-text small,
+.cm-share-text strong,
+.cm-share-text small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-attach-text strong,
+.cm-share-text strong {
+    font-size: 0.9rem;
+}
+
+.cm-attach-text small,
+.cm-share-text small {
+    color: var(--muted-foreground);
+    font-size: 0.78rem;
+}
+
+.cm-share-text,
+.cm-share-art {
+    color: inherit;
+    text-decoration: none;
+}
+
+.cm-share-card .cm-icon-btn svg {
+    fill: currentcolor;
+}
+
+.cm-search {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    height: 42px;
+    padding: 0 0.9rem;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--foreground) 7%, transparent);
+    color: var(--muted-foreground);
+}
+
+.cm-search input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: none;
+    color: var(--foreground);
+    font: inherit;
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.cm-search-results {
+    display: grid;
+    gap: 0.1rem;
+    max-height: 260px;
+    margin: 0.4rem 0 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.cm-search-item {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    width: 100%;
+    padding: 0.4rem;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--foreground);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.cm-search-item:hover,
+.cm-search-item:focus-visible {
+    background: color-mix(in oklab, var(--foreground) 8%, transparent);
+}
+
+.cm-search-item img {
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.cm-search-item > span {
+    display: grid;
+    min-width: 0;
+}
+
+.cm-search-item strong,
+.cm-search-item small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-search-item strong {
+    font-size: 0.88rem;
+}
+
+.cm-search-item small,
+.cm-search-empty {
+    color: var(--muted-foreground);
+    font-size: 0.78rem;
+}
+
+.cm-search-empty {
+    padding: 0.6rem;
+}
+
+.cm-segment {
+    display: inline-flex;
+    justify-self: start;
+    gap: 2px;
+    margin: 0;
+    padding: 3px;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--foreground) 7%, transparent);
+}
+
+.cm-segment label {
+    position: relative;
+    cursor: pointer;
+}
+
+.cm-segment input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.cm-segment span {
+    display: block;
+    padding: 0.42rem 0.9rem;
+    border-radius: 999px;
+    color: var(--muted-foreground);
+    font-size: 0.84rem;
+    font-weight: 600;
+    transition:
+        background-color 180ms ease,
+        color 180ms ease;
+}
+
+.cm-segment input:checked + span {
+    background: var(--foreground);
+    color: var(--background);
+}
+
+.cm-segment input:focus-visible + span {
+    outline: 2px solid var(--foreground);
+    outline-offset: 2px;
+}
+
+.cm-field {
+    display: grid;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--muted-foreground);
+}
+
+.cm-field input,
+.cm-field select {
+    height: 46px;
+    padding: 0 1rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.cm-field.is-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.cm-field.is-inline select {
+    width: auto;
+    height: 38px;
+    border-radius: 999px;
+}
+
+.cm-poll-options[role='group'] {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.cm-poll-option-edit {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.cm-poll-option-edit input {
+    height: 44px;
+    padding: 0 1rem;
+    border-radius: 12px;
+    font-size: 0.92rem;
+}
+
+.cm-poll-option-edit .cm-attach-chip {
+    flex: 1;
+}
+
+.cm-poll-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.cm-poll-dialog [data-add-option] {
+    justify-self: start;
+}
+
+.cm-note-view .cm-dialog-card {
+    width: min(420px, calc(100vw - 32px));
+}
+
+.cm-note-view-who {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+.cm-note-view-who > span {
+    display: grid;
+}
+
+.cm-note-view-who small {
+    color: var(--muted-foreground);
+    font-size: 0.78rem;
+}
+
+.cm-note-view-text {
+    margin: 0;
+    font-family: var(--font-family-key);
+    font-size: 1.55rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.cm-note-view-music {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.55rem;
+    border-radius: 16px;
+    background: color-mix(in oklab, var(--foreground) 7%, transparent);
+}
+
+.cm-note-view-music img {
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.cm-note-view-music > span {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+}
+
+.cm-note-view-music a {
+    color: inherit;
+}
+
+.cm-note-view-music small {
+    color: var(--muted-foreground);
+    font-size: 0.8rem;
+}
+
+.cm-note-view-music .cm-icon-btn svg {
+    fill: currentcolor;
+}
+
+.cm-note-view-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.cm-menu {
+    position: fixed;
+    z-index: 2400;
+    display: grid;
+    width: 260px;
+    padding: 0.5rem;
+    border: 1px solid color-mix(in oklab, var(--foreground) 10%, transparent);
+    border-radius: 18px;
+    background: var(--card);
+    color: var(--foreground);
+    box-shadow: 0 24px 60px rgb(0 0 0 / 40%);
+    animation: cm-picker-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.cm-menu-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0.35rem 0.55rem 0;
+    font-weight: 700;
+    font-size: 0.92rem;
+}
+
+.cm-menu-hint {
+    margin: 0.25rem 0.55rem 0.45rem;
+    color: var(--muted-foreground);
+    font-size: 0.78rem;
+    line-height: 1.4;
+}
+
+.cm-menu-item {
+    padding: 0.6rem 0.7rem;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--foreground);
+    font: inherit;
+    font-size: 0.88rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.cm-menu-item:hover,
+.cm-menu-item:focus-visible {
+    background: color-mix(in oklab, var(--foreground) 9%, transparent);
+    outline: none;
+}
+
+/* ------------------------------------------------------------------ messages drawer */
+
+.cm-drawer-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 2300; /* above the player bar (2100) and side-panel strip (2042) */
+    pointer-events: none;
+}
+
+.cm-drawer-layer.is-open {
+    pointer-events: auto;
+}
+
+.cm-drawer-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 40%);
+    opacity: 0;
+    transition: opacity 320ms ease;
+}
+
+.cm-drawer-layer.is-open .cm-drawer-scrim {
+    opacity: 1;
+}
+
+.cm-drawer {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    width: min(410px, calc(100vw - 16px));
+    border: 1px solid color-mix(in oklab, var(--foreground) 9%, transparent);
+    border-radius: 22px;
+    background: var(--card);
+    color: var(--foreground);
+    box-shadow: -20px 0 70px rgb(0 0 0 / 35%);
+    font-family: var(--font-family);
+    transform: translateX(calc(100% + 24px));
+    transition: transform 460ms var(--ease-drawer, cubic-bezier(0.32, 0.72, 0, 1));
+    overflow: hidden;
+}
+
+.cm-drawer-layer.is-open .cm-drawer {
+    transform: none;
+}
+
+.cm-drawer-head {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.8rem 0.8rem 0.6rem 1.1rem;
+}
+
+.cm-drawer-title {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    font-family: var(--font-family-key);
+    font-size: 1.2rem;
+    font-weight: 750;
+    letter-spacing: -0.015em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-drawer-title a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.cm-drawer-title a:hover {
+    text-decoration: underline;
+}
+
+.cm-drawer-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 0.6rem 0.6rem;
+}
+
+.cm-drawer-label {
+    margin: 1rem 0.6rem 0.3rem;
+    color: var(--muted-foreground);
+    font-size: 0.76rem;
+    font-weight: 650;
+}
+
+.cm-drawer-empty {
+    margin: 1.5rem 0.8rem;
+    color: var(--muted-foreground);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.cm-drawer-share {
+    margin: 0 0.3rem 0.6rem;
+}
+
+.cm-convo-list {
+    display: grid;
+    gap: 0.1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cm-convo {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    width: 100%;
+    padding: 0.55rem 0.6rem;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--foreground);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.cm-convo:hover,
+.cm-convo:focus-visible {
+    background: color-mix(in oklab, var(--foreground) 7%, transparent);
+}
+
+.cm-convo-text {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+}
+
+.cm-convo-text strong,
+.cm-convo-text small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-convo-text strong {
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+
+.cm-convo-text small {
+    color: var(--muted-foreground);
+    font-size: 0.82rem;
+}
+
+.cm-convo time {
+    flex: none;
+    color: var(--muted-foreground);
+    font-size: 0.74rem;
+}
+
+.cm-convo.is-unread strong {
+    font-weight: 800;
+}
+
+.cm-convo.is-unread small {
+    color: var(--foreground);
+}
+
+.cm-convo.is-unread time::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 0.4rem;
+    border-radius: 50%;
+    background: var(--foreground);
+    vertical-align: middle;
+}
+
+.cm-thread {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0.5rem 0.4rem 0.8rem;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.cm-thread > :first-child {
+    margin-top: auto;
+}
+
+.cm-msg {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    max-width: 82%;
+    margin-top: 0.45rem;
+}
+
+.cm-msg.is-grouped {
+    margin-top: 0;
+}
+
+.cm-msg.is-own {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.cm-msg-name {
+    margin: 0 0 0.2rem 0.7rem;
+    color: var(--muted-foreground);
+    font-size: 0.72rem;
+}
+
+.cm-msg-bubble {
+    display: grid;
+    gap: 0.4rem;
+    padding: 0.5rem 0.8rem;
+    border-radius: 18px 18px 18px 6px;
+    background: color-mix(in oklab, var(--foreground) 9%, transparent);
+    font-size: 0.93rem;
+    line-height: 1.4;
+}
+
+.cm-msg.is-own .cm-msg-bubble {
+    border-radius: 18px 18px 6px;
+    background: var(--foreground);
+    color: var(--background);
+}
+
+.cm-msg.is-own .cm-share-card {
+    background: color-mix(in oklab, var(--background) 14%, transparent);
+}
+
+.cm-msg.is-own .cm-share-text small {
+    color: color-mix(in oklab, var(--background) 70%, transparent);
+}
+
+.cm-msg-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.cm-msg-image {
+    max-width: 100%;
+    border-radius: 12px;
+}
+
+.cm-msg-bubble .cm-share-card {
+    margin: 0 -0.35rem;
+    min-width: 220px;
+}
+
+.cm-composer-msg {
+    display: grid;
+    gap: 0.4rem;
+    padding: 0.5rem 0.2rem 0.2rem;
+    border-top: 1px solid color-mix(in oklab, var(--foreground) 8%, transparent);
+}
+
+.cm-composer-share:empty {
+    display: none;
+}
+
+.cm-composer-share {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.cm-composer-share .cm-share-card {
+    flex: 1;
+}
+
+.cm-composer-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.4rem;
+}
+
+.cm-composer-row textarea {
+    flex: 1;
+    min-height: 42px;
+    max-height: 140px;
+    padding: 0.62rem 1rem;
+    border: 0;
+    border-radius: 21px;
+    background: color-mix(in oklab, var(--foreground) 8%, transparent);
+    color: var(--foreground);
+    font: inherit;
+    font-size: 0.93rem;
+    line-height: 1.35;
+    resize: none;
+}
+
+.cm-composer-row .cm-icon-btn {
+    width: 42px;
+    height: 42px;
+}
+
+html.cm-drawer-open .main-content {
+    overflow-y: hidden;
+}
+
+/* ------------------------------------------------------------------ profile, sidebar, app hooks */
+
+.cm-profile-live {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    max-width: 560px;
+    margin-bottom: 2rem;
+    padding: 0.8rem;
+    border-radius: 20px;
+    background: color-mix(in oklab, var(--foreground) 5%, transparent);
+}
+
+.cm-profile-live-cover {
+    width: 84px;
+    flex: none;
+    border-radius: 9px;
+    box-shadow: 0 10px 24px rgb(0 0 0 / 28%);
+}
+
+.cm-profile-live-text {
+    display: grid;
+    flex: 1;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.cm-profile-live-text a {
+    color: inherit;
+}
+
+.cm-profile-live-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.78rem;
+    font-weight: 650;
+}
+
+.cm-profile-live-title {
+    margin: 0;
+    overflow: hidden;
+    font-family: var(--font-family-key);
+    font-size: 1.15rem;
+    font-weight: 750;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-profile-live-meta {
+    margin: 0 0 0.45rem;
+    overflow: hidden;
+    color: var(--muted-foreground);
+    font-size: 0.86rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cm-profile-live-time {
+    margin-top: 0.3rem;
+    color: var(--muted-foreground);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.cm-profile-message {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+#profile-social-stats strong {
+    color: var(--foreground);
+}
+
+.cm-nav-badge {
+    min-width: 18px;
+    height: 18px;
+    margin-left: auto;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--foreground);
+    color: var(--background);
+    font-size: 0.68rem;
+    font-weight: 750;
+    line-height: 18px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.cm-nav-ghost {
+    display: none;
+}
+
+html.cm-ghosting .cm-nav-ghost {
+    display: block;
+    width: 7px;
+    height: 7px;
+    margin-left: auto;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1.5px var(--muted-foreground);
+}
+
+html:not(.cm-on) #sidebar-nav-social,
+html:not(.cm-on) [data-requires-social] {
+    display: none !important;
+}
+
+/* ------------------------------------------------------------------ loading */
+
+.cm-loading {
+    display: grid;
+    gap: 1.2rem;
+}
+
+.cm-skel {
+    border-radius: 16px;
+    background: color-mix(in oklab, var(--foreground) 7%, transparent);
+    animation: cm-skel 1.4s ease-in-out infinite;
+}
+
+.cm-skel-title {
+    width: 220px;
+    height: 48px;
+}
+
+.cm-skel-row {
+    display: flex;
+    gap: 1.4rem;
+}
+
+.cm-skel-note {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+}
+
+.cm-skel-stage {
+    height: 320px;
+    border-radius: 26px;
+}
+
+@keyframes cm-skel {
+    50% {
+        opacity: 0.45;
+    }
+}
+
+@keyframes cm-rise {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+}
+
+/* ------------------------------------------------------------------ narrow layouts */
+
+@container cm (max-width: 860px) {
+    .cm-stage {
+        grid-template-columns: clamp(150px, 30cqi, 230px) minmax(0, 1fr);
+        align-items: start;
+    }
+
+    .cm-stage-title {
+        font-size: clamp(1.6rem, 5cqi, 2.3rem);
+    }
+
+    .cm-stage .cm-reactions {
+        margin-left: 0;
+    }
+}
+
+/* Phones: cover beside the title, then the shared timeline and actions at full width. */
+@container cm (max-width: 560px) {
+    .cm-stage {
+        grid-template-columns: 116px minmax(0, 1fr);
+        align-items: start;
+        gap: 0 0.9rem;
+        padding: 0.9rem 0.9rem 1rem;
+        border-radius: 22px;
+    }
+
+    .cm-stage-info {
+        display: contents;
+    }
+
+    .cm-stage-cover {
+        grid-column: 1;
+        grid-row: 1 / span 3;
+        width: 116px;
+        border-radius: 9px;
+        transform: none;
+    }
+
+    .cm-stage-cover:hover {
+        transform: none;
+    }
+
+    .cm-stage .cm-room-who {
+        grid-column: 2;
+        gap: 0.4rem;
+        margin: 0.1rem 0 0.45rem;
+        font-size: 0.8rem;
+    }
+
+    .cm-stage .cm-room-who .cm-stack {
+        display: none;
+    }
+
+    .cm-stage-title {
+        grid-column: 2;
+        font-size: 1.45rem;
+        letter-spacing: -0.03em;
+    }
+
+    .cm-stage-meta {
+        grid-column: 2;
+        margin-top: 0.3rem;
+        font-size: 0.84rem;
+        white-space: normal;
+    }
+
+    .cm-stage .cm-timeline,
+    .cm-stage .cm-room-lines,
+    .cm-stage .cm-room-actions {
+        grid-column: 1 / -1;
+    }
+
+    .cm-stage .cm-timeline {
+        margin-top: 1.1rem;
+    }
+
+    .cm-stage .cm-room-actions {
+        margin-top: 0.9rem;
+    }
+
+}
+
+@container cm (max-width: 700px) {
+    .cm-rooms {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        margin-right: calc(var(--spacing-xl, 2rem) * -1);
+        padding-right: var(--spacing-xl, 2rem);
+    }
+
+    .cm-rooms > .cm-room {
+        flex: 0 0 min(46%, 180px);
+        scroll-snap-align: start;
+    }
+
+    .cm-session {
+        grid-template-columns: 76px minmax(0, 1fr);
+        padding-left: 0;
+    }
+
+    .cm-item-foot,
+    .cm-common {
+        padding-left: 0;
+    }
+
+    .cm-poll,
+    .cm-single {
+        margin-left: 0;
+    }
+
+    .cm-tracklet-text small {
+        display: block;
+        margin: 0;
+    }
+
+    .cm-head-actions .cm-pill span {
+        display: none;
+    }
+
+    .cm-head-actions .cm-pill {
+        width: 40px;
+        padding: 0;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .cm-notes {
+        margin-inline: calc(var(--spacing-md, 1rem) * -1);
+    }
+
+    .cm-notes-row {
+        padding-inline: var(--spacing-md, 1rem);
+    }
+
+    .cm-note {
+        width: 92px;
+    }
+
+    .cm-dialog {
+        margin: auto 0 0;
+        width: 100%;
+    }
+
+    .cm-dialog-card {
+        width: 100%;
+        max-height: 92dvh;
+        border-radius: 26px 26px 0 0;
+        padding-bottom: calc(1.35rem + env(safe-area-inset-bottom));
+    }
+
+    .cm-drawer {
+        inset: 0;
+        width: 100%;
+        border: 0;
+        border-radius: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cm *,
+    .cm *::before,
+    .cm *::after,
+    .cm-picker,
+    .cm-menu,
+    .cm-dialog-card,
+    .cm-drawer,
+    .cm-react-burst {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .cm-stage-cover {
+        transform: none;
+    }
+}

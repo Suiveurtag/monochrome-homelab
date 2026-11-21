@@ -2484,6 +2484,7 @@ export const sidebarSectionSettings = {
     DEFAULT_ORDER: [
         'sidebar-nav-home',
         'sidebar-nav-library',
+        'sidebar-nav-social',
         'sidebar-nav-upload',
         'sidebar-nav-recent',
         'sidebar-nav-settings',

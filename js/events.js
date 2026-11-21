@@ -2703,6 +2703,8 @@ export async function handleTrackAction(
         if (displayAlbum?.id) {
             navigate(`/album/${displayAlbum.id}`);
         }
+    } else if (action === 'send-to-friend' || action === 'note-about') {
+        window.dispatchEvent(new CustomEvent('community-share', { detail: { action, type, item } }));
     } else if (action === 'copy-link') {
         await copyShareLink(type, item);
     } else if (action === 'open-in-new-tab') {

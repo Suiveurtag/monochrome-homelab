@@ -83,6 +83,7 @@
         <link rel="stylesheet" href="/player-refined.css" />
         <link rel="stylesheet" href="/now-playing-panel.css" />
         <link rel="stylesheet" href="/sidebar.css" />
+        <link rel="stylesheet" href="/community.css" />
         <link rel="stylesheet" href="/soggy-easter-egg.css" />
         <link rel="stylesheet" href="/metallic-logo-easter-egg.css" />
         <link rel="stylesheet" href="/loop-vortex.css" />
@@ -340,6 +341,24 @@
                     <use svg="!lucide/share-2.svg" size="18" /><span class="context-menu-label">Share</span
                     ><use class="context-menu-chevron" svg="!lucide/chevron-right.svg" size="16" />
                     <ul class="context-menu-submenu" role="menu" aria-label="Share options">
+                        <li
+                            role="menuitem"
+                            tabindex="-1"
+                            data-action="send-to-friend"
+                            data-type-filter="track,album,artist"
+                            data-requires-social
+                        >
+                            <use svg="!lucide/send.svg" size="18" /><span class="context-menu-label">Send to a friend</span>
+                        </li>
+                        <li
+                            role="menuitem"
+                            tabindex="-1"
+                            data-action="note-about"
+                            data-type-filter="track,album,artist"
+                            data-requires-social
+                        >
+                            <use svg="!lucide/sticky-note.svg" size="18" /><span class="context-menu-label">Write a note</span>
+                        </li>
                         <li role="menuitem" tabindex="-1" data-action="copy-link">
                             <use svg="!lucide/link.svg" size="18" /><span class="context-menu-label">Copy link</span>
                         </li>
@@ -1981,6 +2000,13 @@
                                     <span class="sidebar-label">Library</span>
                                 </a>
                             </li>
+                            <li class="nav-item" id="sidebar-nav-social">
+                                <a href="/social">
+                                    <svg class="nav-anim-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"><animate attributeName="r" values="2;2.8;2" keyTimes="0;0.3;1" dur="0.9s" begin="indefinite"/></circle><path d="M16.247 7.761a6 6 0 0 1 0 8.478"><animate attributeName="opacity" values="1;0.2;1" keyTimes="0;0.35;1" dur="0.9s" begin="indefinite"/></path><path d="M19.075 4.933a10 10 0 0 1 0 14.134"><animate attributeName="opacity" values="1;1;0.2;1" keyTimes="0;0.2;0.55;1" dur="0.9s" begin="indefinite"/></path><path d="M4.925 19.067a10 10 0 0 1 0-14.134"><animate attributeName="opacity" values="1;1;0.2;1" keyTimes="0;0.2;0.55;1" dur="0.9s" begin="indefinite"/></path><path d="M7.753 16.239a6 6 0 0 1 0-8.478"><animate attributeName="opacity" values="1;0.2;1" keyTimes="0;0.35;1" dur="0.9s" begin="indefinite"/></path></svg>
+                                    <span class="sidebar-label">Social</span>
+                                    <span class="cm-nav-ghost" aria-hidden="true" title="Ghost Mode is on"></span>
+                                </a>
+                            </li>
                         </ul>
                     </nav>
 
@@ -3176,6 +3202,10 @@
                         <h2 class="section-title">Similar Tracks</h2>
                         <div class="track-list" id="track-detail-similar-tracks"></div>
                     </section>
+                </div>
+
+                <div id="page-social" class="page">
+                    <div id="cm-root" class="cm"></div>
                 </div>
 
                 <div id="page-profile" class="page">

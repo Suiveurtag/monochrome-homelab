@@ -33,7 +33,7 @@ import { db } from './db.js';
 import { downloadTracks, showNotification } from './downloads.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { authManager } from './accounts/auth.js';
-import { canUsePermission, enforceAccessGate, isFeatureEnabled } from './access-control.js';
+import { canUsePermission, enforceAccessGate } from './access-control.js';
 import {
     beginSiteIntro,
     initializeSiteIntroActivityTracking,
@@ -58,7 +58,7 @@ import { isSupportedSelfHostedUploadFile, uploadSelfHostedFilesBatch } from './s
 import { registerSW } from 'virtual:pwa-register';
 import { openEditProfile } from './profile.js';
 import { ThemeStore } from './themeStore.js';
-import { socialManager } from './social.js';
+import { initCommunity } from './community/index.js';
 import './commandPalette.js';
 import { initializeKeyboardNavigation, installKeyboardShortcuts, focusRegion } from './keyboard-navigation.js';
 import { showKeyboardShortcuts, showCustomizeShortcutsModal } from './keyboard-settings.js';
@@ -1160,11 +1160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     await initializePlayerEvents(Player.instance, audioPlayer, scrobbler, UIRenderer.instance);
-    authManager.onAuthStateChanged((user) => {
-        if (user && isFeatureEnabled('social', user)) {
-            socialManager.initialize(MusicAPI.instance, Player.instance).catch(console.error);
-        }
-    });
+    initCommunity(Player.instance);
     initializeTrackInteractions(
         Player.instance,
         MusicAPI.instance,

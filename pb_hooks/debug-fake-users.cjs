@@ -219,27 +219,153 @@ function sendDm(app, from, to, body) {
     return say(app, conversation, from, body);
 }
 
-function listen(app, user) {
-    const track = app.findRecordsByFilter('music_tracks', '', '@random', 1, 0)[0];
-    if (!track) return;
-    const data = {
-        user: user.id,
-        track: {
-            id: track.id,
-            type: 'track',
-            title: track.getString('title'),
-            subtitle: track.getString('artist'),
-            image: '',
-            href: `/track/${track.id}`,
-        },
-        is_playing: true,
-        position: Math.floor(Math.random() * 180),
-        last_seen: new Date().toISOString(),
+const stamp = (ms) => new Date(ms).toISOString().replace('T', ' ');
+
+function trackSnapshot(track) {
+    const artist = track.getString('artist') || 'Unknown artist';
+    const album = track.getString('album');
+    const file = track.getString('cover_fallback') || track.getString('cover');
+    const cover = file ? `/api/files/${track.collection().id}/${track.id}/${encodeURIComponent(file)}` : '';
+    return {
+        id: track.id,
+        title: track.getString('title') || 'Untitled track',
+        cover,
+        isSelfHosted: true,
+        artists: [{ id: '', name: artist, picture: '' }],
+        album: album ? { id: '', title: album, cover } : null,
     };
+}
+
+// Debug-only fictional music with generated covers in public/debug-covers/. Never shown unless
+// the fake-user switch is on, and only when the instance has no uploaded tracks to borrow.
+const DEBUG_ALBUMS = [
+    ['Debug Harbour', 'Saltwater Hours', 1],
+    ['Debug Harbour', 'Saltwater Hours', 1],
+    ['Juno Park (debug)', 'Neon Margins', 2],
+    ['The Pale Hours (debug)', 'Slow Orbit', 3],
+    ['Cass Arlo (debug)', 'Weathervane', 4],
+    ['Velvet Static (debug)', 'Low Tide Radio', 5],
+    ['Mira Sol (debug)', 'Glass Weather', 6],
+    ['Northbound (debug)', 'Paper Satellites', 7],
+    ['Juno Park (debug)', 'Neon Margins', 2],
+];
+const DEBUG_TITLES = ['Undertow', 'Lanterns', 'First Light', 'Static Bloom', 'Copper Sky', 'Night Bus', 'Driftwood', 'Afterglow', 'Halflife', 'Open Water', 'Sundial', 'Echo Park'];
+const DEBUG_CATALOGUE = DEBUG_TITLES.map((title, index) => {
+    const [artist, album, cover] = DEBUG_ALBUMS[index % DEBUG_ALBUMS.length];
+    const art = `/debug-covers/cover-${cover}.svg`;
+    return {
+        id: `debug-track-${index + 1}`,
+        title,
+        cover: art,
+        isDebug: true,
+        duration: 150 + ((index * 37) % 120),
+        artists: [{ id: '', name: artist, picture: '' }],
+        album: { id: `debug-album-${cover}`, title: album, cover: art },
+    };
+});
+
+// The previous presence becomes a finished, qualified listening session, so recent activity,
+// charts and taste matches have real rows to work with.
+function finishPlay(app, user, presence, now) {
+    const track = JSON.parse(presence.getString('track') || 'null');
+    if (!track?.id || !track.cover) return;
+    const started = Date.parse(presence.getString('started').replace(' ', 'T')) || now - 200000;
+    const seconds = Math.min(240, Math.max(35, Math.round((now - started) / 1000)));
+    tryCreate(app, 'listening_sessions', {
+        user: user.id,
+        session_id: `fake_${token(20)}`,
+        track_id: track.id,
+        track,
+        started_at: started,
+        last_at: started + seconds * 1000,
+        seconds,
+        qualified: true,
+        ended: true,
+        slices: [],
+    });
+}
+
+function listen(app, user) {
+    const now = Date.now();
     const existing = app.findRecordsByFilter('social_presence', `user = "${user.id}"`, '', 1, 0)[0];
+    if (existing) finishPlay(app, user, existing, now);
+    // Fakes keep returning to the same few tracks so overlaps (and rooms) actually happen.
+    const pool = app.findRecordsByFilter('music_tracks', 'cover != "" || cover_fallback != ""', 'title', 24, 0);
+    const record_ = pick(pool.length ? pool : app.findRecordsByFilter('music_tracks', '', '@random', 1, 0));
+    // An instance without uploaded music falls back to an obviously fictional debug catalogue.
+    const snapshot = record_ ? trackSnapshot(record_) : pick(DEBUG_CATALOGUE);
+    if (!snapshot) return;
+    const { duration: _debugLength, ...trackData } = snapshot;
+    const length = record_ ? record_.getFloat('duration') || 210 : snapshot.duration;
+    const position = Math.floor(Math.random() * Math.min(120, length - 30));
     const record = existing || new Record(app.findCollectionByNameOrId('social_presence'));
-    record.load(data);
+    record.load({
+        user: user.id,
+        track: trackData,
+        is_playing: true,
+        position,
+        duration: length,
+        last_seen: stamp(now),
+        started: stamp(now - position * 1000),
+        play_id: token(16),
+    });
     app.save(record);
+    const social = require(`${__hooks}/social-service.cjs`);
+    const ctx = social.loadContext(app);
+    const view = social.presenceView(record);
+    social.push(app, (viewer) => (viewer !== user.id && social.seesLive(ctx, viewer, user.id) ? { type: 'presence', user: user.id, presence: view } : null));
+}
+
+// Fakes keep their presence fresh between actions so they stay "live".
+function heartbeat(app, fakes) {
+    for (const fake of fakes) {
+        const record = app.findRecordsByFilter('social_presence', `user = "${fake.id}"`, '', 1, 0)[0];
+        if (!record || !record.getString('track') || record.getString('track') === 'null') continue;
+        const at = Date.parse(record.getString('last_seen').replace(' ', 'T')) || Date.now();
+        const position = record.getFloat('position') + (Date.now() - at) / 1000;
+        if (position > record.getFloat('duration')) {
+            listen(app, fake);
+            continue;
+        }
+        record.set('position', position);
+        record.set('last_seen', stamp(Date.now()));
+        app.save(record);
+    }
+}
+
+const NOTE_LINES = ['This outro is unreal.', 'On repeat all day.', 'Anyone else up late with this?', 'Album of the year?', 'Headphones on, world off.', 'Found my new favourite song.'];
+const REACTIONS = ['🔥', '❤️', '🤯', '🎧', '😭', '🕺'];
+
+function leaveNote(app, fake) {
+    for (const old of app.findRecordsByFilter('social_notes', `author = "${fake.id}"`, '', 10, 0)) app.delete(old);
+    const presence = app.findRecordsByFilter('social_presence', `user = "${fake.id}"`, '', 1, 0)[0];
+    const track = presence && JSON.parse(presence.getString('track') || 'null');
+    tryCreate(app, 'social_notes', {
+        author: fake.id,
+        body: pick(NOTE_LINES),
+        attachment: track && Math.random() < 0.6 ? { kind: 'track', id: track.id, title: track.title, subtitle: track.artists?.[0]?.name || '', cover: track.cover, isSelfHosted: true } : null,
+        audience: 'instance',
+        expires_at: stamp(Date.now() + 24 * 3600000),
+    });
+}
+
+function reactToSomething(app, fake) {
+    const presence = pick(app.findRecordsByFilter('social_presence', `user != "${fake.id}" && play_id != ""`, '-last_seen', 10, 0));
+    const note = pick(app.findRecordsByFilter('social_notes', `author != "${fake.id}"`, '-created', 10, 0));
+    const target = Math.random() < 0.5 && presence ? { kind: 'play', id: presence.getString('play_id'), owner: presence.getString('user') } : note ? { kind: 'note', id: note.id, owner: note.getString('author') } : null;
+    if (!target) return;
+    const existing = app.findRecordsByFilter('social_reactions', `user = "${fake.id}" && target_kind = "${target.kind}" && target_id = "${target.id}"`, '', 1, 0)[0];
+    const record = existing || new Record(app.findCollectionByNameOrId('social_reactions'));
+    record.load({ user: fake.id, target_kind: target.kind, target_id: target.id, target_owner: target.owner, emoji: pick(REACTIONS) });
+    app.save(record);
+}
+
+function votePolls(app, fake) {
+    for (const poll of app.findRecordsByFilter('social_polls', 'closed = false', '-created', 5, 0)) {
+        if (Date.parse(poll.getString('closes_at').replace(' ', 'T')) < Date.now()) continue;
+        const options = JSON.parse(poll.getString('options') || '[]');
+        if (options.length) tryCreate(app, 'social_poll_votes', { poll: poll.id, user: fake.id, option: pick(options).id });
+    }
 }
 
 function seed(app, count) {
@@ -261,6 +387,8 @@ function seed(app, count) {
             avatar_url: `/debug-avatars/${hero.avatar}`,
             about: pick(hero.lines),
         });
+        // Fakes consent to sharing with the whole instance, so debug data exercises every surface.
+        save(app, 'social_settings', { user: user.id, visibility: 'instance' });
         for (let post = 0; post < 2; post++) save(app, 'social_posts', { author: user.id, body: pick(hero.lines) });
         for (const other of created.slice(-3))
             tryCreate(app, 'social_follows', { follower: user.id, following: other.id });
@@ -337,6 +465,15 @@ function tick(app) {
             )[0];
             if (last && !ids.has(last.getString('sender'))) say(app, conversation, fake.id, pick(lines));
         }
+    }
+
+    heartbeat(app, fakes);
+    for (const fake of fakes) {
+        if (!app.findRecordsByFilter('social_settings', `user = "${fake.id}"`, '', 1, 0).length)
+            tryCreate(app, 'social_settings', { user: fake.id, visibility: 'instance' });
+        if (Math.random() < 0.08) leaveNote(app, fake);
+        if (Math.random() < 0.12) reactToSomething(app, fake);
+        if (Math.random() < 0.2) votePolls(app, fake);
     }
 
     const actions = Math.max(1, Math.round(fakes.length / 4));

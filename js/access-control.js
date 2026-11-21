@@ -95,6 +95,7 @@ export function applyInstancePolicy(config = cachedAppConfig) {
     const root = document.documentElement;
     const featureTargets = {
         uploads: document.getElementById('sidebar-nav-upload'),
+        social: document.getElementById('sidebar-nav-social'),
     };
     for (const [feature, element] of Object.entries(featureTargets)) {
         if (element) element.hidden = !isFeatureEnabled(feature);

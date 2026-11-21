@@ -214,6 +214,7 @@ export class AuthManager {
     async signOut() {
         try {
             this.stopAccessMonitor();
+            window.dispatchEvent(new CustomEvent('monochrome-before-signout'));
             await auth.deleteSession('current');
             this.user = null;
             this.updateUI(null);

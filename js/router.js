@@ -55,6 +55,7 @@ export function createRouter(ui) {
         const guardedFeatures = {
             recent: 'stats',
             upload: 'uploads',
+            social: 'social',
             user: 'social',
         };
         const guardedFeature = guardedFeatures[page];
@@ -147,10 +148,12 @@ export function createRouter(ui) {
             case 'upload':
                 await ui.renderUploadPage();
                 break;
-            case 'social':
-                window.history.replaceState({}, '', '/');
-                await ui.renderHomePage();
+            case 'social': {
+                await ui.showPage('social');
+                const { renderSocialPage } = await import('./community/community-page.js');
+                await renderSocialPage();
                 break;
+            }
             case 'recent':
                 await ui.renderRecentPage();
                 break;

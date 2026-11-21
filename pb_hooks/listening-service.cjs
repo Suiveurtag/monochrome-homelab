@@ -110,6 +110,8 @@ function saveSession(e) {
         sum += s.seconds;
     }
     if (Math.abs(sum - seconds) > 0.1) throw new BadRequestError('Listening time does not match intervals.');
+    // Ghost Mode sessions stay private forever and never move the public stream counter.
+    const ghost = require('./social-service.cjs').ghostFor(e.app, e.auth.id, started, last);
     let result;
     e.app.runInTransaction((app) => {
         const found = app.findRecordsByFilter('listening_sessions', 'user = {:uid} && session_id = {:sid}', '', 1, 0, {
@@ -139,10 +141,13 @@ function saveSession(e) {
                 record.set('track', track);
                 record.set('started_at', started);
             }
+            if (ghost) record.set('social_hidden', true);
             const previous = json(record, 'slices', []);
             if (previous.some((s) => (slices.find((next) => next.at === s.at)?.seconds ?? -1) + 0.001 < s.seconds))
                 throw new BadRequestError('Listening intervals cannot decrease.');
-            if (!record.getBool('qualified') && seconds >= STREAM_SECONDS) {
+            if (!record.getBool('qualified') && seconds >= STREAM_SECONDS && record.getBool('social_hidden')) {
+                record.set('qualified', true);
+            } else if (!record.getBool('qualified') && seconds >= STREAM_SECONDS) {
                 const total = totals[0] || new Record(app.findCollectionByNameOrId('listening_totals'));
                 total.set('track_id', record.getString('track_id'));
                 total.set('streams', ++count);

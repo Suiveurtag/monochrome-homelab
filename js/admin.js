@@ -420,6 +420,16 @@ function closeInspector() {
     inspectorReturnUserId = null;
 }
 
+// Presence is private per member; the server counts live listeners without exposing who.
+async function fetchOnlineCount() {
+    try {
+        const result = await pb.send('/api/monochrome/social/online', { requestKey: null });
+        return { value: result.count ?? 0, ok: true };
+    } catch {
+        return { value: null, ok: false };
+    }
+}
+
 async function fetchMetric(collection, options = {}) {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 5000);
@@ -466,10 +476,9 @@ function scheduleHealthRefresh() {
 }
 
 async function loadMetrics() {
-    const activeThreshold = new Date(Date.now() - 90_000).toISOString().replace('T', ' ');
     const [tracks, online, imports, pocketbase, importer] = await Promise.all([
         fetchMetric('music_tracks'),
-        fetchMetric('social_presence', { filter: `last_seen >= "${activeThreshold}"` }),
+        fetchOnlineCount(),
         fetchMetric('music_import_jobs', {
             filter: 'status = "queued" || status = "resolving" || status = "downloading"',
         }),
@@ -527,8 +536,12 @@ async function loadInspectorTab(user, tab) {
         const value =
             tab === 'activity'
                 ? await pb
-                      .collection('social_presence')
-                      .getFirstListItem(`user="${user.id}"`, { fields: 'track,is_playing,last_seen' })
+                      .send(`/api/monochrome/social/presence/${encodeURIComponent(user.id)}`, { requestKey: null })
+                      .then(({ presence }) =>
+                          presence
+                              ? { track: presence.track, is_playing: presence.playing, last_seen: new Date(presence.at).toISOString() }
+                              : null
+                      )
                       .catch(() => null)
                 : await pb.collection('music_tracks').getFullList({
                       filter: `owner="${user.id}"`,
