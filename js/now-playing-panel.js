@@ -556,6 +556,40 @@ export class NowPlayingPanel {
         }
     }
 
+    async openLyrics() {
+        if (!this.root || !this.currentTrack) return false;
+        if (!this.desktopMedia.matches) {
+            await this.ui?.openCurrentTrackFullscreen?.();
+            return true;
+        }
+
+        if (this.activeView === 'queue') {
+            this.closeQueue();
+            if (this.activeView === 'queue') {
+                await new Promise((resolve) => {
+                    const observer = new MutationObserver(() => {
+                        if (this.activeView !== 'queue') {
+                            observer.disconnect();
+                            resolve();
+                        }
+                    });
+                    observer.observe(this.root, { attributes: true, attributeFilter: ['class'] });
+                    window.setTimeout(() => {
+                        observer.disconnect();
+                        resolve();
+                    }, QUEUE_CLOSE_DURATION + 100);
+                });
+            }
+        }
+
+        this.expandedLyrics = true;
+        this.collapsedLyrics = false;
+        this.setOpen(true, { restoreFocus: false });
+        await this.render({ preserveScroll: false });
+        this.root.querySelector('.now-playing-panel-lyrics-collapse')?.focus({ preventScroll: true });
+        return true;
+    }
+
     syncQueueLayerState() {
         if (!this.queueLayer) return;
         const isQueue = this.activeView === 'queue';

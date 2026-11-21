@@ -1,15 +1,5 @@
 //js/lyrics.js
 import { getTrackTitle, getTrackArtists, buildTrackFilename } from './utils.js';
-import {
-    SVG_CLOSE,
-    SVG_GENIUS_ACTIVE,
-    SVG_GENIUS_INACTIVE,
-    SVG_MINUS,
-    SVG_PLUS,
-    SVG_RESET,
-    SVG_GLOBE,
-} from './icons.js';
-import { sidePanelManager } from './side-panel.js';
 import { isLineOnlyLyrics, isTtml, lyricsToTtml, parseLrc } from './lyrics-format.js';
 import { Player } from './player.js';
 
@@ -827,166 +817,6 @@ export class LyricsManager {
     }
 }
 
-export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = false, openOrigin = 'player-button') {
-    const manager = lyricsManager || new LyricsManager();
-    sidePanelManager.panel.dataset.lyricsOpenOrigin = openOrigin;
-
-    // Load Kuroshiro in background only if track has Asian text and Romaji mode is enabled
-    const isRomajiMode = manager.getRomajiMode();
-    if (isRomajiMode && trackHasAsianText(track) && !manager.kuroshiroLoaded && !manager.kuroshiroLoading) {
-        manager.loadKuroshiro().catch((err) => {
-            console.warn('Failed to load Kuroshiro for Romaji conversion:', err);
-        });
-    }
-
-    // Load saved timing offset for this track
-    manager.timingOffset = manager.getTimingOffset(track.id);
-
-    const renderControls = (container) => {
-        const isRomajiMode = manager.getRomajiMode();
-        manager.isRomajiMode = isRomajiMode;
-        const isGeniusMode = manager.isGeniusMode;
-        const offsetDisplay = manager.getOffsetDisplayString(manager.timingOffset);
-
-        container.innerHTML = `
-            <div class="lyrics-timing-controls">
-                <button id="lyrics-timing-minus-btn" class="btn-icon" title="Decrease delay (lyrics earlier) -0.5s">
-                    ${SVG_MINUS(18)}
-                </button>
-                <span id="lyrics-timing-display" class="lyrics-timing-display" title="Current timing offset">${offsetDisplay}</span>
-                <button id="lyrics-timing-plus-btn" class="btn-icon" title="Increase delay (lyrics later) +0.5s">
-                    ${SVG_PLUS(18)}
-                </button>
-                <button id="lyrics-timing-reset-btn" class="btn-icon" title="Reset timing offset">
-                    ${SVG_RESET(16)}
-                </button>
-            </div>
-            <button id="romaji-toggle-btn" class="btn-icon" title="Toggle Romaji (Japanese to Latin)" data-enabled="${isRomajiMode}" style="color: ${isRomajiMode ? 'var(--primary)' : ''}">
-                ${SVG_GLOBE(20)}
-            </button>
-            <button id="genius-toggle-btn" class="btn-icon ${isGeniusMode ? 'active-genius' : ''}" title="Genius Mode" style="${isGeniusMode ? 'color: #ffff64;' : ''}">
-                ${isGeniusMode ? SVG_GENIUS_ACTIVE(20) : SVG_GENIUS_INACTIVE(20)}
-            </button>
-            <button id="close-side-panel-btn" class="btn-icon" title="Close">
-                ${SVG_CLOSE(20)}
-            </button>
-        `;
-
-        container.querySelector('#close-side-panel-btn').addEventListener('click', () => {
-            sidePanelManager.close();
-            clearLyricsPanelSync(audioPlayer, sidePanelManager.panel);
-        });
-
-        // Timing adjustment controls
-        const updateTimingDisplay = () => {
-            const display = container.querySelector('#lyrics-timing-display');
-            if (display) {
-                display.textContent = manager.getOffsetDisplayString(manager.timingOffset);
-            }
-        };
-
-        container.querySelector('#lyrics-timing-minus-btn')?.addEventListener('click', () => {
-            manager.timingOffset -= 500; // Decrease by 0.5 seconds
-            manager.setTimingOffset(track.id, manager.timingOffset);
-            updateTimingDisplay();
-        });
-
-        container.querySelector('#lyrics-timing-plus-btn')?.addEventListener('click', () => {
-            manager.timingOffset += 500; // Increase by 0.5 seconds
-            manager.setTimingOffset(track.id, manager.timingOffset);
-            updateTimingDisplay();
-        });
-
-        container.querySelector('#lyrics-timing-reset-btn')?.addEventListener('click', () => {
-            manager.timingOffset = 0;
-            manager.resetTimingOffset(track.id);
-            updateTimingDisplay();
-        });
-
-        // Romaji toggle button handler
-        const romajiBtn = container.querySelector('#romaji-toggle-btn');
-        if (romajiBtn) {
-            const updateRomajiBtn = () => {
-                const enabled = manager.isRomajiMode;
-                romajiBtn.setAttribute('data-enabled', enabled);
-                romajiBtn.style.color = enabled ? 'var(--primary)' : '';
-            };
-            updateRomajiBtn();
-
-            romajiBtn.addEventListener('click', async () => {
-                const amLyrics = sidePanelManager.panel.querySelector('.amll-side-panel-lyrics');
-                if (amLyrics) {
-                    await manager.toggleRomajiMode(amLyrics);
-                    updateRomajiBtn();
-                }
-            });
-        }
-
-        // Genius toggle
-        const geniusBtn = container.querySelector('#genius-toggle-btn');
-        if (geniusBtn) {
-            geniusBtn.addEventListener('click', async () => {
-                manager.isGeniusMode = !manager.isGeniusMode;
-                const enabled = manager.isGeniusMode;
-
-                geniusBtn.classList.toggle('active-genius', enabled);
-                geniusBtn.style.color = enabled ? '#ffff64' : '';
-                geniusBtn.innerHTML = enabled ? SVG_GENIUS_ACTIVE(20) : SVG_GENIUS_INACTIVE(20);
-
-                if (enabled) {
-                    try {
-                        geniusBtn.style.opacity = '0.5';
-                        await manager.geniusManager.getDataForTrack(track);
-                        manager.currentGeniusData = manager.geniusManager.cache.get(track.id);
-                        const amLyrics = sidePanelManager.panel.querySelector('.amll-side-panel-lyrics');
-                        if (amLyrics)
-                            manager.applyGeniusAnnotations(
-                                amLyrics,
-                                manager.geniusManager.cache.get(track.id)?.referents
-                            );
-                    } catch (e) {
-                        alert(e.message);
-                        manager.isGeniusMode = false;
-                        geniusBtn.classList.remove('active-genius');
-                        geniusBtn.style.color = '';
-                    } finally {
-                        geniusBtn.style.opacity = '1';
-                    }
-                } else {
-                    const amLyrics = sidePanelManager.panel.querySelector('.amll-side-panel-lyrics');
-                    if (amLyrics) {
-                        const root = amLyrics.shadowRoot || amLyrics;
-                        const lineElements = Array.from(root.querySelectorAll('.genius-annotated'));
-                        lineElements.forEach((el) => {
-                            el.classList.remove(
-                                'genius-annotated',
-                                'genius-multi-start',
-                                'genius-multi-end',
-                                'genius-multi-mid'
-                            );
-                            delete el.__geniusAnnotations;
-                        });
-                    }
-                    const modal = document.querySelector('.genius-annotation-modal');
-                    if (modal) modal.remove();
-                }
-            });
-        }
-    };
-
-    const renderContent = async (container, renderContext = {}) => {
-        clearLyricsPanelSync(audioPlayer, sidePanelManager.panel);
-        await renderLyricsInSidePanel(track, audioPlayer, manager, container, renderContext);
-        if (renderContext.signal?.aborted || (renderContext.isCurrent && !renderContext.isCurrent())) return;
-        if (container.lyricsCleanup) {
-            sidePanelManager.panel.lyricsCleanup = container.lyricsCleanup;
-            sidePanelManager.panel.lyricsManager = container.lyricsManager;
-        }
-    };
-
-    sidePanelManager.open('lyrics', 'Lyrics', renderControls, renderContent, forceOpen);
-}
-
 function getLyricsHighlightColor() {
     // Check if the current theme is light
     const isLight = getComputedStyle(document.documentElement).colorScheme === 'light';
@@ -1142,7 +972,7 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
 
     const onLineClick = async (e) => {
         if (e.detail && e.detail.timestamp !== undefined) {
-            const manager = lyricsManager || sidePanelManager.panel.lyricsManager;
+            const manager = lyricsManager;
             if (manager && manager.isGeniusMode) {
                 const timestampSeconds = e.detail.timestamp / 1000;
 
@@ -1390,13 +1220,3 @@ export function clearFullscreenLyricsSync(container) {
 }
 
 export const clearLyricsContainerSync = clearFullscreenLyricsSync;
-
-export function clearLyricsPanelSync(_audioPlayer, panel) {
-    if (panel && panel.lyricsCleanup) {
-        panel.lyricsCleanup();
-        panel.lyricsCleanup = null;
-    }
-    if (panel && panel.lyricsManager) {
-        panel.lyricsManager.stopLyricsObserver();
-    }
-}

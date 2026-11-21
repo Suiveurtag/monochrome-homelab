@@ -20,7 +20,7 @@ import {
 import { UIRenderer } from './ui.js';
 import { Player } from './player.js';
 import { MultiScrobbler } from './multi-scrobbler.js';
-import { LyricsManager, openLyricsPanel, clearLyricsPanelSync } from './lyrics.js';
+import { LyricsManager } from './lyrics.js';
 import { createRouter, updateTabTitle, navigate } from './router.js';
 import { initializePlayerEvents, initializeTrackInteractions, handleTrackAction } from './events.js';
 import { initializeUIInteractions } from './ui-interactions.js';
@@ -822,23 +822,12 @@ function initializeKeyboardShortcuts(player, _audioPlayer) {
 
             document.getElementById('queue-btn')?.click();
         },
-        lyrics: () => {
-            const overlay = document.getElementById('fullscreen-cover-overlay');
-            const isFullscreenOpen = overlay && getComputedStyle(overlay).display !== 'none';
-
-            if (isFullscreenOpen && UIRenderer.instance?.toggleFullscreenLyrics(overlay)) {
-                return;
-            }
-
-            document.getElementById('toggle-lyrics-btn')?.click();
-        },
         search: () => {
             document.getElementById('search-input')?.focus();
         },
         escape: () => {
             document.getElementById('search-input')?.blur();
             sidePanelManager.close();
-            clearLyricsPanelSync(player.activeElement, sidePanelManager.panel);
         },
         visualizerNext: () => {
             if (UIRenderer.instance.visualizer?.presets?.['butterchurn']) {
@@ -1212,22 +1201,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const mode = nowPlayingSettings.getMode();
 
-        if (mode === 'lyrics') {
-            const isActive = sidePanelManager.isActive('lyrics');
-
-            if (isActive) {
-                sidePanelManager.close();
-                clearLyricsPanelSync(Player.instance.activeElement, sidePanelManager.panel);
-            } else {
-                openLyricsPanel(
-                    Player.instance.currentTrack,
-                    Player.instance.activeElement,
-                    lyricsManager,
-                    false,
-                    'now-panel'
-                );
-            }
-        } else if (mode === 'cover') {
+        if (mode === 'cover') {
             const overlay = document.getElementById('fullscreen-cover-overlay');
             if (overlay && overlay.style.display === 'flex') {
                 await closeFullscreenOverlay();
@@ -1477,35 +1451,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    document.getElementById('toggle-lyrics-btn')?.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (!Player.instance.currentTrack) {
-            alert('No track is currently playing');
-            return;
-        }
-
-        const fullscreenOverlay = document.getElementById('fullscreen-cover-overlay');
-        if (UIRenderer.instance.isFullscreenCoverOpen(fullscreenOverlay)) {
-            UIRenderer.instance.toggleFullscreenLyrics(fullscreenOverlay);
-            return;
-        }
-
-        const isActive = sidePanelManager.isActive('lyrics');
-
-        if (isActive) {
-            sidePanelManager.close();
-            clearLyricsPanelSync(Player.instance.activeElement, sidePanelManager.panel);
-        } else {
-            openLyricsPanel(
-                Player.instance.currentTrack,
-                Player.instance.activeElement,
-                lyricsManager,
-                false,
-                'player-button'
-            );
-        }
-    });
-
     document.getElementById('download-current-btn')?.addEventListener('click', async () => {
         if (Player.instance.currentTrack) {
             await handleTrackAction(
@@ -1534,18 +1479,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const currentTrackId = Player.instance.currentTrack.id;
         if (currentTrackId === previousTrackId) return;
         previousTrackId = currentTrackId;
-
-        // Update lyrics panel if it's open
-        if (sidePanelManager.isActive('lyrics')) {
-            // Re-open forces update/refresh of content and sync
-            openLyricsPanel(
-                Player.instance.currentTrack,
-                Player.instance.activeElement,
-                lyricsManager,
-                true,
-                sidePanelManager.panel?.dataset.lyricsOpenOrigin || 'player-button'
-            );
-        }
 
         // Update Fullscreen if it's open
         const fullscreenOverlay = document.getElementById('fullscreen-cover-overlay');
@@ -2961,6 +2894,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         input: searchInput,
         form: searchForm,
         panel: document.getElementById('search-history'),
+        provider: {
+            suggest: (query, limits) => MusicAPI.instance.localAPI.suggest(query, limits),
+            popular: (limit) => MusicAPI.instance.localAPI.getPopularTracks(limit),
+        },
+        onPick: ({ type, id, query }) => {
+            if (query) UIRenderer.instance.addToSearchHistory(query);
+            navigate(`/${type}/${id}`);
+        },
     });
 
     searchForm.addEventListener('submit', (e) => {

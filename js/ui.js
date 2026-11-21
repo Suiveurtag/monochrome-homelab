@@ -17,11 +17,9 @@ import {
 } from './utils.js';
 import { copyShareLink, updateShareMeta } from './share.js';
 import {
-    openLyricsPanel,
     renderLyricsInFullscreen,
     renderSpicyLyricsInFullscreen,
     clearFullscreenLyricsSync,
-    clearLyricsPanelSync,
 } from './lyrics.js';
 import {
     recentActivityManager,
@@ -530,11 +528,9 @@ export class UIRenderer {
         await this.updateGlobalTheme();
 
         const likeBtn = document.getElementById('now-playing-like-btn');
-        const lyricsBtn = document.getElementById('toggle-lyrics-btn');
         const fsLikeBtn = document.getElementById('fs-like-btn');
 
         if (track) {
-            const isLocal = track.isLocal;
             const shouldHideLikes = false;
 
             if (likeBtn) {
@@ -544,11 +540,6 @@ export class UIRenderer {
                     likeBtn.style.display = 'flex';
                     await this.updateLikeState(likeBtn.parentElement, track.type || 'track', track.id);
                 }
-            }
-
-            if (lyricsBtn) {
-                if (isLocal) lyricsBtn.style.display = 'none';
-                else lyricsBtn.style.removeProperty('display');
             }
 
             if (fsLikeBtn) {
@@ -561,7 +552,6 @@ export class UIRenderer {
             }
         } else {
             if (likeBtn) likeBtn.style.display = 'none';
-            if (lyricsBtn) lyricsBtn.style.display = 'none';
             if (fsLikeBtn) fsLikeBtn.style.display = 'none';
         }
     }
@@ -1501,10 +1491,6 @@ export class UIRenderer {
         }
 
         if (isRealVideo) {
-            if (sidePanelManager.isActive('lyrics')) {
-                sidePanelManager.close();
-            }
-
             const fsLikeBtn = document.getElementById('fs-like-btn');
             if (fsLikeBtn) {
                 await this.updateLikeState(fsLikeBtn.parentElement, 'video', track.id);
@@ -1835,7 +1821,6 @@ export class UIRenderer {
             // Abort any async side-panel renderer before attaching the shared
             // lyrics observer to fullscreen, then remove the side view at once.
             sidePanelManager.cancelPendingRender();
-            clearLyricsPanelSync(fullscreenAudioElement, sidePanelManager.panel);
             if (sidePanelManager.panel?.classList.contains('active')) sidePanelManager.close({ immediate: true });
 
             // Spicy Lyrics measures its host on connection, so fullscreen must

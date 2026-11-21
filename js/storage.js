@@ -168,22 +168,18 @@ export const themeManager = {
     STORAGE_KEY: 'monochrome-theme',
     CUSTOM_THEME_KEY: 'monochrome-custom-theme',
 
+    removedThemes: ['dark', 'ocean', 'purple', 'forest', 'mocha', 'machiatto', 'macchiato', 'frappe', 'latte'],
+
     defaultThemes: {
         light: {},
-        dark: {},
         monochrome: {},
-        ocean: {},
-        purple: {},
-        forest: {},
-        mocha: {},
-        macchiato: {},
-        frappe: {},
-        latte: {},
+        amoled: {},
     },
 
     getTheme() {
         try {
-            return localStorage.getItem(this.STORAGE_KEY) || 'system';
+            const stored = localStorage.getItem(this.STORAGE_KEY);
+            return !stored || this.removedThemes.includes(stored) ? 'system' : stored;
         } catch {
             return 'system';
         }
@@ -350,7 +346,8 @@ export const nowPlayingSettings = {
 
     getMode() {
         try {
-            return localStorage.getItem(this.STORAGE_KEY) || 'cover';
+            const mode = localStorage.getItem(this.STORAGE_KEY);
+            return mode === 'album' || mode === 'cover' ? mode : 'cover';
         } catch {
             return 'cover';
         }
@@ -378,40 +375,8 @@ export const statsDesignSettings = {
     },
 };
 
-const PLAYER_BAR_EFFECTS = new Set(['none', 'soft-aurora', 'side-rays', 'silk', 'strands', 'dark-veil']);
-
 export const playerBarEffectsSettings = {
-    STORAGE_KEY: 'player-bar-background-effect',
-    MAGIC_RINGS_KEY: 'player-magic-rings-enabled',
     SCRUB_LYRICS_KEY: 'player-scrub-lyrics-enabled',
-
-    getEffect() {
-        try {
-            const effect = localStorage.getItem(this.STORAGE_KEY) || 'dark-veil';
-            return PLAYER_BAR_EFFECTS.has(effect) ? effect : 'dark-veil';
-        } catch {
-            return 'dark-veil';
-        }
-    },
-
-    setEffect(effect) {
-        const safeEffect = PLAYER_BAR_EFFECTS.has(effect) ? effect : 'dark-veil';
-        localStorage.setItem(this.STORAGE_KEY, safeEffect);
-        window.dispatchEvent(new CustomEvent('player-bar-effect-changed', { detail: { effect: safeEffect } }));
-    },
-
-    areMagicRingsEnabled() {
-        try {
-            return localStorage.getItem(this.MAGIC_RINGS_KEY) !== 'false';
-        } catch {
-            return true;
-        }
-    },
-
-    setMagicRingsEnabled(enabled) {
-        localStorage.setItem(this.MAGIC_RINGS_KEY, String(enabled));
-        window.dispatchEvent(new CustomEvent('player-magic-rings-changed', { detail: { enabled } }));
-    },
 
     areScrubLyricsEnabled() {
         try {

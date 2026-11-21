@@ -92,14 +92,6 @@
     </head>
 
     <body>
-        <!-- Social direction contract (La Cabine).
-        THESIS: Every member is a deck; Social opens on who is playing what, never on a generic chat or card feed.
-        OWN-WORLD: DJ deck displays on matte black: cover discs with progress rings, real waveforms tinted by the artwork, tabular readouts, presence green only for live.
-        STORY: See the room, listen along from a friend's exact position, post what you play, then talk about it in threads colored by the music shared there.
-        FIRST VIEWPORT: Featured spinning deck with its waveform, live playhead and Listen along (58%) beside a shelf of decks receding by recency (42%); composer and track log below; Messages collapses the booth to a strip.
-        FORM: La Cabine, assigned candidate 4, seed f7980571; approved mix of .impeccable/mocks/social-booth/comp-a.png, comp-b.png, comp-c.png.
-        FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
-        -->
         <!-- Listening Stats direction contract.
         THESIS: Listening becomes a living stage built from the listener's music.
         OWN-WORLD: Monochrome typography and native controls, artwork colors, spatial covers, precise motion.
@@ -3208,7 +3200,7 @@
                     <header class="social-top">
                         <div class="social-top-identity">
                             <h1>Social</h1>
-                            <p id="social-presence-summary" class="social-presence-summary"></p>
+                            <p id="social-presence-summary" class="social-presence-summary" aria-live="polite"></p>
                         </div>
                         <nav id="social-tabs" class="social-tabs" role="tablist" aria-label="Social sections">
                             <span id="social-tabs-thumb" class="social-tabs-thumb" aria-hidden="true"></span>
@@ -3235,59 +3227,71 @@
                         </nav>
                     </header>
 
-                    <section id="social-booth" class="social-booth" aria-label="Who is listening" hidden>
-                        <div class="booth-feature-slot" data-booth-feature></div>
-                        <div class="booth-shelf" data-booth-shelf></div>
+                    <section id="social-band" class="social-band" aria-label="Who is listening" hidden>
+                        <div class="social-band-row" data-band-row></div>
                     </section>
 
-                    <section id="social-feed-view" class="social-feed-view" role="tabpanel" aria-label="Feed">
-                        <form id="social-post-composer" class="social-post-composer" hidden>
-                            <img id="social-composer-avatar" class="social-composer-avatar" src="/assets/appicon.png" alt="" />
-                            <div class="social-composer-body">
-                                <div class="social-composer-field">
-                                    <textarea
-                                        id="social-post-input"
-                                        rows="1"
-                                        placeholder="What are you listening to?"
-                                        maxlength="2048"
-                                        aria-label="Write a post"
-                                    ></textarea>
-                                    <div class="social-composer-actions">
-                                        <button
-                                            type="button"
-                                            id="social-post-music"
-                                            class="social-tool"
-                                            title="Attach music"
-                                            aria-label="Attach music"
-                                            aria-expanded="false"
-                                        >
-                                            <use svg="!lucide/music-2.svg" size="18" />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            id="social-post-image"
-                                            class="social-tool"
-                                            title="Attach an image"
-                                            aria-label="Attach an image"
-                                        >
-                                            <use svg="!lucide/image-plus.svg" size="18" />
-                                        </button>
-                                        <input type="file" id="social-post-image-input" accept="image/*" hidden />
-                                    </div>
+                    <section
+                        id="social-feed-view"
+                        class="social-feed-view"
+                        role="tabpanel"
+                        aria-labelledby="social-tab-feed"
+                    >
+                        <div class="social-feed-main">
+                            <form id="social-post-composer" class="social-post-composer" hidden>
+                                <img
+                                    id="social-composer-avatar"
+                                    class="social-composer-avatar"
+                                    src="/assets/appicon.png"
+                                    alt=""
+                                />
+                                <textarea
+                                    id="social-post-input"
+                                    rows="1"
+                                    placeholder="What are you listening to?"
+                                    maxlength="2048"
+                                    aria-label="Write a post"
+                                ></textarea>
+                                <div class="social-composer-tools">
+                                    <button
+                                        type="button"
+                                        id="social-post-music"
+                                        class="social-tool"
+                                        title="Attach music"
+                                        aria-label="Attach music"
+                                        aria-expanded="false"
+                                    >
+                                        <use svg="!lucide/music-2.svg" size="18" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="social-post-image"
+                                        class="social-tool"
+                                        title="Attach an image"
+                                        aria-label="Attach an image"
+                                    >
+                                        <use svg="!lucide/image-plus.svg" size="18" />
+                                    </button>
+                                    <input type="file" id="social-post-image-input" accept="image/*" hidden />
                                 </div>
+                                <button type="submit" id="social-post-submit" class="social-post-submit" disabled>
+                                    Post
+                                </button>
                                 <div id="social-post-attachment" class="social-post-attachment" hidden></div>
                                 <div id="social-post-music-picker" class="social-post-music-picker" hidden></div>
+                            </form>
+                            <div id="social-feed" class="social-feed">
+                                <p class="social-loading" role="status">Loading posts</p>
                             </div>
-                            <button type="submit" id="social-post-submit" class="social-post-submit" disabled>Post</button>
-                        </form>
-                        <div id="social-feed" class="social-feed" aria-live="polite"></div>
+                        </div>
+                        <aside id="social-desk" class="social-desk" aria-label="Recent conversations" hidden></aside>
                     </section>
 
                     <section
                         id="social-messages-view"
                         class="social-messages-view"
                         role="tabpanel"
-                        aria-label="Messages"
+                        aria-labelledby="social-tab-messages"
                         hidden
                     >
                         <aside class="social-rail" aria-label="Conversations">
@@ -3312,7 +3316,9 @@
                                     <use svg="!lucide/user-round-plus.svg" size="18" />
                                 </button>
                             </div>
-                            <div id="social-conversation-list" class="social-conversation-list"></div>
+                            <div id="social-conversation-list" class="social-conversation-list">
+                                <p class="social-loading" role="status">Loading conversations</p>
+                            </div>
                             <div id="social-people-toolbar" class="social-rail-toolbar">
                                 <span class="social-rail-label">Meet people</span
                                 ><span id="social-people-count" class="social-rail-count"></span>
@@ -3323,10 +3329,15 @@
                         <section class="social-thread-pane">
                             <div id="social-empty-state" class="social-empty-state">
                                 <div class="social-empty-mark" aria-hidden="true">
-                                    <use svg="!lucide/disc-3.svg" size="34" />
+                                    <span class="social-empty-sleeve"></span>
+                                    <span class="social-empty-sleeve"></span>
+                                    <span class="social-empty-sleeve"></span>
                                 </div>
                                 <h2>Pick up a conversation</h2>
-                                <p>Choose a friend on the left, or tap a deck above to message whoever is playing.</p>
+                                <p>
+                                    Choose a conversation on the left, or start one with a friend from the people below
+                                    it.
+                                </p>
                             </div>
 
                             <div id="social-follow-gate" class="social-follow-gate" hidden>
@@ -3337,8 +3348,16 @@
                                 </button>
                             </div>
 
-                            <div id="social-thread" class="social-thread" hidden>
-                                <img id="social-thread-tint" class="social-thread-tint" alt="" aria-hidden="true" hidden />
+                            <div id="social-thread" class="social-thread" data-tint-target hidden>
+                                <img
+                                    id="social-thread-tint"
+                                    class="social-thread-tint"
+                                    alt=""
+                                    aria-hidden="true"
+                                    crossorigin="anonymous"
+                                    data-tint
+                                    hidden
+                                />
                                 <header class="social-thread-header">
                                     <button
                                         id="social-thread-back"
@@ -4006,14 +4025,7 @@
                                     <div class="theme-option" data-theme="monochrome">Black</div>
                                     <div class="theme-option" data-theme="cover">Cover</div>
                                     <div class="theme-option" data-theme="white">White</div>
-                                    <div class="theme-option" data-theme="dark">Dark</div>
-                                    <div class="theme-option" data-theme="ocean">Ocean</div>
-                                    <div class="theme-option" data-theme="purple">Purple</div>
-                                    <div class="theme-option" data-theme="forest">Forest</div>
-                                    <div class="theme-option" data-theme="mocha">Mocha</div>
-                                    <div class="theme-option" data-theme="machiatto">Machiatto</div>
-                                    <div class="theme-option" data-theme="frappe">Frappé</div>
-                                    <div class="theme-option" data-theme="latte">Latte</div>
+                                    <div class="theme-option" data-theme="amoled">AMOLED</div>
                                     <div class="theme-option" data-theme="custom">Custom</div>
                                 </div>
                                 <div id="applied-community-theme-container" style="display: none; margin-top: 1rem">
@@ -4461,34 +4473,6 @@
                                 <h3>Player Effects</h3>
                                 <div class="setting-item">
                                     <div class="info">
-                                        <span class="label">Animated Background</span>
-                                        <span class="description"
-                                            >Effect displayed inside the player while music is playing</span
-                                        >
-                                    </div>
-                                    <select id="player-bar-effect-select">
-                                        <option value="none">None</option>
-                                        <option value="soft-aurora">Soft Aurora</option>
-                                        <option value="side-rays">Side Rays</option>
-                                        <option value="silk">Silk</option>
-                                        <option value="strands">Strands</option>
-                                        <option value="dark-veil">Blur</option>
-                                    </select>
-                                </div>
-                                <div class="setting-item">
-                                    <div class="info">
-                                        <span class="label">Echo Rings</span>
-                                        <span class="description"
-                                            >Show responsive rings whenever audio starts playing</span
-                                        >
-                                    </div>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="player-magic-rings-toggle" checked />
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
-                                <div class="setting-item">
-                                    <div class="info">
                                         <span class="label">Lyrics While Seeking</span>
                                         <span class="description"
                                             >Preview synced lyrics above the progress bar while you drag it</span
@@ -4820,7 +4804,6 @@
                                     <select id="now-playing-mode">
                                         <option value="album">Go to Album</option>
                                         <option value="cover">Fullscreen Mode</option>
-                                        <option value="lyrics">Lyrics Panel</option>
                                     </select>
                                 </div>
 
@@ -7319,9 +7302,7 @@
                 <use svg="!lucide/chevron-left.svg" size="18" />
             </button>
 
-            <footer class="now-playing-bar" data-player-effect="dark-veil">
-                <div class="player-shader-stage" aria-hidden="true"></div>
-                <div class="player-magic-rings" aria-hidden="true"></div>
+            <footer class="now-playing-bar">
                 <div class="edge-light" aria-hidden="true"></div>
                 <div class="track-info">
                     <button
@@ -7492,8 +7473,7 @@
                             id="toggle-lyrics-btn"
                             data-player-action="lyrics"
                             title="Lyrics"
-                            style="display: none"
-                            aria-label="Lyrics"
+                            aria-label="Open lyrics in Now Playing"
                         >
                             <use svg="!lucide/mic-vocal.svg" size="20" />
                         </button>
@@ -7604,6 +7584,7 @@
                                 aria-label="Volume"
                             />
                         </div>
+                        <span id="volume-drag-value" class="volume-drag-value" aria-hidden="true">70%</span>
                     </div>
                 </div>
             </footer>

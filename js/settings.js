@@ -91,22 +91,6 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         statsDesignSelect.addEventListener('change', (event) => statsDesignSettings.setDesign(event.target.value));
     }
 
-    const playerBarEffectSelect = document.getElementById('player-bar-effect-select');
-    if (playerBarEffectSelect) {
-        playerBarEffectSelect.value = playerBarEffectsSettings.getEffect();
-        playerBarEffectSelect.addEventListener('change', (event) => {
-            playerBarEffectsSettings.setEffect(event.target.value);
-        });
-    }
-
-    const playerMagicRingsToggle = document.getElementById('player-magic-rings-toggle');
-    if (playerMagicRingsToggle) {
-        playerMagicRingsToggle.checked = playerBarEffectsSettings.areMagicRingsEnabled();
-        playerMagicRingsToggle.addEventListener('change', (event) => {
-            playerBarEffectsSettings.setMagicRingsEnabled(event.target.checked);
-        });
-    }
-
     const playerScrubLyricsToggle = document.getElementById('player-scrub-lyrics-toggle');
     if (playerScrubLyricsToggle) {
         playerScrubLyricsToggle.checked = playerBarEffectsSettings.areScrubLyricsEnabled();

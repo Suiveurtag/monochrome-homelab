@@ -934,22 +934,42 @@ function setupPlayerStatus(player) {
     const bar = document.querySelector('.now-playing-bar');
     const status = document.getElementById('player-status');
     const message = document.getElementById('player-status-message');
-    const progress = bar?.querySelector('.progress-container');
-    if (!bar || !status || !message || !progress) return () => {};
+    if (!bar || !status || !message) return () => {};
 
+    // The status floats above the bar and only appears when something deserves attention: a load or a
+    // recovery that drags on shows after a grace delay, errors and confirmations show right away, and a
+    // healthy or idle player shows nothing.
+    const SHOW_DELAY = { loading: 2500, recovering: 1500 };
     let successTimer = 0;
+    let showTimer = 0;
     const setStatus = ({ state = 'ready', message: nextMessage = '', actions = [] } = {}) => {
         window.clearTimeout(successTimer);
+        window.clearTimeout(showTimer);
         bar.dataset.playerState = state;
         status.dataset.state = state;
-        const isReady = state === 'ready';
-        status.hidden = isReady;
-        progress.hidden = !isReady;
         if (nextMessage) message.textContent = nextMessage;
         status.querySelectorAll('[data-player-recovery]').forEach((button) => {
             button.hidden = !actions.includes(button.dataset.playerRecovery);
             button.disabled = false;
         });
+        if (state === 'ready' || state === 'idle') {
+            status.classList.remove('is-visible');
+        } else if (!status.classList.contains('is-visible')) {
+            const delay = SHOW_DELAY[state] ?? 0;
+            if (delay) {
+                showTimer = window.setTimeout(() => {
+                    // The status can outlive the problem (events fired before it was set): if audio is
+                    // actually playing by now, there is nothing to report.
+                    const element = player.activeElement;
+                    if (element && !element.paused && !element.seeking && element.readyState >= 3) {
+                        setStatus({ state: 'ready' });
+                        return;
+                    }
+                    status.classList.add('is-visible');
+                }, delay);
+            }
+            else status.classList.add('is-visible');
+        }
         if (state === 'success') {
             successTimer = window.setTimeout(() => setStatus({ state: 'ready' }), 3200);
         }
@@ -1752,6 +1772,16 @@ function initializeSmoothSliders(player) {
         return Number.isFinite(duration) && duration > 0 ? duration : player.currentTrack?.duration || 0;
     };
 
+    const volumeDragValue = document.getElementById('volume-drag-value');
+    const showVolumeDragValue = (fraction) => {
+        if (!volumeDragValue) return;
+        const rect = volumeBar.getBoundingClientRect();
+        const rowRect = volumeDragValue.offsetParent?.getBoundingClientRect();
+        if (!rowRect) return;
+        volumeDragValue.textContent = `${Math.round(fraction * 100)}%`;
+        volumeDragValue.style.left = `${rect.left - rowRect.left + fraction * rect.width}px`;
+    };
+
     if (volumeSlider) {
         let volumeFrame = 0;
         let pendingVolume = player.userVolume;
@@ -1776,6 +1806,7 @@ function initializeSmoothSliders(player) {
             pushed: [volumeBar.closest('.volume-controls')?.querySelector('.player-actions-row')].filter(Boolean),
             onInput: (fraction) => {
                 pendingVolume = fraction;
+                showVolumeDragValue(fraction);
                 if (!volumeFrame) volumeFrame = requestAnimationFrame(commitVolume);
             },
         });
@@ -4080,6 +4111,35 @@ function setupSleepTimer(player, triggers) {
         if (event.key === 'Escape') close({ restoreFocus: true });
     };
 
+    // Same capsule-from-the-button morph as the quality panel.
+    const panelFrames = () => {
+        const panelRect = panel.getBoundingClientRect();
+        const rect = getRectSnapshot(trigger) ?? {
+            left: panelRect.left + panelRect.width / 2,
+            top: panelRect.top + panelRect.height,
+            width: 1,
+            height: 1,
+        };
+        return {
+            collapsed: {
+                opacity: 0,
+                borderRadius: '999px',
+                clipPath: 'inset(0 round 999px)',
+                transform: `translate(${rect.left - panelRect.left}px, ${rect.top - panelRect.top}px) scale(${Math.max(
+                    0.08,
+                    rect.width / panelRect.width
+                )}, ${Math.max(0.06, rect.height / panelRect.height)})`,
+            },
+            expanded: {
+                opacity: 1,
+                borderRadius: '16px',
+                clipPath: 'inset(0 round 16px)',
+                transform: 'translate(0, 0) scale(1)',
+            },
+        };
+    };
+    let panelAnimation = null;
+
     function open(button) {
         clearTimeout(closeTimer);
         trigger = button;
@@ -4101,13 +4161,39 @@ function setupSleepTimer(player, triggers) {
         document.addEventListener('keydown', onKeyDown);
         window.addEventListener('resize', placePanel);
         requestAnimationFrame(() => {
+            const { collapsed, expanded } = panelFrames();
+            panelAnimation?.cancel();
             panel.classList.add('is-open');
+            if (!reduceMotion.matches) {
+                panelAnimation = panel.animate([collapsed, expanded], {
+                    duration: 380,
+                    easing: 'cubic-bezier(0.2, 0.9, 0.24, 1.04)',
+                    fill: 'both',
+                });
+                panelAnimation.finished.then(() => panelAnimation?.cancel()).catch(() => {});
+            }
             (player.isSleepTimerActive() ? stopButton : dial).focus({ preventScroll: true });
         });
     }
 
     function close({ restoreFocus = false } = {}) {
         if (panel.hidden || !panel.classList.contains('is-open')) return;
+        if (!reduceMotion.matches) {
+            const computed = getComputedStyle(panel);
+            const from = {
+                opacity: Number.parseFloat(computed.opacity) || 0,
+                borderRadius: computed.borderRadius,
+                clipPath: computed.clipPath === 'none' ? 'inset(0 round 16px)' : computed.clipPath,
+                transform: computed.transform === 'none' ? 'translate(0, 0) scale(1)' : computed.transform,
+            };
+            const { collapsed } = panelFrames();
+            panelAnimation?.cancel();
+            panelAnimation = panel.animate([from, collapsed], {
+                duration: 200,
+                easing: 'cubic-bezier(0.4, 0, 1, 1)',
+                fill: 'both',
+            });
+        }
         panel.classList.remove('is-open');
         triggers.forEach((item) => item?.setAttribute('aria-expanded', 'false'));
         clearInterval(refreshTimer);
@@ -4116,6 +4202,7 @@ function setupSleepTimer(player, triggers) {
         window.removeEventListener('resize', placePanel);
         closeTimer = setTimeout(() => {
             panel.hidden = true;
+            panelAnimation?.cancel();
         }, 200);
         if (restoreFocus && trigger?.offsetParent) trigger.focus({ preventScroll: true });
     }

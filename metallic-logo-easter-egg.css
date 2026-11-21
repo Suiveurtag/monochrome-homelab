@@ -84,6 +84,21 @@
     animation: metallic-text-shine 5s linear infinite;
 }
 
+.sidebar-logo:has(> .sidebar-logo-link.has-metallic-logo) {
+    padding-left: 10px;
+}
+
+.sidebar-logo-link.has-metallic-logo {
+    gap: 8px;
+    overflow: visible;
+    font-size: 18px;
+}
+
+.sidebar-logo-link.has-metallic-logo .sidebar-label {
+    overflow: visible;
+    text-overflow: clip;
+}
+
 @keyframes metallic-text-shine {
     to {
         background-position: 250% 0;
@@ -94,8 +109,8 @@
     position: absolute;
     top: 50%;
     left: 0;
-    width: 20px;
-    height: 20px;
+    width: 26px;
+    height: 26px;
     transform: translateY(-50%);
     pointer-events: none;
 }

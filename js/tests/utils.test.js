@@ -209,3 +209,31 @@ describe('utils.js', () => {
         });
     });
 });
+
+describe('safeHref', () => {
+    test('keeps in-app paths', () => {
+        expect(utils.safeHref('/track/123')).toBe('/track/123');
+        expect(utils.safeHref(' /share/album/abc ')).toBe('/share/album/abc');
+    });
+
+    test('drops anything that could leave the app or run script', () => {
+        for (const value of [
+            'javascript:alert(1)',
+            'data:text/html,x',
+            'https://evil.example',
+            '//evil.example',
+            '/\\evil.example',
+            '/\t/evil.example',
+            '/\n/evil.example',
+            null,
+            undefined,
+            42,
+        ]) {
+            expect(utils.safeHref(value, '/fallback')).toBe('/fallback');
+        }
+    });
+
+    test('defaults the fallback to #', () => {
+        expect(utils.safeHref('javascript:void(0)')).toBe('#');
+    });
+});

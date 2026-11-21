@@ -90,6 +90,10 @@ export function initializeUIInteractions(player, _api, ui) {
         panel?.openQueue?.();
     });
 
+    document.getElementById('toggle-lyrics-btn')?.addEventListener('click', () => {
+        void window.nowPlayingPanel?.openLyrics?.();
+    });
+
     // Expose queue updates to the integrated Now Playing panel.
     window.renderQueueFunction = async () => {
         if (window.nowPlayingPanel?.activeView === 'queue') {

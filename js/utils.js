@@ -384,6 +384,17 @@ export const escapeHtml = (unsafe) => {
         .replace(/'/g, '&#039;');
 };
 
+/**
+ * A link target from stored data (another member's message or presence), kept only
+ * when it is a path inside the app. Escaping alone would let `javascript:` through.
+ */
+export const safeHref = (value, fallback = '#') => {
+    if (typeof value !== 'string') return fallback;
+    // URL parsing drops inner tabs and newlines, so `/\t/evil.com` would become `//evil.com`.
+    const path = value.replace(/[\t\n\r]/g, '').trim();
+    return path.startsWith('/') && !path.startsWith('//') && !path.startsWith('/\\') ? path : fallback;
+};
+
 export const decodeHtml = (html) => {
     if (!html) return '';
     const div = document.createElement('div');
