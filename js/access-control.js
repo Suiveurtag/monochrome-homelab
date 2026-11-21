@@ -94,7 +94,6 @@ export function applyInstancePolicy(config = cachedAppConfig) {
     cachedAppConfig = { ...DEFAULT_CONFIG, ...config };
     const root = document.documentElement;
     const featureTargets = {
-        social: document.getElementById('sidebar-nav-social'),
         uploads: document.getElementById('sidebar-nav-upload'),
     };
     for (const [feature, element] of Object.entries(featureTargets)) {

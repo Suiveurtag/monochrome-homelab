@@ -247,19 +247,6 @@ body.sidebar-accent-active .sidebar-nav-indicator {
     opacity: 1;
 }
 
-.sidebar .social-unread-badge {
-    margin-left: auto;
-}
-
-body.sidebar-collapsed .sidebar .social-unread-badge {
-    position: absolute;
-    top: 5px;
-    left: 30px;
-    min-width: 16px;
-    height: 16px;
-    line-height: 16px;
-}
-
 .sidebar-nav.bottom {
     margin-top: auto;
     padding-top: 10px;
@@ -823,14 +810,6 @@ body.sidebar-collapsed .sidebar-library-item.is-current .sidebar-library-art {
     }
     #sidebar-nav-library a.icon-anim svg path:nth-child(1) {
         animation-delay: 210ms;
-    }
-
-    /* Social: the left bubble slides in from the left, the right one from the right, pushing the old ones out */
-    #sidebar-nav-social a.icon-anim svg path:nth-child(1) {
-        animation: nav-icon-chat-left 800ms var(--sidebar-ease);
-    }
-    #sidebar-nav-social a.icon-anim svg path:nth-child(2) {
-        animation: nav-icon-chat-right 800ms var(--sidebar-ease) 120ms backwards;
     }
 
     /* Stats: the bars grow, then the trend line draws itself */

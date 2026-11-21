@@ -56,7 +56,6 @@ import { Player } from './player.js';
 import { playerBarEffects } from './player-bar-effects.js';
 import { createElasticVolume } from './elastic-volume.js';
 import { initializePlayerActionLayout, PLAYER_ACTIONS } from './player-bar-layout.js';
-import { socialManager } from './social.js';
 import { canvasSettings } from './canvas-settings.js';
 import { setupTrackVersionPicker } from './track-version-picker.js';
 import { getTrackDisplayAlbum } from './track-versions.js';
@@ -3688,10 +3687,7 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
             return;
         }
 
-        if (action === 'share-social' && track) {
-            const shareType = ['track', 'album', 'artist'].includes(type) ? type : 'track';
-            socialManager.prepareShare(shareType, track);
-        } else if (action && track) {
+        if (action && track) {
             const selectedTracks = contextMenu._selectedTracks || [];
             const isMultiSelect = selectedTracks.length > 1;
 

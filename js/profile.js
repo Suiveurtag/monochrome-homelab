@@ -281,8 +281,6 @@ export async function loadProfile(username) {
     if (topTracksContainer) topTracksContainer.innerHTML = '';
 
     editProfileBtn.style.display = 'none';
-    const messageButton = document.getElementById('profile-message-btn');
-    if (messageButton) messageButton.style.display = 'none';
     const nowPlaying = document.getElementById('profile-now-playing');
     if (nowPlaying) nowPlaying.style.display = 'none';
 
@@ -599,9 +597,6 @@ export async function loadProfile(username) {
 
     if (isOwner) {
         editProfileBtn.style.display = 'inline-flex';
-    } else if (authManager.user && messageButton) {
-        messageButton.href = `/social/@${encodeURIComponent(username)}`;
-        messageButton.style.display = 'inline-flex';
     }
     if (!isOwner && authManager.user) {
         socialManager.renderProfileSocial(username).catch(console.error);

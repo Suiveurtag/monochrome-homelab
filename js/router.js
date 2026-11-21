@@ -2,7 +2,6 @@
 import { getTrackArtists } from './utils.js';
 import { loadProfile } from './profile.js';
 import { settingsUiState } from './storage.js';
-import { socialManager } from './social.js';
 import { adminManager } from './admin.js';
 import { isFeatureEnabled, loadAppConfig, showLoginPage } from './access-control.js';
 
@@ -54,7 +53,6 @@ export function createRouter(ui) {
         }
 
         const guardedFeatures = {
-            social: 'social',
             recent: 'stats',
             upload: 'uploads',
             user: 'social',
@@ -150,8 +148,8 @@ export function createRouter(ui) {
                 await ui.renderUploadPage();
                 break;
             case 'social':
-                await ui.showPage('social');
-                await socialManager.renderPage(param);
+                window.history.replaceState({}, '', '/');
+                await ui.renderHomePage();
                 break;
             case 'recent':
                 await ui.renderRecentPage();

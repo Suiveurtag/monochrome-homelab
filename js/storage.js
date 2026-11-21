@@ -2478,7 +2478,6 @@ export const sidebarSectionSettings = {
     SHOW_LIBRARY_KEY: 'sidebar-show-library',
     SHOW_RECENT_KEY: 'sidebar-show-recent',
     SHOW_UPLOAD_KEY: 'sidebar-show-upload',
-    SHOW_SOCIAL_KEY: 'sidebar-show-social',
     SHOW_SETTINGS_KEY: 'sidebar-show-settings',
     ACCENT_ACTIVE_KEY: 'sidebar-accent-active',
     ORDER_KEY: 'sidebar-menu-order',
@@ -2486,7 +2485,6 @@ export const sidebarSectionSettings = {
         'sidebar-nav-home',
         'sidebar-nav-library',
         'sidebar-nav-upload',
-        'sidebar-nav-social',
         'sidebar-nav-recent',
         'sidebar-nav-settings',
     ],
@@ -2547,19 +2545,6 @@ export const sidebarSectionSettings = {
 
     setShowUpload(enabled) {
         localStorage.setItem(this.SHOW_UPLOAD_KEY, enabled ? 'true' : 'false');
-    },
-
-    shouldShowSocial() {
-        try {
-            const val = localStorage.getItem(this.SHOW_SOCIAL_KEY);
-            return val === null ? true : val === 'true';
-        } catch {
-            return true;
-        }
-    },
-
-    setShowSocial(enabled) {
-        localStorage.setItem(this.SHOW_SOCIAL_KEY, enabled ? 'true' : 'false');
     },
 
     usesAccentActive() {
@@ -2652,7 +2637,6 @@ export const sidebarSectionSettings = {
             { id: 'sidebar-nav-library', check: this.shouldShowLibrary() },
             { id: 'sidebar-nav-recent', check: this.shouldShowRecent() },
             { id: 'sidebar-nav-upload', check: this.shouldShowUpload() },
-            { id: 'sidebar-nav-social', check: this.shouldShowSocial() },
             { id: 'sidebar-nav-settings', check: this.shouldShowSettings() },
         ];
 

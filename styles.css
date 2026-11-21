@@ -17096,28 +17096,7 @@ img.cd {
    World: Monochrome's own — hairlines, token surfaces, one accent (the foreground),
    presence green reserved for "alive" signals. Motion is short, eased, sparse. */
 
-.social-unread-badge {
-    min-width: 18px;
-    height: 18px;
-    margin-left: auto;
-    padding: 0 5px;
-    border-radius: 999px;
-    color: var(--background);
-    background: var(--foreground);
-    font-size: 0.62rem;
-    font-weight: 800;
-    line-height: 18px;
-    text-align: center;
-}
-
-/* A legacy `span { display: inline-block }` rule outranks the UA [hidden]
-   stylesheet, so these badges would render their zero state forever. */
-.social-unread-badge[hidden],
-.social-tab-unread[hidden] {
-    display: none;
-}
-
-/* Shared with the share sheet and the profile page; the Social page itself lives in social.css. */
+/* Shared with the share sheet and profile page. */
 
 @keyframes social-view-in {
     from {
