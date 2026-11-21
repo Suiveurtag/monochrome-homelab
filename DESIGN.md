@@ -1,24 +1,23 @@
 ---
-name: Monochrome Social — La Cabine
-description: The Social surface of the self-hosted Monochrome music club as a DJ booth — every member is a deck on matte black, color comes only from the artwork, presence green only for the living.
+name: Monochrome Social — Le Livret commun
+description: The Social surface of the self-hosted Monochrome music club as the group's shared liner-notes booklet — every post a spread where a cover and a member's note answer each other across a fold, each entry printed in one flat spot ink read from its cover.
 colors:
     ground: '#0a0a0a'
     ink: '#f5f5f5'
     card: '#141414'
-    muted-ink: '#a0a0a0'
-    border: '#2a2a2a'
-    booth-panel: '#0f0f0f'
-    booth-panel-deep: '#0c0c0c'
-    booth-rule: 'color-mix(in srgb, #2a2a2a 72%, transparent)'
-    booth-rule-soft: 'color-mix(in srgb, #2a2a2a 46%, transparent)'
-    booth-wash: 'color-mix(in srgb, #f5f5f5 6%, transparent)'
-    booth-wash-strong: 'color-mix(in srgb, #f5f5f5 11%, transparent)'
-    bubble-other: '#1f1f1f'
-    bubble-own: '#2f2f2f'
-    booth-live: '#5ee890'
-    booth-like: '#ff5470'
-    initial-disc: '#2c2c2f'
-    initial-letter: '#ececec'
+    ink-soft: '#a0a0a0'
+    paper: '#0f0f0f'
+    paper-deep: '#0c0c0c'
+    note-ink: 'color-mix(in oklab, #f5f5f5 90%, #c9b8a6)'
+    rule: 'color-mix(in oklab, #f5f5f5 10%, transparent)'
+    rule-strong: 'color-mix(in oklab, #f5f5f5 20%, transparent)'
+    wash: 'color-mix(in oklab, #f5f5f5 5%, transparent)'
+    wash-strong: 'color-mix(in oklab, #f5f5f5 10%, transparent)'
+    house-ink: 'color-mix(in oklab, #a0a0a0 45%, #a08f99)'
+    bubble-other: 'color-mix(in oklab, #f5f5f5 8%, #0c0c0c)'
+    bubble-own: 'color-mix(in oklab, #f5f5f5 15%, #0c0c0c)'
+    live: '#5ee890'
+    like: '#ff5470'
 typography:
     display:
         fontFamily: "Switzer, Inter, 'Noto Sans', system-ui, sans-serif"
@@ -26,35 +25,47 @@ typography:
         fontWeight: 700
         lineHeight: 1
         letterSpacing: '-0.03em'
-    deck-title:
-        fontFamily: "Switzer, Inter, 'Noto Sans', system-ui, sans-serif"
-        fontSize: 'clamp(1.7rem, 3.6cqi, 2.75rem)'
-        fontWeight: 700
-        lineHeight: 1.02
-        letterSpacing: '-0.03em'
     headline:
         fontFamily: "Switzer, Inter, 'Noto Sans', system-ui, sans-serif"
         fontSize: '1.2rem'
         fontWeight: 700
         lineHeight: 1.2
-        letterSpacing: '-0.01em'
-    title:
-        fontFamily: "Inter, 'Noto Sans', system-ui, sans-serif"
-        fontSize: '1rem'
+        letterSpacing: '-0.015em'
+    credits-title:
+        fontFamily: "Switzer, Inter, 'Noto Sans', system-ui, sans-serif"
+        fontSize: '1.08rem'
         fontWeight: 700
-        lineHeight: 1.25
+        lineHeight: 1.14
+        letterSpacing: '-0.015em'
+    note-spread:
+        fontFamily: "Literata, Georgia, 'Times New Roman', serif"
+        fontSize: '1.24rem'
+        fontWeight: 400
+        lineHeight: 1.45
+        letterSpacing: 'normal'
+    note-solo:
+        fontFamily: "Literata, Georgia, 'Times New Roman', serif"
+        fontSize: '1.14rem'
+        fontWeight: 400
+        lineHeight: 1.58
+        letterSpacing: 'normal'
+    note-short:
+        fontFamily: "Literata, Georgia, 'Times New Roman', serif"
+        fontSize: '1.36rem'
+        fontWeight: 400
+        lineHeight: 1.42
+        letterSpacing: '-0.005em'
+    note-comment:
+        fontFamily: "Literata, Georgia, 'Times New Roman', serif"
+        fontSize: '0.94rem'
+        fontWeight: 400
+        lineHeight: 1.55
         letterSpacing: 'normal'
     name:
         fontFamily: "Inter, 'Noto Sans', system-ui, sans-serif"
-        fontSize: '0.88rem'
+        fontSize: '0.92rem'
         fontWeight: 650
         lineHeight: 1.3
-        letterSpacing: 'normal'
-    body:
-        fontFamily: "Inter, 'Noto Sans', system-ui, sans-serif"
-        fontSize: '0.97rem'
-        fontWeight: 400
-        lineHeight: 1.5
         letterSpacing: 'normal'
     message:
         fontFamily: "Inter, 'Noto Sans', system-ui, sans-serif"
@@ -64,486 +75,514 @@ typography:
         letterSpacing: 'normal'
     meta:
         fontFamily: "Inter, 'Noto Sans', system-ui, sans-serif"
-        fontSize: '0.78rem'
+        fontSize: '0.8rem'
         fontWeight: 400
         lineHeight: 1.3
         letterSpacing: 'normal'
         fontFeature: '"tnum"'
-    readout:
-        fontFamily: "Inter, 'Noto Sans', system-ui, sans-serif"
-        fontSize: '0.8rem'
-        fontWeight: 600
-        lineHeight: 1.3
-        letterSpacing: '0.02em'
-        fontFeature: '"tnum"'
 rounded:
-    disc: '50%'
+    person: '50%'
     pill: '999px'
-    panel: '16px'
-    snippet: '14px'
-    bubble: '14px'
-    strip: '12px'
-    modal: '18px'
-    art: '7px'
-    cue: '2px'
+    message-composer: '22px'
+    modal: '16px'
+    panel: '14px'
+    card: '12px'
+    spread: '10px'
+    field: '8px'
+    row: '6px'
+    sleeve: '4px'
+    sleeve-small: '3px'
+    bubble-other: '16px 16px 16px 6px'
+    bubble-own: '16px 16px 6px'
 spacing:
-    ply: '0.75rem'
-    panel: '1.25rem'
-    feature: 'clamp(1.75rem, 3.4cqi, 2.6rem)'
-    row: '0.8rem 0.95rem'
-    action: '0.4rem'
-    plate: '0.55rem'
+    view: '1.25rem'
+    stream: '2.75rem'
+    rail-gap: '2.5rem'
+    entry: '1.1rem 0 1.15rem'
+    page: '1.05rem 1.2rem 1rem 1.35rem'
+    credit: '0.45rem 0.55rem 0.55rem 0.45rem'
+    row: '0.55rem 0.55rem 0.55rem 0.5rem'
 components:
-    booth-panel:
-        backgroundColor: '{colors.booth-panel-deep}'
+    listening-band:
+        backgroundColor: '{colors.paper}'
         rounded: '{rounded.panel}'
-        padding: '{spacing.panel}'
-    deck-featured:
-        rounded: '{rounded.disc}'
-        size: 'clamp(150px, 19cqi, 236px)'
-    deck-near:
-        rounded: '{rounded.disc}'
-        size: '100px'
-    deck-far:
-        rounded: '{rounded.disc}'
-        size: 'calc(90px - var(--depth) * 32px)'
-    deck-edge:
-        rounded: '{rounded.disc}'
-        size: '52px'
-    deck-strip:
-        rounded: '{rounded.disc}'
-        size: '60px'
-    button-listen:
-        backgroundColor: '{colors.ink}'
-        textColor: '{colors.ground}'
-        rounded: '{rounded.pill}'
-        height: '42px'
-        padding: '0 1.15rem'
-    button-deck-secondary:
-        backgroundColor: 'color-mix(in srgb, #0a0a0a 60%, transparent)'
+        padding: '0.5rem'
+    band-credit:
+        backgroundColor: 'transparent'
         textColor: '{colors.ink}'
-        rounded: '{rounded.pill}'
-        height: '42px'
-        padding: '0 1.15rem'
-    button-deck-secondary-hover:
-        backgroundColor: '{colors.booth-wash-strong}'
-    deck-icon-action:
-        backgroundColor: '{colors.booth-panel}'
+        rounded: '{rounded.spread}'
+        padding: '{spacing.credit}'
+        width: '236px'
+    band-credit-hover:
+        backgroundColor: '{colors.wash}'
+    credit-sleeve:
+        rounded: '{rounded.sleeve}'
+        size: '54px'
+    credit-action:
+        backgroundColor: '{colors.paper}'
         textColor: '{colors.ink}'
-        rounded: '{rounded.disc}'
+        rounded: '{rounded.person}'
         size: '32px'
-    deck-icon-action-hover:
+    credit-action-hover:
         backgroundColor: '{colors.ink}'
         textColor: '{colors.ground}'
     social-tab:
         backgroundColor: 'transparent'
-        textColor: '{colors.muted-ink}'
-        padding: '0.4rem 0 0.75rem'
+        textColor: '{colors.ink-soft}'
+        padding: '0.4rem 0 0.7rem'
     social-tab-active:
         textColor: '{colors.ink}'
-    music-strip:
-        backgroundColor: '{colors.booth-panel-deep}'
-        textColor: '{colors.ink}'
-        rounded: '{rounded.strip}'
-        padding: '0.5rem 1rem 0.5rem 0.5rem'
     post-composer:
-        backgroundColor: '{colors.booth-panel}'
+        backgroundColor: '{colors.paper}'
         rounded: '{rounded.panel}'
-        padding: '0.65rem 0.7rem'
+        padding: '0.65rem 0.65rem 0.65rem 0.75rem'
+    button-post:
+        backgroundColor: '{colors.ink}'
+        textColor: '{colors.ground}'
+        rounded: '{rounded.pill}'
+        height: '40px'
+        padding: '0 1.15rem'
+    button-post-disabled:
+        backgroundColor: '{colors.wash-strong}'
+        textColor: '{colors.ink-soft}'
+    spread:
+        backgroundColor: 'color-mix(in oklab, var(--spot) 9%, {colors.paper})'
+        rounded: '{rounded.spread}'
+    spread-page:
+        padding: '{spacing.page}'
+    spread-play:
+        backgroundColor: '{colors.ink}'
+        textColor: '{colors.ground}'
+        rounded: '{rounded.person}'
+        size: '46px'
+    tracklist-row:
+        backgroundColor: 'transparent'
+        textColor: '{colors.ink}'
+        rounded: '{rounded.row}'
+        height: '36px'
     post-action:
         backgroundColor: 'transparent'
-        textColor: '{colors.muted-ink}'
+        textColor: '{colors.ink-soft}'
         rounded: '{rounded.pill}'
-        height: '34px'
+        height: '36px'
         padding: '0 0.6rem'
-    post-action-hover:
-        backgroundColor: '{colors.booth-wash-strong}'
-        textColor: '{colors.ink}'
+    comment-input:
+        backgroundColor: '{colors.paper}'
+        textColor: '{colors.note-ink}'
+        rounded: '{rounded.pill}'
+        height: '38px'
+        padding: '0 0.9rem'
+    correspondence-desk:
+        backgroundColor: '{colors.paper}'
+        rounded: '{rounded.panel}'
+        width: '300px'
     chat-row:
         backgroundColor: 'transparent'
         textColor: '{colors.ink}'
+        rounded: '{rounded.spread}'
         padding: '{spacing.row}'
+    chat-row-hover:
+        backgroundColor: '{colors.wash}'
     chat-row-active:
-        backgroundColor: '{colors.booth-wash}'
+        backgroundColor: '{colors.wash-strong}'
+    messages-view:
+        backgroundColor: '{colors.paper-deep}'
+        rounded: '{rounded.panel}'
     message-bubble-other:
         backgroundColor: '{colors.bubble-other}'
         textColor: '{colors.ink}'
-        rounded: '{rounded.bubble}'
-        padding: '0.6rem 0.9rem'
+        rounded: '{rounded.bubble-other}'
+        padding: '0.5rem 0.75rem 0.45rem'
     message-bubble-own:
         backgroundColor: '{colors.bubble-own}'
         textColor: '{colors.ink}'
-        rounded: '{rounded.bubble}'
-        padding: '0.6rem 0.9rem'
-    snippet-deck:
-        backgroundColor: '{colors.booth-panel-deep}'
-        rounded: '{rounded.snippet}'
-        padding: '0.85rem 1rem 0.85rem 0.85rem'
+        rounded: '{rounded.bubble-own}'
+        padding: '0.5rem 0.75rem 0.45rem'
+    sleeve-card:
+        backgroundColor: 'color-mix(in oklab, var(--spot) 14%, {colors.paper})'
+        rounded: '{rounded.card}'
+        padding: '0.4rem 0.5rem 0.4rem 0.4rem'
+        width: '340px'
+    snippet:
+        backgroundColor: 'color-mix(in oklab, var(--spot) 14%, {colors.paper})'
+        rounded: '{rounded.card}'
+        padding: '0.5rem 0.6rem 0.5rem 0.5rem'
+        width: '360px'
     message-composer:
-        backgroundColor: '{colors.booth-panel}'
-        rounded: '{rounded.panel}'
-        padding: '0.35rem 0.35rem 0.35rem 0.45rem'
+        backgroundColor: '{colors.paper}'
+        rounded: '{rounded.message-composer}'
+        padding: '0.3rem 0.3rem 0.3rem 0.35rem'
     group-modal-card:
-        backgroundColor: '{colors.ground}'
+        backgroundColor: '{colors.paper}'
         textColor: '{colors.ink}'
         rounded: '{rounded.modal}'
-        padding: '{spacing.panel}'
+        padding: '1.2rem'
         width: 'min(420px, 100%)'
 ---
 
 # Design System: Monochrome Social
 
-> **Boundary.** This file documents ONLY the Social surface: `#page-social` (header, booth, Feed
-> view, Messages view, details panel, friendship gate) and its body-level group modal and lightbox,
-> all styled by `social.css`; plus the Admin and Listening Stats addenda below. The global share
-> sheet and the social widgets on member profiles are outside this redesign and keep their existing
-> styles in `styles.css`. Everything else in the app (player, library, sidebar, Now Playing panel)
-> is undocumented here. Hex values below are the `monochrome` default theme; the build expresses
-> every neutral through theme tokens (`--background`, `--foreground`, `--card`, `--border`,
-> `--muted-foreground`, `--ring`, `--font-family`, `--font-family-key`) so all ten themes render,
-> including the light `white` theme.
+> **Boundary.** This file documents ONLY the Social surface: `#page-social` (header, listening
+> band, Feed view with its correspondence desk, Messages view, details panel, friendship gate) and
+> its body-level group modal and lightbox, all styled by `social.css` and rendered by
+> `js/social.js`, `js/social-feed.js`, `js/social-band.js` and `js/social-dom.js`; plus the Admin
+> and Listening Stats addenda below. The global share sheet and the social widgets on member
+> profiles are outside this redesign and keep their existing styles in `styles.css`. Everything else
+> in the app (player, library, sidebar, Now Playing panel) is undocumented here. Hex values below
+> are the `monochrome` default theme; the build expresses every neutral through theme tokens
+> (`--background`, `--foreground`, `--card`, `--muted-foreground`, `--font-family`,
+> `--font-family-key`) mixed into the `--lv-*` tokens on `#page-social, .social-group-modal,
+> .social-lightbox`, so all ten themes render. The light `white` and `latte` themes override paper
+> (card 38% / 14%), note ink (toward `#6b4a33`), shade, lift, and like-red (`#c8173c`, since
+> `#ff5470` reads at 2.8:1 on light paper). On `latte`, whose muted ink falls under 4.5:1 on tinted
+> paper, the page's inks step down one shade: `--lv-ink` is the foreground 72% toward black and
+> `--lv-ink-soft` is the theme foreground. The spot ink mixes toward `--lv-ink`, never raw `--foreground`.
 
 ## Overview
 
-**Creative North Star: "La Cabine"**
+**Creative North Star: "Le Livret commun"**
 
-Social is a DJ booth, not a chat app or a card feed. Every member is a deck: their current or last
-cover spins on a dark platter inside a progress ring, with their name plate, state line and dated
-last listen beside it. The page opens on who is playing what: a featured deck with the track's real
-waveform and a live playhead, a shelf of other decks receding by recency, then the composer and the
-track log. Messages collapses the booth into a strip of discs and keeps the messenger fundamentals
-(list, thread, docked composer, details panel).
+Social is the group's shared liner-notes booklet, not a chat timeline or a card feed. A music post
+is a spread: the cover on the left page, the record's credits and the member's note on the right,
+a soft shadow at the fold between them. The right page carries the record's running order printed
+as on the back of a sleeve, or its running groove (the track's real waveform), and both play from
+the exact track or moment clicked. Above the feed, a single-row listening band lists who is
+playing what as credits: a round face on the corner of a square sleeve, a name, a track, a live
+hairline following their real position. At wide containers a correspondence desk beside the feed
+lists recent conversations, and Messages keeps the messenger fundamentals (rail, thread, docked
+composer, details panel) with every row wearing the sleeve of its last shared record.
 
-The material is matte black and deliberately colorless. The surface has no hue of its own: chroma
-comes only from the artwork, read from each cover at runtime and spilled as symmetric light, ring
-color, waveform gradient and conversation tint. Exactly two fixed hues exist, each with one meaning:
-presence green for someone here now, like-red for a liked post. Depth is three plies only: the page
-ground, inset panels, floating overlays.
+The material is paper and ink. Paper plies come from the theme tokens; text is foreground ink;
+members' own words are set in a book face (Literata) in a faintly warm note ink. Each entry is
+printed in one spot ink: the cover's own color, read once and laid flat into tints, borders,
+running numbers and the groove, never as glow. Where there is no art, a muted mauve house ink
+stands in. Two fixed signal hues remain, each with one meaning: presence green for someone here
+now, like-red for a liked post.
 
-Motion is the room being alive, never decoration: platters spin at 7.2s per turn only while their
-member plays, rings and playheads advance on real time, layout moves on one ease-out curve, and a
-springy overshoot is reserved for tactile gestures. Everything is off under reduced motion.
+Motion is the booklet being handled: one strong ease-out for UI, a smooth ease-in-out for things
+travelling across the screen, a drawer curve for the details panel, and a slight overshoot only on
+tactile gestures. A new entry's right page swings down onto the fold; pointing at a cover lifts the
+left page from it.
 
 **Key Characteristics:**
 
-- Members rendered as decks: cover disc, progress ring, rim marker, name plate, state line, dated last listen
-- Featured deck and shelf side by side at 1.38fr : 1fr (about 58/42), stacking below a 1060px container
-- Recency as depth: older listens shrink, desaturate and dim; silent members sit at an avatar-only edge
-- Artwork is the only source of color; it never marks state
-- Real waveforms decoded from the audio, tinted by the cover, readable on dark covers
-- Three plies: ground, 16px inset panels on hairlines, opaque floating overlays
+- Posts as spreads: square cover left (37% of the spread), credits and note right, a gutter shadow at the fold
+- One flat spot ink per entry from its cover (`--tint`), the house ink without art; no glow
+- Records are square (3-4px corners), people are round; a face sits on its sleeve's corner
+- Literata for members' notes only; Switzer for titles and credits; Inter for the interface
+- Hairline rules at 10% / 20% ink, tabular running times, no uppercase labels
+- Listening band of credits in one scrolling row; correspondence desk at 300px from a 1040px container
 - Container queries on `#page-social`, never viewport media queries, for layout
-- Keyed DOM patching so live updates never restart a spinning deck or replay an entrance
-- Chrome hidden until hover or focus on decks and messages; states stamp, strikes draw
+- Spring only on tactile gestures; reduced motion keeps color and opacity, drops travel
 
 ## Colors
 
-Matte black ink-on-ink with artwork as the only light source; two reserved signal hues.
+Theme paper and foreground ink, one flat spot ink per entry, two reserved signal hues.
 
 ### Primary
 
-- **Booth Ink** (`{colors.ink}`, `var(--foreground)`): the action color. Solid fill of the Listen
-  along / Play this button, the hover state of deck icon actions, the tab underline, the waveform
-  playhead and rim marker, the read double-check, snippet cue brackets, the pinned-message button.
-  Text on ink is always the ground.
+- **Ink** (`{colors.ink}`, `var(--foreground)`): the action color and the type. Solid fill of the
+  Post button, the spread's play disc, the tab thumb, the unread count, hovered credit actions and
+  followed states, the groove cue line, the read double-check and the pinned pin. Text on ink is
+  always the ground.
 
 ### Secondary
 
-- **Artwork Color** (runtime, `--deck-color` on decks, `--tint` on strips, snippets and info decks):
-  the cover's vibrant color via `getVibrantColorFromImage`, cached per image URL (96 entries). It
-  paints the progress ring, the symmetric glow behind a disc, the waveform gradient (cover hue to a
-  neighbouring hue +0.09, lifted 0.12), strip and snippet radial washes, and the blurred cover tint
-  behind conversation rows and threads. Falls back to ink when unreadable.
+- **Spot Ink** (runtime, `--tint` → `--spot`, with `--spot-ink` = spot 58% into foreground): the
+  cover's vibrant color via `coverColor()` (`getVibrantColorFromImage`, cached per image URL, 96
+  entries; `cachedCoverColor()` prints a rebuilt node at once). It tints the spread (9% into paper,
+  border 16%, cover well 18%), sleeve cards and snippets (14%, border 22%), info decks (15%), the
+  tracklist and groove rules (30%), track numbers and the current track title (`--spot-ink`),
+  tracklist hover (16%), the credit's live hairline, and the groove waveform. Tint changes settle
+  over 700ms.
+- **House Ink** (`{colors.house-ink}`): the spot ink when no cover color was read, and always for
+  photo posts. Also the text-selection tint at 50% into ground.
 
 ### Tertiary
 
-- **Presence Green** (`{colors.booth-live}`): someone is here now. The header pulse dot (2.4s ping),
-  the live dot before a playing member's state line (7px with an 18% halo), and online/listening
-  avatar dots in Messages.
-- **Like Red** (`{colors.booth-like}`): the liked heart, its fill, and the burst ring. Nothing else.
+- **Presence Green** (`{colors.live}`): someone is here now. The header pulse dot (2.4s ping), the
+  7px live dot before "Listening now" (3px halo at 18%), the online presence dot, and the 3.5px ring
+  around a live avatar in Messages.
+- **Like Red** (`{colors.like}`): the liked heart, its fill and the burst ring. Nothing else.
 
 ### Neutral
 
-- **Ground** (`{colors.ground}`, `var(--background)`): the page ply and text on ink fills.
-- **Booth Panel** (`{colors.booth-panel}`, card 46% into ground): composers and feed streams.
-- **Booth Panel Deep** (`{colors.booth-panel-deep}`, card 22% into ground): booth slots, Messages
-  panes, music strips, snippets, the docked details panel.
-- **Rules** (`{colors.booth-rule}` / `{colors.booth-rule-soft}`, border at 72% / 46%): action and
-  dashed outlines / every panel edge and row divider.
-- **Washes** (`{colors.booth-wash}` / `{colors.booth-wash-strong}`, ink at 6% / 11%): selected and
-  hover fills. Rows hover at 2-3% ink, the active conversation sits at 6%.
-- **Bubbles** (`{colors.bubble-other}` / `{colors.bubble-own}`): ink at 8% / 15% into the deep panel.
-- **Muted Ink** (`{colors.muted-ink}`): state lines, dates, handles, idle icons, inactive tabs.
-- **Initial Disc** (`{colors.initial-disc}` with `{colors.initial-letter}`): the neutral disc for a
-  member without a picture, its initial painted in the app font at 600 weight.
+- **Ground** (`{colors.ground}`, `var(--background)`): the page and text on ink fills.
+- **Paper** (`{colors.paper}`, card 52% into ground): the band, composers, the desk, the rail, the
+  details panel, the group modal card.
+- **Paper Deep** (`{colors.paper-deep}`, card 24% into ground): the Messages view, empty sleeves,
+  photo wells, bubble bases.
+- **Note Ink** (`{colors.note-ink}`): the warm off-ink of members' words: notes, comments, the
+  composer's text, the details "about" line.
+- **Rules** (`{colors.rule}` / `{colors.rule-strong}`): every panel edge and entry divider / stream
+  heads, focused fields, dashed absences.
+- **Washes** (`{colors.wash}` / `{colors.wash-strong}`): hover fills / active rows, pressed tools,
+  search fields on focus, disabled Post.
+- **Bubbles** (`{colors.bubble-other}` / `{colors.bubble-own}`): ink at 8% / 15% into paper deep.
+- **Ink Soft** (`{colors.ink-soft}`, `var(--muted-foreground)`): bylines, handles, times, idle
+  icons, inactive tabs, placeholders.
+- **Shade** (`rgb(0 0 0 / 0.32)`, 0.12 on light themes): the fold gutter and sleeve shadows.
 
 ### Named Rules
 
-**The Artwork-Only Chroma Rule.** The surface owns no hue. Every chromatic pixel outside the two
-signal colors is read from a cover; never pick a decorative accent.
+**The Flat Spot Ink Rule.** Each entry is printed in exactly one spot ink, its cover's color through
+`--tint`, or the house ink. It is laid flat as tint, border, numeral or waveform; it never glows,
+blurs, or casts light.
 
-**The Cover-Never-Marks-State Rule.** A cover's color says what is playing, never whether someone is
-live, unread, selected or followed. State is ink, wash, or presence green.
+**The Cover-Never-Marks-State Rule.** A spot ink says which record, never whether someone is live,
+unread, selected or followed. State is ink, wash, weight, or presence green.
 
 **The One Meaning Rule.** Presence green means a human is here now; like-red means liked. Neither
-appears anywhere else, and no other hue may carry a state.
+appears anywhere else, and no other fixed hue may carry a state.
 
 ## Typography
 
-**Display Font:** Switzer (via `var(--font-family-key)`, falling back to Inter)
+**Display Font:** Switzer (via `--lv-display` = `var(--font-family-key)`, falling back to Inter)
 **Body Font:** Inter (via `var(--font-family)`, with Noto Sans per-script fallbacks and system-ui)
+**Notes Font:** Literata (via `--lv-notes`, self-hosted variable 400-700 from
+`public/fonts/literata/`, latin and latin-ext subsets, `font-display: swap`; Georgia fallback)
 
-**Character:** Switzer is the deck's label voice, used only for the big readouts; Inter carries all
-UI at small, confident weights. Hierarchy comes from size and weight (550-700), not case: the
-shipped surface has no uppercase labels.
+**Character:** three voices, three jobs. Literata is the members' handwriting in print: only their
+own words. Switzer sets what a sleeve would print: titles, credits and headings. Inter runs every
+control, name, time and label at small confident weights. Hierarchy comes from size, weight and
+face, never case: the surface has no uppercase labels.
+
+**Project gotcha.** `styles.css` forces `font-family` with `!important` on `*`. Any rule in
+`social.css` that sets Switzer, Literata, or restores Inter (placeholders inside Literata fields)
+must write `font-family: … !important` or it is silently ignored.
 
 ### Hierarchy
 
-- **Display** (Switzer 700, 2.1rem, 1, -0.03em): the "Social" title.
-- **Deck Title** (Switzer 700, `clamp(1.7rem, 3.6cqi, 2.75rem)`, 1.02, -0.03em, two-line clamp,
-  balanced): the featured track title. Artist sits under it at 1.12rem/500 muted.
-- **Headline** (Switzer 700, 1.2-1.25rem): empty-state headings, details hero name, group modal title.
-- **Title** (Inter 700, 0.98-1rem): stream titles ("Your circle", "Across Monochrome"), thread name.
-- **Name** (Inter 650, 0.84-0.94rem): name plates, post authors, chat names, message authors.
-- **Body** (Inter 400, 0.97rem, 1.5): post text, pre-wrapped. Messages at 0.95rem/1.45; comments
-  0.88rem/1.45.
-- **Meta** (Inter 400-600, 0.72-0.82rem, tabular figures): state lines, dated last listens, post
-  gutter times, message clocks, counts.
-- **Readout** (Inter 600, 0.8rem, 0.02em, tabular figures): waveform times `0:00 / 6:12`.
+- **Display** (Switzer 700, 2.1rem, 1, -0.03em; 1.8rem below 560px): the "Social" title.
+- **Headline** (Switzer 700, 1.05-1.25rem, -0.01 to -0.015em): stream titles ("Your circle"), desk
+  and thread names, empty-state headings, details hero name, group modal title.
+- **Credits Title** (Switzer 700, 1.08rem, 1.14, -0.015em, balanced; 1rem below 820px): the record
+  title on a spread. The byline under it is Inter 0.9rem muted.
+- **Note** (Literata 400, note ink, `pre-wrap`): on a spread 1.24rem/1.45 (1.1rem below 820px),
+  outranking the title above it; a text-only note 1.14rem/1.58 at 62ch; a short text-only note
+  1.36rem/1.42, balanced; comments 0.94rem/1.55; the composer field 1rem/1.5.
+- **Name** (Inter 650, 0.84-0.92rem): post authors, credit names, comment and message authors.
+- **Message** (Inter 400, 0.95rem, 1.45): bubbles stay in the interface face; conversation is not a
+  note.
+- **Meta** (Inter 400-650, 0.72-0.8rem, tabular figures): times, dates, counts, running times,
+  track numbers, day lines (0.8rem/600).
 
 ### Named Rules
 
-**The Tabular Readout Rule.** Every number that reads as time, position or count uses
-`font-variant-numeric: tabular-nums`, so live readouts never jitter.
+**The Notes Face Rule.** Literata sets only what a member wrote for the booklet: feed notes, the
+post composer's text, comments and the comment field, a member's "about" line. Placeholders,
+messages, names and controls stay Inter.
 
-**The Switzer Is a Label Rule.** Switzer appears only at headline sizes and above; it never sets
-body, names or controls.
+**The Credits Rule.** Switzer appears only on titles and headings; it never sets body, names or
+controls.
+
+**The Tabular Readout Rule.** Every time, position, count and track number uses
+`font-variant-numeric: tabular-nums`.
 
 ## Layout
 
-`#page-social` is capped at 1380px, centered, and is a named size container
+`#page-social` is capped at 1180px, centered, and is a named size container
 (`container: social / inline-size`). The Now Playing panel and sidebar make viewport width a lie, so
-every layout change is a container query on `social`.
+every layout change is a container query on `social`; the only media queries are
+`(hover: none)`, `(hover: hover) and (pointer: fine)` and `prefers-reduced-motion`.
 
-- **Booth (Feed):** a two-column grid `minmax(0, 1.38fr) minmax(0, 1fr)` with a 0.75rem gap: the
-  featured slot (disc + readout) and the shelf. The featured slot pads by
-  `clamp(1.75rem, 3.4cqi, 2.6rem)`, at least 18% of the disc, so its light never meets the edge.
-- **Shelf:** near and far decks pair up two per row with their plates; below them the silent edge
-  is a balanced grid of avatar discs whose column count (`--edge-cols`) the script computes as
-  `ceil(count / rows)`. A dashed `+N` pill caps overflow.
-- **Depth ladder** (`boothDepth` / `rankBooth`): playing = 0, online with a track = 0.18, otherwise
-  log-scaled by age from 0.3 to 0.92 across 30 days; older than 30 days, or never listened = 1, the
-  edge. Order is depth, then most recent. Bands: depth <= 0.2 near (100px disc), < 1 far
-  (`90px - depth * 32px`), else edge (52px). Your own deck never joins the edge: a silent "You"
-  stays a far deck with a dashed platter and a plus to share what you play. Disc filter follows
-  depth: `saturate(1 - depth*0.8) brightness(1 - depth*0.32)`, cleared on hover.
-- **Feed below the booth:** the composer, then streams as inset panels. Each post is a timeline row:
-  76px time gutter, a 1px rule with one 6px stop per post, 40px avatar, content. Actions float
-  top-right so text wraps beside them and strips run the full column.
-- **Messages:** the booth collapses to a single scrolling strip of 60px discs (88px slots). Below
-  it, a grid `300px minmax(0, 1fr)` gaining a `320px` details column with `.has-info`, height
-  `clamp(440px, calc(100dvh - 416px), 980px)`.
-- **Container breakpoints:** 1240px docks the details panel as an overlay (`min(340px, 88%)`); 1060px
-  stacks the booth and turns the shelf into one horizontal scrolling row (128px deck slots, 72px edge
-  slots); 820px narrows the list to 250px, the post gutter to 58px, and wraps strips onto two rows;
-  640px drops the timeline gutter, shrinks the featured disc to 132px, and shows one Messages pane at
-  a time with a back button.
-- **Rhythm:** 0.75rem between plies, 1.25rem panel padding, 0.4-0.55rem inside plates and action
-  groups, 0.8rem 0.95rem chat rows.
+- **Header:** title and presence summary on one baseline, tabs at the end; stacks below 560px.
+- **Listening band:** one scrolling row (scroll-snap, `--fade-start` / `--fade-end` masks only on
+  the side still hiding credits) of 236px credits (212px below 560px), then a quiet stack of
+  overlapping 30px faces with "N quiet lately". Hidden in Messages.
+- **Feed:** a single column (feed max 780px) with the composer, then streams 2.75rem apart. From a
+  1040px container a 300px correspondence desk joins on the right (2.5rem gap), sticky at 0.5rem.
+  Entries are separated by hairlines and grouped under one date line per day.
+- **Spread:** grid `minmax(0, 37%) minmax(0, 1fr)`; 34% below 820px; a fixed 104px cover below
+  560px, where track running times drop. Text-only notes indent to the byline (32px + 0.65rem).
+- **Messages:** one 14px panel, grid `300px minmax(0, 1fr)`, `320px` details column with
+  `.has-info`, height `clamp(460px, calc(100dvh - 268px), 980px)`.
+- **Container breakpoints:** min 1040px adds the desk; max 1100px docks the details panel as an
+  overlay (`min(340px, 88%)`); max 820px narrows the rail to 260px and the spread cover to 34%;
+  max 640px shows one Messages pane at a time with a back button, the panel full width, stacks at
+  86%; max 560px stacks the header, slims the composer (34px avatar, tools on row two), and fixes
+  the spread cover at 104px.
+- **Touch:** under `(hover: none)` credit actions sit statically under the copy, the spread play
+  disc stays visible, the message pin rests at 0.55.
+- **Rhythm:** 1.25rem below header and band, 2rem to the feed, 2.75rem between streams, 1.1rem per
+  entry, 0.85rem inside a page.
 
 ### Named Rules
 
 **The Container Knows Rule.** Layout responds to `@container social`, never a viewport media query.
 
-**The Recency-Is-Depth Rule.** Distance in the booth is time since the last listen, on the
-`boothDepth` ladder. Never size or fade a deck for any other reason.
-
-**The Clip-Not-Hide Rule.** Panes, slots, strips and rows use `overflow: clip`, never `hidden`, so
-focusing a field can never scroll a pane sideways. Rows that scroll (shelf, strip) fade only on the
-side that still hides decks (`--fade-start` / `--fade-end`).
+**The Clip-Not-Hide Rule.** Spreads, credits and the Messages view use `overflow: clip`, never
+`hidden`, so focusing a field can never scroll a pane sideways.
 
 ## Elevation & Depth
 
-Three plies and nothing between them. The ground is flat. Inset panels sit on it with a 1px
-soft rule and a 16px radius, without shadow. Floating overlays use the opaque recipe
-(`background-color: var(--background)` plus a `linear-gradient` of a panel mix) and large soft
-shadows. Inside panels, depth is light, not lift: covers glow and discs carry their own platter
-shadow because they are physical records.
+Flat paper with tactile objects on it. Panels sit on the ground with a 1px rule and no shadow.
+Sleeves are physical objects and carry a small shade; the fold of a spread is a soft gradient on
+both sides of the gutter. A lift shadow appears only on a focused composer. Floating overlays use
+the opaque recipe (`background-color: var(--background)` plus a `linear-gradient` of paper) with
+large soft shadows.
 
 ### Shadow Vocabulary
 
-- **Platter** (`0 0 0 1px` ink 8%, `0 14px 34px rgb(0 0 0 / 0.42)`): every deck disc's record.
-- **Listen lift** (`0 8px 20px rgb(0 0 0 / 0.32)`): the ink Listen along button on hover, with a 2px rise.
-- **Composer focus** (`0 18px 50px rgb(0 0 0 / 0.22)` feed, `0 14px 40px rgb(0 0 0 / 0.25)` messages):
-  only on `:focus-within`, with the border mixing 22-24% ink.
-- **Docked details** (`-24px 0 60px rgb(0 0 0 / 0.3)`): the details panel as an overlay below 1240px.
-- **Group modal** (`0 30px 90px rgb(0 0 0 / 0.45)`, scrim `rgb(0 0 0 / 0.55)`, z 90) and **lightbox
-  image** (`0 40px 120px rgb(0 0 0 / 0.5)`, veil `rgb(0 0 0 / 0.84)`, z 95).
-- **Artwork light** (not a shadow): the disc glow, a radial at `inset: -18%` from 46% to 18% cover
-  color, symmetric, faded to 70% on the shelf and removed in the strip; the rim marker
-  (`0 0 10px`) and playhead (`0 0 12px`) glow in cover color.
+- **Fold** (`linear-gradient(to left, var(--lv-shade), transparent)`, 22px on the cover's edge;
+  18px at half shade on the page's edge): the gutter of every spread.
+- **Sleeve** (`0 0 0 1px var(--lv-rule), 0 6px 14px var(--lv-shade)`, deepening to `0 10px 20px`
+  on hover; small sleeves `0 4px 10px var(--lv-shade)`): covers in the band, cards, snippets,
+  rows.
+- **Lift** (`--lv-lift`: `0 10px 28px rgb(0 0 0 / 0.28)`): composers on `:focus-within`, with the edge at ink 45%.
+- **Play disc** (`0 8px 20px rgb(0 0 0 / 0.3)`): the ink play button over a cover.
+- **Docked details** (`-24px 0 60px rgb(0 0 0 / 0.3)`): the details panel as an overlay below 1100px.
+- **Group modal** (`0 30px 90px rgb(0 0 0 / 0.45)`, scrim `rgb(0 0 0 / 0.55)`, z 90) and
+  **lightbox image** (`0 40px 120px rgb(0 0 0 / 0.5)`).
+- **Ink rings** (`0 0 0 3-4px`, ink 30% or wash-strong): focus on fields, the composer summon, the
+  groove cue flash. Ink, never spot.
 
 ### Named Rules
 
-**The Three Plies Rule.** Ground, inset panel, floating overlay. Never nest a panel in a panel to
-make a fourth ply; group with rules and spacing instead.
-
-**The Symmetric Light Rule.** Cover light is a centered radial around the disc and fades before the
-panel edge. No directional or offset glows.
+**The Flat Paper Rule.** Panels never cast shadow at rest; only sleeves (objects) and the fold
+(a crease) do. Lift is a response to focus.
 
 ## Shapes
 
-Records are circles; containers are softly rounded; actions are pills.
+Records are square; people are round; paper is softly cut.
 
-- **Circles (50%):** deck discs, platters, avatars, presence dots, deck icon actions, snippet discs,
-  the dashed quiet and empty marks. Records carry a spindle hole; avatar platters do not.
-- **Pills (999px):** Listen along and its secondary, post actions, unread count, `+N`.
-- **Panels (16px):** booth slots, strip, composers, feed streams, Messages panes.
-- **Snippets and bubbles (14px):** snippet decks, message bubbles, lightbox image.
-- **Strips (12px):** music strips in posts; artwork inside them at 7px.
-- **Modal (18px):** the group modal card.
-- **Rings and cues:** 2.6px progress ring strokes with round caps; snippet ranges framed by square
-  2px ink brackets; the tab underline a 2px bar.
-- **Dashed outlines** (1.5px) mark absence: your silent deck, the quiet room, empty states, `+N`.
+- **Round (50%):** avatars, faces, presence dots, the play disc, credit actions, the send button.
+- **Square sleeves (4px; 3px small):** every cover, sleeve art, snippet art, picker art, the
+  empty-state sleeves. A spread's cover is square (`aspect-ratio: 1`) inside the spread's clip.
+- **Person on record:** a round face (28px, 2px paper ring) sits on the lower-right corner of a
+  square sleeve in the band; in conversation rows the face sits in front, the sleeve tucked behind
+  the shoulder at 56%.
+- **Pills (999px):** Post, post actions, the comment field, search, the unread count.
+- **Panels (14px):** band, post composer, desk, Messages view. **Cards (12px):** sleeve cards,
+  snippets, message images. **Spreads and rows (10px):** spreads, credits, chat rows, info decks.
+  **Modal (16px).** **Message composer (22px).** **Tracklist rows (6px).**
+- **Bubbles:** 16px with a 6px tail corner toward the speaker.
+- **Dashed outlines** (1.5px, rule-strong) mark absence: your blank sleeve in the band.
 
 ## Components
 
 ### Header
 
-The "Social" display title with a presence summary on its baseline (pulsing green dot, then a
-tabular count such as "2 online"). Feed / Messages are line tabs: 1rem/600 muted labels, ink when
-selected, with a 2px ink thumb that slides 420ms under the active tab and is the one header element
-named for view transitions. The unread count is an 11% wash pill.
+"Social" in Switzer with the presence summary on its baseline (pulsing green dot, tabular "1
+listening, 2 online"). Feed / Messages are line tabs at 1rem/600, muted until selected, with a
+fixed 100px, 2px ink thumb the script slides and scales on transform alone (340ms `--lv-move`).
+The unread count is an ink pill.
 
-### Deck (signature)
+### Listening band (signature)
 
-- **Anatomy:** a disc button holding a platter (cover, inset 8%, spindle hole and sheen), an SVG
-  progress ring (9% ink track, cover-colored progress), and a rim marker rotated to the progress.
-- **States:** spinning only while playing (`booth-spin` 7.2s linear); markers dim to 55% on decks
-  neither live nor featured; avatars at `grayscale(0.6)`; hover lifts 3px and scales 1.035, clears
-  the depth filter; active presses to 0.97.
-- **Plate (fixed furniture):** name (0.88rem/650, links to profile), track (0.84rem/550), and a
-  state line or dated last listen (0.78rem muted, tabular). Live members lead with the green dot.
-- **Actions:** 32px circular icon actions (Listen along, Message or Follow) float over the plate's
-  end and appear only on hover or focus-within; hover inverts to ink and scales 1.08.
-- **Featured readout:** who (24px avatar + name + state), deck title, artist, a 62px waveform with
-  ink playhead and hover cue line, tabular times, then Listen along (ink) and Message / Follow
-  (outlined). Clicking a shelf deck promotes it. Listen along joins at the friend's extrapolated
-  position; the joined deck needle-drops (620ms spring dip, ring flash).
-- **Quiet room:** a dashed 120-176px platter and a 42ch muted line when nobody has a track.
+- **Credit:** a 62px art well holding a square sleeve and the member's round face on its corner,
+  then name, track and a state line ("Listening now" with the live dot, "Paused", or a dated last
+  listen). A 2px hairline at the foot follows the friend's real position in `--spot-ink`.
+- **Hover:** the sleeve tilts (-2px, -2deg) and deepens its shade, the face steps out, a dark cue
+  shows play; 32px round actions (Listen along, Message or Follow) slide in over a paper fade.
+- **Join:** listening along presses the sleeve (`lv-join`, 560ms spring) and flashes the hairline.
+- **Your credit:** a dashed blank sleeve with a plus to share what you play.
+- **Quiet:** members without a recent listen collapse to overlapping grayscale faces.
 
-### Booth strip (Messages)
+### Composer
 
-The same deck markup in a compact state: 60px discs with centered 0.76rem names, no readout,
-actions or glow; non-live names muted, live ones keep a 6px green dot. Switching tabs morphs each
-disc between hero and strip through view transitions (560ms, ease-out curve).
+A 14px paper panel: 40px avatar, an autosizing field set in Literata in note ink (placeholder in
+Inter), track and image tools, an ink Post pill that arms with a spring when content appears.
+`:focus-within` turns its edge to ink at 45% and adds the lift. Sharing from your credit summons it with an
+ink ring.
 
-### Music strip and waveform
+### Spread (signature)
 
-A strip per shared track or album: 60px art, title/subtitle, a 38px play control, the track's real
-waveform, and its length. Background is a radial wash of the cover over the deep panel; hover tints
-the border 34% cover and zooms the art 1.06. Hovering the waveform shows a small ink "Play from here"
-tag; the waveform draws in left to right (800-900ms clip). Loading shows a scanning cover-colored
-line; tracks without peaks show a flat 2px line.
+- **Left page:** the square cover over a spot-tinted well, a 22px fold shade at its right edge;
+  pointing lifts it from the fold (`rotateY(-7deg) scale(1.015)`); a 46px ink play disc rises in
+  on hover or focus.
+- **Right page:** credits (Switzer title, Inter byline), the member's note in Literata at 1.24rem,
+  then a tracklist (numbers in spot ink, current track in spot ink with three moving bars, hover
+  wash 16% spot, "N more" link) or a groove (the real waveform printed left-to-right over 900ms,
+  cue line on hover, tabular time). Both play from the clicked track or moment.
+- **Entry:** a new spread fades in and its right page swings down onto the fold (560ms).
+- **Photo posts:** house ink; without a note the photo sits on the page alone at 10px.
+- **Text-only notes:** no spread; the Literata note indented to the byline, larger when short.
 
-**Waveform drawing:** mirrored bars (2px with 1.6px gaps, 1.5/1.2px under 420px) on a DPR-aware
-canvas; peaks are decoded once per track and cached in `localStorage`
-(`monochrome-social-peaks:<id>`). Levels stretch the track's own dynamic range (8th percentile to
-max, 0.12 floor, exponent 1.4); bar color is the cover lifted to at least 0.56 lightness so dark
-covers stay legible; played bars at full alpha, unplayed at 0.5, out of a snippet range at 0.28.
+### Post actions and comments
 
-### Feed post and composer
+Heart, comment and share as 36px muted pills with tabular counts, ink on wash when hovered. Liking
+turns the heart like-red and filled with a 520ms spring pop, a burst ring and a count tick.
+Comments unfold under the entry in Literata; the comment field is a paper pill in note ink.
 
-- **Composer:** 44px avatar, an autosizing field, track and image tools, the Post action; a 16px
-  panel that gains the focus shadow. Sharing from your deck summons it with a 3px ink ring pulse.
-- **Post:** time gutter (time at 600, date muted), author 0.94rem, handle, body; heart, comment and
-  share pills (0.84rem/600 tabular counts) float top-right, muted at rest, ink on 11% wash on hover.
-  Liking turns the heart like-red and filled, pops it (520ms spring) with a ring burst and a count
-  tick. Comments unfold under the post.
+### Correspondence desk and conversation rows
 
-### Conversation list
-
-Rows of 44px avatar + name, date and preview, separated by soft rules. The conversation wears the
-cover of the last music shared in it, else the contact's current track: a blurred, saturated cover
-masked in from the right at 0.2 opacity, 0.3 on hover, 0.5 when active. The active row also carries
-a 6% ink wash and a sliding indicator. Playing members wear a thin spinning conic groove around
-their avatar; presence dots are 12px with a ground ring (muted offline, green online or listening).
-New rows slide in 12px.
+The desk (from 1040px) is a sticky 300px paper panel: "Messages" in Switzer, compact rows, "All
+messages". Rows are 50px faces (44px compact) with the last shared sleeve tucked behind the
+shoulder, name, preview and date; hover washes 5%, the active row sits on a sliding 10% wash
+indicator, and the sleeve turns out (6deg). Unread rows go 750 weight with ink preview and an ink
+count that pops. Live avatars wear a green ring; presence dots are 12px on a paper ring.
 
 ### Thread and messages
 
-The thread wears a blurred cover tint in its top corner (0.3 opacity, fading in 1.2s). Day spacers
-are muted 0.76rem/600 labels between soft rules. Bubbles are uniform 14px with no border or shadow:
-others at 8% ink, own at 15%. The foot holds a tabular clock and delivery ticks: clock at 0.6 =
-pending, double-check muted = delivered, double-check ink = read; a tick change stamps onto the
-bubble (460ms spring). Arrivals spring in from the left, sends rise from below. A pin waits beside
-each bubble, revealed on hover; pinning drops it in (520ms spring) and leaves it ink-filled.
-
-### Snippet deck
-
-A shared excerpt arrives as a mini deck: a 76px disc with a 2px cover ring whose platter spins only
-while the excerpt plays, title/subtitle, a play control, and a 52px waveform from stored peaks with
-the range framed by square ink brackets and a tabular range label beneath.
+Day spacers are muted labels between hairlines. Bubbles have no border or shadow, ink 8% / 15% into
+paper deep, a 6px tail corner. Arrivals slide 8px from the left (260ms), sends rise 10px. The foot
+holds a tabular clock and ticks: pending at 0.6, delivered muted, read ink; a tick change stamps.
+A pin waits beside each bubble on hover and drops in with a spring when pinned. A shared record is
+its own sleeve card, not a bubble; a snippet is a 64px sleeve, play control, and a groove with its
+range.
 
 ### Message composer
 
-A slim 16px panel docked under the thread: image and track tools, an autosizing field, and the send
-control. `:focus-within` mixes 24% ink into the border and adds the composer focus shadow.
+A 22px paper capsule docked under the thread: tools, an Inter field, a 38px round send that arms
+with a spring and launches its icon on send. Focus turns the edge to ink at 45% and adds the lift.
 
 ### Details panel and friendship gate
 
-The details panel is a third pane (overlay below 1240px) using the opaque recipe over the deep
-panel, entering 380ms from 18px right and leaving in 240ms. The hero name is Switzer 1.25rem;
-sections open with 0.86rem/650 sentence-case headings; the current listen is an info deck in cover
-tint. Follow, unfollow and block land as a rubber stamp (480ms spring, from 1.5x and -10deg); blocking
-draws a 2px strike across the hero and grays the avatar. The friendship gate veils a thread with an
-82% ground blur(8px), a grayscale avatar ringed by a 6px wash, and an ink Follow pill.
+A third column (overlay below 1100px) on paper, entering 320ms on the drawer curve from 16px and
+leaving in 200ms. A 76px face, Switzer name, the member's "about" line in Literata, mutual faces,
+the current listen as an info deck in spot tint. Follow, unfollow and block land as a stamp (460ms
+spring from 1.35x, -8deg); blocking draws a 2px ink strike and grays the face. The friendship gate
+veils the thread with 84% ground and `blur(8px)`, a grayscale 72px face ringed by wash.
 
 ### Group modal and lightbox
 
-Body-level overlays. The modal card is `min(420px, 100%)`, opaque recipe with card 40% into ground,
-18px radius, rising 380ms from 16px and 0.98 scale over a 200ms scrim. The lightbox fades its veil in
-220ms and scales the image from 0.96.
+Body-level overlays. The modal card is `min(420px, 100%)`, opaque recipe on paper, 16px, rising
+340ms from 14px at 0.98 over a 200ms scrim; checking a person stamps the checkbox, a chosen picture
+pops in. The lightbox veils and scales the image in.
 
 ### Motion grammar
 
-- **Layout and hover:** `--booth-ease` `cubic-bezier(0.22, 1, 0.36, 1)`, 200-640ms, one property per move.
-- **Gestures:** `--booth-spring` `cubic-bezier(0.34, 1.45, 0.64, 1)`, only on keyframe gestures the
-  user performs or receives: like, send, message arrival, tick and follow stamps, pin drop, deck drop,
-  deck arrival, chip and arm feedback.
-- **Real time:** rings, markers and playheads advance linearly over 1s; platters spin linearly.
-- **View transitions:** only discs are named (`deck-<id>`) and only for the tab morph; views are not
-  named because their snapshots escape the scrolling column and paint over the player. Views enter
-  with their own 460ms 28px slide, reversed when going back.
-- **Keyed patching:** lists are patched by key with FLIP, so live re-renders never restart a spinning
-  platter or replay an entrance; only genuinely new decks, rows and messages animate in.
-- **Reduced motion:** every animation and transition under `#page-social`, the modal and the
-  lightbox, plus all view-transition pseudo-elements, is disabled.
+- **UI:** `--lv-ease` `cubic-bezier(0.23, 1, 0.32, 1)`, 120-380ms for state, up to 560-900ms for
+  page turns and prints, 700ms for spot ink settling.
+- **On-screen travel:** `--lv-move` `cubic-bezier(0.77, 0, 0.175, 1)` for the tab thumb (340ms).
+- **Drawer:** `--lv-drawer` `cubic-bezier(0.32, 0.72, 0, 1)` for the details panel (320ms in).
+- **Gestures:** `--lv-spring` `cubic-bezier(0.34, 1.45, 0.64, 1)`, only on tactile gestures: like
+  (520ms), send and Post arming (320ms), play press (320ms), follow stamp and read-check stamp
+  (460ms), group checkbox check (380ms), pin drop (500ms), unread pop and group picture pop
+  (380ms), listen-along join (560ms).
+- **Real time:** the band's hairline advances linearly over 1s; equalizer bars move only while
+  someone is actually hearing music.
+- **View switch:** Feed and Messages slide 14px in 300ms, reversed when going back.
+- **Reduced motion:** under `prefers-reduced-motion: reduce`, every animation under `#page-social`,
+  the modal and the lightbox runs once in 1ms (loops stop, entrances settle at once); transitions
+  are limited to opacity, color, background-color, border-color and box-shadow, so nothing travels;
+  hover transforms on sleeves, faces and images are removed.
 
 ## Do's and Don'ts
 
 ### Do:
 
-- **Do** express every neutral through theme tokens or the `--booth-*` mixes; `#5ee890` and `#ff5470` are the only fixed hues.
-- **Do** read color from the artwork into `--deck-color` or `--tint`, and fall back to ink.
-- **Do** place every member on the `boothDepth` ladder and keep their fixed furniture: name plate, state line, dated last listen.
-- **Do** draw waveforms from real decoded peaks, cached once per track, with the dynamic-range stretch and the 0.56 lightness floor.
-- **Do** use `@container social` for every layout change, and `overflow: clip` on panes and rows.
-- **Do** keep the spring for tactile keyframe gestures and the ease-out curve for everything else, and register new motion in the reduced-motion block.
-- **Do** patch lists by key so a spinning deck never restarts.
-- **Do** write class names as literals in JS (`'is-near'`, never `` `is-${band}` ``) so PurgeCSS keeps them.
-- **Do** use `tabular-nums` on every time, position and count.
+- **Do** express every neutral through theme tokens via the `--lv-*` mixes; `#5ee890`, `#ff5470` (`#c8173c` on light themes) and the house ink's `#a08f99` are the only fixed hues.
+- **Do** print each entry in one spot ink from `--tint`, falling back to the house ink, laid flat.
+- **Do** draw records square and people round, and put a member's face on their sleeve's corner.
+- **Do** set members' own words in Literata with note ink, titles and credits in Switzer, everything else in Inter, each with `font-family: … !important`.
+- **Do** draw grooves from real decoded peaks, cached once per track.
+- **Do** use `@container social` for every layout change, and `overflow: clip` on spreads and panes.
+- **Do** keep the spring for tactile gestures and the ease-out curve for everything else, and make sure new motion degrades under the reduced-motion block.
+- **Do** write class names as literals in JS so PurgeCSS keeps them.
+- **Do** use `tabular-nums` on every time, position, count and track number.
 
 ### Don't:
 
-- **Don't** let a cover color mark state (live, unread, selected, followed).
+- **Don't** let a spot ink glow, blur or cast light, or mark state (live, unread, selected, followed).
 - **Don't** use presence green for anything but presence, or like-red for anything but likes.
-- **Don't** add a fourth ply: no panel inside a panel, no shadow on a resting inset panel.
-- **Don't** cast directional or offset glows; cover light is symmetric and stops before the panel edge.
-- **Don't** fake waveforms with random or placeholder bars.
-- **Don't** put a spindle through an avatar, or send a member to the edge unless they have no listen within 30 days (never "You").
-- **Don't** name whole views for view transitions.
-- **Don't** show deck actions or the message pin at rest; they appear on hover or focus.
+- **Don't** shadow a resting panel; only sleeves and the fold carry shade.
+- **Don't** round a cover into a disc or square off a person.
+- **Don't** set messages, names, placeholders or controls in Literata.
+- **Don't** add uppercase labels or kickers; hierarchy is size, weight and face.
+- **Don't** fake waveforms or tracklists with placeholder bars or rows.
+- **Don't** show credit actions, the spread play disc or the message pin at rest on pointer devices; they appear on hover or focus.
 
 # Surface Addendum: Admin Control Room
 

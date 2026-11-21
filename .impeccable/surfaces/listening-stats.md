@@ -110,3 +110,13 @@ light-theme captures do not prove B Scene's final appearance.
 ## Navigation polish
 
 Closer B density: compact cover fan, 1000×160 /130px desktop activity curve (400×240 /210px mobile), musical stems from the same curve. Rounded arc ring keeps a count-only center and cap-aware tiny segments. Sliding selector 280ms, cancelable content/date transition320ms, numeric interpolation450ms from the currently painted value. Existing scene remains dim/inert during navigation; quiet updates neither supersede navigation nor redraw unchanged data. Pointer writes are RAF-batched and palette cache bounded to64.
+
+Update 2026-11-20 (Present Red): first shipped recap edition, monthly pool (`present-red`, Archivo 800 at
+62% width). Recap skin in `listening-recap.css`: oxblood velvet scene with four giant cropped letterforms
+re-staged on every slide from `--recap-step` (sin/cos paths, 1.9s ease-in-out, per-layer lag) and drifting
+in between, a wandering light, a per-slide sheen, and a salmon band (`Listening stats` / period from
+`data-recap-label`). Covers become a tilted sleeve bleeding right, artists an irised portrait bleeding left;
+`.stats-recap-cover` stages extra artwork on On repeat and Lineup (hidden in the neutral skin). Its share
+card uses `theme.layout` to replace the generic sections with the reference composition (portrait + top
+artists, period set full width, top songs beside a tilted sleeve, band with handle or period) for 9:16, 4:5
+and 1:1. Reduced motion freezes the letterforms in place.

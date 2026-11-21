@@ -2,70 +2,58 @@
 version: 1
 slug: "js-social-js"
 primary_target: "js/social.js"
-related_targets: ["index.html","js/social-feed.js","js/social-booth.js","social.css"]
+related_targets: ["index.html","js/social-feed.js","js/social-band.js","social.css"]
 ---
 
-# Social — La Cabine (The Booth)
+# Social — Le Livret commun (the shared booklet)
 
-- Scope: `index.html#page-social` (header, booth, Feed view, Messages view, info panel, friendship
-  gate, group modal, lightbox), `js/social.js`, `js/social-feed.js`, `js/social-booth.js`,
-  `social.css`. Out of scope: the global share sheet, profile social widgets, sidebar, player.
-- Mode: Operate. Replacement world for Social (the 2026-08 "Monochrome Clubhouse" ink-and-hairline
-  world is retired as anti-reference). Every existing function stays; no PocketBase schema change.
-- Direction: "La Cabine", seed `f7980571` (assigned candidate 4: DJ deck displays). Raised by the
-  declined challengers: chrome deleted until hover/focus (Metro), states stamp onto bubbles (ticket
-  wallet), cover colors never mark state (orienteering), three plies only (acetate manual), fixed
-  per-member furniture (goods catalog).
-- Approved composition (2026-10-27, user: "Fais un mélange des 3"): a mix of
-  `.impeccable/mocks/social-booth/comp-a.png` (deck anatomy, feed track log),
-  `comp-b.png` (Messages: collapsed booth strip, browse list tinted by last shared music, tinted
-  thread, snippet as a mini deck) and `comp-c.png` (Feed hero: featured deck + full-track waveform
-  + live playhead + Listen along, other decks on a shelf). Clicking a shelf deck promotes it to the
-  featured slot.
-- Memorable moment: a friend's cover spinning at their real playback position, its color spilling
-  onto the page, one click to listen along from where they are.
+- Scope: `index.html#page-social` (header, listening band, Feed view with its correspondence rail,
+  Messages view, details panel, friendship gate), the body-level group modal and lightbox,
+  `js/social.js`, `js/social-feed.js`, `js/social-band.js` (the listening band, replacing `js/social-booth.js`), `social.css`.
+  Out of scope: the global share sheet, profile social widgets, sidebar, player.
+- Mode: Operate. Replacement world for Social: "La Cabine" (DJ decks, discs, glow) is retired as
+  anti-reference, as was the 2026-08 Clubhouse world before it. Every existing function stays;
+  no PocketBase schema change.
+- Audience and job: a handful of friends on one homelab instance. They come to see what the others
+  play, leave a note about a record, answer each other, and slip into a conversation.
+- Direction source: the 2026-11-20 direction round (`.impeccable/mocks/social-directions/decision.json`,
+  sketches in `.impeccable/sketches/social-directions/`). The page closed unanswered and the user
+  asked (2026-11-20, going to sleep) to work autonomously without prompts, so the assigned card
+  "Le Livret commun" was built unattended. Alternates left open: L'Atlas nocturne, L'Index des
+  échanges, and the familiar canon.
+- Memorable moment: a friend's record laid open as a booklet spread, cover on the left page and
+  their note on the right, its tracklist or running groove printed in the cover's own spot ink.
 
-## Grilled decisions (2026-10-27)
+## Direction contract
 
-Booth is the page header on both tabs (large in Feed, 64px strip in Messages, morphing between).
-Members: everyone but blocked accounts, you included; order live > online > recent; cap with +N.
-Deck actions: Listen along (same track, at their extrapolated position when playing), Message
-(or Follow when not mutual), name to profile; your own deck shares what you play into the composer.
-Recency recedes: older last listen = smaller, desaturated, further back; >30 days or never = avatar
-only at the edge; all-offline booth stays composed and dated. Conversations take the color of
-their last shared music, else the contact's current track, else neutral. Messenger fundamentals
-stay (list, thread, docked composer, details panel). Desktop first; mobile must not break.
+THESIS: Social is the group's shared liner-notes booklet. Every post is a spread where a cover and a
+member's note answer each other across a fold; it refuses the chat-bubble timeline and the card feed.
 
-## Comp record (sampled from pixels)
+OWN-WORLD: Theme-token paper plies, foreground ink, one spot ink per entry read flat from its cover
+(no glow), a house second ink when there is no art. Records are square, people are round. Literata
+sets members' notes; Switzer sets credits and titles; Inter runs the interface. Hairline rules,
+tabular running times, a soft gutter shadow at the fold.
 
-| Region | Comp value | Build |
-| --- | --- | --- |
-| Shell ground | #060606 / #0a0a0a | `var(--background)` |
-| Booth ground | #0a0a0a–#0b0b0c, cover glow at ~6% | background + radial glows in `--deck-color` |
-| Panels (composer, feed, list) | #121314–#151717 | `color-mix(var(--card) …, var(--background))` |
-| Live ring Jon Bell / Luna | #14366d→#2f7bff / #e05535 | extracted vibrant color per cover |
-| Waveform | #3f3159 purple → #87493c orange (cover colors) | canvas bars, cover color gradient |
-| Live dot | #67e97c | presence green #5ee890 (state color, unchanged) |
-| Listen along | #e4e4e4 fill, dark text | `var(--foreground)` fill |
-| Own bubble / other bubble | #313030 / ~#252627 | foreground 14% / 7% mixes into card |
+STORY: See who is listening in the band, open a friend's spread, play from its tracklist or groove,
+leave a margin note, then carry the thread into a conversation whose rows wear their last sleeve.
 
-Type: Switzer (`--font-family-key`) 700 for the page title and featured track title (comp: ~32px
-title, ~40px featured track); Inter for UI; tabular numerals for every time readout.
-Corner language: 14px panels, 12px strips and bubbles, pills for actions, perfect circles for decks.
-Line weights: 1px hairlines at border 60–70%; deck rings 3px (featured 4px).
-Elevation: flat panels; glow only from live covers; floating overlays keep the opaque recipe.
+FIRST VIEWPORT: Title and Feed/Messages tabs; a single-row listening band of credits (avatar on a
+square cover, name, track, live hairline); the composer as a blank entry; then the first spread at
+full column width, cover left ~40%, note right. At wide containers a correspondence rail (300px)
+lists recent conversations beside the feed.
 
-## Inventory
+FORM: Le Livret commun, the assigned lead card of the 2026-11-20 round. seed: none (no roll on record: this run inherited the assigned lead from a decision round that never recorded a roll, and a roll after the build would deal against a locked direction)
 
-| Ingredient | Medium |
-| --- | --- |
-| Deck discs (cover in a platter, ring, marker) | HTML img + SVG ring, CSS rotation |
-| Featured waveform + playhead | canvas from real decoded peaks (cached), HTML playhead |
-| Snippet / track strips in feed and chat | canvas or bar spans from stored or decoded peaks |
-| Cover color glow | extracted color via `getVibrantColorFromImage`, CSS radial gradients |
-| Booth strip (Messages) | same deck markup, compact state, FLIP morph |
-| Conversation tint | CSS custom property from last shared cover |
-| Covers, avatars | existing project/library assets only (no generated rasters) |
-| Icons | Lucide factories |
+Signature interaction: a spread's tracklist and groove play from the exact track or moment
+clicked; spot ink settles onto the page once the cover is read. Motion grammar: one strong
+ease-out for UI (160-280ms), ease-in-out for on-screen movement, a slight overshoot only on
+tactile gestures (like, send, follow stamp, pin), all of it reduced to opacity under reduced motion.
 
-No raster is produced for the build: every cover is the library's own artwork.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+
+## Constraints carried over
+
+Mutual friendship gates messaging, sharing and groups; feed keeps the followed stream first and a
+non-duplicating instance stream below; no reposts; snippets play through the global player; no
+call UI. Container queries on `#page-social` for layout; class names written as literals in JS for
+PurgeCSS; every theme (ten, including light `white` and `latte`) must render.

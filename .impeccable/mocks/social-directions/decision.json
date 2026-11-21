@@ -1,0 +1,59 @@
+{
+  "title": "Monochrome · imaginer Social",
+  "question": "Quelle direction te donne envie de retrouver tes amis et leur musique ? Les aperçus sont des esquisses, pas des écrans définitifs.",
+  "options": [
+    {
+      "id": "livret",
+      "label": "Le Livret commun",
+      "kicker": "PROPOSITION PRINCIPALE",
+      "lineage": "Notes de pochette et journal d’écoute",
+      "thesis": "Les messages et les pochettes composent le journal musical du groupe.",
+      "palette": ["#101113", "#222326", "#f1efeb", "#a08f99"],
+      "materials": ["pochettes", "notes", "séparateurs fins"],
+      "viewport": "Un bandeau d’écoute discret surmonte un fil où l’image et le texte se répondent.",
+      "risk": "Les grandes pochettes peuvent réduire le nombre de publications visibles.",
+      "sketch": ".impeccable/sketches/social-directions/livret.png"
+    },
+    {
+      "id": "atlas",
+      "label": "L’Atlas nocturne",
+      "lineage": "Carte du ciel et présence en direct",
+      "thesis": "Les membres en écoute dessinent une carte vivante autour du fil musical.",
+      "case": "L’identité commune est forte ; la carte doit rester lisible même quand peu de personnes écoutent.",
+      "palette": ["#111929", "#253548", "#e9eee9", "#d09868"],
+      "materials": ["bleu nuit", "repères", "lumière tamisée"],
+      "viewport": "Une carte compacte présente les présences ; en dessous, le fil et les conversations restent lisibles.",
+      "risk": "Une carte trop abstraite rendrait les membres plus difficiles à retrouver.",
+      "sketch": ".impeccable/sketches/social-directions/atlas.png",
+      "hero": "https://impeccable.style/worlds/cards/notation-diagram-systems-star-atlas-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/notation-diagram-systems-star-atlas.webp"
+    },
+    {
+      "id": "index",
+      "label": "L’Index des échanges",
+      "lineage": "Édition annotée et repères chronologiques",
+      "thesis": "Une ligne de temps relie les écoutes, les publications et leurs conversations.",
+      "case": "L’organisation rend le fil facile à balayer ; les images doivent garder assez de place.",
+      "palette": ["#191817", "#eae6dd", "#8b8278", "#b95743"],
+      "materials": ["papier sombre", "filets", "marge annotée"],
+      "viewport": "Un index latéral mène aux membres et aux messages ; les publications suivent un rail chronologique.",
+      "risk": "Une mise en page trop typographique pourrait rendre la musique secondaire.",
+      "sketch": ".impeccable/sketches/social-directions/index.png",
+      "hero": "https://impeccable.style/worlds/cards/rw-centre-rail-reference-setting-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/rw-centre-rail-reference-setting.webp"
+    }
+  ],
+  "reroll": false,
+  "steer": true,
+  "canon": true,
+  "canonCard": {
+    "label": "Le Fil familier",
+    "lineage": "Interface sociale conventionnelle",
+    "thesis": "Un fil central, les membres à portée de main et une messagerie familière.",
+    "palette": ["#111214", "#202125", "#f3f3f4", "#a1a1aa"],
+    "materials": ["listes", "surfaces simples", "repères directs"],
+    "viewport": "Le fil et les conversations se partagent l’écran avec des contrôles familiers.",
+    "risk": "Une approche plus conventionnelle laisse moins de place à une identité musicale propre.",
+    "sketch": ".impeccable/sketches/social-directions/familier.png"
+  }
+}

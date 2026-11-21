@@ -1,6 +1,6 @@
 {
     "schemaVersion": 2,
-    "generatedAt": "2026-10-27T01:30:48Z",
+    "generatedAt": "2026-11-21T00:00:00Z",
     "title": "Design System: Monochrome Social",
     "extensions": {
         "colorMeta": {
@@ -21,16 +21,16 @@
             },
             "ink": {
                 "role": "primary",
-                "displayName": "Booth Ink",
+                "displayName": "Ink",
                 "canonical": "var(--foreground)",
                 "tonalRamp": [
-                    "#2a2a2a",
-                    "#4a4a4a",
-                    "#6b6b6b",
-                    "#8a8a8a",
-                    "#a0a0a0",
-                    "#c4c4c4",
-                    "#e0e0e0",
+                    "#3d3d3d",
+                    "#5c5c5c",
+                    "#7a7a7a",
+                    "#999999",
+                    "#b8b8b8",
+                    "#d6d6d6",
+                    "#ebebeb",
                     "#f5f5f5"
                 ]
             },
@@ -49,25 +49,25 @@
                     "#a0a0a0"
                 ]
             },
-            "muted-ink": {
+            "ink-soft": {
                 "role": "neutral",
-                "displayName": "Muted Ink",
+                "displayName": "Ink Soft",
                 "canonical": "var(--muted-foreground)",
                 "tonalRamp": [
+                    "#050505",
+                    "#0a0a0a",
+                    "#141414",
+                    "#1f1f1f",
                     "#2a2a2a",
-                    "#4a4a4a",
+                    "#3d3d3d",
                     "#6b6b6b",
-                    "#8a8a8a",
-                    "#a0a0a0",
-                    "#c4c4c4",
-                    "#e0e0e0",
-                    "#f5f5f5"
+                    "#a0a0a0"
                 ]
             },
-            "border": {
+            "paper": {
                 "role": "neutral",
-                "displayName": "Rule Base",
-                "canonical": "var(--border)",
+                "displayName": "Paper",
+                "canonical": "color-mix(in oklab, var(--card) 52%, var(--background)); card 38% on white/latte",
                 "tonalRamp": [
                     "#050505",
                     "#0a0a0a",
@@ -79,10 +79,10 @@
                     "#a0a0a0"
                 ]
             },
-            "booth-panel": {
+            "paper-deep": {
                 "role": "neutral",
-                "displayName": "Booth Panel",
-                "canonical": "color-mix(in srgb, var(--card) 46%, var(--background))",
+                "displayName": "Paper Deep",
+                "canonical": "color-mix(in oklab, var(--card) 24%, var(--background)); card 14% on white/latte",
                 "tonalRamp": [
                     "#050505",
                     "#0a0a0a",
@@ -94,25 +94,25 @@
                     "#a0a0a0"
                 ]
             },
-            "booth-panel-deep": {
+            "note-ink": {
                 "role": "neutral",
-                "displayName": "Booth Panel Deep",
-                "canonical": "color-mix(in srgb, var(--card) 22%, var(--background))",
+                "displayName": "Note Ink",
+                "canonical": "color-mix(in oklab, var(--foreground) 90%, #c9b8a6); 92% toward #6b4a33 on white/latte",
                 "tonalRamp": [
-                    "#050505",
-                    "#0a0a0a",
-                    "#141414",
-                    "#1f1f1f",
-                    "#2a2a2a",
-                    "#3d3d3d",
-                    "#6b6b6b",
-                    "#a0a0a0"
+                    "#3b3632",
+                    "#59524c",
+                    "#787069",
+                    "#978f88",
+                    "#b6aea7",
+                    "#d4cdc7",
+                    "#e9e5e2",
+                    "#f1efed"
                 ]
             },
-            "booth-rule": {
+            "rule": {
                 "role": "neutral",
                 "displayName": "Rule",
-                "canonical": "color-mix(in srgb, var(--border) 72%, transparent)",
+                "canonical": "color-mix(in oklab, var(--foreground) 10%, transparent)",
                 "tonalRamp": [
                     "#050505",
                     "#0a0a0a",
@@ -124,10 +124,10 @@
                     "#a0a0a0"
                 ]
             },
-            "booth-rule-soft": {
+            "rule-strong": {
                 "role": "neutral",
-                "displayName": "Soft Rule",
-                "canonical": "color-mix(in srgb, var(--border) 46%, transparent)",
+                "displayName": "Rule Strong",
+                "canonical": "color-mix(in oklab, var(--foreground) 20%, transparent)",
                 "tonalRamp": [
                     "#050505",
                     "#0a0a0a",
@@ -139,10 +139,10 @@
                     "#a0a0a0"
                 ]
             },
-            "booth-wash": {
+            "wash": {
                 "role": "neutral",
                 "displayName": "Wash",
-                "canonical": "color-mix(in srgb, var(--foreground) 6%, transparent)",
+                "canonical": "color-mix(in oklab, var(--foreground) 5%, transparent)",
                 "tonalRamp": [
                     "#050505",
                     "#0a0a0a",
@@ -154,10 +154,10 @@
                     "#a0a0a0"
                 ]
             },
-            "booth-wash-strong": {
+            "wash-strong": {
                 "role": "neutral",
-                "displayName": "Strong Wash",
-                "canonical": "color-mix(in srgb, var(--foreground) 11%, transparent)",
+                "displayName": "Wash Strong",
+                "canonical": "color-mix(in oklab, var(--foreground) 10%, transparent)",
                 "tonalRamp": [
                     "#050505",
                     "#0a0a0a",
@@ -167,12 +167,27 @@
                     "#3d3d3d",
                     "#6b6b6b",
                     "#a0a0a0"
+                ]
+            },
+            "house-ink": {
+                "role": "secondary",
+                "displayName": "House Ink (muted mauve)",
+                "canonical": "color-mix(in oklab, var(--muted-foreground) 45%, #a08f99)",
+                "tonalRamp": [
+                    "#2a2528",
+                    "#3e373b",
+                    "#554c51",
+                    "#6c6267",
+                    "#84797e",
+                    "#a0979c",
+                    "#c2bbbf",
+                    "#e2dee0"
                 ]
             },
             "bubble-other": {
                 "role": "neutral",
-                "displayName": "Their Bubble",
-                "canonical": "color-mix(in srgb, var(--foreground) 8%, var(--booth-panel-deep))",
+                "displayName": "Bubble (others)",
+                "canonical": "color-mix(in oklab, var(--foreground) 8%, var(--lv-paper-deep))",
                 "tonalRamp": [
                     "#050505",
                     "#0a0a0a",
@@ -186,8 +201,8 @@
             },
             "bubble-own": {
                 "role": "neutral",
-                "displayName": "Own Bubble",
-                "canonical": "color-mix(in srgb, var(--foreground) 15%, var(--booth-panel-deep))",
+                "displayName": "Bubble (own)",
+                "canonical": "color-mix(in oklab, var(--foreground) 15%, var(--lv-paper-deep))",
                 "tonalRamp": [
                     "#050505",
                     "#0a0a0a",
@@ -199,130 +214,104 @@
                     "#a0a0a0"
                 ]
             },
-            "booth-live": {
+            "live": {
                 "role": "tertiary",
-                "displayName": "Presence Green (here now only)",
-                "canonical": "var(--booth-live) = #5ee890",
+                "displayName": "Presence Green",
+                "canonical": "#5ee890",
                 "tonalRamp": [
-                    "#0d3a20",
-                    "#145c32",
-                    "#1d7a43",
-                    "#279954",
-                    "#3cb96a",
+                    "#0d3a1e",
+                    "#16582e",
+                    "#20773f",
+                    "#2b9851",
+                    "#38ba64",
                     "#5ee890",
-                    "#8cefb0",
-                    "#c2f8d5"
+                    "#94f0b4",
+                    "#cff8dd"
                 ]
             },
-            "booth-like": {
+            "like": {
                 "role": "tertiary",
-                "displayName": "Like Red (liked only)",
-                "canonical": "var(--booth-like) = #ff5470",
+                "displayName": "Like Red",
+                "canonical": "#ff5470; #c8173c on white/latte (AA on light paper)",
                 "tonalRamp": [
-                    "#4d0f1a",
-                    "#7a1728",
-                    "#a61f36",
-                    "#d02a44",
-                    "#ef3f58",
+                    "#4a0612",
+                    "#700b1d",
+                    "#990f29",
+                    "#c41536",
+                    "#ec2a4d",
                     "#ff5470",
-                    "#ff8ba0",
-                    "#ffc4d0"
-                ]
-            },
-            "initial-disc": {
-                "role": "neutral",
-                "displayName": "Initial Disc",
-                "canonical": "#2c2c2f (painted by avatarFor in js/social-utils.js)",
-                "tonalRamp": [
-                    "#050505",
-                    "#0a0a0a",
-                    "#141414",
-                    "#1f1f1f",
-                    "#2a2a2a",
-                    "#3d3d3d",
-                    "#6b6b6b",
-                    "#a0a0a0"
-                ]
-            },
-            "initial-letter": {
-                "role": "neutral",
-                "displayName": "Initial Letter",
-                "canonical": "#ececec (painted by avatarFor in js/social-utils.js)",
-                "tonalRamp": [
-                    "#2a2a2a",
-                    "#4a4a4a",
-                    "#6b6b6b",
-                    "#8a8a8a",
-                    "#a0a0a0",
-                    "#c4c4c4",
-                    "#e0e0e0",
-                    "#f5f5f5"
+                    "#ff8fa1",
+                    "#ffcfd7"
                 ]
             }
         },
         "typographyMeta": {
             "display": {
                 "displayName": "Display",
-                "purpose": "The 'Social' title only (Switzer via --booth-display)."
-            },
-            "deck-title": {
-                "displayName": "Deck Title",
-                "purpose": "Featured track title, container-scaled, two-line clamp."
+                "purpose": "The 'Social' title only (Switzer via --lv-display)."
             },
             "headline": {
                 "displayName": "Headline",
-                "purpose": "Empty states, details hero name, group modal title (Switzer)."
+                "purpose": "Stream titles, desk and thread names, empty states, details hero name, group modal title (Switzer)."
             },
-            "title": {
-                "displayName": "Title",
-                "purpose": "Stream titles and thread name."
+            "credits-title": {
+                "displayName": "Credits Title",
+                "purpose": "The record title on a spread's right page (Switzer, balanced)."
+            },
+            "note-spread": {
+                "displayName": "Note (spread)",
+                "purpose": "A member's note on a spread, Literata in note ink; outranks the credits title."
+            },
+            "note-solo": {
+                "displayName": "Note (text-only)",
+                "purpose": "A text-only post, Literata at 62ch, indented to the byline."
+            },
+            "note-short": {
+                "displayName": "Note (short)",
+                "purpose": "A short text-only post, Literata, balanced."
+            },
+            "note-comment": {
+                "displayName": "Comment",
+                "purpose": "Comment bodies and the comment field, Literata in note ink."
             },
             "name": {
                 "displayName": "Name",
-                "purpose": "Name plates, post authors, chat and message authors."
-            },
-            "body": {
-                "displayName": "Body",
-                "purpose": "Post text."
+                "purpose": "Authors and credit names (Inter 650)."
             },
             "message": {
                 "displayName": "Message",
-                "purpose": "Bubble text."
+                "purpose": "Bubble text stays Inter; conversation is not a note."
             },
             "meta": {
                 "displayName": "Meta",
-                "purpose": "State lines, dated last listens, clocks, counts (tabular)."
-            },
-            "readout": {
-                "displayName": "Readout",
-                "purpose": "Waveform times (tabular, 0.02em)."
+                "purpose": "Times, dates, counts, running times, track numbers; tabular figures."
             }
         },
         "shadows": [
             {
-                "name": "platter",
-                "value": "0 0 0 1px color-mix(in srgb, var(--foreground) 8%, transparent), 0 14px 34px rgb(0 0 0 / 0.42)",
-                "purpose": "Every deck disc's record."
+                "name": "fold",
+                "value": "linear-gradient(to left, var(--lv-shade), transparent) 22px on the cover edge; linear-gradient(to right, color-mix(in oklab, var(--lv-shade) 50%, transparent), transparent) 18px on the page edge",
+                "purpose": "The gutter shade at every spread's fold. --lv-shade is rgb(0 0 0 / 0.32), 0.12 on white/latte."
             },
             {
-                "name": "listen-lift",
-                "value": "0 8px 20px rgb(0 0 0 / 0.32)",
-                "purpose": "Ink Listen along button on hover, with a 2px rise."
+                "name": "sleeve",
+                "value": "0 0 0 1px var(--lv-rule), 0 6px 14px var(--lv-shade)",
+                "purpose": "Covers in the band; deepens to 0 10px 20px on hover. Small sleeves use 0 4px 10px var(--lv-shade)."
             },
             {
-                "name": "composer-focus-feed",
-                "value": "0 18px 50px rgb(0 0 0 / 0.22)",
-                "purpose": "Post composer on :focus-within."
+                "name": "lift",
+                "value": "0 10px 28px rgb(0 0 0 / 0.28)",
+                "purpose": "--lv-lift: post and message composers on :focus-within, with border-color color-mix(in oklab, var(--foreground) 45%, transparent) (0 10px 26px rgb(0 0 0 / 0.1) on light themes)."
             },
             {
-                "name": "composer-focus-message",
-                "value": "0 14px 40px rgb(0 0 0 / 0.25)",
-                "purpose": "Message composer on :focus-within."
+                "name": "play-disc",
+                "value": "0 8px 20px rgb(0 0 0 / 0.3)",
+                "purpose": "The ink play disc over a spread's cover."
             },
             {
                 "name": "docked-details",
                 "value": "-24px 0 60px rgb(0 0 0 / 0.3)",
-                "purpose": "Details panel as overlay below a 1240px container."
+                "purpose": "Details panel as overlay below a 1100px container."
             },
             {
                 "name": "group-modal",
@@ -335,9 +324,9 @@
                 "purpose": "Lightbox image over a rgb(0 0 0 / 0.84) veil."
             },
             {
-                "name": "artwork-light",
-                "value": "radial-gradient(closest-side, color-mix(in srgb, var(--deck-color) 46%, transparent) 62%, color-mix(in srgb, var(--deck-color) 18%, transparent) 80%, transparent) at inset -18%",
-                "purpose": "Symmetric cover glow behind a disc; 70% on the shelf, none in the strip."
+                "name": "ink-ring",
+                "value": "0 0 0 3px var(--lv-wash-strong) | 0 0 0 4px color-mix(in oklab, var(--foreground) 30%, transparent)",
+                "purpose": "Field focus, composer summon, groove cue flash. Always ink, never spot."
             },
             {
                 "name": "admin-shell",
@@ -357,39 +346,49 @@
         ],
         "motion": [
             {
-                "name": "booth-ease",
-                "value": "cubic-bezier(0.22, 1, 0.36, 1)",
-                "purpose": "Layout, hover, view entrances, panels, view-transition groups (560ms)."
+                "name": "lv-ease",
+                "value": "cubic-bezier(0.23, 1, 0.32, 1)",
+                "purpose": "Every UI state change (120-380ms), page turns and prints (560-900ms), spot ink settling (700ms)."
             },
             {
-                "name": "booth-spring",
+                "name": "lv-move",
+                "value": "cubic-bezier(0.77, 0, 0.175, 1)",
+                "purpose": "On-screen travel: the tab thumb slide (340ms)."
+            },
+            {
+                "name": "lv-drawer",
+                "value": "cubic-bezier(0.32, 0.72, 0, 1)",
+                "purpose": "Details panel entrance (320ms from 16px)."
+            },
+            {
+                "name": "lv-spring",
                 "value": "cubic-bezier(0.34, 1.45, 0.64, 1)",
-                "purpose": "Tactile keyframe gestures only: like, send, message arrival, tick and follow stamps, pin drop, deck drop and arrival, chip and arm feedback."
-            },
-            {
-                "name": "deck-spin",
-                "value": "booth-spin 7.2s linear infinite",
-                "purpose": "Platters spin only while their member (or snippet) plays."
+                "purpose": "Tactile gestures only: like 520ms, send/Post arm 320ms, play press 320ms, follow and read-check stamp 460ms, group checkbox check 380ms, pin drop 500ms, unread and group picture pop 380ms, listen-along join 560ms."
             },
             {
                 "name": "real-time",
                 "value": "1s linear",
-                "purpose": "Progress ring, rim marker and playhead advance."
+                "purpose": "The band credit's hairline follows the friend's real position."
             },
             {
-                "name": "view-enter",
-                "value": "booth-view-in 460ms, translateX(28px), reversed on back",
-                "purpose": "Feed and Messages views enter inside the root crossfade; views are never named."
+                "name": "view-turn",
+                "value": "lv-turn 300ms, translateX(14px), reversed on back",
+                "purpose": "Feed and Messages switch."
+            },
+            {
+                "name": "page-turn",
+                "value": "lv-page-turn 560ms, perspective(900px) rotateY(-16deg)",
+                "purpose": "A new entry's right page swings down onto the fold."
             },
             {
                 "name": "presence-ping",
-                "value": "booth-ping 2.4s infinite",
+                "value": "lv-ping 2.4s infinite",
                 "purpose": "Header presence dot."
             },
             {
                 "name": "reduced-motion",
-                "value": "@media (prefers-reduced-motion: reduce) { animation: none; transition: none } + view-transition pseudos",
-                "purpose": "Everything off on #page-social, the modal and the lightbox."
+                "value": "@media (prefers-reduced-motion: reduce) { animation-duration: 1ms; animation-iteration-count: 1; animation-delay: 0; transition-property: opacity, color, background-color, border-color, box-shadow } + transform: none on sleeves, faces, images",
+                "purpose": "Scoped to #page-social, .social-group-modal and .social-lightbox: loops stop, entrances settle, nothing travels; color and opacity still ease."
             },
             {
                 "name": "ease-admin",
@@ -434,24 +433,34 @@
         ],
         "breakpoints": [
             {
-                "name": "social-1240",
-                "value": "@container social (max-width: 1240px)",
-                "purpose": "Details panel docks as an overlay."
+                "name": "social-desk-1040",
+                "value": "@container social (min-width: 1040px)",
+                "purpose": "Feed gains the sticky 300px correspondence desk."
             },
             {
-                "name": "social-1060",
-                "value": "@container social (max-width: 1060px)",
-                "purpose": "Booth stacks; shelf becomes one horizontal scrolling row."
+                "name": "social-info-1100",
+                "value": "@container social (max-width: 1100px)",
+                "purpose": "Details panel docks as an overlay, min(340px, 88%)."
             },
             {
                 "name": "social-820",
                 "value": "@container social (max-width: 820px)",
-                "purpose": "250px list, 58px post gutter, strips wrap to two rows."
+                "purpose": "260px rail; spread cover 34%; smaller credits title and note."
             },
             {
                 "name": "social-640",
                 "value": "@container social (max-width: 640px)",
-                "purpose": "No timeline gutter, 132px featured disc, one Messages pane at a time."
+                "purpose": "One Messages pane at a time with a back button; full-width details panel."
+            },
+            {
+                "name": "social-560",
+                "value": "@container social (max-width: 560px)",
+                "purpose": "Header stacks; 212px credits; slim composer; 104px spread cover; running times drop."
+            },
+            {
+                "name": "social-touch",
+                "value": "@media (hover: none)",
+                "purpose": "Credit actions, spread play disc and message pin stay in sight."
             },
             {
                 "name": "admin-inspector-overlay",
@@ -481,44 +490,44 @@
         ],
         "patterns": [
             {
-                "name": "Depth ladder",
-                "value": "boothDepth: playing 0, online with track 0.18, else 0.3 to 0.92 log-scaled over 30 days, else 1 (edge); rankBooth sorts by depth then recency",
-                "purpose": "Recency is distance in the booth (js/social-state.js)."
+                "name": "Spot ink",
+                "value": "coverColor(img) -> getVibrantColorFromImage, cached per URL (96); cachedCoverColor for rebuilt nodes -> --tint -> --spot: var(--tint, var(--lv-house)); --spot-ink: color-mix(in oklab, var(--spot) 58%, var(--foreground))",
+                "purpose": "One flat ink per entry, read from its cover (js/social-dom.js); never glow, never state."
             },
             {
-                "name": "Cover color",
-                "value": "coverColor(img) -> getVibrantColorFromImage, cached per URL (96) -> --deck-color / --tint",
-                "purpose": "Artwork is the only chroma; never marks state (js/social-dom.js)."
+                "name": "Square record, round person",
+                "value": "covers 3-4px radius; avatars 50%; a 28px face on the sleeve's corner in the band, sleeve tucked behind the face in rows",
+                "purpose": "Records and people never swap shapes."
+            },
+            {
+                "name": "Notes face",
+                "value": "font-family: var(--lv-notes) !important (Literata) on .social-note, #social-post-input, .social-comment-body, .social-comment-input, .social-info-about; placeholders back to var(--font-family) !important",
+                "purpose": "styles.css forces font-family with !important on *, so every other face needs !important."
             },
             {
                 "name": "Real waveforms",
-                "value": "peaks decoded once, cached in localStorage monochrome-social-peaks:<id>; 8th-percentile floor, 0.12 level floor, exponent 1.4; color lightness >= 0.56",
-                "purpose": "Readable, true waveforms on dark covers."
+                "value": "peaks decoded once, cached in localStorage monochrome-social-peaks:<id>; 8th-percentile floor, 0.12 level floor, exponent 1.4; lightness >= 0.56 on dark grounds, <= 0.4 on light",
+                "purpose": "The groove is the track's true waveform, printed in spot ink."
             },
             {
                 "name": "Keyed patching",
-                "value": "keyed children with FLIP from getBoundingClientRect",
-                "purpose": "Live re-renders never restart a spinning deck or replay an entrance."
-            },
-            {
-                "name": "Disc-only view transitions",
-                "value": "viewTransitionName = deck-<id> on discs during the tab morph only",
-                "purpose": "Named views would escape the scrolling column and paint over the player."
+                "value": "data-key children with FLIP from getBoundingClientRect (js/social-dom.js)",
+                "purpose": "Live re-renders never replay an entrance; only genuinely new nodes animate."
             },
             {
                 "name": "Clip not hide",
-                "value": "overflow: clip on panes, slots, strips, rows; mask fade on the side still hiding decks",
+                "value": "overflow: clip on spreads, credits, Messages view; band row masks only the side still hiding credits",
                 "purpose": "Focus never scrolls a pane sideways."
             },
             {
                 "name": "Literal classes",
-                "value": "'is-near' / 'is-far' / 'is-edge', never template strings",
+                "value": "class names written as literals in JS, never template strings",
                 "purpose": "PurgeCSS keeps the production classes."
             },
             {
                 "name": "Opaque overlay recipe",
-                "value": "background-color: var(--background); background-image: linear-gradient(<panel mix>, <panel mix>)",
-                "purpose": "Group modal and docked details panel."
+                "value": "background-color: var(--background); background-image: linear-gradient(var(--lv-paper), var(--lv-paper))",
+                "purpose": "Group modal card."
             },
             {
                 "name": "Admin flat-ledger grammar",
@@ -583,68 +592,68 @@
     },
     "components": [
         {
-            "name": "Deck (shelf)",
+            "name": "Listening Band Credit",
             "kind": "custom",
-            "refersTo": "deck-near",
-            "description": "Member as a deck: cover platter in a progress ring with a rim marker, plus the fixed name plate.",
-            "html": "<article class=\"ds-deck\" style=\"--deck-color:#e05535;--progress:0.42\"><button class=\"ds-disc\" aria-label=\"Luna\"><span class=\"ds-platter\"></span><svg class=\"ds-ring\" viewBox=\"0 0 36 36\"><circle cx=\"18\" cy=\"18\" r=\"16\" pathLength=\"1\" class=\"ds-track\"/><circle cx=\"18\" cy=\"18\" r=\"16\" pathLength=\"1\" class=\"ds-prog\"/></svg></button><div class=\"ds-plate\"><strong>Luna</strong><span class=\"ds-track-name\">Breathe Deeper</span><span class=\"ds-line\"><i class=\"ds-live\"></i>Playing now</span></div></article>",
-            "css": ".ds-deck{display:flex;align-items:center;gap:.8rem;font-family: var(--font-family, Inter, sans-serif);color:var(--foreground)} .ds-disc{position:relative;width:100px;height:100px;padding:0;border:0;border-radius:50%;background:none;cursor:pointer;transition:transform 360ms cubic-bezier(.22,1,.36,1)} .ds-disc:hover,.ds-disc:focus-visible{transform:translateY(-3px) scale(1.035)} .ds-disc:focus-visible{outline:2px solid var(--ring,#f5f5f5);outline-offset:2px} .ds-platter{position:absolute;inset:8%;border-radius:50%;background:radial-gradient(circle,rgb(0 0 0/.55) 0 3.5%,transparent 4%),linear-gradient(135deg,#e05535,#3a1208);box-shadow:0 0 0 1px color-mix(in srgb,var(--foreground) 8%,transparent),0 14px 34px rgb(0 0 0/.42)} .ds-ring{position:absolute;inset:0;transform:rotate(-90deg)} .ds-ring circle{fill:none;stroke-width:1.3} .ds-track{stroke:color-mix(in srgb,var(--foreground) 9%,transparent)} .ds-prog{stroke:var(--deck-color);stroke-linecap:round;stroke-dasharray:var(--progress) 1} .ds-plate{display:flex;flex-direction:column;line-height:1.3} .ds-plate strong{font-size:.88rem;font-weight:650} .ds-track-name{font-size:.84rem;font-weight:550} .ds-line{color:var(--muted-foreground);font-size:.78rem;font-variant-numeric:tabular-nums} .ds-live{display:inline-block;width:7px;height:7px;margin-right:.4rem;border-radius:50%;background:#5ee890;box-shadow:0 0 0 3px color-mix(in srgb,#5ee890 18%,transparent)}"
+            "refersTo": "band-credit",
+            "description": "A member in the band: round face on a square sleeve's corner, name, track, state, and a live hairline in spot ink.",
+            "html": "<div class=\"ds-credit\" style=\"--tint:#c8452e\"><span class=\"ds-art\"><span class=\"ds-sleeve\"></span><span class=\"ds-face\">L</span></span><span class=\"ds-copy\"><strong>Luna</strong><span>Breathe Deeper</span><small><i class=\"ds-live\"></i>Listening now</small></span><span class=\"ds-groove\"><i></i></span></div>",
+            "css": ".ds-credit{--spot:var(--tint,#a08f99);--spot-ink:color-mix(in oklab,var(--spot) 58%,var(--foreground,#f5f5f5));position:relative;display:grid;grid-template-columns:62px minmax(0,1fr);align-items:center;gap:.7rem;width:236px;padding:.45rem .55rem .55rem .45rem;border-radius:10px;color:var(--foreground,#f5f5f5);font-family:var(--font-family,Inter,sans-serif);transition:background-color 180ms ease} .ds-credit:hover,.ds-credit:focus-within{background:color-mix(in oklab,var(--foreground,#f5f5f5) 5%,transparent)} .ds-art{position:relative;width:62px;height:62px} .ds-sleeve{position:absolute;inset:0 8px 8px 0;border-radius:4px;background:linear-gradient(135deg,#c8452e,#3a1208);box-shadow:0 0 0 1px color-mix(in oklab,#f5f5f5 10%,transparent),0 6px 14px rgb(0 0 0/.32);transition:transform 260ms cubic-bezier(.23,1,.32,1)} .ds-credit:hover .ds-sleeve{transform:translate(-2px,-2px) rotate(-2deg)} .ds-face{position:absolute;right:0;bottom:0;display:grid;place-items:center;width:28px;height:28px;border:2px solid #0f0f0f;border-radius:50%;background:#7c5cff;color:#fff;font-size:.7rem;font-weight:700} .ds-copy{display:flex;flex-direction:column;gap:.08rem;min-width:0} .ds-copy strong{font-size:.86rem;font-weight:650} .ds-copy span{font-size:.84rem} .ds-copy small{display:inline-flex;align-items:center;gap:.4rem;color:var(--muted-foreground,#a0a0a0);font-size:.76rem} .ds-live{width:7px;height:7px;border-radius:50%;background:#5ee890;box-shadow:0 0 0 3px color-mix(in oklab,#5ee890 18%,transparent)} .ds-groove{position:absolute;right:.7rem;bottom:.3rem;left:calc(.45rem + 62px + .7rem);height:2px;overflow:hidden;border-radius:2px;background:color-mix(in oklab,#f5f5f5 10%,transparent)} .ds-groove i{position:absolute;inset:0;background:var(--spot-ink);transform:scaleX(.42);transform-origin:left}"
         },
         {
-            "name": "Listen Along Button",
-            "kind": "button",
-            "refersTo": "button-listen",
-            "description": "The ink primary action of the featured deck.",
-            "html": "<button class=\"ds-listen\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3\"/></svg>Listen along</button>",
-            "css": ".ds-listen{display:inline-flex;align-items:center;gap:.5rem;height:42px;padding:0 1.15rem;border:0;border-radius:999px;background:var(--foreground);color:var(--background);font-family: var(--font-family, Inter, sans-serif);font-size:.9rem;font-weight:650;cursor:pointer;transition:transform 260ms cubic-bezier(.22,1,.36,1),box-shadow 260ms ease} .ds-listen:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgb(0 0 0/.32)} .ds-listen:active{transform:scale(.96)} .ds-listen:focus-visible{outline:2px solid var(--ring,#f5f5f5);outline-offset:2px}"
+            "name": "Spread",
+            "kind": "card",
+            "refersTo": "spread",
+            "description": "A music post as a booklet spread: square cover left, credits and Literata note right, a fold shade between, tinted flat in the cover's spot ink.",
+            "html": "<article class=\"ds-spread\" style=\"--tint:#5a8fc2\"><div class=\"ds-cover\"><button class=\"ds-play\" aria-label=\"Play\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\"><path d=\"M8 5v14l11-7z\" fill=\"currentColor\"/></svg></button></div><div class=\"ds-page\"><div><strong class=\"ds-title\">InnerSpeaker</strong><span class=\"ds-by\">Tame Impala · 2010, Album</span></div><p class=\"ds-note\">This album hit different at 3AM</p><ol class=\"ds-tracks\"><li><span>1</span>It Is Not Meant to Be<time>5:22</time></li><li><span>2</span>Desire Be Desire Go<time>4:24</time></li></ol></div></article>",
+            "css": ".ds-spread{--spot:var(--tint,#a08f99);--spot-ink:color-mix(in oklab,var(--spot) 58%,var(--foreground,#f5f5f5));display:grid;grid-template-columns:minmax(0,37%) minmax(0,1fr);overflow:clip;max-width:640px;border:1px solid color-mix(in oklab,var(--spot) 16%,color-mix(in oklab,#f5f5f5 10%,transparent));border-radius:10px;background:color-mix(in oklab,var(--spot) 9%,#0f0f0f);color:var(--foreground,#f5f5f5);font-family:var(--font-family,Inter,sans-serif)} .ds-cover{position:relative;align-self:start;aspect-ratio:1;background:linear-gradient(160deg,#9cc3e6,#2c4a6b)} .ds-cover::after{content:'';position:absolute;top:0;right:0;bottom:0;width:22px;background:linear-gradient(to left,rgb(0 0 0/.32),transparent)} .ds-play{position:absolute;bottom:.7rem;left:.7rem;z-index:1;display:grid;place-items:center;width:46px;height:46px;border:0;border-radius:50%;background:#f5f5f5;color:#0a0a0a;box-shadow:0 8px 20px rgb(0 0 0/.3);opacity:0;transform:translateY(6px) scale(.94);transition:opacity 200ms ease,transform 260ms cubic-bezier(.23,1,.32,1);cursor:pointer} .ds-cover:hover .ds-play,.ds-cover:focus-within .ds-play{opacity:1;transform:none} .ds-play:focus-visible{outline:2px solid #f5f5f5;outline-offset:2px} .ds-page{position:relative;display:flex;flex-direction:column;gap:.85rem;padding:1.05rem 1.2rem 1rem 1.35rem} .ds-page::before{content:'';position:absolute;top:0;bottom:0;left:0;width:18px;background:linear-gradient(to right,rgb(0 0 0/.16),transparent)} .ds-title{display:block;font-family:Switzer,Inter,sans-serif;font-size:1.08rem;font-weight:700;line-height:1.14;letter-spacing:-.015em} .ds-by{color:var(--muted-foreground,#a0a0a0);font-size:.9rem} .ds-note{margin:.35rem 0 0;color:color-mix(in oklab,#f5f5f5 90%,#c9b8a6);font-family:Literata,Georgia,serif;font-size:1.24rem;line-height:1.45} .ds-tracks{margin:0;padding:.35rem 0 0;list-style:none;border-top:1px solid color-mix(in oklab,var(--spot) 30%,transparent)} .ds-tracks li{display:grid;grid-template-columns:1.7rem minmax(0,1fr) auto;gap:.45rem;padding:.35rem .4rem .35rem .3rem;border-radius:6px;font-size:.88rem;transition:background-color 160ms ease} .ds-tracks li:hover{background:color-mix(in oklab,var(--spot) 16%,transparent)} .ds-tracks span{color:var(--spot-ink);font-weight:650;font-variant-numeric:tabular-nums} .ds-tracks time{color:var(--muted-foreground,#a0a0a0);font-size:.8rem;font-variant-numeric:tabular-nums}"
         },
         {
-            "name": "Deck Secondary Button",
+            "name": "Post Button",
             "kind": "button",
-            "refersTo": "button-deck-secondary",
-            "description": "Outlined Message / Follow beside Listen along.",
-            "html": "<button class=\"ds-deck-secondary\">Message</button>",
-            "css": ".ds-deck-secondary{height:42px;padding:0 1.15rem;border:1px solid color-mix(in srgb,var(--border) 72%,transparent);border-radius:999px;background:color-mix(in srgb,var(--background) 60%,transparent);color:var(--foreground);font-family: var(--font-family, Inter, sans-serif);font-size:.9rem;font-weight:650;cursor:pointer;transition:transform 260ms cubic-bezier(.22,1,.36,1),background-color 200ms ease} .ds-deck-secondary:hover{transform:translateY(-2px);background:color-mix(in srgb,var(--foreground) 11%,transparent)} .ds-deck-secondary:focus-visible{outline:2px solid var(--ring,#f5f5f5);outline-offset:2px}"
+            "refersTo": "button-post",
+            "description": "The ink pill that posts to the booklet; muted wash when disabled.",
+            "html": "<button class=\"ds-post\">Post</button> <button class=\"ds-post\" disabled>Post</button>",
+            "css": ".ds-post{height:40px;padding:0 1.15rem;border:0;border-radius:999px;background:var(--foreground,#f5f5f5);color:var(--background,#0a0a0a);font-family:var(--font-family,Inter,sans-serif);font-size:.9rem;font-weight:700;cursor:pointer;transition:transform 140ms cubic-bezier(.23,1,.32,1),background-color 200ms ease} .ds-post:hover:enabled{transform:translateY(-1px)} .ds-post:active:enabled{transform:scale(.96)} .ds-post:focus-visible{outline:2px solid #f5f5f5;outline-offset:2px} .ds-post:disabled{background:color-mix(in oklab,#f5f5f5 10%,transparent);color:#a0a0a0;cursor:default}"
         },
         {
             "name": "Social Line Tabs",
             "kind": "nav",
             "refersTo": "social-tab-active",
-            "description": "Feed / Messages labels with a sliding 2px ink underline.",
-            "html": "<nav class=\"ds-tabs\" role=\"tablist\"><button class=\"ds-tab\" role=\"tab\" aria-selected=\"true\">Feed</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">Messages</button></nav>",
-            "css": ".ds-tabs{display:flex;gap:2rem;font-family: var(--font-family, Inter, sans-serif);} .ds-tab{padding:.4rem 0 .75rem;border:0;border-bottom:2px solid transparent;background:none;color:var(--muted-foreground);font:inherit;font-size:1rem;font-weight:600;cursor:pointer;transition:color 200ms ease,border-color 420ms cubic-bezier(.22,1,.36,1)} .ds-tab:hover,.ds-tab[aria-selected='true']{color:var(--foreground)} .ds-tab[aria-selected='true']{border-bottom-color:var(--foreground)} .ds-tab:focus-visible{outline:2px solid var(--ring,#f5f5f5);outline-offset:2px}"
-        },
-        {
-            "name": "Music Strip",
-            "kind": "card",
-            "refersTo": "music-strip",
-            "description": "Shared track with cover-tinted wash and its real waveform.",
-            "html": "<div class=\"ds-strip\" style=\"--tint:#4a8fe0\"><span class=\"ds-art\"></span><span class=\"ds-meta\"><strong>InnerSpeaker</strong><small>Tame Impala · Album</small></span><button class=\"ds-play\" aria-label=\"Play\">&#9654;</button><span class=\"ds-wave\"></span><span class=\"ds-time\">4:26</span></div>",
-            "css": ".ds-strip{display:grid;grid-template-columns:60px minmax(110px,.6fr) 38px minmax(0,1fr) auto;align-items:center;gap:.9rem;padding:.5rem 1rem .5rem .5rem;overflow:clip;border:1px solid color-mix(in srgb,var(--border) 46%,transparent);border-radius:12px;background:radial-gradient(120% 140% at 0% 50%,color-mix(in srgb,var(--tint) 10%,transparent),transparent 60%),color-mix(in srgb,var(--card) 22%,var(--background));color:var(--foreground);font-family: var(--font-family, Inter, sans-serif);transition:border-color 300ms ease} .ds-strip:hover{border-color:color-mix(in srgb,var(--tint) 34%,var(--border))} .ds-art{width:60px;height:60px;border-radius:7px;background:linear-gradient(135deg,#4a8fe0,#1b3a24)} .ds-meta{display:flex;flex-direction:column;line-height:1.3} .ds-meta strong{font-size:.92rem;font-weight:650} .ds-meta small{color:var(--muted-foreground);font-size:.84rem} .ds-play{width:38px;height:38px;border:1px solid color-mix(in srgb,var(--border) 72%,transparent);border-radius:50%;background:none;color:var(--foreground);cursor:pointer} .ds-play:hover,.ds-play:focus-visible{background:var(--foreground);color:var(--background)} .ds-wave{height:44px;background:repeating-linear-gradient(90deg,var(--tint) 0 2px,transparent 2px 3.6px);mask:linear-gradient(transparent 20%,#000 20% 80%,transparent 80%)} .ds-time{color:var(--muted-foreground);font-size:.8rem;font-variant-numeric:tabular-nums}"
+            "description": "Feed / Messages tabs: muted labels, ink when selected, a 2px ink thumb.",
+            "html": "<nav class=\"ds-tabs\"><button class=\"ds-tab\" aria-selected=\"true\">Feed</button><button class=\"ds-tab\">Messages</button></nav>",
+            "css": ".ds-tabs{position:relative;display:flex;gap:1.75rem;font-family:var(--font-family,Inter,sans-serif)} .ds-tab{padding:.4rem 0 .7rem;border:0;border-bottom:2px solid transparent;background:none;color:var(--muted-foreground,#a0a0a0);font-size:1rem;font-weight:600;cursor:pointer;transition:color 180ms ease,border-color 340ms cubic-bezier(.77,0,.175,1)} .ds-tab:hover,.ds-tab[aria-selected=true]{color:var(--foreground,#f5f5f5)} .ds-tab[aria-selected=true]{border-bottom-color:var(--foreground,#f5f5f5)} .ds-tab:focus-visible{outline:2px solid #f5f5f5;outline-offset:2px}"
         },
         {
             "name": "Post Action",
             "kind": "button",
             "refersTo": "post-action",
-            "description": "Muted pill with tabular count; liked heart turns like-red.",
-            "html": "<button class=\"ds-post-action is-liked\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z\"/></svg>2</button>",
-            "css": ".ds-post-action{display:inline-flex;align-items:center;gap:.35rem;height:34px;padding:0 .6rem;border:0;border-radius:999px;background:none;color:var(--muted-foreground);font-family: var(--font-family, Inter, sans-serif);font-size:.84rem;font-weight:600;font-variant-numeric:tabular-nums;cursor:pointer;transition:color 160ms ease,background-color 160ms ease} .ds-post-action:hover,.ds-post-action:focus-visible{color:var(--foreground);background:color-mix(in srgb,var(--foreground) 11%,transparent)} .ds-post-action.is-liked{color:#ff5470}"
+            "description": "Heart / comment / share pill with tabular count; like turns like-red.",
+            "html": "<button class=\"ds-act\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\"><path d=\"M12 21s-7-4.4-9.3-9A5.2 5.2 0 0 1 12 6a5.2 5.2 0 0 1 9.3 6c-2.3 4.6-9.3 9-9.3 9z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/></svg>3</button> <button class=\"ds-act is-liked\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\"><path d=\"M12 21s-7-4.4-9.3-9A5.2 5.2 0 0 1 12 6a5.2 5.2 0 0 1 9.3 6c-2.3 4.6-9.3 9-9.3 9z\" fill=\"currentColor\"/></svg>4</button>",
+            "css": ".ds-act{display:inline-flex;align-items:center;gap:.4rem;height:36px;padding:0 .6rem;border:0;border-radius:999px;background:none;color:var(--muted-foreground,#a0a0a0);font-family:var(--font-family,Inter,sans-serif);font-size:.84rem;font-weight:600;font-variant-numeric:tabular-nums;cursor:pointer;transition:background-color 160ms ease,color 160ms ease} .ds-act:hover{background:color-mix(in oklab,#f5f5f5 10%,transparent);color:var(--foreground,#f5f5f5)} .ds-act:focus-visible{outline:2px solid #f5f5f5;outline-offset:2px} .ds-act.is-liked{color:#ff5470}"
+        },
+        {
+            "name": "Comment Field",
+            "kind": "input",
+            "refersTo": "comment-input",
+            "description": "Paper pill; members' words in Literata note ink, placeholder in Inter.",
+            "html": "<input class=\"ds-comment\" placeholder=\"Add a note…\" />",
+            "css": ".ds-comment{width:280px;height:38px;padding:0 .9rem;border:1px solid color-mix(in oklab,#f5f5f5 10%,transparent);border-radius:999px;outline:none;background:#0f0f0f;color:color-mix(in oklab,#f5f5f5 90%,#c9b8a6);font-family:Literata,Georgia,serif;font-size:.94rem;transition:border-color 160ms ease,box-shadow 200ms ease} .ds-comment::placeholder{color:#a0a0a0;font-family:var(--font-family,Inter,sans-serif);font-size:.88rem} .ds-comment:focus-visible{border-color:color-mix(in oklab,#f5f5f5 20%,transparent);box-shadow:0 0 0 3px color-mix(in oklab,#f5f5f5 10%,transparent)}"
         },
         {
             "name": "Message Bubbles",
             "kind": "custom",
             "refersTo": "message-bubble-own",
-            "description": "Uniform 14px bubbles at 8% / 15% ink, tabular clock and read ticks.",
-            "html": "<div class=\"ds-thread\"><p class=\"ds-bubble\">same energy <small>07:24 PM</small></p><p class=\"ds-bubble ds-own\">hear this one? <small>07:24 PM ✓✓</small></p></div>",
-            "css": ".ds-thread{display:flex;flex-direction:column;gap:.4rem;font-family: var(--font-family, Inter, sans-serif);color:var(--foreground)} .ds-bubble{align-self:flex-start;margin:0;padding:.6rem .9rem;border-radius:14px;background:color-mix(in srgb,var(--foreground) 8%,color-mix(in srgb,var(--card) 22%,var(--background)));font-size:.95rem;line-height:1.45} .ds-own{align-self:flex-end;background:color-mix(in srgb,var(--foreground) 15%,color-mix(in srgb,var(--card) 22%,var(--background)))} .ds-bubble small{margin-left:.65rem;color:var(--muted-foreground);font-size:.72rem;font-variant-numeric:tabular-nums}"
+            "description": "Borderless bubbles, ink 8% / 15% into paper deep, 6px tail corner toward the speaker.",
+            "html": "<div class=\"ds-thread\"><p class=\"ds-bubble\">did you hear the new one?</p><p class=\"ds-bubble is-own\">on repeat since this morning</p></div>",
+            "css": ".ds-thread{display:flex;flex-direction:column;gap:.4rem;padding:.8rem;background:#0c0c0c;font-family:var(--font-family,Inter,sans-serif)} .ds-bubble{align-self:flex-start;max-width:78%;margin:0;padding:.5rem .75rem .45rem;border-radius:16px 16px 16px 6px;background:color-mix(in oklab,#f5f5f5 8%,#0c0c0c);color:#f5f5f5;font-size:.95rem;line-height:1.45} .ds-bubble.is-own{align-self:flex-end;border-radius:16px 16px 6px;background:color-mix(in oklab,#f5f5f5 15%,#0c0c0c)}"
         },
         {
-            "name": "Chat Row",
-            "kind": "nav",
+            "name": "Conversation Row",
+            "kind": "custom",
             "refersTo": "chat-row-active",
-            "description": "Conversation row wearing the blurred cover of its last shared music.",
-            "html": "<button class=\"ds-chat is-active\"><span class=\"ds-wash\"></span><span class=\"ds-av\">L</span><span class=\"ds-copy\"><strong>Luna</strong><small>You: Snippet · Breathe Deeper</small></span></button>",
-            "css": ".ds-chat{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:.85rem;width:320px;padding:.8rem .95rem;overflow:clip;border:0;border-bottom:1px solid color-mix(in srgb,var(--border) 46%,transparent);background:none;color:var(--foreground);font-family: var(--font-family, Inter, sans-serif);text-align:left;cursor:pointer;transition:background-color 200ms ease} .ds-chat:hover{background:color-mix(in srgb,var(--foreground) 3%,transparent)} .ds-chat.is-active{background:color-mix(in srgb,var(--foreground) 6%,transparent)} .ds-wash{position:absolute;right:-12%;top:0;bottom:0;width:72%;background:#c0392b;filter:blur(26px);opacity:.2;mask-image:linear-gradient(90deg,transparent,#000 70%)} .ds-chat.is-active .ds-wash{opacity:.5} .ds-av{position:relative;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:#2c2c2f;color:#ececec;font-weight:600} .ds-copy{position:relative;display:flex;flex-direction:column} .ds-copy strong{font-weight:650} .ds-copy small{color:var(--muted-foreground);font-size:.78rem}"
+            "description": "Round face in front, the last shared square sleeve tucked behind its shoulder; wash on hover and active.",
+            "html": "<button class=\"ds-row is-active\"><span class=\"ds-rface\"><span class=\"ds-rsleeve\"></span><span class=\"ds-ravatar\">N</span></span><span class=\"ds-rcopy\"><strong>Noah.</strong><small>Snippet: Desire Be Desire Go</small></span><time>Aug 23</time></button>",
+            "css": ".ds-row{display:grid;grid-template-columns:50px minmax(0,1fr) auto;align-items:center;gap:.7rem;width:320px;padding:.55rem .55rem .55rem .5rem;border:0;border-radius:10px;background:none;color:#f5f5f5;font-family:var(--font-family,Inter,sans-serif);text-align:left;cursor:pointer;transition:background-color 160ms ease} .ds-row:hover{background:color-mix(in oklab,#f5f5f5 5%,transparent)} .ds-row.is-active{background:color-mix(in oklab,#f5f5f5 10%,transparent)} .ds-row:focus-visible{outline:2px solid #f5f5f5;outline-offset:2px} .ds-rface{position:relative;display:block;aspect-ratio:1} .ds-rsleeve{position:absolute;top:0;right:0;width:56%;aspect-ratio:1;border-radius:3px;background:linear-gradient(135deg,#7fb4a0,#2d4a3f);box-shadow:0 0 0 1px color-mix(in oklab,#f5f5f5 10%,transparent),0 3px 8px rgb(0 0 0/.32);transform-origin:left bottom;transition:transform 260ms cubic-bezier(.23,1,.32,1)} .ds-row:is(:hover,.is-active) .ds-rsleeve{transform:translate(2px,-2px) rotate(6deg)} .ds-ravatar{position:absolute;bottom:0;left:0;display:grid;place-items:center;width:84%;aspect-ratio:1;border-radius:50%;background:#1a9b8a;box-shadow:0 0 0 2px #0f0f0f;font-weight:700} .ds-rcopy{display:flex;flex-direction:column;min-width:0} .ds-rcopy strong{font-size:.9rem;font-weight:650} .ds-rcopy small{overflow:hidden;color:#a0a0a0;font-size:.82rem;text-overflow:ellipsis;white-space:nowrap} .ds-row time{color:#a0a0a0;font-size:.76rem;font-variant-numeric:tabular-nums}"
         },
         {
             "name": "Admin Member Ledger Row",
@@ -672,43 +681,47 @@
         }
     ],
     "narrative": {
-        "northStar": "La Cabine",
-        "overview": "Social is a DJ booth, not a chat app or a card feed. Every member is a deck: their current or last cover spins on a dark platter inside a progress ring, with their name plate, state line and dated last listen beside it. The page opens on who is playing what: a featured deck with the track's real waveform and a live playhead, a shelf of other decks receding by recency, then the composer and the track log. Messages collapses the booth into a strip of discs and keeps the messenger fundamentals (list, thread, docked composer, details panel).\n\nThe material is matte black and deliberately colorless. The surface has no hue of its own: chroma comes only from the artwork, read from each cover at runtime and spilled as symmetric light, ring color, waveform gradient and conversation tint. Exactly two fixed hues exist, each with one meaning: presence green for someone here now, like-red for a liked post. Depth is three plies only: the page ground, inset panels, floating overlays.\n\nMotion is the room being alive, never decoration: platters spin at 7.2s per turn only while their member plays, rings and playheads advance on real time, layout moves on one ease-out curve, and a springy overshoot is reserved for tactile gestures. Everything is off under reduced motion.",
+        "northStar": "Le Livret commun",
+        "overview": "Social is the group's shared liner-notes booklet, not a chat timeline or a card feed. A music post is a spread: the cover on the left page, the record's credits and the member's note on the right, a soft shadow at the fold between them. The right page carries the record's running order printed as on the back of a sleeve, or its running groove (the track's real waveform), and both play from the exact track or moment clicked. Above the feed, a single-row listening band lists who is playing what as credits: a round face on the corner of a square sleeve, a name, a track, a live hairline following their real position. At wide containers a correspondence desk beside the feed lists recent conversations, and Messages keeps the messenger fundamentals (rail, thread, docked composer, details panel) with every row wearing the sleeve of its last shared record.\n\nThe material is paper and ink. Paper plies come from the theme tokens; text is foreground ink; members' own words are set in a book face (Literata) in a faintly warm note ink. Each entry is printed in one spot ink: the cover's own color, read once and laid flat into tints, borders, running numbers and the groove, never as glow. Where there is no art, a muted mauve house ink stands in. Two fixed signal hues remain, each with one meaning: presence green for someone here now, like-red for a liked post.\n\nMotion is the booklet being handled: one strong ease-out for UI, a smooth ease-in-out for things travelling across the screen, a drawer curve for the details panel, and a slight overshoot only on tactile gestures. A new entry's right page swings down onto the fold; pointing at a cover lifts the left page from it.",
         "keyCharacteristics": [
-            "Members rendered as decks: cover disc, progress ring, rim marker, name plate, state line, dated last listen",
-            "Featured deck and shelf side by side at 1.38fr : 1fr (about 58/42), stacking below a 1060px container",
-            "Recency as depth: older listens shrink, desaturate and dim; silent members sit at an avatar-only edge",
-            "Artwork is the only source of color; it never marks state",
-            "Real waveforms decoded from the audio, tinted by the cover, readable on dark covers",
-            "Three plies: ground, 16px inset panels on hairlines, opaque floating overlays",
+            "Posts as spreads: square cover left (37% of the spread), credits and note right, a gutter shadow at the fold",
+            "One flat spot ink per entry from its cover (`--tint`), the house ink without art; no glow",
+            "Records are square (3-4px corners), people are round; a face sits on its sleeve's corner",
+            "Literata for members' notes only; Switzer for titles and credits; Inter for the interface",
+            "Hairline rules at 10% / 20% ink, tabular running times, no uppercase labels",
+            "Listening band of credits in one scrolling row; correspondence desk at 300px from a 1040px container",
             "Container queries on `#page-social`, never viewport media queries, for layout",
-            "Keyed DOM patching so live updates never restart a spinning deck or replay an entrance",
-            "Chrome hidden until hover or focus on decks and messages; states stamp, strikes draw"
+            "Spring only on tactile gestures; reduced motion keeps color and opacity, drops travel"
         ],
         "rules": [
             {
-                "name": "The Artwork-Only Chroma Rule",
-                "body": "The surface owns no hue. Every chromatic pixel outside the two signal colors is read from a cover; never pick a decorative accent.",
+                "name": "The Flat Spot Ink Rule",
+                "body": "Each entry is printed in exactly one spot ink, its cover's color through `--tint`, or the house ink. It is laid flat as tint, border, numeral or waveform; it never glows, blurs, or casts light.",
                 "section": "colors"
             },
             {
                 "name": "The Cover-Never-Marks-State Rule",
-                "body": "A cover's color says what is playing, never whether someone is live, unread, selected or followed. State is ink, wash, or presence green.",
+                "body": "A spot ink says which record, never whether someone is live, unread, selected or followed. State is ink, wash, weight, or presence green.",
                 "section": "colors"
             },
             {
                 "name": "The One Meaning Rule",
-                "body": "Presence green means a human is here now; like-red means liked. Neither appears anywhere else, and no other hue may carry a state.",
+                "body": "Presence green means a human is here now; like-red means liked. Neither appears anywhere else, and no other fixed hue may carry a state.",
                 "section": "colors"
             },
             {
-                "name": "The Tabular Readout Rule",
-                "body": "Every number that reads as time, position or count uses `font-variant-numeric: tabular-nums`, so live readouts never jitter.",
+                "name": "The Notes Face Rule",
+                "body": "Literata sets only what a member wrote for the booklet: feed notes, the post composer's text, comments and the comment field, a member's \"about\" line. Placeholders, messages, names and controls stay Inter.",
                 "section": "typography"
             },
             {
-                "name": "The Switzer Is a Label Rule",
-                "body": "Switzer appears only at headline sizes and above; it never sets body, names or controls.",
+                "name": "The Credits Rule",
+                "body": "Switzer appears only on titles and headings; it never sets body, names or controls.",
+                "section": "typography"
+            },
+            {
+                "name": "The Tabular Readout Rule",
+                "body": "Every time, position, count and track number uses `font-variant-numeric: tabular-nums`.",
                 "section": "typography"
             },
             {
@@ -717,46 +730,36 @@
                 "section": "layout"
             },
             {
-                "name": "The Recency-Is-Depth Rule",
-                "body": "Distance in the booth is time since the last listen, on the `boothDepth` ladder. Never size or fade a deck for any other reason.",
-                "section": "layout"
-            },
-            {
                 "name": "The Clip-Not-Hide Rule",
-                "body": "Panes, slots, strips and rows use `overflow: clip`, never `hidden`, so focusing a field can never scroll a pane sideways. Rows that scroll (shelf, strip) fade only on the side that still hides decks (`--fade-start` / `--fade-end`).",
+                "body": "Spreads, credits and the Messages view use `overflow: clip`, never `hidden`, so focusing a field can never scroll a pane sideways.",
                 "section": "layout"
             },
             {
-                "name": "The Three Plies Rule",
-                "body": "Ground, inset panel, floating overlay. Never nest a panel in a panel to make a fourth ply; group with rules and spacing instead.",
-                "section": "elevation"
-            },
-            {
-                "name": "The Symmetric Light Rule",
-                "body": "Cover light is a centered radial around the disc and fades before the panel edge. No directional or offset glows.",
+                "name": "The Flat Paper Rule",
+                "body": "Panels never cast shadow at rest; only sleeves (objects) and the fold (a crease) do. Lift is a response to focus.",
                 "section": "elevation"
             }
         ],
         "dos": [
-            "**Do** express every neutral through theme tokens or the `--booth-*` mixes; `#5ee890` and `#ff5470` are the only fixed hues.",
-            "**Do** read color from the artwork into `--deck-color` or `--tint`, and fall back to ink.",
-            "**Do** place every member on the `boothDepth` ladder and keep their fixed furniture: name plate, state line, dated last listen.",
-            "**Do** draw waveforms from real decoded peaks, cached once per track, with the dynamic-range stretch and the 0.56 lightness floor.",
-            "**Do** use `@container social` for every layout change, and `overflow: clip` on panes and rows.",
-            "**Do** keep the spring for tactile keyframe gestures and the ease-out curve for everything else, and register new motion in the reduced-motion block.",
-            "**Do** patch lists by key so a spinning deck never restarts.",
-            "**Do** write class names as literals in JS (`'is-near'`, never `` `is-${band}` ``) so PurgeCSS keeps them.",
-            "**Do** use `tabular-nums` on every time, position and count."
+            "**Do** express every neutral through theme tokens via the `--lv-*` mixes; `#5ee890`, `#ff5470` (`#c8173c` on light themes) and the house ink's `#a08f99` are the only fixed hues.",
+            "**Do** print each entry in one spot ink from `--tint`, falling back to the house ink, laid flat.",
+            "**Do** draw records square and people round, and put a member's face on their sleeve's corner.",
+            "**Do** set members' own words in Literata with note ink, titles and credits in Switzer, everything else in Inter, each with `font-family: … !important`.",
+            "**Do** draw grooves from real decoded peaks, cached once per track.",
+            "**Do** use `@container social` for every layout change, and `overflow: clip` on spreads and panes.",
+            "**Do** keep the spring for tactile gestures and the ease-out curve for everything else, and make sure new motion degrades under the reduced-motion block.",
+            "**Do** write class names as literals in JS so PurgeCSS keeps them.",
+            "**Do** use `tabular-nums` on every time, position, count and track number."
         ],
         "donts": [
-            "**Don't** let a cover color mark state (live, unread, selected, followed).",
+            "**Don't** let a spot ink glow, blur or cast light, or mark state (live, unread, selected, followed).",
             "**Don't** use presence green for anything but presence, or like-red for anything but likes.",
-            "**Don't** add a fourth ply: no panel inside a panel, no shadow on a resting inset panel.",
-            "**Don't** cast directional or offset glows; cover light is symmetric and stops before the panel edge.",
-            "**Don't** fake waveforms with random or placeholder bars.",
-            "**Don't** put a spindle through an avatar, or send a member to the edge unless they have no listen within 30 days (never \"You\").",
-            "**Don't** name whole views for view transitions.",
-            "**Don't** show deck actions or the message pin at rest; they appear on hover or focus."
+            "**Don't** shadow a resting panel; only sleeves and the fold carry shade.",
+            "**Don't** round a cover into a disc or square off a person.",
+            "**Don't** set messages, names, placeholders or controls in Literata.",
+            "**Don't** add uppercase labels or kickers; hierarchy is size, weight and face.",
+            "**Don't** fake waveforms or tracklists with placeholder bars or rows.",
+            "**Don't** show credit actions, the spread play disc or the message pin at rest on pointer devices; they appear on hover or focus."
         ]
     }
 }
