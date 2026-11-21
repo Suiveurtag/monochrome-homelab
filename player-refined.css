@@ -1166,12 +1166,14 @@ html:not(.popover-backdrop-blur) .quality-floating-backdrop.is-open {
     max-height: calc(100vh - 24px);
     padding: 1rem;
     overflow: hidden auto;
-    border: 1px solid rgb(255 255 255 / 0.11);
+    border: 1px solid var(--border);
     border-radius: 16px;
-    background: color-mix(in srgb, var(--card) 96%, black 4%);
-    box-shadow: 0 20px 56px rgb(0 0 0 / 0.5);
+
+    /* Opaque like the version panel: a blurred translucent surface shows its thin capsule edges mid-morph. */
+    background: var(--card);
+    box-shadow: 0 22px 58px rgb(0 0 0 / 0.52);
     clip-path: inset(0 round 16px);
-    backdrop-filter: blur(20px) saturate(1.08);
+    backdrop-filter: none;
     backface-visibility: hidden;
     transform-origin: top left;
     transition: none;
@@ -1191,18 +1193,24 @@ html:not(.popover-backdrop-blur) .quality-floating-backdrop.is-open {
 }
 
 .quality-popover .player-popover-header,
+.quality-popover .quality-radio-group,
 .quality-popover .quality-connection-note {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(6px);
     transition:
-        opacity 160ms ease,
-        transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        opacity 180ms ease,
+        transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .quality-popover.is-open .player-popover-header,
+.quality-popover.is-open .quality-radio-group,
 .quality-popover.is-open .quality-connection-note {
     opacity: 1;
     transform: translateY(0);
+}
+
+.quality-popover.is-open .quality-radio-group {
+    transition-delay: 40ms;
 }
 
 .quality-popover.is-open .player-popover-header {

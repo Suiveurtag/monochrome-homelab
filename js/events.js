@@ -623,12 +623,12 @@ function setupQualityPopover(player) {
         return {
             collapsed: {
                 opacity: 0,
-                borderRadius: lastTriggerRadius,
+                borderRadius: '999px',
                 clipPath: 'inset(0 round 999px)',
                 transform: `translate(${safeTriggerRect.left - panelRect.left}px, ${
                     safeTriggerRect.top - panelRect.top
                 }px) scale(${Math.max(0.08, safeTriggerRect.width / panelRect.width)}, ${Math.max(
-                    0.04,
+                    0.06,
                     safeTriggerRect.height / panelRect.height
                 )})`,
             },
@@ -786,8 +786,8 @@ function setupQualityPopover(player) {
             return;
         }
         panelAnimation = panel.animate([collapsed, expanded], {
-            duration: 320,
-            easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+            duration: 380,
+            easing: 'cubic-bezier(0.2, 0.9, 0.24, 1.04)',
             fill: 'both',
         });
         void panelAnimation.finished
