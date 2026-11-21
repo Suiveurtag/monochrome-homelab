@@ -905,6 +905,7 @@
 }
 
 .volume-slider-row {
+    position: relative;
     flex: 0 0 auto;
     align-items: center;
     gap: 0.45rem !important;
@@ -1517,6 +1518,43 @@ html:not(.popover-backdrop-blur) .quality-floating-backdrop.is-open {
     --sleep-accent-ink: var(--primary-foreground, var(--background));
 
     padding: 0.9rem 1rem 1rem;
+
+    /* Same entrance as the quality panel: opaque, morphed from its button in JS, content fading in after. */
+    border-color: var(--border);
+    border-radius: 16px;
+    background: var(--card);
+    box-shadow: 0 22px 58px rgb(0 0 0 / 0.52);
+    clip-path: inset(0 round 16px);
+    backdrop-filter: none;
+    transform-origin: top left;
+    transition: none;
+    will-change: transform, opacity, border-radius, clip-path;
+}
+
+.sleep-timer-popover.is-open {
+    opacity: 1;
+    transform: none;
+}
+
+.sleep-timer-popover :is(.player-popover-header, .sleep-dial-wrap, .sleep-fade-row) {
+    opacity: 0;
+    transform: translateY(6px);
+    transition:
+        opacity 180ms ease,
+        transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sleep-timer-popover.is-open :is(.player-popover-header, .sleep-dial-wrap, .sleep-fade-row) {
+    opacity: 1;
+    transform: none;
+}
+
+.sleep-timer-popover.is-open .sleep-dial-wrap {
+    transition-delay: 40ms;
+}
+
+.sleep-timer-popover.is-open .sleep-fade-row {
+    transition-delay: 80ms;
 }
 
 .sleep-timer-popover .player-popover-header {
@@ -2642,21 +2680,57 @@ html:not(.popover-backdrop-blur) .quality-floating-backdrop.is-open {
     transform: none;
 }
 
-.player-status[hidden],
 .progress-container[hidden] {
     display: none !important;
 }
 
-.player-status {
+/* A floating pill above the bar: it never takes room in the player, and it only shows when
+   playback needs attention (js/events.js decides when). */
+.now-playing-bar .player-status {
+    position: absolute;
+    z-index: 5;
+    bottom: calc(100% + 10px);
+    left: 50%;
     display: flex;
-    width: min(100%, 680px);
-    min-height: 34px;
+    width: max-content;
+    max-width: min(92vw, 460px);
+    min-height: 36px;
     align-items: center;
     justify-content: center;
     gap: 0.75rem;
+    padding: 0.3rem 0.4rem 0.3rem 0.9rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--card) 92%, black 8%);
+    box-shadow: 0 10px 32px rgb(0 0 0 / 0.4);
     color: var(--muted-foreground);
     font-size: 0.74rem;
     line-height: 1.25;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 8px) scale(0.97);
+    visibility: hidden;
+    transition:
+        opacity 220ms ease,
+        transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+        visibility 0s linear 320ms;
+}
+
+.now-playing-bar .player-status.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, 0) scale(1);
+    visibility: visible;
+    transition-delay: 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .now-playing-bar .player-status {
+        transform: translate(-50%, 0);
+        transition:
+            opacity 120ms ease,
+            visibility 0s linear 120ms;
+    }
 }
 
 .player-status[data-state='error'] .player-status-message {
@@ -2758,7 +2832,6 @@ html:not(.popover-backdrop-blur) .quality-floating-backdrop.is-open {
     outline: none;
 }
 
-/* The shader is the compact player's single ambient response. Border orbit and edge light stay subordinate. */
 .now-playing-bar::before {
     opacity: 0.16;
     transition: opacity 220ms ease;
@@ -2767,10 +2840,6 @@ html:not(.popover-backdrop-blur) .quality-floating-backdrop.is-open {
 .now-playing-bar > .edge-light {
     opacity: 0;
     transition: opacity 220ms ease;
-}
-
-.now-playing-bar.is-playing .player-shader-stage {
-    opacity: 0.52;
 }
 
 .now-playing-bar:hover::before,
@@ -2783,14 +2852,6 @@ html:not(.popover-backdrop-blur) .quality-floating-backdrop.is-open {
 }
 
 @media (max-width: 768px) {
-    .now-playing-bar .player-status {
-        grid-area: progress;
-        align-self: center;
-        justify-self: center;
-        width: 100%;
-        max-width: 300px;
-    }
-
     .now-playing-bar .volume-controls {
         flex-flow: row nowrap !important;
         justify-content: center !important;
@@ -2842,7 +2903,7 @@ html:not(.popover-backdrop-blur) .quality-floating-backdrop.is-open {
         transform: translate(118%, -142%) scale(1);
     }
 
-    .player-status {
+    .now-playing-bar .player-status {
         gap: 0.35rem;
         font-size: 0.68rem;
     }
@@ -2859,14 +2920,10 @@ html:not(.popover-backdrop-blur) .quality-floating-backdrop.is-open {
     }
 
     .player-status-message {
-        max-width: 76px;
+        max-width: 180px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-    }
-
-    .player-status-actions button:not([data-player-recovery='browse'], [data-player-recovery='retry']) {
-        display: none;
     }
 }
 
@@ -3594,15 +3651,40 @@ html:not(.popover-backdrop-blur) .quality-floating-backdrop.is-open {
     transform: rotate(90deg) scale(0.8);
 }
 
-/* Save: shared icon, posed directly. The ring swells a touch and an unsaved plus turns a quarter. */
-.now-playing-bar #now-playing-like-btn .track-save-body {
-    transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+/* Save: its hover (ring thickening, plus turning on a spring) lives with the shared icon in
+   styles.css, so the player bar adds no pose of its own. */
+
+/* Percentage bubble above the volume handle while dragging, mirroring .progress-hover-time. */
+.volume-drag-value {
+    position: absolute;
+    z-index: 4;
+    bottom: calc(100% + 6px);
+    left: 0;
+    padding: 0.28rem 0.48rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--card) 94%, black);
+    color: var(--foreground);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+    font-size: 0.7rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 5px) scale(0.94);
+    transition:
+        opacity 140ms ease,
+        transform 180ms var(--ease-out-back);
 }
 
-.now-playing-bar #now-playing-like-btn.is-posed .track-save-body {
-    transform: scale(1.08);
+.volume-controls .volume-bar[data-dragging] ~ .volume-drag-value {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
 }
 
-.now-playing-bar #now-playing-like-btn.is-posed .track-save-icon:not(.is-saved) .track-save-glyph {
-    transform: rotate(90deg);
+@media (prefers-reduced-motion: reduce) {
+    .volume-drag-value {
+        transition-duration: 0ms !important;
+    }
 }
