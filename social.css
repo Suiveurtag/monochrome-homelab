@@ -1,44 +1,122 @@
 /* stylelint-disable no-descending-specificity -- every rule is scoped under #page-social (or the
    body-level group modal and lightbox); source order follows the page's reading order. */
 
-/* Social — La Cabine.
-   World: DJ deck displays on matte black. Members are spinning cover discs with
-   progress rings; music posts ride on strips that draw the track's real waveform;
-   color comes only from the artwork, presence green only marks someone live.
-   Three plies: the page ground, inset panels, floating overlays. */
+/* Social — Le Livret commun.
+   World: the group's shared liner-notes booklet. A music post is a spread: the cover on
+   the left page, the member's note and the record's credits on the right, across a fold.
+   Records are square, people are round. Paper plies come from the theme tokens; each
+   entry is printed in one spot ink read flat from its cover, never as glow. Members'
+   notes are set in Literata, credits and titles in Switzer, the interface in Inter. */
 
+@font-face {
+    font-family: Literata;
+    src: url('/fonts/literata/literata-latin.woff2') format('woff2');
+    font-weight: 400 700;
+    font-style: normal;
+    font-display: swap;
+    unicode-range:
+        U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F,
+        U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: Literata;
+    src: url('/fonts/literata/literata-latin-ext.woff2') format('woff2');
+    font-weight: 400 700;
+    font-style: normal;
+    font-display: swap;
+    unicode-range:
+        U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+        U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ---------------------------------- tokens ---------------------------------- */
+
+#page-social,
+.social-group-modal,
+.social-lightbox {
+    --lv-paper: color-mix(in oklab, var(--card) 52%, var(--background));
+    --lv-paper-deep: color-mix(in oklab, var(--card) 24%, var(--background));
+    --lv-ink: var(--foreground);
+    --lv-ink-soft: var(--muted-foreground);
+    --lv-note-ink: color-mix(in oklab, var(--foreground) 90%, #c9b8a6);
+    --lv-rule: color-mix(in oklab, var(--foreground) 10%, transparent);
+    --lv-rule-strong: color-mix(in oklab, var(--foreground) 20%, transparent);
+    --lv-wash: color-mix(in oklab, var(--foreground) 5%, transparent);
+    --lv-wash-strong: color-mix(in oklab, var(--foreground) 10%, transparent);
+    --lv-house: color-mix(in oklab, var(--muted-foreground) 45%, #a08f99);
+    --lv-live: #5ee890;
+    --lv-like: #ff5470;
+    --lv-shade: rgb(0 0 0 / 0.32);
+    --lv-lift: 0 10px 28px rgb(0 0 0 / 0.28);
+    --lv-ease: cubic-bezier(0.23, 1, 0.32, 1);
+    --lv-move: cubic-bezier(0.77, 0, 0.175, 1);
+    --lv-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+    --lv-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+    --lv-display: var(--font-family-key);
+    --lv-notes: 'Literata', 'Georgia', 'Times New Roman', serif;
+    --lv-focus: color-mix(in oklab, var(--foreground) 88%, transparent);
+}
+
+:root[data-theme='white'] :is(#page-social, .social-group-modal) {
+    --lv-paper: color-mix(in oklab, var(--card) 38%, var(--background));
+    --lv-paper-deep: color-mix(in oklab, var(--card) 14%, var(--background));
+    --lv-note-ink: color-mix(in oklab, var(--foreground) 92%, #6b4a33);
+    --lv-shade: rgb(0 0 0 / 0.12);
+    --lv-lift: 0 10px 26px rgb(0 0 0 / 0.1);
+
+    /* #ff5470 reads at 2.8:1 on light paper; the deeper red keeps the meaning at AA. */
+    --lv-like: #c8173c;
+}
+
+/* The spot ink: a cover's own color where one was read, the house second ink otherwise. */
+#page-social :is(.social-credit, .social-spread, .social-thread, .social-sleeve-card, .social-snippet, .social-info-deck) {
+    --spot: var(--tint, var(--lv-house));
+    --spot-ink: color-mix(in oklab, var(--spot) 58%, var(--lv-ink));
+}
+
+/* styles.css sets every element's family with `* { font-family: … !important }`, so each
+   family chosen here has to say !important to be heard. */
 #page-social {
-    --booth-panel: color-mix(in srgb, var(--card) 46%, var(--background));
-    --booth-panel-deep: color-mix(in srgb, var(--card) 22%, var(--background));
-    --booth-rule: color-mix(in srgb, var(--border) 72%, transparent);
-    --booth-rule-soft: color-mix(in srgb, var(--border) 46%, transparent);
-    --booth-wash: color-mix(in srgb, var(--foreground) 6%, transparent);
-    --booth-wash-strong: color-mix(in srgb, var(--foreground) 11%, transparent);
-    --booth-live: #5ee890;
-    --booth-like: #ff5470;
-    --booth-ease: cubic-bezier(0.22, 1, 0.36, 1);
-    --booth-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
-    --booth-display: var(--font-family-key);
-
     width: 100%;
-    max-width: 1380px;
+    max-width: 1180px;
     margin: 0 auto;
     container: social / inline-size;
 }
 
 #page-social ::selection {
-    color: var(--background);
-    background: var(--foreground);
+    color: var(--foreground);
+    background: color-mix(in oklab, var(--lv-house) 50%, var(--background));
 }
 
-#page-social :is(button, a):focus-visible {
-    outline: 2px solid var(--ring);
+#page-social :is(button, a, input, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--lv-focus);
     outline-offset: 2px;
 }
 
-#page-social :is(.social-conversation-list, .social-messages, .social-info-panel, .booth-shelf) {
+#page-social :is(input, textarea) {
+    caret-color: var(--foreground);
+}
+
+/* styles.css gives every input a border, padding, a `transition: all` and a
+   ring on :focus. Fields that sit inside a drawn field (search pills, the
+   composers) take none of it: their container draws the focus. */
+#page-social :is(.social-picker-search, .social-rail-search) input,
+#social-post-input,
+#social-message-input {
+    box-shadow: none;
+    transition: none;
+}
+
+#page-social :is(.social-picker-search, .social-rail-search) input {
+    align-self: stretch;
+    padding: 0;
+    border-radius: 0;
+}
+
+#page-social :is(.social-rail, .social-messages, .social-info-panel, .social-band-row, .social-picker-results) {
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in srgb, var(--foreground) 18%, transparent) transparent;
+    scrollbar-color: var(--lv-rule-strong) transparent;
 }
 
 /* Component display rules share this specificity, so `hidden` must win outright. */
@@ -46,26 +124,37 @@
     display: none !important;
 }
 
-/* ---------------------------------- header --------------------------------- */
+#page-social button {
+    font: inherit;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#page-social a {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* ---------------------------------- header ---------------------------------- */
 
 #page-social .social-top {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
     gap: 1.5rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
 }
 
 #page-social .social-top-identity {
     display: flex;
     align-items: baseline;
-    gap: 1.1rem;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.1rem;
     min-width: 0;
 }
 
 #page-social .social-top h1 {
     margin: 0;
-    font-family: var(--booth-display);
+    font-family: var(--lv-display) !important;
     font-size: 2.1rem;
     font-weight: 700;
     line-height: 1;
@@ -77,7 +166,7 @@
     align-items: center;
     gap: 0.5rem;
     margin: 0;
-    color: var(--muted-foreground);
+    color: var(--lv-ink-soft);
     font-size: 0.9rem;
     font-weight: 500;
     font-variant-numeric: tabular-nums;
@@ -88,8 +177,9 @@
     position: relative;
     width: 8px;
     height: 8px;
+    flex: none;
     border-radius: 50%;
-    background: var(--booth-live);
+    background: var(--lv-live);
 }
 
 #page-social .social-presence-pulse::after {
@@ -97,13 +187,13 @@
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: var(--booth-live);
-    animation: booth-ping 2.4s var(--booth-ease) infinite;
+    background: var(--lv-live);
+    animation: lv-ping 2.4s var(--lv-ease) infinite;
 }
 
-@keyframes booth-ping {
+@keyframes lv-ping {
     0% {
-        opacity: 0.55;
+        opacity: 0.5;
         transform: scale(1);
     }
 
@@ -117,1079 +207,645 @@
 #page-social .social-tabs {
     position: relative;
     display: flex;
-    gap: 2rem;
+    gap: 1.75rem;
 }
 
 #page-social .social-tab {
     display: inline-flex;
     align-items: center;
-    gap: 0.55rem;
-    padding: 0.4rem 0 0.75rem;
-    color: var(--muted-foreground);
+    gap: 0.5rem;
+    padding: 0.4rem 0 0.7rem;
+    color: var(--lv-ink-soft);
     border: 0;
     background: none;
     cursor: pointer;
-    font: inherit;
     font-size: 1rem;
     font-weight: 600;
-    transition: color 200ms ease;
+    transition: color 180ms ease;
 }
 
 #page-social .social-tab:hover,
 #page-social .social-tab[aria-selected='true'] {
-    color: var(--foreground);
+    color: var(--lv-ink);
 }
 
+#page-social .social-tab:active {
+    transform: translateY(1px);
+}
+
+/* A fixed 100px bar the script slides and stretches on transform alone. */
 #page-social .social-tabs-thumb {
     position: absolute;
     bottom: 0;
-    left: 3px;
+    left: 0;
+    width: 100px;
     height: 2px;
     border-radius: 2px;
-    background: var(--foreground);
+    background: var(--lv-ink);
+    transform-origin: left center;
+    opacity: 0;
+}
+
+#page-social .social-tabs-thumb.is-placed {
+    opacity: 1;
     transition:
-        transform 420ms var(--booth-ease),
-        width 420ms var(--booth-ease);
-    view-transition-name: social-tab-thumb;
+        transform 340ms var(--lv-move),
+        opacity 200ms ease;
 }
 
 #page-social .social-tab-unread {
     display: inline-grid;
     place-items: center;
-    min-width: 22px;
-    height: 22px;
+    min-width: 21px;
+    height: 21px;
     padding: 0 6px;
-    color: var(--foreground);
+    color: var(--background);
     border-radius: 999px;
-    background: var(--booth-wash-strong);
-    font-size: 0.74rem;
+    background: var(--lv-ink);
+    font-size: 0.72rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
 
-/* ---------------------------------- booth ---------------------------------- */
+/* ------------------------------ listening band ------------------------------ */
 
-#page-social .social-booth {
-    display: grid;
-    grid-template-columns: minmax(0, 1.38fr) minmax(0, 1fr);
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
+#page-social .social-band {
+    margin: 0 0 1.25rem;
+    border: 1px solid var(--lv-rule);
+    border-radius: 14px;
+    background: var(--lv-paper);
 }
 
-#page-social .booth-feature-slot,
-#page-social .booth-shelf {
-    position: relative;
-    min-width: 0;
-    overflow: clip;
-    border: 1px solid var(--booth-rule-soft);
-    border-radius: 16px;
-    background: var(--booth-panel-deep);
-}
-
-#page-social .booth-feature {
-    position: relative;
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: clamp(1.25rem, 3cqi, 2.4rem);
-    min-height: 100%;
-
-    /* At least as deep as the disc's light (18% of its size) so the glow never meets the edge. */
-    padding: clamp(1.75rem, 3.4cqi, 2.6rem);
-}
-
-/* The deck: a cover on a dark platter, a ring that fills with the track, a marker on the rim. */
-#page-social .booth-deck {
-    --size: 84px;
-
-    position: relative;
-    min-width: 0;
-}
-
-#page-social .booth-disc {
-    position: relative;
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: var(--size);
-    height: var(--size);
-    padding: 0;
-    color: var(--foreground);
-    border: 0;
-    border-radius: 50%;
-    background: none;
-    cursor: pointer;
-    filter: saturate(calc(1 - var(--depth, 0) * 0.8)) brightness(calc(1 - var(--depth, 0) * 0.32));
-    transition:
-        transform 360ms var(--booth-ease),
-        filter 900ms ease;
-}
-
-#page-social .booth-disc:hover {
-    transform: translateY(-3px) scale(1.035);
-    filter: none;
-}
-
-#page-social .booth-disc:active {
-    transform: scale(0.97);
-}
-
-#page-social .booth-platter {
-    position: absolute;
-    inset: 8%;
-    overflow: hidden;
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--background) 70%, #000);
-    box-shadow:
-        0 0 0 1px color-mix(in srgb, var(--foreground) 8%, transparent),
-        0 14px 34px rgb(0 0 0 / 0.42);
-}
-
-#page-social .booth-platter::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background:
-        radial-gradient(circle at 50% 50%, rgb(0 0 0 / 0.55) 0 3.5%, transparent 4%),
-        radial-gradient(circle at 34% 28%, rgb(255 255 255 / 0.16), transparent 46%);
-    pointer-events: none;
-}
-
-#page-social .booth-cover {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-#page-social .booth-cover.is-avatar {
-    filter: grayscale(0.6);
-}
-
-/* A person is not a record: no spindle through their initial. */
-#page-social .booth-platter:has(.is-avatar)::after {
+#page-social.is-messages .social-band {
     display: none;
 }
 
-#page-social .booth-disc.is-spinning .booth-platter {
-    animation: booth-spin 7.2s linear infinite;
-}
+#page-social .social-band-row {
+    --fade-start: 0px;
+    --fade-end: 0px;
 
-@keyframes booth-spin {
-    to {
-        transform: rotate(1turn);
-    }
-}
-
-#page-social .booth-ring {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-    transform: rotate(-90deg);
-    pointer-events: none;
-}
-
-#page-social .booth-ring circle {
-    fill: none;
-    stroke-width: 2.6;
-}
-
-#page-social .booth-ring-track {
-    stroke: color-mix(in srgb, var(--foreground) 9%, transparent);
-}
-
-#page-social .booth-ring-progress {
-    stroke: var(--deck-color, var(--foreground));
-    stroke-linecap: round;
-    stroke-dasharray: calc(var(--progress, 0) * 1) 1;
-    transition:
-        stroke-dasharray 1s linear,
-        stroke 900ms ease;
-}
-
-#page-social .booth-marker {
-    position: absolute;
-    inset: 0;
-    transform: rotate(calc(var(--progress, 0) * 1turn));
-    transition: transform 1s linear;
-    pointer-events: none;
-}
-
-#page-social .booth-marker::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: 50%;
-    width: 3px;
-    height: 10px;
-    margin-left: -1.5px;
-    border-radius: 2px;
-    background: var(--foreground);
-    box-shadow: 0 0 10px color-mix(in srgb, var(--deck-color, var(--foreground)) 80%, transparent);
-}
-
-#page-social .booth-deck:not(.is-live, .is-featured) .booth-marker {
-    opacity: 0.55;
-}
-
-#page-social .booth-disc.has-glow::before {
-    content: '';
-    position: absolute;
-    inset: -18%;
-    border-radius: 50%;
-    background: radial-gradient(
-        closest-side,
-        color-mix(in srgb, var(--deck-color, transparent) 46%, transparent) 62%,
-        color-mix(in srgb, var(--deck-color, transparent) 18%, transparent) 80%,
+    display: flex;
+    align-items: stretch;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 0.5rem;
+    scrollbar-width: none;
+    mask-image: linear-gradient(
+        to right,
+        transparent,
+        #000 var(--fade-start),
+        #000 calc(100% - var(--fade-end)),
         transparent
     );
-    pointer-events: none;
-    transition: opacity 900ms ease;
 }
 
-#page-social .booth-plus {
+#page-social .social-band-row::-webkit-scrollbar {
+    display: none;
+}
+
+#page-social .social-credit {
+    position: relative;
+    display: grid;
+    grid-template-columns: 62px minmax(0, 1fr);
+    align-items: center;
+    gap: 0.7rem;
+    flex: 0 0 236px;
+    min-width: 0;
+    padding: 0.45rem 0.55rem 0.55rem 0.45rem;
+    overflow: clip;
+    border-radius: 10px;
+    scroll-snap-align: start;
+    transition: background-color 180ms ease;
+}
+
+#page-social .social-credit:hover,
+#page-social .social-credit:focus-within {
+    background: var(--lv-wash);
+}
+
+#page-social .social-credit.is-entering {
+    animation: lv-enter 360ms var(--lv-ease) var(--enter-delay, 0ms) backwards;
+}
+
+@keyframes lv-enter {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+}
+
+#page-social .social-credit-art {
+    position: relative;
+    width: 62px;
+    height: 62px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+/* A person in front of their record: the round face sits on the square sleeve's corner. */
+#page-social .social-credit-sleeve {
     position: absolute;
+    inset: 0 8px 8px 0;
     display: grid;
     place-items: center;
-    color: var(--muted-foreground);
+    overflow: hidden;
+    color: var(--lv-ink-soft);
+    border-radius: 4px;
+    background: var(--lv-paper-deep);
+    box-shadow:
+        0 0 0 1px var(--lv-rule),
+        0 6px 14px var(--lv-shade);
+    transition:
+        transform 260ms var(--lv-ease),
+        box-shadow 260ms var(--lv-ease);
 }
 
-#page-social .booth-deck.is-me.is-silent .booth-platter {
-    border: 1.5px dashed color-mix(in srgb, var(--foreground) 26%, transparent);
-    background: transparent;
-    box-shadow: none;
-}
-
-#page-social .booth-deck.is-me.is-silent .booth-platter::after,
-#page-social .booth-deck.is-me.is-silent .booth-cover {
-    display: none;
-}
-
-#page-social .booth-deck.is-me.is-silent .booth-disc:hover .booth-plus {
-    color: var(--foreground);
-}
-
-/* Needle drop: the deck you just joined dips and its ring flashes. */
-#page-social .booth-deck.is-dropping .booth-disc {
-    animation: booth-drop 620ms var(--booth-spring);
-}
-
-#page-social .booth-deck.is-dropping .booth-ring-progress {
-    animation: booth-ring-flash 620ms ease;
-}
-
-@keyframes booth-drop {
-    35% {
-        transform: scale(0.94);
-    }
-
-    70% {
-        transform: scale(1.03);
-    }
-}
-
-@keyframes booth-ring-flash {
-    40% {
-        stroke: var(--foreground);
-        stroke-width: 5;
-    }
-}
-
-/* Featured deck and its readout. */
-#page-social .booth-deck.is-featured {
-    --size: clamp(150px, 19cqi, 236px);
-}
-
-#page-social .booth-deck.is-featured .booth-plate {
-    display: none;
-}
-
-#page-social .booth-shelf .booth-disc.has-glow::before {
-    opacity: 0.7;
-}
-
-#page-social .booth-readout {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-
-#page-social .booth-who {
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-    min-width: 0;
-    margin-bottom: 0.7rem;
-    font-size: 0.95rem;
-}
-
-#page-social .booth-who img {
-    width: 24px;
-    height: 24px;
-    flex: none;
-    border-radius: 50%;
+#page-social .social-credit-sleeve img {
+    width: 100%;
+    height: 100%;
     object-fit: cover;
 }
 
-#page-social .booth-who a,
-#page-social .booth-who > span:not(.booth-state) {
+#page-social .social-credit-sleeve.is-blank {
+    color: var(--lv-ink-soft);
+    background: none;
+    box-shadow: none;
+    outline: 1.5px dashed var(--lv-rule-strong);
+    outline-offset: -1.5px;
+}
+
+#page-social .social-credit-face {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+    border: 2px solid var(--lv-paper);
+    border-radius: 50%;
+    background: var(--lv-paper-deep);
+    transition: transform 260ms var(--lv-ease);
+}
+
+#page-social .social-credit-cue {
+    position: absolute;
+    inset: 0 8px 8px 0;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    border-radius: 4px;
+    background: rgb(0 0 0 / 0.52);
+    opacity: 0;
+    transition: opacity 180ms ease;
+}
+
+#page-social .social-credit-art:is(:hover, :focus-visible) .social-credit-sleeve {
+    transform: translate(-2px, -2px) rotate(-2deg);
+    box-shadow:
+        0 0 0 1px var(--lv-rule),
+        0 10px 20px var(--lv-shade);
+}
+
+#page-social .social-credit-art:is(:hover, :focus-visible) .social-credit-face {
+    transform: translate(2px, 2px);
+}
+
+#page-social .social-credit-art:is(:hover, :focus-visible) .social-credit-cue,
+#page-social .social-credit.is-along .social-credit-cue {
+    opacity: 1;
+}
+
+#page-social .social-credit-art:active .social-credit-sleeve {
+    transform: scale(0.96);
+    transition-duration: 120ms;
+}
+
+#page-social .social-credit-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.08rem;
+    min-width: 0;
+}
+
+#page-social .social-credit-copy > * {
     overflow: hidden;
-    color: var(--foreground);
-    font-weight: 650;
-    text-decoration: none;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-#page-social .booth-who a:hover {
+#page-social .social-credit-name {
+    color: var(--lv-ink);
+    font-size: 0.86rem;
+    font-weight: 650;
+}
+
+#page-social a.social-credit-name:hover {
     text-decoration: underline;
     text-underline-offset: 3px;
 }
 
-#page-social .booth-state {
+#page-social .social-credit-track {
+    color: var(--lv-ink);
+    font-size: 0.84rem;
+}
+
+#page-social .social-credit-when {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    color: var(--muted-foreground);
-    font-size: 0.82rem;
-    white-space: nowrap;
+    color: var(--lv-ink-soft);
+    font-size: 0.76rem;
+    font-variant-numeric: tabular-nums;
 }
 
-#page-social .booth-live {
-    margin: 0 0.4rem 0.1rem 0;
-    vertical-align: middle;
-}
-
-#page-social .booth-state.is-live::before,
-#page-social .booth-live {
-    content: '';
+#page-social .social-live-dot {
     display: inline-block;
     width: 7px;
     height: 7px;
     flex: none;
     border-radius: 50%;
-    background: var(--booth-live);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--booth-live) 18%, transparent);
+    background: var(--lv-live);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--lv-live) 18%, transparent);
 }
 
-#page-social .booth-title {
-    display: -webkit-box;
-    overflow: hidden;
-    color: var(--foreground);
-    font-family: var(--booth-display);
-    font-size: clamp(1.7rem, 3.6cqi, 2.75rem);
-    font-weight: 700;
-    line-height: 1.02;
-    letter-spacing: -0.03em;
-    text-decoration: none;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    text-wrap: balance;
-}
-
-#page-social a.booth-title:hover {
-    text-decoration: underline;
-    text-decoration-thickness: 2px;
-    text-underline-offset: 5px;
-}
-
-#page-social .booth-artist {
-    margin-top: 0.3rem;
-    overflow: hidden;
-    color: var(--muted-foreground);
-    font-size: 1.12rem;
-    font-weight: 500;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-#page-social .booth-wave {
-    position: relative;
-    height: 62px;
-    margin-top: 1.1rem;
-    cursor: pointer;
-}
-
-#page-social .booth-wave canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-    transition: opacity 500ms ease;
-}
-
-#page-social .booth-wave.is-loading canvas {
-    opacity: 0;
-}
-
-#page-social .booth-wave.is-drawn canvas {
-    animation: booth-wave-in 900ms var(--booth-ease);
-}
-
-@keyframes booth-wave-in {
-    from {
-        clip-path: inset(0 100% 0 0);
-    }
-}
-
-#page-social .booth-wave.is-loading::before,
-#page-social .booth-wave.is-flat::before {
-    content: '';
+/* The hairline follows the friend's real position in the track. */
+#page-social .social-credit-groove {
     position: absolute;
-    top: 50%;
-    right: 0;
-    left: 0;
+    right: 0.7rem;
+    bottom: 0.3rem;
+    left: calc(0.45rem + 62px + 0.7rem);
     height: 2px;
-    margin-top: -1px;
-    border-radius: 2px;
-    background: linear-gradient(
-        90deg,
-        var(--deck-color, var(--foreground)) calc(var(--progress, 0) * 100%),
-        color-mix(in srgb, var(--foreground) 14%, transparent) 0
-    );
-}
-
-#page-social .booth-wave.is-loading::before {
-    background: linear-gradient(
-        90deg,
-        transparent,
-        color-mix(in srgb, var(--deck-color, var(--foreground)) 70%, transparent),
-        transparent
-    );
-    background-size: 40% 100%;
-    background-repeat: no-repeat;
-    animation: booth-scan 1.4s ease-in-out infinite;
-}
-
-@keyframes booth-scan {
-    from {
-        background-position: -40% 0;
-    }
-
-    to {
-        background-position: 140% 0;
-    }
-}
-
-#page-social .booth-playhead {
-    position: absolute;
-    top: -6px;
-    bottom: -6px;
-    left: calc(var(--progress, 0) * 100%);
-    width: 2px;
-    margin-left: -1px;
-    border-radius: 2px;
-    background: var(--foreground);
-    box-shadow: 0 0 12px color-mix(in srgb, var(--deck-color, var(--foreground)) 90%, transparent);
-    transition: left 1s linear;
-}
-
-#page-social .booth-wave::after {
-    content: '';
-    position: absolute;
-    top: 4px;
-    bottom: 4px;
-    left: calc(var(--hover, 0) * 100%);
-    width: 1px;
-    background: color-mix(in srgb, var(--foreground) 55%, transparent);
-    opacity: 0;
-    transition: opacity 160ms ease;
-    pointer-events: none;
-}
-
-#page-social .booth-wave:hover::after {
-    opacity: 1;
-}
-
-#page-social .booth-feature:has(.is-me) .booth-wave {
-    cursor: default;
-}
-
-#page-social .booth-feature:has(.is-me) .booth-wave::after {
-    display: none;
-}
-
-#page-social .booth-times {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 0.45rem;
-    color: var(--muted-foreground);
-    font-size: 0.8rem;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.02em;
-}
-
-#page-social .booth-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    margin-top: 1.15rem;
-}
-
-#page-social .booth-primary,
-#page-social .booth-secondary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    height: 42px;
-    padding: 0 1.15rem;
-    border-radius: 999px;
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.9rem;
-    font-weight: 650;
-    transition:
-        transform 260ms var(--booth-ease),
-        box-shadow 260ms ease,
-        background-color 200ms ease,
-        color 200ms ease;
-}
-
-#page-social .booth-primary {
-    color: var(--background);
-    border: 0;
-    background: var(--foreground);
-}
-
-#page-social .booth-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgb(0 0 0 / 0.32);
-}
-
-#page-social .booth-secondary {
-    color: var(--foreground);
-    border: 1px solid var(--booth-rule);
-    background: color-mix(in srgb, var(--background) 60%, transparent);
-}
-
-#page-social .booth-secondary:hover {
-    transform: translateY(-2px);
-    background: var(--booth-wash-strong);
-}
-
-#page-social :is(.booth-primary, .booth-secondary):active {
-    transform: scale(0.96);
-}
-
-#page-social .booth-secondary.is-following {
-    border-color: transparent;
-    background: var(--booth-wash-strong);
-}
-
-#page-social .booth-eq,
-#page-social .social-thread-titles .booth-eq {
-    display: inline-flex;
-    align-items: flex-end;
-    gap: 2px;
-    width: 12px;
-    height: 12px;
-}
-
-#page-social .booth-eq i {
-    width: 2.5px;
-    height: 40%;
-    border-radius: 1px;
-    background: currentcolor;
-    animation: booth-eq 0.8s ease-in-out infinite alternate;
-}
-
-#page-social .booth-eq i:nth-child(2) {
-    animation-delay: -0.3s;
-}
-
-#page-social .booth-eq i:nth-child(3) {
-    animation-delay: -0.55s;
-}
-
-@keyframes booth-eq {
-    to {
-        height: 100%;
-    }
-}
-
-/* Quiet room. */
-#page-social .booth-feature.is-quiet {
-    grid-template-columns: auto minmax(0, 1fr);
-}
-
-#page-social .booth-quiet-platter {
-    display: grid;
-    place-items: center;
-    width: clamp(120px, 15cqi, 176px);
-    aspect-ratio: 1;
-    color: var(--muted-foreground);
-    border: 1.5px dashed color-mix(in srgb, var(--foreground) 20%, transparent);
-    border-radius: 50%;
-}
-
-#page-social .booth-quiet-copy {
-    max-width: 42ch;
-    margin: 0.65rem 0 0;
-    color: var(--muted-foreground);
-    font-size: 0.95rem;
-    line-height: 1.5;
-}
-
-/* Shelf: everyone else, receding with the age of their last listen. */
-#page-social .booth-shelf {
-    display: flex;
-    flex-wrap: wrap;
-    align-content: center;
-    gap: 1.1rem 0.75rem;
-    padding: 1.25rem;
-}
-
-#page-social .booth-shelf > .booth-deck:is(.is-near, .is-far) {
-    display: flex;
-    flex: 1 0 calc(50% - 0.75rem);
-    align-items: center;
-    gap: 0.8rem;
-    min-width: 0;
-}
-
-#page-social .booth-shelf > .booth-deck.is-near {
-    --size: 100px;
-}
-
-#page-social .booth-shelf > .booth-deck.is-far {
-    --size: calc(90px - var(--depth) * 32px);
-}
-
-/* The silent edge: avatars in balanced rows (the script sets --edge-cols). */
-#page-social .booth-edge {
-    display: grid;
-    flex-basis: 100%;
-    grid-template-columns: repeat(var(--edge-cols, 4), minmax(0, 1fr));
-    gap: 0.9rem 0.6rem;
-    padding-top: 0.25rem;
-}
-
-#page-social .booth-deck.is-edge {
-    --size: 52px;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.4rem;
-    min-width: 0;
-}
-
-#page-social .booth-deck.is-edge .booth-plate {
-    width: 100%;
-}
-
-#page-social .booth-deck.is-edge .booth-plate > :not(.booth-name) {
-    display: none;
-}
-
-#page-social .booth-deck.is-edge .booth-name {
-    color: var(--muted-foreground);
-    font-size: 0.76rem;
-    font-weight: 600;
-    text-align: center;
-}
-
-#page-social .booth-deck.is-me.is-silent .booth-disc {
-    filter: none;
-}
-
-#page-social .booth-deck.is-me.is-silent .booth-line {
-    white-space: normal;
-}
-
-#page-social .booth-plate {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-width: 0;
-    line-height: 1.3;
-}
-
-#page-social .booth-plate > * {
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    border-radius: 2px;
+    background: var(--lv-rule);
 }
 
-#page-social .booth-name {
-    display: block;
-    color: var(--foreground);
-    font-size: 0.88rem;
-    font-weight: 650;
-    text-decoration: none;
+#page-social .social-credit-groove i {
+    position: absolute;
+    inset: 0;
+    background: var(--spot-ink);
+    transform: scaleX(var(--progress, 0));
+    transform-origin: left center;
+    transition: transform 1s linear;
 }
 
-#page-social a.booth-name:hover {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-}
-
-#page-social .booth-track {
-    margin-top: 0.12rem;
-    color: var(--foreground);
-    font-size: 0.84rem;
-    font-weight: 550;
-}
-
-#page-social .booth-line,
-#page-social .booth-when {
-    color: var(--muted-foreground);
-    font-size: 0.78rem;
-}
-
-#page-social .booth-when {
-    font-variant-numeric: tabular-nums;
-}
-
-#page-social .booth-deck.is-far .booth-track {
-    color: color-mix(in srgb, var(--foreground) 72%, var(--background));
-}
-
-/* Actions float over the plate's end, so the hidden buttons never cost the name its width. */
-#page-social .booth-deck-actions {
+#page-social .social-credit-actions {
     position: absolute;
     top: 50%;
-    right: 0;
+    right: 0.4rem;
     display: flex;
-    gap: 0.35rem;
-    padding-left: 1.6rem;
-    background: linear-gradient(90deg, transparent, var(--booth-panel-deep) 1.4rem);
+    gap: 0.25rem;
+    padding-left: 1.5rem;
+    background: linear-gradient(to right, transparent, var(--lv-paper) 1.25rem);
     opacity: 0;
     transform: translate(6px, -50%);
-    transition:
-        opacity 200ms ease,
-        transform 300ms var(--booth-ease);
     pointer-events: none;
+    transition:
+        opacity 180ms ease,
+        transform 220ms var(--lv-ease);
 }
 
-#page-social .booth-deck:is(:hover, :focus-within) > .booth-deck-actions {
+#page-social .social-credit:is(:hover, :focus-within) .social-credit-actions {
     opacity: 1;
     transform: translate(0, -50%);
     pointer-events: auto;
 }
 
-#page-social .booth-deck.is-edge > .booth-deck-actions,
-#page-social .booth-deck.is-me.is-silent > .booth-deck-actions {
-    display: none;
-}
-
-#page-social .booth-icon-action {
+#page-social .social-credit-action {
     display: grid;
     place-items: center;
     width: 32px;
     height: 32px;
     padding: 0;
-    color: var(--foreground);
-    border: 1px solid var(--booth-rule);
+    color: var(--lv-ink);
+    border: 1px solid var(--lv-rule-strong);
     border-radius: 50%;
-    background: var(--booth-panel);
+    background: var(--lv-paper);
     cursor: pointer;
     transition:
-        transform 260ms var(--booth-ease),
         background-color 160ms ease,
-        color 160ms ease;
+        color 160ms ease,
+        transform 160ms var(--lv-ease);
 }
 
-#page-social .booth-icon-action:hover {
+#page-social .social-credit-action:hover {
     color: var(--background);
     border-color: transparent;
-    background: var(--foreground);
-    transform: scale(1.08);
+    background: var(--lv-ink);
 }
 
-#page-social .booth-icon-action.is-following {
-    background: var(--booth-wash-strong);
+#page-social .social-credit-action:active {
+    transform: scale(0.92);
 }
 
-#page-social .booth-more {
-    align-self: center;
-    height: 34px;
-    padding: 0 0.85rem;
-    color: var(--muted-foreground);
-    border: 1px dashed var(--booth-rule);
-    border-radius: 999px;
-    background: none;
-    cursor: pointer;
-    font: inherit;
+#page-social .social-credit-action.is-following {
+    color: var(--background);
+    background: var(--lv-ink);
+}
+
+#page-social .social-credit.is-joining .social-credit-sleeve {
+    animation: lv-join 560ms var(--lv-spring);
+}
+
+#page-social .social-credit.is-joining .social-credit-groove i {
+    animation: lv-groove-flash 700ms var(--lv-ease);
+}
+
+@keyframes lv-join {
+    35% {
+        transform: scale(0.92) rotate(-3deg);
+    }
+}
+
+@keyframes lv-groove-flash {
+    from {
+        background: var(--lv-ink);
+    }
+}
+
+#page-social .social-band-quiet {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex: none;
+    padding: 0 1rem 0 0.75rem;
+    color: var(--lv-ink-soft);
     font-size: 0.8rem;
-    font-weight: 650;
-    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
-#page-social .booth-more:hover {
-    color: var(--foreground);
-    border-style: solid;
+#page-social .social-quiet-faces {
+    display: flex;
 }
 
-/* A deck that arrives (someone starts their first record) rises into its slot. */
-#page-social .booth-deck.is-entering {
-    animation: booth-arrive 640ms var(--booth-spring) both;
+#page-social .social-quiet-face {
+    position: relative;
+    display: block;
+    width: 30px;
+    height: 30px;
+    margin-left: -9px;
+    border: 2px solid var(--lv-paper);
+    border-radius: 50%;
+    transition: transform 200ms var(--lv-ease);
 }
 
-@keyframes booth-arrive {
-    from {
-        opacity: 0;
-        transform: translateY(10px) scale(0.86);
+#page-social .social-quiet-face:first-child {
+    margin-left: 0;
+}
+
+#page-social .social-quiet-face:is(:hover, :focus-visible) {
+    z-index: 1;
+    transform: translateY(-3px);
+}
+
+#page-social .social-quiet-face img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    filter: grayscale(0.7);
+    transition: filter 200ms ease;
+}
+
+#page-social .social-quiet-face:hover img {
+    filter: none;
+}
+
+/* Three bars that move only while someone is actually hearing music. */
+#page-social .social-eq {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    width: 12px;
+    height: 11px;
+    flex: none;
+}
+
+#page-social .social-eq i {
+    width: 2px;
+    height: 40%;
+    border-radius: 1px;
+    background: currentcolor;
+    animation: lv-eq 0.8s ease-in-out infinite alternate;
+}
+
+#page-social .social-eq i:nth-child(2) {
+    height: 100%;
+    animation-delay: -0.35s;
+}
+
+#page-social .social-eq i:nth-child(3) {
+    height: 65%;
+    animation-delay: -0.6s;
+}
+
+@keyframes lv-eq {
+    to {
+        height: 100%;
     }
 }
 
-/* Messages: the booth collapses into a strip of discs. */
-#page-social .social-booth.is-strip {
-    display: flex;
-    gap: 0.25rem;
-    overflow-x: auto;
-    padding: 0.65rem 0.75rem 0.55rem;
-    border: 1px solid var(--booth-rule-soft);
-    border-radius: 16px;
-    background: var(--booth-panel-deep);
-    scrollbar-width: none;
+/* -------------------------------- feed layout -------------------------------- */
+
+#page-social .social-feed-view {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2.5rem;
+    align-items: start;
 }
 
-#page-social .social-booth.is-strip :is(.booth-feature-slot, .booth-shelf, .booth-feature, .booth-edge) {
-    display: contents;
+#page-social .social-feed-main {
+    min-width: 0;
+    max-width: 780px;
 }
 
-#page-social .social-booth.is-strip :is(.booth-readout, .booth-deck-actions, .booth-more) {
+#page-social .social-desk {
     display: none;
 }
 
-#page-social .social-booth.is-strip .booth-disc::before {
-    display: none;
+#page-social :is(.social-feed-view, .social-messages-view).is-turning {
+    animation: lv-turn 300ms var(--lv-ease);
 }
 
-#page-social .social-booth.is-strip .booth-deck {
-    --size: 60px;
-
-    display: flex;
-    flex: 0 0 auto;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.4rem;
-    width: 88px;
-    padding-inline: 0.3rem;
+#page-social[data-turn='back'] :is(.social-feed-view, .social-messages-view).is-turning {
+    animation-name: lv-turn-back;
 }
 
-/* Rows that scroll fade at the side still hiding decks (the script sets the widths). */
-#page-social :is(.social-booth.is-strip, .booth-shelf).is-overflowing {
-    mask-image: linear-gradient(
-        90deg,
-        transparent,
-        #000 var(--fade-start, 0),
-        #000 calc(100% - var(--fade-end, 0px)),
-        transparent
-    );
+@keyframes lv-turn {
+    from {
+        opacity: 0;
+        transform: translateX(14px);
+    }
 }
 
-#page-social .social-booth.is-strip .booth-plate {
-    display: flex;
-    align-items: center;
-    width: 100%;
+@keyframes lv-turn-back {
+    from {
+        opacity: 0;
+        transform: translateX(-14px);
+    }
 }
 
-#page-social .social-booth.is-strip .booth-plate > :not(.booth-name) {
-    display: none;
-}
-
-#page-social .social-booth.is-strip .booth-name {
-    width: 100%;
+#page-social .social-loading {
+    margin: 0;
+    padding: 2.5rem 0;
+    color: var(--lv-ink-soft);
+    font-size: 0.88rem;
     text-align: center;
-    font-size: 0.76rem;
-    font-weight: 600;
+    animation: lv-breathe 1.6s ease-in-out infinite;
 }
 
-#page-social .social-booth.is-strip .booth-deck:not(.is-live) .booth-name {
-    color: var(--muted-foreground);
-}
-
-#page-social .social-booth.is-strip .booth-live {
-    width: 6px;
-    height: 6px;
-    box-shadow: none;
-}
-
-/* View transitions: decks fly between the hero and the strip, views slide. */
-::view-transition-group(*) {
-    animation-duration: 560ms;
-    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-::view-transition-old(root),
-::view-transition-new(root) {
-    animation-duration: 280ms;
-}
-
-/* Views are not named: a named snapshot escapes the scrolling column and paints
-   over the player. They enter with their own animation inside the root crossfade. */
-#page-social .social-feed-view:not([hidden]),
-#page-social .social-messages-view:not([hidden]) {
-    animation: booth-view-in 460ms var(--booth-ease) both;
-}
-
-:root[data-social-motion='back'] #page-social .social-feed-view:not([hidden]) {
-    animation-name: booth-view-in-back;
-}
-
-@keyframes booth-view-in {
-    from {
-        opacity: 0;
-        transform: translateX(28px);
+@keyframes lv-breathe {
+    50% {
+        opacity: 0.45;
     }
 }
 
-@keyframes booth-view-in-back {
-    from {
-        opacity: 0;
-        transform: translateX(-28px);
-    }
-}
-
-/* ---------------------------------- feed ----------------------------------- */
+/* --------------------------------- composer --------------------------------- */
 
 #page-social .social-post-composer {
     display: grid;
-    grid-template-columns: 44px minmax(0, 1fr) auto;
+    grid-template-columns: 40px minmax(0, 1fr) auto auto;
     align-items: start;
-    gap: 0.75rem;
-    padding: 0.65rem 0.7rem;
-    border: 1px solid var(--booth-rule-soft);
-    border-radius: 16px;
-    background: var(--booth-panel);
+    gap: 0.55rem 0.7rem;
+    padding: 0.65rem 0.65rem 0.65rem 0.75rem;
+    border: 1px solid var(--lv-rule);
+    border-radius: 14px;
+    background: var(--lv-paper);
     transition:
-        border-color 220ms ease,
-        box-shadow 320ms var(--booth-ease);
+        border-color 200ms ease,
+        box-shadow 260ms var(--lv-ease);
 }
 
 #page-social .social-post-composer:focus-within {
-    border-color: color-mix(in srgb, var(--foreground) 22%, var(--border));
-    box-shadow: 0 18px 50px rgb(0 0 0 / 0.22);
+    border-color: color-mix(in oklab, var(--foreground) 45%, transparent);
+    box-shadow: var(--lv-lift);
 }
 
 #page-social .social-post-composer.is-summoned {
-    animation: booth-summon 900ms var(--booth-ease);
+    animation: lv-summon 760ms var(--lv-ease);
 }
 
-@keyframes booth-summon {
-    20% {
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--foreground) 30%, transparent);
+@keyframes lv-summon {
+    from {
+        box-shadow: 0 0 0 4px color-mix(in oklab, var(--foreground) 30%, transparent);
     }
 }
 
 #page-social .social-composer-avatar {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
+    width: 40px;
+    height: 40px;
     object-fit: cover;
+    border-radius: 50%;
 }
 
-#page-social .social-composer-body {
-    display: flex;
-    flex-direction: column;
-    gap: 0.55rem;
-    min-width: 0;
-}
-
-#page-social .social-composer-field {
-    display: flex;
-    align-items: flex-end;
-    gap: 0.25rem;
-    min-height: 44px;
-    padding: 0 0.35rem 0 0.95rem;
-    border: 1px solid var(--booth-rule-soft);
-    border-radius: 12px;
-    background: var(--booth-panel-deep);
-}
-
-#page-social #social-post-input {
-    flex: 1;
-    min-width: 0;
+/* What you type is set in the same face as the notes it becomes. */
+#social-post-input {
+    width: 100%;
+    min-height: 40px;
     max-height: 200px;
-    padding: 0.7rem 0;
-    color: var(--foreground);
+    padding: 0.5rem 0.1rem;
+    color: var(--lv-note-ink);
     border: 0;
     outline: none;
     background: none;
     resize: none;
-    font: inherit;
+    font-family: var(--lv-notes) !important;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+#social-post-input::placeholder {
+    color: var(--lv-ink-soft);
+    font-family: var(--font-family) !important;
     font-size: 0.95rem;
-    line-height: 1.45;
 }
 
-#page-social #social-post-input::placeholder,
-#page-social #social-message-input::placeholder {
-    color: var(--muted-foreground);
+/* The composer draws the focus around the whole form (:focus-within); the
+   textarea inside must not repeat it. The id pair outranks the page-wide
+   :focus-visible outline. */
+#page-social #social-post-input:focus-visible,
+#page-social #social-message-input:focus-visible {
+    outline: none;
 }
 
-#page-social .social-composer-actions {
+#page-social .social-composer-tools {
     display: flex;
-    gap: 0.1rem;
-    padding-bottom: 0.3rem;
+    gap: 0.15rem;
 }
 
-#page-social .social-tool,
-#page-social .social-composer-tool,
-#page-social .social-icon-button,
-#page-social .social-rail-tool {
+#page-social .social-tool {
     display: grid;
     place-items: center;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     padding: 0;
-    color: var(--muted-foreground);
+    color: var(--lv-ink-soft);
     border: 0;
-    border-radius: 10px;
+    border-radius: 50%;
     background: none;
     cursor: pointer;
     transition:
-        color 160ms ease,
         background-color 160ms ease,
-        transform 260ms var(--booth-ease);
+        color 160ms ease,
+        transform 140ms var(--lv-ease);
 }
 
-#page-social :is(.social-tool, .social-composer-tool, .social-icon-button, .social-rail-tool):hover,
+#page-social .social-tool:hover,
 #page-social .social-tool[aria-expanded='true'] {
-    color: var(--foreground);
-    background: var(--booth-wash-strong);
-    transform: translateY(-1px);
+    color: var(--lv-ink);
+    background: var(--lv-wash-strong);
 }
 
-#page-social :is(.social-tool, .social-composer-tool, .social-icon-button, .social-rail-tool):active {
+#page-social .social-tool:active {
     transform: scale(0.92);
 }
 
 #page-social .social-post-submit {
-    height: 44px;
-    padding: 0 1.3rem;
+    height: 40px;
+    padding: 0 1.15rem;
     color: var(--background);
     border: 0;
-    border-radius: 12px;
-    background: var(--foreground);
+    border-radius: 999px;
+    background: var(--lv-ink);
     cursor: pointer;
-    font: inherit;
     font-size: 0.9rem;
     font-weight: 700;
     transition:
-        opacity 200ms ease,
         background-color 200ms ease,
         color 200ms ease,
-        transform 260ms var(--booth-ease);
+        transform 140ms var(--lv-ease),
+        opacity 200ms ease;
 }
 
-#page-social .social-post-submit:disabled {
-    color: var(--muted-foreground);
-    background: var(--booth-wash-strong);
-    cursor: default;
-}
-
-#page-social .social-post-submit:not(:disabled):hover {
+#page-social .social-post-submit:hover:enabled {
     transform: translateY(-1px);
 }
 
-#page-social .social-post-submit:not(:disabled):active {
-    transform: scale(0.95);
+#page-social .social-post-submit:active:enabled {
+    transform: scale(0.96);
+}
+
+#page-social .social-post-submit:disabled {
+    color: var(--lv-ink-soft);
+    background: var(--lv-wash-strong);
+    cursor: default;
+}
+
+#page-social .social-post-submit.is-arming,
+#page-social .social-send-button.is-arming {
+    animation: lv-arm 320ms var(--lv-spring);
+}
+
+@keyframes lv-arm {
+    from {
+        transform: scale(0.88);
+    }
 }
 
 #page-social .social-post-submit.is-sending {
@@ -1197,323 +853,400 @@
     pointer-events: none;
 }
 
-#page-social :is(.social-post-submit, .social-send-button).is-arming {
-    animation: booth-arm 420ms var(--booth-spring);
+#page-social :is(.social-post-attachment, .social-post-music-picker) {
+    grid-column: 2 / -1;
+    min-width: 0;
 }
 
-@keyframes booth-arm {
-    0% {
-        transform: scale(0.9);
-    }
-
-    60% {
-        transform: scale(1.06);
-    }
-}
-
-#page-social .social-attachment-chip,
-#page-social .social-attach-chip {
-    display: inline-flex;
+#page-social .social-attachment-chip {
+    display: inline-grid;
+    grid-template-columns: 48px minmax(0, 1fr) 32px;
     align-items: center;
     gap: 0.7rem;
     max-width: 100%;
-    padding: 0.35rem;
-    border: 1px solid var(--booth-rule-soft);
-    border-radius: 12px;
-    background: var(--booth-panel-deep);
-    animation: booth-chip-in 380ms var(--booth-spring);
+    padding: 0.35rem 0.4rem 0.35rem 0.35rem;
+    border: 1px solid var(--lv-rule);
+    border-radius: 10px;
+    background: var(--lv-paper-deep);
+    animation: lv-chip-in 280ms var(--lv-ease);
 }
 
-@keyframes booth-chip-in {
+@keyframes lv-chip-in {
     from {
         opacity: 0;
-        transform: translateY(6px) scale(0.94);
+        transform: translateY(-4px) scale(0.98);
     }
 }
 
-#page-social :is(.social-attachment-chip, .social-attach-chip) img,
+#page-social .social-attachment-chip > img,
 #page-social .social-attachment-placeholder {
     display: grid;
     place-items: center;
-    width: 42px;
-    height: 42px;
-    flex: none;
-    border-radius: 8px;
+    width: 48px;
+    height: 48px;
     object-fit: cover;
-    color: var(--muted-foreground);
-    background: var(--booth-wash);
+    color: var(--lv-ink-soft);
+    border-radius: 4px;
+    background: var(--lv-wash);
 }
 
-#page-social .social-attachment-chip > span {
+#page-social .social-attachment-chip.is-image > img {
+    border-radius: 6px;
+}
+
+#page-social .social-attachment-copy {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    line-height: 1.3;
 }
 
-#page-social .social-attachment-chip strong {
+#page-social .social-attachment-copy :is(strong, small) {
     overflow: hidden;
-    font-size: 0.86rem;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-#page-social .social-attachment-chip small,
-#page-social .social-attach-chip span {
-    color: var(--muted-foreground);
+#page-social .social-attachment-copy strong {
+    font-size: 0.88rem;
+}
+
+#page-social .social-attachment-copy small {
+    color: var(--lv-ink-soft);
     font-size: 0.78rem;
 }
 
 #page-social :is(.social-attachment-remove, .social-attach-remove) {
     display: grid;
     place-items: center;
-    width: 28px;
-    height: 28px;
-    margin-left: 0.25rem;
-    color: var(--muted-foreground);
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: var(--lv-ink-soft);
     border: 0;
     border-radius: 50%;
     background: none;
     cursor: pointer;
+    transition:
+        background-color 160ms ease,
+        color 160ms ease;
 }
 
 #page-social :is(.social-attachment-remove, .social-attach-remove):hover {
-    color: var(--foreground);
-    background: var(--booth-wash-strong);
+    color: var(--lv-ink);
+    background: var(--lv-wash-strong);
 }
 
 #page-social .social-post-music-picker {
     padding: 0.5rem;
-    border: 1px solid var(--booth-rule-soft);
+    border: 1px solid var(--lv-rule);
     border-radius: 12px;
-    background: var(--booth-panel-deep);
-    animation: booth-unfold 340ms var(--booth-ease);
-}
-
-@keyframes booth-unfold {
-    from {
-        opacity: 0;
-        clip-path: inset(0 0 100% 0 round 12px);
-    }
-
-    to {
-        clip-path: inset(0 0 0 0 round 12px);
-    }
+    background: var(--lv-paper-deep);
+    animation: lv-chip-in 260ms var(--lv-ease);
 }
 
 #page-social .social-picker-search {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    height: 38px;
-    padding: 0 0.7rem;
-    color: var(--muted-foreground);
-    border-radius: 9px;
-    background: var(--booth-wash);
+    gap: 0.55rem;
+    height: 40px;
+    padding: 0 0.75rem;
+    color: var(--lv-ink-soft);
+    border-radius: 8px;
+    background: var(--lv-wash);
+    transition:
+        background-color 160ms ease,
+        box-shadow 200ms ease;
+}
+
+#page-social .social-picker-search:focus-within {
+    color: var(--lv-ink);
+    background: var(--lv-wash-strong);
+    box-shadow: 0 0 0 1px var(--lv-rule-strong);
+}
+
+#page-social .social-picker-search input:focus-visible {
+    outline: none;
 }
 
 #page-social .social-picker-search input {
     flex: 1;
-    color: var(--foreground);
+    min-width: 0;
+    color: var(--lv-ink);
     border: 0;
     outline: none;
     background: none;
     font: inherit;
-    font-size: 0.88rem;
+    font-size: 0.9rem;
 }
 
 #page-social .social-picker-results {
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
-    max-height: 240px;
-    overflow-y: auto;
+    gap: 0.1rem;
+    max-height: 260px;
     margin-top: 0.4rem;
+    overflow-y: auto;
 }
 
 #page-social .social-picker-result {
-    display: flex;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
     align-items: center;
     gap: 0.7rem;
-    padding: 0.4rem;
-    color: var(--foreground);
+    padding: 0.35rem;
+    color: var(--lv-ink);
     border: 0;
-    border-radius: 9px;
+    border-radius: 8px;
     background: none;
     cursor: pointer;
-    font: inherit;
     text-align: left;
+    transition: background-color 140ms ease;
 }
 
-#page-social .social-picker-result:hover {
-    background: var(--booth-wash-strong);
+#page-social .social-picker-result:hover,
+#page-social .social-picker-result:focus-visible {
+    background: var(--lv-wash-strong);
 }
 
-#page-social .social-picker-result img {
-    width: 36px;
-    height: 36px;
-    border-radius: 6px;
+#page-social .social-picker-result > img,
+#page-social .social-picker-art {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
     object-fit: cover;
+    color: var(--lv-ink-soft);
+    border-radius: 3px;
+    background: var(--lv-wash);
 }
 
-#page-social .social-picker-result span {
+#page-social .social-picker-copy {
     display: flex;
     flex-direction: column;
     min-width: 0;
 }
 
-#page-social .social-picker-result em {
-    color: var(--muted-foreground);
-    font-size: 0.72rem;
-    font-style: normal;
-    text-transform: capitalize;
+#page-social .social-picker-copy small {
+    color: var(--lv-ink-soft);
+    font-size: 0.76rem;
 }
 
-#page-social .social-picker-result strong {
+#page-social .social-picker-copy strong {
     overflow: hidden;
-    font-size: 0.86rem;
+    font-size: 0.88rem;
+    font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 #page-social .social-picker-hint {
-    padding: 0.7rem 0.5rem;
-    color: var(--muted-foreground);
+    margin: 0;
+    padding: 0.8rem 0.5rem;
+    color: var(--lv-ink-soft);
     font-size: 0.84rem;
 }
 
-/* The track log. */
+#page-social .social-picker-hint.is-busy {
+    animation: lv-breathe 1.4s ease-in-out infinite;
+}
+
+/* ---------------------------------- streams ---------------------------------- */
+
 #page-social .social-feed {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    margin-top: 0.75rem;
-}
-
-#page-social .social-feed-stream {
-    overflow: clip;
-    border: 1px solid var(--booth-rule-soft);
-    border-radius: 16px;
-    background: var(--booth-panel);
+    gap: 2.75rem;
+    margin-top: 2rem;
 }
 
 #page-social .social-stream-head {
     display: flex;
     align-items: baseline;
-    gap: 0.55rem;
-    padding: 1rem 1.25rem 0.85rem;
-    border-bottom: 1px solid var(--booth-rule-soft);
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid var(--lv-rule-strong);
 }
 
 #page-social .social-stream-title {
     margin: 0;
-    font-size: 0.98rem;
+    font-family: var(--lv-display) !important;
+    font-size: 1.2rem;
     font-weight: 700;
+    letter-spacing: -0.015em;
 }
 
 #page-social .social-stream-count {
-    color: var(--muted-foreground);
-    font-size: 0.9rem;
+    color: var(--lv-ink-soft);
+    font-size: 0.8rem;
     font-variant-numeric: tabular-nums;
-}
-
-#page-social .social-stream-count::before {
-    content: '·';
-    margin-right: 0.55rem;
 }
 
 #page-social .social-stream-empty {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1.1rem 1.25rem;
-    color: var(--muted-foreground);
-    font-size: 0.88rem;
+    margin: 0;
+    padding: 1.4rem 0 0.2rem;
+    color: var(--lv-ink-soft);
+    font-size: 0.9rem;
 }
 
-#page-social .social-post {
-    --gutter: 76px;
-    --pad: 1.25rem;
-    --gap: 1rem;
-
-    position: relative;
-    display: grid;
-    grid-template-columns: var(--gutter) 40px minmax(0, 1fr);
-    column-gap: var(--gap);
-    padding: 1.05rem var(--pad);
-    transition: background-color 240ms ease;
+/* The journal's date line: one per day, above that day's entries. */
+#page-social .social-day {
+    margin: 1.6rem 0 0;
+    color: var(--lv-ink-soft);
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
 }
 
-#page-social .social-post + .social-post {
-    border-top: 1px solid var(--booth-rule-soft);
+#page-social .social-stream-posts > .social-day:first-child {
+    margin-top: 1.1rem;
 }
 
-#page-social .social-post:hover {
-    background: color-mix(in srgb, var(--foreground) 2%, transparent);
-}
-
-/* The timeline rule runs through the gutter, one stop per post. */
-#page-social .social-post::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: calc(var(--pad) + var(--gutter) + var(--gap) / 2);
-    width: 1px;
-    background: var(--booth-rule-soft);
-}
-
-#page-social .social-post::after {
-    content: '';
-    position: absolute;
-    top: 1.5rem;
-    left: calc(var(--pad) + var(--gutter) + var(--gap) / 2 - 2.5px);
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--foreground) 34%, var(--background));
-}
-
-#page-social .social-post-gutter {
+#page-social .social-feed-empty {
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
-    padding-top: 0.15rem;
-    color: var(--muted-foreground);
-    font-size: 0.78rem;
-    font-variant-numeric: tabular-nums;
-    line-height: 1.25;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 3rem 1.5rem;
+    color: var(--lv-ink-soft);
+    text-align: center;
 }
 
-#page-social .social-post-gutter time {
-    color: color-mix(in srgb, var(--foreground) 78%, var(--background));
+#page-social .social-feed-empty strong {
+    margin-top: 0.6rem;
+    color: var(--lv-ink);
+    font-family: var(--lv-display) !important;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+#page-social .social-feed-empty span {
+    max-width: 40ch;
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+#page-social .social-quiet-button {
+    margin-top: 0.6rem;
+    height: 38px;
+    padding: 0 1.1rem;
+    color: var(--lv-ink);
+    border: 1px solid var(--lv-rule-strong);
+    border-radius: 999px;
+    background: none;
+    cursor: pointer;
+    font-size: 0.88rem;
     font-weight: 600;
+    transition: background-color 160ms ease;
+}
+
+#page-social .social-quiet-button:hover {
+    background: var(--lv-wash-strong);
+}
+
+/* Three empty sleeves fanned out: the booklet before anyone has written in it. */
+#page-social .social-empty-mark {
+    position: relative;
+    display: block;
+    width: 84px;
+    height: 56px;
+}
+
+#page-social .social-empty-sleeve {
+    position: absolute;
+    top: 6px;
+    left: 22px;
+    width: 40px;
+    height: 40px;
+    border: 1.5px solid var(--lv-rule-strong);
+    border-radius: 4px;
+    background: var(--lv-paper);
+    animation: lv-fan 700ms var(--lv-ease) backwards;
+}
+
+#page-social .social-empty-sleeve:nth-child(1) {
+    transform: translateX(-18px) rotate(-12deg);
+}
+
+#page-social .social-empty-sleeve:nth-child(2) {
+    z-index: 1;
+    transform: translateY(-3px);
+}
+
+#page-social .social-empty-sleeve:nth-child(3) {
+    transform: translateX(18px) rotate(12deg);
+}
+
+#page-social .social-empty-sleeve:nth-child(2)::after {
+    content: '';
+    position: absolute;
+    inset: 11px;
+    border: 1.5px solid var(--lv-rule-strong);
+    border-radius: 50%;
+}
+
+@keyframes lv-fan {
+    from {
+        transform: none;
+    }
+}
+
+/* ----------------------------------- posts ----------------------------------- */
+
+#page-social .social-post {
+    padding: 1.1rem 0 1.15rem;
+    border-bottom: 1px solid var(--lv-rule);
+}
+
+#page-social .social-stream-posts > .social-post:last-child {
+    border-bottom: 0;
+}
+
+#page-social .social-post.is-entering {
+    animation: lv-enter 380ms var(--lv-ease);
+}
+
+#page-social .social-post.is-entering .social-spread-page {
+    animation: lv-page-turn 560ms var(--lv-ease);
+}
+
+/* A new entry's right page swings down onto the fold. */
+@keyframes lv-page-turn {
+    from {
+        opacity: 0;
+        transform: perspective(900px) rotateY(-16deg);
+    }
+}
+
+#page-social .social-post-head {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 0.8rem;
 }
 
 #page-social .social-post-avatar img {
     display: block;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+    width: 32px;
+    height: 32px;
     object-fit: cover;
+    border-radius: 50%;
 }
 
-#page-social .social-post-main {
-    min-width: 0;
-}
-
-#page-social .social-post-head {
+#page-social .social-post-byline {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.5rem;
     min-width: 0;
-    line-height: 1.3;
 }
 
 #page-social .social-post-author {
-    color: var(--foreground);
-    font-size: 0.94rem;
-    text-decoration: none;
+    overflow: hidden;
+    font-size: 0.92rem;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #page-social .social-post-author:hover {
@@ -1523,473 +1256,722 @@
 
 #page-social .social-post-handle {
     overflow: hidden;
-    color: var(--muted-foreground);
-    font-size: 0.82rem;
+    color: var(--lv-ink-soft);
+    font-size: 0.84rem;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-#page-social .social-post-body {
-    max-width: 68ch;
-    margin: 0.25rem 0 0;
-    color: var(--foreground);
-    font-size: 0.97rem;
-    line-height: 1.5;
+#page-social .social-post-time {
+    color: var(--lv-ink-soft);
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* A member's own words, set in the booklet's text face. */
+#page-social .social-note {
+    max-width: 62ch;
+    margin: 0;
+    color: var(--lv-note-ink);
+    font-family: var(--lv-notes) !important;
+    font-size: 1rem;
+    line-height: 1.6;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
 
-#page-social .social-post-image {
-    max-width: 440px;
-    margin-top: 0.7rem;
-    overflow: hidden;
-    border-radius: 12px;
+#page-social .social-note.is-solo {
+    padding-left: calc(32px + 0.65rem);
+    font-size: 1.14rem;
+    line-height: 1.58;
 }
 
-#page-social .social-post-image img {
-    display: block;
-    width: 100%;
-    max-height: 420px;
-    object-fit: cover;
+#page-social .social-note.is-solo.is-short {
+    font-size: 1.36rem;
+    line-height: 1.42;
+    letter-spacing: -0.005em;
+    text-wrap: balance;
 }
 
-#page-social .social-post.is-entering {
-    animation: booth-post-in 620ms var(--booth-ease) both;
-}
-
-@keyframes booth-post-in {
-    from {
-        opacity: 0;
-        clip-path: inset(0 0 100% 0);
-        transform: translateY(-8px);
-    }
-
-    to {
-        clip-path: inset(0 0 0 0);
-    }
-}
-
-/* Actions float top-right: the text wraps only beside them, and music strips,
-   images and comments clear below to run the full width of the log column. */
-#page-social .social-post-actions {
+/* The spread: cover on the left page, credits and note on the right, a soft fold between. */
+#page-social .social-spread {
     position: relative;
-    display: flex;
-    float: right;
-    gap: 0.1rem;
-    margin: -0.4rem -0.4rem 0.2rem 1rem;
-}
-
-#page-social :is(.social-strip, .social-post-image, .social-post-comments) {
-    clear: right;
-}
-
-#page-social .social-post-action {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    height: 34px;
-    padding: 0 0.6rem;
-    color: var(--muted-foreground);
-    border: 0;
-    border-radius: 999px;
-    background: none;
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.84rem;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
+    display: grid;
+    grid-template-columns: minmax(0, 37%) minmax(0, 1fr);
+    overflow: clip;
+    border: 1px solid color-mix(in oklab, var(--spot) 16%, var(--lv-rule));
+    border-radius: 10px;
+    background: color-mix(in oklab, var(--spot) 9%, var(--lv-paper));
     transition:
-        color 160ms ease,
-        background-color 160ms ease;
+        background-color 700ms var(--lv-ease),
+        border-color 700ms var(--lv-ease);
 }
 
-#page-social .social-post-action:hover,
-#page-social .social-post-action.is-open {
-    color: var(--foreground);
-    background: var(--booth-wash-strong);
+#page-social .social-spread-cover {
+    position: relative;
+    align-self: start;
+    aspect-ratio: 1;
+    min-width: 0;
+    background: color-mix(in oklab, var(--spot) 18%, var(--lv-paper-deep));
 }
 
-#page-social .social-post-count:empty {
-    display: none;
-}
-
-#page-social .social-post-like.is-liked {
-    color: var(--booth-like);
-}
-
-#page-social .social-post-like.is-liked svg {
-    fill: currentcolor;
-}
-
-#page-social .social-post-like.is-popping svg {
-    animation: booth-heart 520ms var(--booth-spring);
-}
-
-#page-social .social-post-like.is-popping::after {
+#page-social .social-spread-cover::after {
     content: '';
     position: absolute;
-    top: 50%;
-    left: 1.1rem;
-    width: 30px;
-    height: 30px;
-    margin: -15px 0 0 -15px;
-    border-radius: 50%;
-    box-shadow: 0 0 0 2px var(--booth-like);
-    animation: booth-burst 520ms var(--booth-ease) forwards;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 22px;
+    background: linear-gradient(to left, var(--lv-shade), transparent);
     pointer-events: none;
 }
 
-#page-social .social-post-like.is-popping .social-post-count {
-    animation: booth-count-up 380ms var(--booth-ease);
-}
-
-#page-social .social-post-like.is-releasing svg {
-    animation: booth-heart-release 320ms var(--booth-ease);
-}
-
-@keyframes booth-heart {
-    0% {
-        transform: scale(0.55);
-    }
-
-    55% {
-        transform: scale(1.32);
-    }
-}
-
-@keyframes booth-burst {
-    from {
-        opacity: 0.9;
-        transform: scale(0.3);
-    }
-
-    to {
-        opacity: 0;
-        transform: scale(1.4);
-    }
-}
-
-@keyframes booth-count-up {
-    from {
-        opacity: 0;
-        transform: translateY(8px);
-    }
-}
-
-@keyframes booth-heart-release {
-    40% {
-        transform: scale(0.78);
-    }
-}
-
-/* Music strips: cover, title, play, the track's real waveform, its length. */
-#page-social .social-strip {
-    --tint: var(--foreground);
-
-    position: relative;
-    display: grid;
-    grid-template-columns: 60px minmax(110px, 0.6fr) 38px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0.9rem;
-    max-width: 920px;
-    margin-top: 0.7rem;
-    padding: 0.5rem 1rem 0.5rem 0.5rem;
-    overflow: clip;
-    border: 1px solid var(--booth-rule-soft);
-    border-radius: 12px;
-    background:
-        radial-gradient(120% 140% at 0% 50%, color-mix(in srgb, var(--tint) 10%, transparent), transparent 60%),
-        var(--booth-panel-deep);
-    transition:
-        border-color 300ms ease,
-        background-color 300ms ease;
-}
-
-#page-social .social-strip:not(.is-track, .is-album) {
-    grid-template-columns: 60px minmax(0, 1fr) 38px auto;
-    max-width: 480px;
-}
-
-#page-social .social-strip:hover {
-    border-color: color-mix(in srgb, var(--tint) 34%, var(--border));
-}
-
-#page-social .social-strip-art {
+#page-social .social-spread-art {
+    position: absolute;
+    inset: 0;
     display: block;
-    width: 60px;
-    height: 60px;
     overflow: hidden;
-    border-radius: 7px;
-    background: var(--booth-wash);
 }
 
-#page-social .social-strip-art img {
-    display: block;
+#page-social .social-spread-art img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 500ms var(--booth-ease);
+    transform-origin: right center;
+    transition: transform 520ms var(--lv-ease);
 }
 
-#page-social .social-strip:hover .social-strip-art img {
-    transform: scale(1.06);
-}
-
-#page-social .social-strip-placeholder {
+#page-social .social-spread-placeholder {
     display: grid;
     place-items: center;
     width: 100%;
     height: 100%;
-    color: var(--muted-foreground);
+    color: var(--spot-ink);
 }
 
-#page-social .social-strip-meta {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    color: var(--foreground);
-    text-decoration: none;
-    line-height: 1.3;
+/* Pointing at the cover lifts the left page from the fold. */
+@media (hover: hover) and (pointer: fine) {
+    #page-social .social-spread-cover:hover .social-spread-art img {
+        transform: perspective(1100px) rotateY(-7deg) scale(1.015);
+    }
 }
 
-#page-social .social-strip-meta strong {
-    overflow: hidden;
-    font-size: 0.92rem;
-    font-weight: 650;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-#page-social .social-strip-meta small {
-    overflow: hidden;
-    color: var(--muted-foreground);
-    font-size: 0.8rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-#page-social .social-strip-meta:hover strong {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-}
-
-#page-social .social-strip-play,
-#page-social .social-snippet-play {
+#page-social .social-spread-play {
+    position: absolute;
+    bottom: 0.7rem;
+    left: 0.7rem;
+    z-index: 1;
     display: grid;
     place-items: center;
-    width: 38px;
-    height: 38px;
+    width: 46px;
+    height: 46px;
     padding: 0;
-    color: var(--foreground);
-    border: 1px solid var(--booth-rule);
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--background) 55%, transparent);
-    cursor: pointer;
-    transition:
-        transform 260ms var(--booth-ease),
-        background-color 180ms ease,
-        color 180ms ease;
-}
-
-#page-social :is(.social-strip-play, .social-snippet-play):hover,
-#page-social .social-snippet-play.is-playing {
     color: var(--background);
-    border-color: transparent;
-    background: var(--foreground);
-    transform: scale(1.07);
+    border: 0;
+    border-radius: 50%;
+    background: var(--lv-ink);
+    box-shadow: 0 8px 20px rgb(0 0 0 / 0.3);
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(6px) scale(0.94);
+    transition:
+        opacity 200ms ease,
+        transform 260ms var(--lv-ease);
 }
 
-#page-social .social-strip-play.is-pressed {
-    animation: booth-arm 380ms var(--booth-spring);
+#page-social .social-spread-cover:is(:hover, :focus-within) .social-spread-play {
+    opacity: 1;
+    transform: none;
+}
+
+#page-social .social-spread-cover .social-spread-play:hover {
+    transform: scale(1.06);
+}
+
+#page-social :is(.social-spread-play, .social-sleeve-play, .social-snippet-play).is-pressed {
+    animation: lv-press 320ms var(--lv-spring);
+}
+
+@keyframes lv-press {
+    35% {
+        transform: scale(0.86);
+    }
 }
 
 #page-social .social-share-play {
     display: grid;
     place-items: center;
-    width: 16px;
-    height: 16px;
+    width: 100%;
+    height: 100%;
 }
 
 #page-social .social-share-morph-play-icon {
-    width: 16px;
-    height: 16px;
+    width: 46%;
+    height: 46%;
     fill: currentcolor;
 }
 
-#page-social .social-share-morph-play-icon path {
-    transition: d 260ms var(--booth-ease);
-}
-
-#page-social .social-strip-wave {
+#page-social .social-spread-page {
     position: relative;
-    height: 44px;
-    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    min-width: 0;
+    padding: 1.05rem 1.2rem 1rem 1.35rem;
+    transform-origin: left center;
 }
 
-#page-social .social-strip-wave canvas {
-    display: block;
+#page-social .social-spread-page::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 18px;
+    background: linear-gradient(to right, color-mix(in oklab, var(--lv-shade) 50%, transparent), transparent);
+    pointer-events: none;
+}
+
+#page-social .social-credits {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+#page-social .social-credits-title {
+    color: var(--lv-ink);
+    font-family: var(--lv-display) !important;
+    font-size: 1.08rem;
+    font-weight: 700;
+    line-height: 1.14;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+}
+
+#page-social .social-credits-title:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 4px;
+}
+
+#page-social .social-credits-by {
+    color: var(--lv-ink-soft);
+    font-size: 0.9rem;
+}
+
+/* The member's note is the voice of the right page, answering the cover across
+   the fold: it outranks the credits above it (note > title > byline). */
+#page-social .social-spread .social-note {
+    margin-top: 0.35rem;
+    font-size: 1.24rem;
+    line-height: 1.45;
+    text-wrap: pretty;
+}
+
+/* The album's running order, printed as on the back of a sleeve. */
+#page-social .social-tracklist {
+    margin: auto 0 0;
+    padding: 0.35rem 0 0;
+    list-style: none;
+    border-top: 1px solid color-mix(in oklab, var(--spot) 30%, var(--lv-rule));
+}
+
+#page-social .social-tracklist.is-loading {
+    min-height: 7.5rem;
+    background:
+        linear-gradient(var(--lv-wash-strong), var(--lv-wash-strong)) 0 0.95rem / 72% 0.5rem no-repeat,
+        linear-gradient(var(--lv-wash-strong), var(--lv-wash-strong)) 0 2.85rem / 58% 0.5rem no-repeat,
+        linear-gradient(var(--lv-wash-strong), var(--lv-wash-strong)) 0 4.75rem / 66% 0.5rem no-repeat;
+    animation: lv-breathe 1.4s ease-in-out infinite;
+}
+
+#page-social .social-tracklist.is-flat {
+    display: none;
+}
+
+#page-social .social-tracklist li {
+    animation: lv-enter 320ms var(--lv-ease) calc(var(--row, 0) * 40ms) backwards;
+}
+
+#page-social .social-tracklist.is-settled li,
+#page-social .social-groove-wave.is-settled canvas {
+    animation: none;
+}
+
+#page-social .social-tracklist-row {
+    display: grid;
+    grid-template-columns: 1.7rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.45rem;
     width: 100%;
-    height: 100%;
-    animation: booth-wave-in 800ms var(--booth-ease);
+    min-height: 36px;
+    padding: 0.35rem 0.4rem 0.35rem 0.3rem;
+    color: var(--lv-ink);
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 160ms ease;
 }
 
-#page-social .social-strip-wave.is-loading canvas {
+#page-social .social-tracklist-row:hover,
+#page-social .social-tracklist-row:focus-visible {
+    background: color-mix(in oklab, var(--spot) 16%, transparent);
+}
+
+#page-social .social-tracklist-no {
+    position: relative;
+    display: grid;
+    place-items: center start;
+    height: 1rem;
+    color: var(--spot-ink);
+    font-size: 0.8rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+
+#page-social .social-tracklist-no svg {
+    position: absolute;
+    left: 1px;
+    fill: currentcolor;
+    opacity: 0;
+    transform: scale(0.6);
+    transition:
+        opacity 140ms ease,
+        transform 200ms var(--lv-ease);
+}
+
+#page-social .social-tracklist-digit {
+    transition: opacity 140ms ease;
+}
+
+#page-social .social-tracklist-row:is(:hover, :focus-visible) .social-tracklist-no svg {
+    opacity: 1;
+    transform: none;
+}
+
+#page-social .social-tracklist-row:is(:hover, :focus-visible) .social-tracklist-digit {
     opacity: 0;
 }
 
-#page-social .social-strip-wave.is-loading::before,
-#page-social .social-strip-wave.is-flat::before {
+#page-social .social-tracklist-title {
+    overflow: hidden;
+    font-size: 0.88rem;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#page-social .social-tracklist-time {
+    color: var(--lv-ink-soft);
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+#page-social .social-tracklist-row.is-current .social-tracklist-title {
+    color: var(--spot-ink);
+    font-weight: 650;
+}
+
+#page-social .social-tracklist-row.is-current .social-tracklist-digit {
+    opacity: 0;
+}
+
+#page-social .social-tracklist-row.is-current .social-tracklist-no::after {
+    content: '';
+    position: absolute;
+    left: 1px;
+    width: 12px;
+    height: 10px;
+    background:
+        linear-gradient(currentcolor, currentcolor) 0 100% / 2px 45% no-repeat,
+        linear-gradient(currentcolor, currentcolor) 5px 100% / 2px 100% no-repeat,
+        linear-gradient(currentcolor, currentcolor) 10px 100% / 2px 70% no-repeat;
+    animation: lv-eq-mini 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes lv-eq-mini {
+    to {
+        background-size:
+            2px 100%,
+            2px 50%,
+            2px 85%;
+    }
+}
+
+#page-social .social-tracklist-row.is-cued {
+    animation: lv-cued 520ms var(--lv-ease);
+}
+
+@keyframes lv-cued {
+    from {
+        background: color-mix(in oklab, var(--spot) 40%, transparent);
+    }
+}
+
+#page-social .social-tracklist-more {
+    align-self: flex-start;
+    margin: -0.2rem 0 0 0.3rem;
+    color: var(--lv-ink-soft);
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+    text-decoration: underline;
+    text-decoration-color: var(--lv-rule-strong);
+    text-underline-offset: 3px;
+    transition:
+        color 160ms ease,
+        text-decoration-color 160ms ease;
+}
+
+#page-social .social-tracklist-more:hover {
+    color: var(--lv-ink);
+    text-decoration-color: currentcolor;
+}
+
+/* The running groove: the track's real waveform printed in the spot ink. */
+#page-social .social-groove {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.8rem;
+    margin-top: auto;
+    padding-top: 0.6rem;
+    border-top: 1px solid color-mix(in oklab, var(--spot) 30%, var(--lv-rule));
+}
+
+#page-social .social-groove-wave {
+    --hover: 0;
+    --cue: 0;
+
+    position: relative;
+    height: 46px;
+    cursor: pointer;
+    container-type: inline-size;
+}
+
+#page-social .social-groove-wave canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+}
+
+#page-social .social-groove-wave.is-drawn canvas {
+    opacity: 1;
+    animation: lv-print 900ms var(--lv-ease);
+}
+
+@keyframes lv-print {
+    from {
+        clip-path: inset(0 100% 0 0);
+    }
+
+    to {
+        clip-path: inset(0);
+    }
+}
+
+#page-social .social-groove-wave.is-loading::before,
+#page-social .social-groove-wave.is-flat::before {
     content: '';
     position: absolute;
     top: 50%;
     right: 0;
     left: 0;
     height: 2px;
-    margin-top: -1px;
     border-radius: 2px;
-    background: color-mix(in srgb, var(--foreground) 12%, transparent);
+    background: var(--lv-rule-strong);
 }
 
-#page-social .social-strip-wave.is-loading::before {
-    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--tint) 60%, transparent), transparent);
-    background-repeat: no-repeat;
-    background-size: 40% 100%;
-    animation: booth-scan 1.4s ease-in-out infinite;
-}
-
-#page-social .social-strip-wave.is-flat {
-    cursor: default;
-}
-
-#page-social .social-strip-wave::after {
-    content: 'Play from here';
+#page-social .social-groove-wave.is-loading::after {
+    content: '';
     position: absolute;
-    bottom: calc(100% + 2px);
-    left: calc(var(--hover, 0) * 100%);
-    padding: 0.15rem 0.4rem;
-    color: var(--background);
-    border-radius: 5px;
-    background: var(--foreground);
-    font-size: 0.68rem;
-    font-weight: 650;
-    white-space: nowrap;
-    opacity: 0;
-    transform: translateX(-50%) translateY(3px);
-    transition:
-        opacity 140ms ease,
-        transform 200ms var(--booth-ease);
-    pointer-events: none;
+    top: calc(50% - 1px);
+    left: 0;
+    width: 28%;
+    height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(to right, transparent, var(--spot-ink), transparent);
+    animation: lv-scan 1.3s ease-in-out infinite;
 }
 
-#page-social .social-strip-wave:not(.is-loading, .is-flat):hover::after {
-    opacity: 1;
-    transform: translateX(-50%);
-}
+@keyframes lv-scan {
+    from {
+        transform: translateX(-100%);
+    }
 
-#page-social .social-strip-wave.is-cued canvas {
-    animation: booth-cue 520ms ease;
-}
-
-@keyframes booth-cue {
-    30% {
-        filter: brightness(1.8);
+    to {
+        transform: translateX(360%);
     }
 }
 
-#page-social .social-strip-tracks {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    height: 44px;
+#page-social .social-groove-cue {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 0;
+    width: 1.5px;
+    border-radius: 1px;
+    background: var(--lv-ink);
+    opacity: 0;
+    transform: translateX(calc(var(--hover) * (100cqw - 1.5px)));
+    pointer-events: none;
+    transition: opacity 160ms ease;
 }
 
-#page-social .social-strip-tracks.is-loading::before,
-#page-social .social-strip-tracks.is-flat::before {
-    content: '';
-    flex: 1;
-    height: 2px;
-    border-radius: 2px;
-    background: color-mix(in srgb, var(--foreground) 12%, transparent);
+@media (hover: hover) and (pointer: fine) {
+    #page-social .social-groove-wave.is-drawn:hover .social-groove-cue {
+        opacity: 0.9;
+    }
 }
 
-#page-social .social-strip-segment {
-    display: flex;
-    flex-basis: 0;
-    align-items: center;
-    min-width: 6px;
-    height: 100%;
-    padding: 0;
-    border: 0;
-    background: none;
-    cursor: pointer;
+#page-social .social-groove-wave.is-cued .social-groove-cue {
+    transform: translateX(calc(var(--cue) * (100cqw - 1.5px)));
+    animation: lv-cue 700ms var(--lv-ease);
 }
 
-#page-social .social-strip-segment i {
-    width: 100%;
-    height: 10px;
-    border-radius: 3px;
-    background: color-mix(in srgb, var(--tint) 58%, transparent);
-    transition:
-        height 240ms var(--booth-ease),
-        background-color 200ms ease;
+@keyframes lv-cue {
+    from {
+        opacity: 1;
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--foreground) 30%, transparent);
+    }
 }
 
-#page-social .social-strip-segment:hover i,
-#page-social .social-strip-segment:focus-visible i {
-    height: 22px;
-    background: var(--tint);
-}
-
-#page-social .social-strip-segment.is-cued i {
-    animation: booth-cue 520ms ease;
-}
-
-#page-social .social-strip-time {
-    color: var(--muted-foreground);
+#page-social .social-groove-time {
+    color: var(--lv-ink-soft);
     font-size: 0.8rem;
     font-variant-numeric: tabular-nums;
 }
 
-#page-social .social-strip-open {
+#page-social .social-spread-open {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 0.4rem;
+    margin-top: auto;
+    height: 34px;
+    padding: 0 0.85rem;
+    color: var(--lv-ink);
+    border: 1px solid var(--lv-rule-strong);
+    border-radius: 999px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    transition: background-color 160ms ease;
+}
+
+#page-social .social-spread-open:hover {
+    background: var(--lv-wash-strong);
+}
+
+/* A photo is a left page of its own; without a note it simply sits on the page. */
+#page-social .social-spread.is-photo {
+    --spot: var(--lv-house);
+}
+
+#page-social .social-spread.is-photo:not(.has-note) {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    border: 0;
+    background: none;
+}
+
+#page-social .social-post-photo {
+    display: block;
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    background: var(--lv-paper-deep);
+    cursor: zoom-in;
+}
+
+#page-social .social-post-photo img {
+    display: block;
+    width: 100%;
+    max-height: 460px;
+    object-fit: cover;
+    transition: transform 520ms var(--lv-ease);
+}
+
+#page-social .social-spread.is-photo:not(.has-note) .social-post-photo {
+    border-radius: 10px;
+}
+
+#page-social .social-spread.is-photo:not(.has-note) .social-post-photo img {
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+#page-social .social-post-photo.is-extra {
+    width: min(320px, 100%);
+    margin-top: 0.6rem;
+    border-radius: 10px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    #page-social .social-post-photo:hover img {
+        transform: scale(1.02);
+    }
+}
+
+/* ------------------------------- post actions ------------------------------- */
+
+#page-social .social-post-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    margin: 0.7rem 0 0 -0.55rem;
+}
+
+#page-social .social-post.is-text .social-post-actions {
+    margin-left: calc(32px + 0.65rem - 0.55rem);
+}
+
+#page-social .social-post-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 36px;
+    padding: 0 0.6rem;
+    color: var(--lv-ink-soft);
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    cursor: pointer;
+    font-size: 0.84rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    transition:
+        background-color 160ms ease,
+        color 160ms ease,
+        transform 140ms var(--lv-ease);
+}
+
+#page-social .social-post-action:hover,
+#page-social .social-post-action.is-open {
+    color: var(--lv-ink);
+    background: var(--lv-wash-strong);
+}
+
+#page-social .social-post-action:active {
+    transform: scale(0.94);
+}
+
+#page-social .social-post-count:empty {
+    display: none;
+}
+
+#page-social .social-heart {
+    position: relative;
     display: grid;
     place-items: center;
-    width: 32px;
-    height: 32px;
-    color: var(--muted-foreground);
+}
+
+#page-social .social-post-like.is-liked {
+    color: var(--lv-like);
+}
+
+#page-social .social-post-like.is-liked svg {
+    fill: currentcolor;
+}
+
+#page-social .social-post-like.is-popping .social-heart svg {
+    animation: lv-heart 520ms var(--lv-spring);
+}
+
+#page-social .social-post-like.is-popping .social-heart::after {
+    content: '';
+    position: absolute;
+    inset: -7px;
+    border: 2px solid var(--lv-like);
     border-radius: 50%;
+    animation: lv-burst 520ms var(--lv-ease) forwards;
 }
 
-#page-social .social-strip-open:hover {
-    color: var(--foreground);
-    background: var(--booth-wash-strong);
+#page-social .social-post-like.is-popping .social-post-count {
+    animation: lv-count 360ms var(--lv-ease);
 }
 
-/* Comments unfold under the post they answer. */
+#page-social .social-post-like.is-releasing .social-heart svg {
+    animation: lv-heart-release 300ms var(--lv-ease);
+}
+
+@keyframes lv-heart {
+    0% {
+        transform: scale(0.6);
+    }
+
+    60% {
+        transform: scale(1.18);
+    }
+}
+
+@keyframes lv-burst {
+    from {
+        opacity: 0.8;
+        transform: scale(0.4);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(1.3);
+    }
+}
+
+@keyframes lv-count {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+}
+
+@keyframes lv-heart-release {
+    40% {
+        transform: scale(0.82);
+    }
+}
+
+/* --------------------------------- comments --------------------------------- */
+
 #page-social .social-post-comments {
-    display: flex;
-    flex-direction: column;
-    gap: 0.55rem;
-    max-width: 640px;
-    margin-top: 0.85rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--booth-rule-soft);
+    display: grid;
+    grid-template-rows: 1fr;
 }
 
 #page-social .social-post-comments.is-opening {
-    animation: booth-unfold 380ms var(--booth-ease);
+    animation: lv-unfold 300ms var(--lv-ease);
 }
 
 #page-social .social-post-comments.is-closing {
-    animation: booth-fold 260ms var(--booth-ease) forwards;
+    animation: lv-fold 220ms var(--lv-ease) forwards;
 }
 
-@keyframes booth-fold {
-    to {
+@keyframes lv-unfold {
+    from {
+        grid-template-rows: 0fr;
         opacity: 0;
-        clip-path: inset(0 0 100% 0);
     }
+}
+
+@keyframes lv-fold {
+    to {
+        grid-template-rows: 0fr;
+        opacity: 0;
+    }
+}
+
+#page-social .social-comments-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 0;
+    padding: 0.7rem 0 0.1rem calc(32px + 0.65rem);
+    overflow: hidden;
 }
 
 #page-social .social-comment {
@@ -2000,278 +1982,398 @@
 }
 
 #page-social .social-comment.is-entering {
-    animation: booth-chip-in 420ms var(--booth-spring);
+    animation: lv-enter 320ms var(--lv-ease);
 }
 
-#page-social .social-comment img {
+#page-social .social-comment > img,
+#page-social .social-comment-compose > img {
     width: 26px;
     height: 26px;
-    border-radius: 50%;
     object-fit: cover;
+    border-radius: 50%;
 }
 
 #page-social .social-comment-copy {
-    margin: 0.2rem 0 0;
-    font-size: 0.88rem;
-    line-height: 1.45;
+    margin: 0.1rem 0 0;
     overflow-wrap: anywhere;
 }
 
-#page-social .social-comment-copy strong {
-    margin-right: 0.25rem;
+#page-social .social-comment-author {
+    margin-right: 0.45rem;
+    font-size: 0.84rem;
     font-weight: 650;
 }
 
+#page-social .social-comment-author:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+#page-social .social-comment-body {
+    color: var(--lv-note-ink);
+    font-family: var(--lv-notes) !important;
+    font-size: 0.94rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+}
+
 #page-social .social-comment time {
-    padding-top: 0.25rem;
-    color: var(--muted-foreground);
+    padding-top: 0.2rem;
+    color: var(--lv-ink-soft);
     font-size: 0.74rem;
     font-variant-numeric: tabular-nums;
+}
+
+#page-social .social-comment-compose {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    align-items: center;
+    gap: 0.6rem;
 }
 
 #page-social .social-comment-input {
     width: 100%;
     height: 38px;
-    padding: 0 0.95rem;
-    color: var(--foreground);
-    border: 1px solid var(--booth-rule-soft);
+    padding: 0 0.9rem;
+    color: var(--lv-note-ink);
+    border: 1px solid var(--lv-rule);
     border-radius: 999px;
     outline: none;
-    background: var(--booth-panel-deep);
-    font: inherit;
+    background: var(--lv-paper);
+    font-family: var(--lv-notes) !important;
+    font-size: 0.94rem;
+    transition:
+        border-color 160ms ease,
+        box-shadow 200ms ease;
+}
+
+#page-social .social-comment-input::placeholder {
+    color: var(--lv-ink-soft);
+    font-family: var(--font-family) !important;
     font-size: 0.88rem;
-    transition: border-color 180ms ease;
 }
 
-#page-social .social-comment-input:focus {
-    border-color: color-mix(in srgb, var(--foreground) 30%, var(--border));
+#page-social .social-comment-input:focus-visible {
+    border-color: var(--lv-rule-strong);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--lv-wash-strong);
 }
 
-#page-social .social-feed-empty {
+#page-social .social-comment-input:disabled {
+    opacity: 0.6;
+}
+
+/* ------------------------------ correspondence desk ------------------------------ */
+
+#page-social .social-desk-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0 0.45rem 0.6rem;
+}
+
+#page-social .social-desk-head h2 {
+    margin: 0;
+    font-family: var(--lv-display) !important;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+#page-social .social-desk-unread {
+    color: var(--lv-ink);
+    font-size: 0.78rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+
+#page-social .social-desk-list {
     display: flex;
     flex-direction: column;
+    gap: 0.1rem;
+}
+
+#page-social .social-desk-empty {
+    margin: 0;
+    padding: 0.5rem 0.45rem 0.9rem;
+    color: var(--lv-ink-soft);
+    font-size: 0.86rem;
+    line-height: 1.5;
+}
+
+#page-social .social-desk-all {
+    display: flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 3rem 1.5rem;
-    color: var(--muted-foreground);
-    border: 1px dashed var(--booth-rule);
-    border-radius: 16px;
-    text-align: center;
+    justify-content: center;
+    gap: 0.3rem;
+    width: 100%;
+    height: 40px;
+    margin-top: 0.4rem;
+    color: var(--lv-ink-soft);
+    border: 0;
+    border-top: 1px solid var(--lv-rule);
+    border-radius: 0 0 8px 8px;
+    background: none;
+    cursor: pointer;
+    font-size: 0.86rem;
+    font-weight: 600;
+    transition:
+        color 160ms ease,
+        background-color 160ms ease;
 }
 
-#page-social .social-feed-empty strong {
-    color: var(--foreground);
-    font-family: var(--booth-display);
-    font-size: 1.15rem;
+#page-social .social-desk-all svg {
+    transition: transform 200ms var(--lv-ease);
 }
 
-#page-social .social-feed-empty-mark {
-    display: grid;
-    place-items: center;
-    width: 56px;
-    height: 56px;
-    margin-bottom: 0.4rem;
-    border: 1.5px dashed var(--booth-rule);
-    border-radius: 50%;
+#page-social .social-desk-all:hover {
+    color: var(--lv-ink);
+    background: var(--lv-wash);
 }
 
-/* -------------------------------- messages --------------------------------- */
+#page-social .social-desk-all:hover svg {
+    transform: translateX(3px);
+}
+
+/* -------------------------------- messages view -------------------------------- */
 
 #page-social .social-messages-view {
     position: relative;
     display: grid;
     grid-template-columns: 300px minmax(0, 1fr);
-    gap: 0.75rem;
-
-    /* Header, booth strip and the player bar sit around it: fit the visible height. */
-    height: clamp(440px, calc(100dvh - 416px), 980px);
+    height: clamp(460px, calc(100dvh - 268px), 980px);
+    overflow: clip;
+    border: 1px solid var(--lv-rule);
+    border-radius: 14px;
+    background: var(--lv-paper-deep);
 }
 
 #page-social .social-messages-view.has-info {
     grid-template-columns: 300px minmax(0, 1fr) 320px;
 }
 
-#page-social .social-rail,
-#page-social .social-thread-pane,
-#page-social .social-info-panel {
-    position: relative;
-    min-width: 0;
-    min-height: 0;
-
-    /* clip, not hidden: focusing the composer must never scroll the pane sideways. */
-    overflow: clip;
-    border: 1px solid var(--booth-rule-soft);
-    border-radius: 16px;
-    background: var(--booth-panel-deep);
-}
-
 #page-social .social-rail {
+    position: relative;
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    border-right: 1px solid var(--lv-rule);
+    background: var(--lv-paper);
 }
 
 #page-social .social-rail-head {
+    position: sticky;
+    top: 0;
+    z-index: 3;
     display: flex;
-    gap: 0.5rem;
-    padding: 0.75rem;
+    gap: 0.45rem;
+    padding: 0.75rem 0.75rem 0.6rem;
+    background: var(--lv-paper);
 }
 
 #page-social .social-rail-search {
     display: flex;
     flex: 1;
-    min-width: 0;
     align-items: center;
-    gap: 0.55rem;
-    height: 42px;
+    gap: 0.5rem;
+    min-width: 0;
+    height: 40px;
     padding: 0 0.8rem;
-    color: var(--muted-foreground);
-    border: 1px solid var(--booth-rule-soft);
-    border-radius: 11px;
-    background: var(--booth-panel);
-    transition: border-color 180ms ease;
+    color: var(--lv-ink-soft);
+    border-radius: 999px;
+    background: var(--lv-wash);
+    transition:
+        background-color 160ms ease,
+        box-shadow 200ms ease;
 }
 
 #page-social .social-rail-search:focus-within {
-    border-color: color-mix(in srgb, var(--foreground) 28%, var(--border));
+    color: var(--lv-ink);
+    background: var(--lv-wash-strong);
+    box-shadow: 0 0 0 1px var(--lv-rule-strong);
 }
 
 #page-social .social-rail-search input {
     flex: 1;
-    width: 100%;
     min-width: 0;
-    color: var(--foreground);
+    color: var(--lv-ink);
     border: 0;
     outline: none;
     background: none;
     font: inherit;
-    font-size: 0.92rem;
+    font-size: 0.9rem;
 }
 
-#page-social .social-rail-tool {
-    width: 42px;
-    height: 42px;
-    border: 1px solid var(--booth-rule-soft);
-    border-radius: 11px;
-    background: var(--booth-panel);
+#page-social .social-rail-search input::placeholder {
+    color: var(--lv-ink-soft);
+}
+
+#page-social .social-rail-search input:focus-visible {
+    outline: none;
+}
+
+#page-social :is(.social-rail-tool, .social-icon-button, .social-composer-tool, .social-info-close) {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    padding: 0;
+    color: var(--lv-ink-soft);
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    cursor: pointer;
+    transition:
+        background-color 160ms ease,
+        color 160ms ease,
+        transform 140ms var(--lv-ease);
+}
+
+#page-social :is(.social-rail-tool, .social-icon-button, .social-composer-tool, .social-info-close):hover,
+#page-social .social-icon-button[aria-pressed='true'] {
+    color: var(--lv-ink);
+    background: var(--lv-wash-strong);
+}
+
+#page-social :is(.social-rail-tool, .social-icon-button, .social-composer-tool, .social-info-close):active {
+    transform: scale(0.92);
+}
+
+#page-social .social-icon-button.is-ringing svg,
+#page-social .social-info-actions .is-ringing svg {
+    animation: lv-ring 520ms var(--lv-ease);
+    transform-origin: 50% 10%;
+}
+
+@keyframes lv-ring {
+    20% {
+        transform: rotate(14deg);
+    }
+
+    45% {
+        transform: rotate(-10deg);
+    }
+
+    70% {
+        transform: rotate(5deg);
+    }
 }
 
 #page-social .social-conversation-list {
     position: relative;
-    flex: 0 1 auto;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0 0.45rem 0.5rem;
 }
 
 #page-social .social-conversation-indicator {
     position: absolute;
     top: 0;
-    left: 0;
-    z-index: 2;
-    width: 3px;
-    border-radius: 0 3px 3px 0;
-    background: var(--foreground);
+    right: 0.45rem;
+    left: 0.45rem;
+    z-index: 0;
+    border-radius: 10px;
+    background: var(--lv-wash-strong);
     pointer-events: none;
 }
 
-#page-social .social-conversation-list:not(:has(.social-chat-row.is-active)) .social-conversation-indicator {
+#page-social .social-conversation-list:not(:has(.is-active)) .social-conversation-indicator {
     display: none;
 }
 
+#page-social .social-rail-empty {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin: 0;
+    padding: 0.8rem 0.6rem 1rem;
+    color: var(--lv-ink-soft);
+    font-size: 0.86rem;
+    line-height: 1.5;
+}
+
+#page-social .social-rail-empty strong {
+    color: var(--lv-ink);
+}
+
+/* Every conversation wears the sleeve of the last record shared in it. */
 #page-social .social-chat-row {
     position: relative;
+    z-index: 1;
     display: grid;
-    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-columns: 50px minmax(0, 1fr);
     align-items: center;
-    gap: 0.85rem;
+    gap: 0.7rem;
     width: 100%;
-    padding: 0.8rem 0.95rem;
-    overflow: clip;
-    color: inherit;
+    padding: 0.55rem 0.55rem 0.55rem 0.5rem;
+    color: var(--lv-ink);
     border: 0;
-    border-bottom: 1px solid var(--booth-rule-soft);
+    border-radius: 10px;
     background: none;
     cursor: pointer;
-    font: inherit;
     text-align: left;
-    transition: background-color 200ms ease;
+    transition: background-color 160ms ease;
 }
 
 #page-social .social-chat-row:hover {
-    background: color-mix(in srgb, var(--foreground) 3%, transparent);
-}
-
-#page-social .social-chat-row.is-active {
-    background: color-mix(in srgb, var(--foreground) 6%, transparent);
-}
-
-/* The conversation wears the cover of the last music shared in it. */
-#page-social .social-chat-wash {
-    position: absolute;
-    top: 50%;
-    right: -12%;
-    width: 72%;
-    height: 260%;
-    object-fit: cover;
-    filter: blur(26px) saturate(1.5);
-    opacity: 0.2;
-    transform: translateY(-50%);
-    mask-image: linear-gradient(90deg, transparent, #000 70%);
-    pointer-events: none;
-    transition: opacity 500ms ease;
-}
-
-#page-social .social-chat-row:hover .social-chat-wash {
-    opacity: 0.3;
-}
-
-#page-social .social-chat-row.is-active .social-chat-wash {
-    opacity: 0.5;
-}
-
-#page-social .social-chat-row > :not(.social-chat-wash) {
-    position: relative;
+    background: var(--lv-wash);
 }
 
 #page-social .social-chat-row.is-entering {
-    animation: booth-row-in 520ms var(--booth-ease) both;
+    animation: lv-enter 300ms var(--lv-ease);
 }
 
-@keyframes booth-row-in {
-    from {
-        opacity: 0;
-        transform: translateX(-12px);
-    }
+#page-social .social-chat-row.is-compact {
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 0.6rem;
+    padding: 0.45rem;
+}
+
+/* The person in front, the record tucked behind their shoulder. */
+#page-social .social-chat-face {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+}
+
+#page-social .social-chat-face > .social-avatar-wrap {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 84%;
+}
+
+#page-social .social-chat-face.has-sleeve .social-avatar-wrap > img,
+#page-social .social-chat-face.has-sleeve .social-avatar-wrap .social-group-avatar {
+    box-shadow: 0 0 0 2px var(--lv-paper);
 }
 
 #page-social .social-avatar-wrap {
     position: relative;
-    display: inline-grid;
-    flex: none;
-    place-items: center;
-    width: 44px;
-    height: 44px;
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
 }
 
 #page-social .social-avatar-wrap > img,
-#page-social .social-group-avatar {
+#page-social .social-avatar-wrap .social-group-avatar {
+    display: block;
     width: 100%;
     height: 100%;
-    border-radius: 50%;
     object-fit: cover;
+    border-radius: 50%;
 }
 
-/* A member who is playing wears a thin spinning groove around their avatar. */
-#page-social .social-avatar-wrap.is-live::before {
-    content: '';
-    position: absolute;
-    inset: -4px;
-    border-radius: 50%;
-    background: conic-gradient(
-        from 0deg,
-        color-mix(in srgb, var(--foreground) 70%, transparent) 0 22%,
-        color-mix(in srgb, var(--foreground) 12%, transparent) 22% 100%
-    );
-    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
-    animation: booth-spin 3.6s linear infinite;
+#page-social .social-avatar-wrap.is-live > img {
+    box-shadow:
+        0 0 0 2px var(--lv-paper),
+        0 0 0 3.5px color-mix(in oklab, var(--lv-live) 70%, transparent);
 }
 
 #page-social .social-presence-dot {
@@ -2280,77 +2382,26 @@
     bottom: -1px;
     width: 12px;
     height: 12px;
-    border: 2px solid var(--background);
+    border: 2.5px solid var(--lv-paper);
     border-radius: 50%;
-    background: color-mix(in srgb, var(--muted-foreground) 60%, var(--background));
-    transition: background-color 400ms ease;
+    background: var(--lv-ink-soft);
+    opacity: 0;
+    transform: scale(0.5);
+    transition:
+        opacity 200ms ease,
+        transform 260ms var(--lv-ease);
 }
 
-#page-social .social-presence-dot.is-online,
-#page-social .social-presence-dot.is-listening {
-    background: var(--booth-live);
-}
-
-#page-social .social-group-collage {
-    position: relative;
-    display: block;
-    width: 100%;
-    height: 100%;
-}
-
-#page-social .social-group-collage img {
-    position: absolute;
-    width: 66%;
-    height: 66%;
-    border: 2px solid var(--background);
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-#page-social .social-group-collage img:nth-child(1) {
-    top: 0;
-    left: 0;
-}
-
-#page-social .social-group-collage img:only-child {
-    width: 100%;
-    height: 100%;
-    border: 0;
-}
-
-#page-social .social-group-collage img:nth-child(2) {
-    right: 0;
-    bottom: 0;
-}
-
-#page-social .social-group-collage img:nth-child(3) {
-    top: 0;
-    right: 0;
-    width: 46%;
-    height: 46%;
-}
-
-#page-social .social-group-collage img:nth-child(4) {
-    bottom: 0;
-    left: 0;
-    width: 46%;
-    height: 46%;
-}
-
-#page-social .social-group-tile {
-    display: grid;
-    place-items: center;
-    width: 100%;
-    height: 100%;
-    color: var(--muted-foreground);
-    border: 1px dashed var(--booth-rule);
-    border-radius: 50%;
+#page-social .social-presence-dot.is-online {
+    background: var(--lv-live);
+    opacity: 1;
+    transform: none;
 }
 
 #page-social .social-chat-copy {
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
+    gap: 0.12rem;
     min-width: 0;
 }
 
@@ -2365,132 +2416,234 @@
 #page-social .social-chat-top strong {
     flex: 1;
     overflow: hidden;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     font-weight: 650;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-#page-social .social-chat-top time {
-    color: var(--muted-foreground);
-    font-size: 0.76rem;
+#page-social .social-chat-bottom time {
+    flex: none;
+    color: var(--lv-ink-soft);
+    font-size: 0.74rem;
     font-variant-numeric: tabular-nums;
 }
 
 #page-social .social-chat-bottom small {
     flex: 1;
     overflow: hidden;
-    color: var(--muted-foreground);
-    font-size: 0.84rem;
+    color: var(--lv-ink-soft);
+    font-size: 0.83rem;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
+#page-social .social-chat-row.is-unread .social-chat-top strong {
+    font-weight: 750;
+}
+
 #page-social .social-chat-row.is-unread .social-chat-bottom small {
-    color: var(--foreground);
-    font-weight: 550;
+    color: var(--lv-ink);
 }
 
 #page-social .social-chat-muted {
-    display: inline-flex;
-    color: var(--muted-foreground);
-    opacity: 0.7;
+    display: grid;
+    flex: none;
+    color: var(--lv-ink-soft);
 }
 
 #page-social .social-chat-unread {
-    display: inline-grid;
+    display: grid;
+    flex: none;
     place-items: center;
     min-width: 20px;
     height: 20px;
     padding: 0 6px;
     color: var(--background);
     border-radius: 999px;
-    background: var(--foreground);
-    font-size: 0.72rem;
+    background: var(--lv-ink);
+    font-size: 0.7rem;
     font-weight: 750;
     font-variant-numeric: tabular-nums;
 }
 
 #page-social .social-chat-unread.is-popping {
-    animation: booth-arm 460ms var(--booth-spring);
+    animation: lv-pop 380ms var(--lv-spring);
 }
 
-#page-social .social-rail-empty {
-    padding: 1.1rem 1rem;
-    color: var(--muted-foreground);
-    font-size: 0.86rem;
-    line-height: 1.5;
+@keyframes lv-pop {
+    from {
+        transform: scale(0.5);
+    }
+}
+
+#page-social .social-chat-sleeve {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: block;
+    width: 56%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: 3px;
+    box-shadow:
+        0 0 0 1px var(--lv-rule),
+        0 3px 8px var(--lv-shade);
+    transform-origin: left bottom;
+    transition: transform 260ms var(--lv-ease);
+}
+
+#page-social .social-chat-sleeve img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#page-social .social-chat-row:is(:hover, .is-active) .social-chat-sleeve {
+    transform: translate(2px, -2px) rotate(6deg);
+}
+
+#page-social .social-chat-row.is-muted .social-chat-sleeve {
+    opacity: 0.55;
+    filter: grayscale(0.6);
+}
+
+/* Group pictures: an uploaded picture, or the faces of the people in it. */
+#page-social .social-group-avatar {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+#page-social .social-group-collage {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#page-social .social-group-collage img {
+    position: absolute;
+    width: 66%;
+    height: 66%;
+    object-fit: cover;
+    border: 2px solid var(--lv-paper);
+    border-radius: 50%;
+}
+
+#page-social .social-group-collage img:nth-child(1) {
+    top: 0;
+    left: 0;
+}
+
+#page-social .social-group-collage img:nth-child(2) {
+    right: 0;
+    bottom: 0;
+}
+
+#page-social .social-group-collage img:nth-child(3) {
+    top: 0;
+    right: 0;
+    width: 44%;
+    height: 44%;
+}
+
+#page-social .social-group-collage img:nth-child(4) {
+    bottom: 0;
+    left: 0;
+    width: 44%;
+    height: 44%;
+}
+
+#page-social .social-group-collage.has-1 img {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+#page-social .social-group-tile {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    color: var(--lv-ink-soft);
+    border-radius: 50%;
+    background: var(--lv-wash-strong);
 }
 
 #page-social .social-rail-toolbar {
     display: flex;
     align-items: baseline;
-    gap: 0.5rem;
-    padding: 1rem 1rem 0.4rem;
+    justify-content: space-between;
+    margin: 0.6rem 0.95rem 0.3rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--lv-rule);
 }
 
 #page-social .social-rail-label {
+    color: var(--lv-ink);
     font-size: 0.84rem;
     font-weight: 650;
 }
 
 #page-social .social-rail-count {
-    color: var(--muted-foreground);
-    font-size: 0.8rem;
+    color: var(--lv-ink-soft);
+    font-size: 0.78rem;
     font-variant-numeric: tabular-nums;
 }
 
 #page-social .social-people-list {
-    overflow-y: auto;
-    padding: 0 0.4rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0 0.45rem 0.75rem;
 }
 
 #page-social .social-person {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.2rem;
-    border-radius: 11px;
+    padding-right: 0.35rem;
+    border-radius: 10px;
+    transition: background-color 160ms ease;
 }
 
 #page-social .social-person:hover {
-    background: color-mix(in srgb, var(--foreground) 3%, transparent);
+    background: var(--lv-wash);
 }
 
 #page-social .social-person-main {
-    display: flex;
-    flex: 1;
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
     align-items: center;
-    gap: 0.7rem;
+    gap: 0.65rem;
     min-width: 0;
-    padding: 0.4rem;
-    color: inherit;
+    padding: 0.45rem 0.2rem 0.45rem 0.5rem;
+    color: var(--lv-ink);
     border: 0;
     background: none;
     cursor: pointer;
-    font: inherit;
     text-align: left;
-}
-
-#page-social .social-person-main .social-avatar-wrap {
-    width: 36px;
-    height: 36px;
 }
 
 #page-social .social-person-copy {
     display: flex;
-    flex: 1;
     flex-direction: column;
     min-width: 0;
 }
 
-#page-social .social-person-copy > span {
+#page-social .social-person-name {
     display: flex;
-    align-items: center;
-    gap: 0.4rem;
+    align-items: baseline;
+    gap: 0.45rem;
+    min-width: 0;
 }
 
-#page-social .social-person-copy strong {
+#page-social .social-person-name strong {
     overflow: hidden;
     font-size: 0.88rem;
     font-weight: 650;
@@ -2498,116 +2651,118 @@
     white-space: nowrap;
 }
 
-#page-social .social-person-copy em {
-    padding: 0.05rem 0.4rem;
-    color: var(--muted-foreground);
-    border-radius: 999px;
-    background: var(--booth-wash-strong);
-    font-size: 0.68rem;
+#page-social .social-person-name em {
+    flex: none;
+    color: var(--lv-ink-soft);
+    font-size: 0.72rem;
     font-style: normal;
-    font-weight: 650;
+    font-weight: 600;
 }
 
 #page-social .social-person-copy small {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
     overflow: hidden;
-    color: var(--muted-foreground);
-    font-size: 0.78rem;
-    text-overflow: ellipsis;
+    color: var(--lv-ink-soft);
+    font-size: 0.8rem;
     white-space: nowrap;
 }
 
 #page-social .social-person-follow {
     display: grid;
     place-items: center;
-    width: 32px;
-    height: 32px;
-    flex: none;
-    color: var(--foreground);
-    border: 1px solid var(--booth-rule);
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    color: var(--lv-ink);
+    border: 1px solid var(--lv-rule-strong);
     border-radius: 50%;
     background: none;
     cursor: pointer;
     transition:
-        transform 260ms var(--booth-ease),
         background-color 160ms ease,
-        color 160ms ease;
+        color 160ms ease,
+        transform 140ms var(--lv-ease);
 }
 
-#page-social .social-person-follow:hover {
+#page-social .social-person-follow:hover,
+#page-social .social-person-follow.is-following {
     color: var(--background);
     border-color: transparent;
-    background: var(--foreground);
-    transform: scale(1.08);
+    background: var(--lv-ink);
 }
 
-#page-social .social-person-follow.is-following {
-    border-color: transparent;
-    background: var(--booth-wash-strong);
+#page-social .social-person-follow:active {
+    transform: scale(0.9);
 }
 
-/* Follow, unfollow and block land like a rubber stamp. */
-#page-social .is-stamping {
-    animation: booth-stamp 480ms var(--booth-spring);
+/* Follow and unfollow land like a stamp. */
+#page-social :is(.social-person-follow, .social-credit-action, .social-follow-button, .social-info-actions button).is-stamping {
+    animation: lv-stamp 460ms var(--lv-spring);
 }
 
-@keyframes booth-stamp {
-    0% {
-        transform: scale(1.5) rotate(-10deg);
-        opacity: 0;
-    }
-
-    55% {
-        transform: scale(0.92) rotate(2deg);
-        opacity: 1;
+@keyframes lv-stamp {
+    from {
+        transform: scale(1.35) rotate(-8deg);
     }
 }
 
-/* Thread. */
+/* ----------------------------------- thread ----------------------------------- */
+
 #page-social .social-thread-pane {
+    position: relative;
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+}
+
+#page-social .social-empty-state {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    padding: 2rem;
+    color: var(--lv-ink-soft);
+    text-align: center;
+}
+
+#page-social .social-empty-state h2 {
+    margin: 0.7rem 0 0;
+    color: var(--lv-ink);
+    font-family: var(--lv-display) !important;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+#page-social .social-empty-state p {
+    max-width: 36ch;
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
 }
 
 #page-social .social-thread {
-    position: relative;
     display: flex;
     flex: 1;
     flex-direction: column;
     min-height: 0;
-    animation: social-view-in 320ms var(--booth-ease);
-}
-
-#page-social .social-thread[hidden] {
-    display: none;
-}
-
-#page-social .social-thread-tint {
-    position: absolute;
-    top: -30%;
-    right: -12%;
-    width: 64%;
-    height: 85%;
-    object-fit: cover;
-    filter: blur(70px) saturate(1.5);
-    opacity: 0.3;
-    mask-image: radial-gradient(closest-side, #000, transparent);
-    pointer-events: none;
-    animation: booth-tint-in 1.2s ease;
-}
-
-@keyframes booth-tint-in {
-    from {
-        opacity: 0;
-    }
 }
 
 #page-social .social-thread-header {
-    position: relative;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.8rem 0.9rem 0.8rem 1rem;
-    border-bottom: 1px solid var(--booth-rule-soft);
+    min-height: 64px;
+    padding: 0.55rem 0.7rem 0.55rem 0.8rem;
+    border-bottom: 1px solid color-mix(in oklab, var(--spot) 22%, var(--lv-rule));
+    background: color-mix(in oklab, var(--spot) 11%, var(--lv-paper));
+    transition:
+        background-color 700ms var(--lv-ease),
+        border-color 700ms var(--lv-ease);
 }
 
 #page-social .social-thread-back {
@@ -2615,27 +2770,32 @@
 }
 
 #page-social .social-thread-person {
-    display: flex;
-    flex: 1;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
     align-items: center;
-    gap: 0.8rem;
+    flex: 1;
+    gap: 0.7rem;
     min-width: 0;
-    padding: 0.2rem;
-    color: inherit;
+    padding: 0.2rem 0.4rem 0.2rem 0.2rem;
+    color: var(--lv-ink);
     border: 0;
-    border-radius: 12px;
+    border-radius: 10px;
     background: none;
     cursor: pointer;
-    font: inherit;
     text-align: left;
+    transition: background-color 160ms ease;
 }
 
-#page-social .social-thread-avatar {
-    width: 42px;
-    height: 42px;
+#page-social .social-thread-person:hover {
+    background: var(--lv-wash);
+}
+
+#page-social .social-thread-avatar .social-presence-dot {
+    border-color: color-mix(in oklab, var(--spot) 11%, var(--lv-paper));
 }
 
 #page-social .social-thread-group-avatar {
+    display: block;
     width: 100%;
     height: 100%;
 }
@@ -2643,13 +2803,16 @@
 #page-social .social-thread-titles {
     display: flex;
     flex-direction: column;
+    gap: 0.1rem;
     min-width: 0;
 }
 
 #page-social .social-thread-titles strong {
     overflow: hidden;
-    font-size: 1rem;
+    font-family: var(--lv-display) !important;
+    font-size: 1.05rem;
     font-weight: 700;
+    letter-spacing: -0.01em;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -2657,10 +2820,10 @@
 #page-social .social-thread-titles small {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.4rem;
     overflow: hidden;
-    color: var(--muted-foreground);
-    font-size: 0.82rem;
+    color: var(--lv-ink-soft);
+    font-size: 0.8rem;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -2670,40 +2833,6 @@
     gap: 0.15rem;
 }
 
-#page-social .social-icon-button {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-}
-
-#page-social .social-icon-button[aria-pressed='true'] {
-    color: var(--foreground);
-    background: var(--booth-wash-strong);
-}
-
-#page-social .is-ringing svg {
-    transform-origin: 50% 10%;
-    animation: booth-ring 640ms ease;
-}
-
-@keyframes booth-ring {
-    15% {
-        transform: rotate(18deg);
-    }
-
-    35% {
-        transform: rotate(-14deg);
-    }
-
-    55% {
-        transform: rotate(8deg);
-    }
-
-    75% {
-        transform: rotate(-4deg);
-    }
-}
-
 #page-social .social-messages-stage {
     position: relative;
     flex: 1;
@@ -2711,19 +2840,47 @@
 }
 
 #page-social .social-messages {
+    display: flex;
+    flex-direction: column;
     height: 100%;
+    padding: 0.9rem 1.1rem 1.1rem;
     overflow-y: auto;
-    padding: 0.5rem 1.4rem 1.25rem;
+    overscroll-behavior: contain;
+}
+
+#page-social .social-new-thread {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+    margin: auto;
+    padding: 2rem 1rem;
+    color: var(--lv-ink-soft);
+    text-align: center;
+}
+
+#page-social .social-new-thread strong {
+    margin-top: 0.6rem;
+    color: var(--lv-ink);
+    font-family: var(--lv-display) !important;
+    font-size: 1.15rem;
+}
+
+#page-social .social-new-thread span:last-child {
+    max-width: 38ch;
+    font-size: 0.88rem;
+    line-height: 1.5;
 }
 
 #page-social .social-day-spacer {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin: 1.2rem 0 0.4rem;
-    color: var(--muted-foreground);
+    gap: 0.8rem;
+    margin: 1.1rem 0 0.4rem;
+    color: var(--lv-ink-soft);
     font-size: 0.76rem;
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
 }
 
 #page-social .social-day-spacer::before,
@@ -2731,141 +2888,209 @@
     content: '';
     flex: 1;
     height: 1px;
-    background: var(--booth-rule-soft);
+    background: var(--lv-rule);
+}
+
+#page-social .social-messages > .social-day-spacer:first-child {
+    margin-top: 0.2rem;
 }
 
 #page-social .social-message-row {
-    position: relative;
     display: flex;
     align-items: flex-end;
-    gap: 0.7rem;
-    margin-top: 0.85rem;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
 }
 
 #page-social .social-message-row.is-grouped {
-    margin-top: 0.22rem;
+    margin-top: 0.18rem;
 }
 
 #page-social .social-message-row.is-own {
-    justify-content: flex-end;
+    flex-direction: row-reverse;
+}
+
+#page-social .social-message-row.is-entering {
+    animation: lv-message-in 260ms var(--lv-ease);
+}
+
+#page-social .social-message-row.is-own.is-entering {
+    animation-name: lv-message-send;
+    transform-origin: right bottom;
+}
+
+@keyframes lv-message-in {
+    from {
+        opacity: 0;
+        transform: translateX(-8px);
+    }
+}
+
+@keyframes lv-message-send {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.97);
+    }
 }
 
 #page-social .social-message-avatar {
     display: block;
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     flex: none;
-    align-self: flex-start;
-    margin-top: 1.35rem;
 }
 
 #page-social .social-message-avatar img {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
-}
-
-#page-social .social-message-row.is-grouped .social-message-avatar {
-    margin-top: 0;
+    border-radius: 50%;
 }
 
 #page-social .social-message-stack {
     display: flex;
     flex-direction: column;
-    max-width: min(76%, 560px);
+    align-items: flex-start;
     min-width: 0;
+    max-width: min(78%, 560px);
 }
 
 #page-social .social-message-row.is-own .social-message-stack {
     align-items: flex-end;
 }
 
-#page-social .social-message-row:has(.social-snippet) .social-message-stack {
-    width: min(92%, 440px);
-    max-width: none;
-}
-
 #page-social .social-message-author {
     display: flex;
     align-items: baseline;
     gap: 0.5rem;
-    margin: 0 0 0.3rem 0.1rem;
-    font-size: 0.84rem;
+    margin: 0 0 0.25rem 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 650;
 }
 
-#page-social .social-message-author a {
-    color: var(--foreground);
-    font-weight: 650;
-    text-decoration: none;
+#page-social .social-message-author a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
 }
 
 #page-social .social-message-author time {
-    color: var(--muted-foreground);
-    font-size: 0.74rem;
+    color: var(--lv-ink-soft);
+    font-size: 0.72rem;
+    font-weight: 400;
     font-variant-numeric: tabular-nums;
 }
 
 #page-social .social-message-bubble {
     position: relative;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    column-gap: 0.65rem;
     max-width: 100%;
-    padding: 0.6rem 0.9rem;
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--foreground) 8%, var(--booth-panel-deep));
+    padding: 0.5rem 0.75rem 0.45rem;
+    color: var(--lv-ink);
+    border-radius: 16px 16px 16px 6px;
+    background: color-mix(in oklab, var(--foreground) 8%, var(--lv-paper-deep));
     font-size: 0.95rem;
     line-height: 1.45;
-}
-
-#page-social .social-message-row.is-own .social-message-bubble {
-    background: color-mix(in srgb, var(--foreground) 15%, var(--booth-panel-deep));
-}
-
-#page-social .social-message-bubble p {
-    margin: 0;
-    white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
 
-#page-social .social-message-row .social-message-bubble.has-card,
-#page-social .social-message-row .social-message-bubble.is-image-only {
+#page-social .social-message-row.is-own .social-message-bubble {
+    border-radius: 16px 16px 6px;
+    background: color-mix(in oklab, var(--foreground) 15%, var(--lv-paper-deep));
+}
+
+#page-social .social-message-bubble p {
+    display: inline;
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+/* A shared record is its own object: no second container around it. A note sent
+   with it keeps its bubble, stacked on top. */
+#page-social .social-message-bubble.has-card,
+#page-social .social-message-row.is-own .social-message-bubble.has-card {
+    display: flex;
     flex-direction: column;
-    align-self: stretch;
-    align-items: stretch;
+    align-items: flex-start;
+    gap: 0.3rem;
     padding: 0;
     background: none;
 }
 
-#page-social .social-message-bubble.has-card > p {
-    padding: 0.6rem 0.9rem;
-    margin-bottom: 0.35rem;
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--foreground) 8%, var(--booth-panel-deep));
+#page-social .social-message-row.is-own .social-message-bubble.has-card {
+    align-items: flex-end;
 }
 
-#page-social .social-message-bubble.has-card .social-message-foot,
-#page-social .social-message-bubble.is-image-only .social-message-foot {
-    align-self: flex-end;
-    margin-top: 0.3rem;
+#page-social .social-message-bubble.has-card p {
+    display: block;
+    padding: 0.5rem 0.75rem;
+    border-radius: 16px 16px 16px 6px;
+    background: color-mix(in oklab, var(--foreground) 8%, var(--lv-paper-deep));
+}
+
+#page-social .social-message-row.is-own .social-message-bubble.has-card p {
+    border-radius: 16px 16px 6px;
+    background: color-mix(in oklab, var(--foreground) 15%, var(--lv-paper-deep));
+}
+
+#page-social .social-message-bubble.is-image-only {
+    padding: 0;
+    background: none;
+}
+
+#page-social .social-message-image {
+    display: block;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 12px;
+    background: var(--lv-paper);
+    cursor: zoom-in;
+}
+
+#page-social .social-message-image img {
+    display: block;
+    max-width: min(320px, 100%);
+    max-height: 360px;
+    object-fit: cover;
+    transition: transform 420ms var(--lv-ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    #page-social .social-message-image:hover img {
+        transform: scale(1.02);
+    }
 }
 
 #page-social .social-message-foot {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    margin-left: auto;
-    color: var(--muted-foreground);
-    font-size: 0.72rem;
+    gap: 0.25rem;
+    float: right;
+    margin: 0.3rem -0.2rem -0.15rem 0.7rem;
+    color: var(--lv-ink-soft);
+    font-size: 0.68rem;
     font-variant-numeric: tabular-nums;
-    white-space: nowrap;
+    line-height: 1;
+}
+
+#page-social .social-message-bubble.has-card .social-message-foot {
+    float: none;
+    margin: 0.1rem 0.3rem 0;
+}
+
+#page-social .social-message-bubble.is-image-only .social-message-foot {
+    position: absolute;
+    right: 0.5rem;
+    bottom: 0.45rem;
+    margin: 0;
+    padding: 0.2rem 0.4rem;
+    color: #fff;
+    border-radius: 999px;
+    background: rgb(0 0 0 / 0.5);
 }
 
 #page-social .social-message-ticks {
-    display: inline-flex;
-    color: var(--muted-foreground);
+    display: inline-grid;
+    color: var(--lv-ink-soft);
 }
 
 #page-social .social-message-ticks.is-pending {
@@ -2873,219 +3098,231 @@
 }
 
 #page-social .social-message-ticks.is-read {
-    color: var(--foreground);
+    color: var(--lv-ink);
 }
 
 #page-social .social-message-ticks.is-stamped {
-    animation: booth-stamp 460ms var(--booth-spring);
+    animation: lv-stamp 460ms var(--lv-spring);
 }
 
-#page-social .social-message-row.is-entering {
-    animation: booth-message-in 420ms var(--booth-spring) both;
-}
-
-#page-social .social-message-row.is-own.is-entering {
-    transform-origin: 100% 100%;
-    animation-name: booth-message-send;
-}
-
-@keyframes booth-message-in {
-    from {
-        opacity: 0;
-        transform: translateX(-14px) scale(0.97);
-    }
-}
-
-@keyframes booth-message-send {
-    from {
-        opacity: 0;
-        transform: translateY(18px) scale(0.94);
-    }
-}
-
-/* The pin waits beside the bubble, on the side facing the thread's center. */
+/* The pin waits beside the bubble, facing the middle of the thread. */
 #page-social .social-message-pin {
     align-self: center;
-    opacity: 0;
-    transform: scale(0.85);
-    transition:
-        opacity 160ms ease,
-        transform 240ms var(--booth-ease);
-}
-
-#page-social .social-message-row.is-own .social-message-pin {
-    order: -1;
-}
-
-#page-social .social-message-row:hover .social-message-pin,
-#page-social .social-message-pin.is-pinned,
-#page-social .social-message-pin:focus-within {
-    opacity: 1;
-    transform: none;
+    width: 30px;
+    flex: none;
 }
 
 #page-social .social-message-pin button {
     display: grid;
     place-items: center;
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     padding: 0;
-    color: var(--muted-foreground);
-    border: 1px solid var(--booth-rule-soft);
+    color: var(--lv-ink-soft);
+    border: 0;
     border-radius: 50%;
-    background: var(--booth-panel);
+    background: none;
     cursor: pointer;
+    opacity: 0;
+    transform: scale(0.85);
+    transition:
+        opacity 160ms ease,
+        transform 200ms var(--lv-ease),
+        background-color 160ms ease,
+        color 160ms ease;
 }
 
-#page-social .social-message-pin button:hover,
+#page-social .social-message-row:is(:hover, :focus-within) .social-message-pin button,
 #page-social .social-message-pin.is-pinned button {
-    color: var(--background);
-    border-color: transparent;
-    background: var(--foreground);
+    opacity: 1;
+    transform: none;
 }
 
-#page-social .social-message-pin button.is-dropping svg {
-    animation: booth-pin-drop 520ms var(--booth-spring);
+#page-social .social-message-pin button:hover {
+    color: var(--lv-ink);
+    background: var(--lv-wash-strong);
 }
 
-@keyframes booth-pin-drop {
+#page-social .social-message-pin.is-pinned button {
+    color: var(--lv-ink);
+}
+
+#page-social .social-message-pin.is-pinned svg {
+    fill: currentcolor;
+}
+
+#page-social .social-message-pin button.is-dropping {
+    animation: lv-pin-drop 500ms var(--lv-spring);
+}
+
+@keyframes lv-pin-drop {
     from {
-        opacity: 0;
-        transform: translateY(-10px) rotate(-30deg);
+        transform: translateY(-10px) rotate(-20deg);
     }
 }
 
-#page-social .social-message-image {
-    display: block;
-    max-width: 340px;
-    padding: 0;
-    overflow: hidden;
-    border: 0;
-    border-radius: 12px;
-    background: none;
-    cursor: zoom-in;
-}
-
-#page-social .social-message-image img {
-    display: block;
-    width: 100%;
-    max-height: 360px;
-    object-fit: cover;
-    transition: transform 500ms var(--booth-ease);
-}
-
-#page-social .social-message-image:hover img {
-    transform: scale(1.03);
-}
-
-#page-social .social-new-thread,
-#page-social .social-empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    height: 100%;
-    padding: 2rem;
-    color: var(--muted-foreground);
-    text-align: center;
-}
-
-#page-social .social-new-thread strong,
-#page-social .social-empty-state h2 {
-    margin: 0;
-    color: var(--foreground);
-    font-family: var(--booth-display);
-    font-size: 1.2rem;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-}
-
-#page-social .social-empty-state p,
-#page-social .social-new-thread > span:last-child {
-    max-width: 36ch;
-    margin: 0;
-    font-size: 0.9rem;
-    line-height: 1.5;
-}
-
-#page-social .social-empty-mark,
-#page-social .social-new-thread-mark {
+/* A shared record inside a conversation. */
+#page-social .social-sleeve-card {
     display: grid;
-    place-items: center;
-    width: 76px;
-    height: 76px;
-    margin-bottom: 0.6rem;
-    color: var(--muted-foreground);
-    border: 1.5px dashed var(--booth-rule);
-    border-radius: 50%;
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    width: 340px;
+    max-width: 100%;
+    padding: 0.4rem 0.5rem 0.4rem 0.4rem;
+    border: 1px solid color-mix(in oklab, var(--spot) 22%, var(--lv-rule));
+    border-radius: 12px;
+    background: color-mix(in oklab, var(--spot) 14%, var(--lv-paper));
+    transition: background-color 700ms var(--lv-ease);
 }
 
-#page-social .social-new-thread-mark {
+#page-social .social-sleeve-art {
+    display: block;
     width: 56px;
     height: 56px;
-}
-
-/* Snippets arrive as a mini deck: the cover spins while the excerpt plays. */
-#page-social .social-snippet {
-    --tint: var(--foreground);
-
-    position: relative;
-    display: grid;
-    grid-template-columns: 76px minmax(0, 1fr);
-    align-items: center;
-    gap: 1rem;
-    width: 100%;
-    padding: 0.85rem 1rem 0.85rem 0.85rem;
-    overflow: clip;
-    border: 1px solid color-mix(in srgb, var(--tint) 22%, var(--booth-rule-soft));
-    border-radius: 14px;
-    background:
-        radial-gradient(90% 160% at 0% 50%, color-mix(in srgb, var(--tint) 14%, transparent), transparent 70%),
-        var(--booth-panel-deep);
-}
-
-#page-social .social-snippet-disc {
-    position: relative;
-    display: grid;
-    place-items: center;
-    width: 76px;
-    height: 76px;
-    color: var(--muted-foreground);
-    border-radius: 50%;
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tint) 60%, transparent);
-}
-
-#page-social .social-snippet-platter {
-    position: absolute;
-    inset: 5px;
     overflow: hidden;
-    border-radius: 50%;
-    background: var(--booth-wash);
+    border-radius: 4px;
+    box-shadow: 0 4px 10px var(--lv-shade);
+    transition: transform 260ms var(--lv-ease);
 }
 
-#page-social .social-snippet-platter::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: radial-gradient(circle, rgb(0 0 0 / 0.6) 0 4%, transparent 4.5%);
-}
-
-#page-social .social-snippet-platter img {
+#page-social .social-sleeve-art img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-#page-social .social-snippet.is-playing .social-snippet-platter {
-    animation: booth-spin 7.2s linear infinite;
+#page-social .social-sleeve-card:hover .social-sleeve-art {
+    transform: rotate(-4deg) translateX(-2px);
+}
+
+#page-social .social-sleeve-placeholder {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    color: var(--spot-ink);
+    background: var(--lv-wash);
+}
+
+#page-social .social-sleeve-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+#page-social .social-sleeve-title {
+    overflow: hidden;
+    font-size: 0.92rem;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#page-social .social-sleeve-title:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+#page-social .social-sleeve-copy small {
+    overflow: hidden;
+    color: var(--lv-ink-soft);
+    font-size: 0.78rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#page-social :is(.social-sleeve-play, .social-snippet-play) {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    flex: none;
+    padding: 0;
+    color: var(--background);
+    border: 0;
+    border-radius: 50%;
+    background: var(--lv-ink);
+    cursor: pointer;
+    transition: transform 160ms var(--lv-ease);
+}
+
+#page-social :is(.social-sleeve-play, .social-snippet-play):hover {
+    transform: scale(1.07);
+}
+
+#page-social .social-sleeve-open {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    color: var(--lv-ink);
+    border: 1px solid var(--lv-rule-strong);
+    border-radius: 50%;
+    transition: background-color 160ms ease;
+}
+
+#page-social .social-sleeve-open:hover {
+    background: var(--lv-wash-strong);
+}
+
+/* A snippet: the sleeve, the excerpt framed inside the track's groove. */
+#page-social .social-snippet {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    align-items: center;
+    gap: 0.8rem;
+    width: 360px;
+    max-width: 100%;
+    padding: 0.5rem 0.6rem 0.5rem 0.5rem;
+    border: 1px solid color-mix(in oklab, var(--spot) 22%, var(--lv-rule));
+    border-radius: 12px;
+    background: color-mix(in oklab, var(--spot) 14%, var(--lv-paper));
+}
+
+#page-social .social-snippet-art {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    overflow: hidden;
+    color: var(--spot-ink);
+    border-radius: 4px;
+    background: var(--lv-wash);
+    box-shadow: 0 4px 10px var(--lv-shade);
+}
+
+#page-social .social-snippet-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#page-social .social-snippet-live {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: rgb(0 0 0 / 0.45);
+    opacity: 0;
+    transition: opacity 200ms ease;
+}
+
+#page-social .social-snippet.is-playing .social-snippet-live {
+    opacity: 1;
+}
+
+#page-social .social-snippet:not(.is-playing) .social-snippet-live .social-eq i {
+    animation-play-state: paused;
 }
 
 #page-social .social-snippet-content {
     display: flex;
     flex-direction: column;
-    gap: 0.45rem;
+    gap: 0.3rem;
     min-width: 0;
 }
 
@@ -3093,50 +3330,56 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
-    font-size: 0.9rem;
-    line-height: 1.3;
+}
+
+#page-social .social-snippet-copy :is(strong, small) {
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 #page-social .social-snippet-copy strong {
-    overflow: hidden;
+    font-size: 0.9rem;
     font-weight: 650;
-    text-overflow: ellipsis;
 }
 
 #page-social .social-snippet-copy small {
-    overflow: hidden;
-    color: var(--muted-foreground);
-    font-size: 0.84rem;
-    text-overflow: ellipsis;
+    color: var(--lv-ink-soft);
+    font-size: 0.78rem;
 }
 
 #page-social .social-snippet-deck {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.55rem;
+}
+
+#page-social .social-snippet-play {
+    width: 34px;
+    height: 34px;
 }
 
 #page-social .social-snippet-wave-wrap {
     position: relative;
     flex: 1;
-    height: 52px;
-    padding-bottom: 14px;
+    height: 36px;
+    min-width: 0;
 }
 
 #page-social .social-snippet-wave {
     position: absolute;
-    inset: 0 0 14px;
+    inset: 0;
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 1.5px;
+    overflow: hidden;
 }
 
 #page-social .social-snippet-wave i {
     flex: 1;
-    min-width: 1px;
+    min-width: 0;
     border-radius: 1px;
-    background: color-mix(in srgb, var(--tint) 34%, transparent);
+    background: var(--lv-rule-strong);
 }
 
 #page-social .social-snippet-wave.is-selected {
@@ -3144,280 +3387,166 @@
 }
 
 #page-social .social-snippet-wave.is-selected i {
-    background: var(--tint);
+    background: var(--spot-ink);
 }
 
 #page-social .social-snippet-selection {
     position: absolute;
-    top: -3px;
-    bottom: 11px;
+    top: -2px;
+    bottom: -2px;
     left: var(--selection-start);
-    right: calc(100% - var(--selection-end));
-}
-
-#page-social .social-snippet-selection::before,
-#page-social .social-snippet-selection::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 6px;
-    border: 2px solid var(--foreground);
-}
-
-#page-social .social-snippet-selection::before {
-    left: -3px;
-    border-right: 0;
-}
-
-#page-social .social-snippet-selection::after {
-    right: -3px;
-    border-left: 0;
+    width: calc(var(--selection-end) - var(--selection-start));
+    border-right: 2px solid var(--lv-ink);
+    border-left: 2px solid var(--lv-ink);
 }
 
 #page-social .social-snippet-range {
-    position: absolute;
-    bottom: -2px;
-    left: calc((var(--selection-start) + var(--selection-end)) / 2);
-    color: var(--muted-foreground);
-    font-size: 0.72rem;
+    color: var(--lv-ink-soft);
+    font-size: 0.74rem;
     font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-    transform: translateX(-50%);
 }
 
-/* Plain music shares inside a conversation (markup from share.js). */
-#page-social .social-message-share {
-    position: relative;
-    display: grid;
-    grid-template-columns: 56px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0.85rem;
-    width: min(380px, 100%);
-    padding: 0.5rem 0.75rem 0.5rem 0.5rem;
-    overflow: clip;
-    border: 1px solid var(--booth-rule-soft);
-    border-radius: 12px;
-    background: var(--booth-panel-deep);
-}
+/* --------------------------------- composer --------------------------------- */
 
-#page-social .social-message-share .social-track-backdrop {
-    position: absolute;
-    inset: -40%;
-    width: 180%;
-    height: 180%;
-    object-fit: cover;
-    filter: blur(32px) saturate(1.4);
-    opacity: 0.22;
-    pointer-events: none;
-}
-
-#page-social .social-message-share .social-track-shade {
-    display: none;
-}
-
-#page-social .social-message-share > :not(.social-track-backdrop) {
-    position: relative;
-}
-
-#page-social .social-share-art {
-    position: relative;
-    width: 56px;
-    height: 56px;
-    overflow: hidden;
-    border-radius: 7px;
-}
-
-#page-social .social-share-art-link,
-#page-social .social-share-art-link img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-#page-social .social-share-placeholder {
-    display: grid;
-    place-items: center;
-    width: 100%;
-    height: 100%;
-    color: var(--muted-foreground);
-    background: var(--booth-wash);
-    font-weight: 700;
-}
-
-#page-social .social-share-overlay {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: 0;
-    color: #fff;
-    border: 0;
-    background: rgb(0 0 0 / 0.38);
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 180ms ease;
-}
-
-#page-social .social-message-share:hover .social-share-overlay,
-#page-social .social-share-overlay:focus-visible {
-    opacity: 1;
-}
-
-#page-social .social-share-meta {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    color: var(--foreground);
-    text-decoration: none;
-    line-height: 1.3;
-}
-
-#page-social .social-share-meta em {
-    color: var(--muted-foreground);
-    font-size: 0.72rem;
-    font-style: normal;
-    text-transform: capitalize;
-}
-
-#page-social .social-share-meta strong,
-#page-social .social-share-meta small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-#page-social .social-share-meta strong {
-    font-size: 0.9rem;
-    font-weight: 650;
-}
-
-#page-social .social-share-meta small {
-    color: var(--muted-foreground);
-    font-size: 0.8rem;
-}
-
-#page-social .social-share-open {
-    display: grid;
-    place-items: center;
-    width: 30px;
-    height: 30px;
-    color: var(--muted-foreground);
-    border-radius: 50%;
-    text-decoration: none;
-}
-
-#page-social .social-share-open:hover {
-    color: var(--foreground);
-    background: var(--booth-wash-strong);
-}
-
-/* Composer: a slim control strip docked under the thread. */
 #page-social .social-attach-strip {
-    position: relative;
-    padding: 0 1rem;
+    padding: 0 0.85rem 0.45rem;
+}
+
+#page-social .social-attach-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.3rem;
+    border: 1px solid var(--lv-rule);
+    border-radius: 10px;
+    background: var(--lv-paper);
+    font-size: 0.84rem;
+    animation: lv-chip-in 260ms var(--lv-ease);
+}
+
+#page-social .social-attach-chip img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 6px;
 }
 
 #page-social .social-composer {
-    position: relative;
     display: flex;
     align-items: flex-end;
-    gap: 0.2rem;
-    margin: 0.5rem 0.75rem 0.75rem;
-    padding: 0.35rem 0.35rem 0.35rem 0.45rem;
-    border: 1px solid var(--booth-rule-soft);
-    border-radius: 16px;
-    background: var(--booth-panel);
+    gap: 0.25rem;
+    margin: 0 0.8rem 0.8rem;
+    padding: 0.3rem 0.3rem 0.3rem 0.35rem;
+    border: 1px solid var(--lv-rule);
+    border-radius: 22px;
+    background: var(--lv-paper);
     transition:
         border-color 200ms ease,
-        box-shadow 320ms var(--booth-ease);
+        box-shadow 260ms var(--lv-ease);
 }
 
 #page-social .social-composer:focus-within {
-    border-color: color-mix(in srgb, var(--foreground) 24%, var(--border));
-    box-shadow: 0 14px 40px rgb(0 0 0 / 0.25);
+    border-color: color-mix(in oklab, var(--foreground) 45%, transparent);
+    box-shadow: var(--lv-lift);
 }
 
-#page-social #social-message-input {
+#page-social .social-composer-tool {
+    width: 38px;
+    height: 38px;
+}
+
+#social-message-input {
     flex: 1;
     min-width: 0;
-    min-height: 42px;
+    min-height: 38px;
     max-height: 140px;
-    padding: 0.62rem 0.5rem;
-    color: var(--foreground);
+    padding: 0.55rem 0.35rem;
+    color: var(--lv-ink);
     border: 0;
     outline: none;
     background: none;
     resize: none;
     font: inherit;
     font-size: 0.95rem;
-    line-height: 1.45;
+    line-height: 1.4;
 }
 
-#page-social .social-composer .social-send-button {
-    width: 42px;
-    height: 42px;
-    flex: 0 0 42px;
+#social-message-input::placeholder {
+    color: var(--lv-ink-soft);
+}
+
+#page-social .social-send-button {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
     border-radius: 50%;
+    transition:
+        transform 160ms var(--lv-ease),
+        opacity 200ms ease;
 }
 
-#page-social .social-composer .social-send-button:hover:enabled {
-    transform: scale(1.06);
+#page-social .social-send-button:hover:enabled {
+    border-radius: 50%;
+    transform: translateY(-1px);
 }
 
-#page-social .social-composer .social-send-button:disabled {
-    color: var(--muted-foreground);
-    background: var(--booth-wash-strong);
-    opacity: 1;
+#page-social .social-send-button:disabled {
+    opacity: 0.3;
 }
 
 #page-social .social-send-button.is-launching svg {
-    animation: booth-launch 560ms var(--booth-ease);
+    animation: lv-launch 420ms var(--lv-ease);
 }
 
-@keyframes booth-launch {
+@keyframes lv-launch {
     40% {
         opacity: 0;
-        transform: translateX(16px) translateY(-6px);
+        transform: translate(10px, -4px);
     }
 
     41% {
         opacity: 0;
-        transform: translateX(-14px);
+        transform: translate(-8px, 2px);
     }
 }
 
-/* Friendship gate. */
+/* The friendship gate veils a thread you cannot write in yet. */
 #page-social .social-follow-gate {
     position: absolute;
-    inset: 0;
-    z-index: 5;
+    inset: 64px 0 0;
+    z-index: 4;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.85rem;
+    gap: 0.9rem;
     padding: 2rem;
-    background: color-mix(in srgb, var(--background) 82%, transparent);
-    backdrop-filter: blur(8px);
     text-align: center;
-    animation: social-view-in 320ms var(--booth-ease);
+    background: color-mix(in oklab, var(--background) 84%, transparent);
+    backdrop-filter: blur(8px);
+    animation: lv-fade 240ms ease;
+}
+
+@keyframes lv-fade {
+    from {
+        opacity: 0;
+    }
 }
 
 #page-social .social-follow-gate img {
-    width: 76px;
-    height: 76px;
-    border-radius: 50%;
+    width: 72px;
+    height: 72px;
     object-fit: cover;
-    filter: grayscale(1);
-    box-shadow: 0 0 0 6px var(--booth-wash);
+    border-radius: 50%;
+    box-shadow: 0 0 0 6px var(--lv-wash-strong);
+    filter: grayscale(0.7);
 }
 
 #page-social .social-follow-gate p {
     max-width: 34ch;
     margin: 0;
-    color: var(--muted-foreground);
+    color: var(--lv-ink-soft);
+    font-size: 0.92rem;
     line-height: 1.5;
 }
 
@@ -3430,64 +3559,58 @@
     color: var(--background);
     border: 0;
     border-radius: 999px;
-    background: var(--foreground);
+    background: var(--lv-ink);
     cursor: pointer;
-    font: inherit;
-    font-weight: 650;
-    transition: transform 260ms var(--booth-ease);
+    font-weight: 700;
+    transition: transform 160ms var(--lv-ease);
 }
 
 #page-social .social-follow-button:hover {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
 
-/* Details panel. */
+#page-social .social-follow-button:active {
+    transform: scale(0.96);
+}
+
+/* ------------------------------- details panel ------------------------------- */
+
 #page-social .social-info-panel {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    padding: 1.1rem 1rem 1.3rem;
     overflow-y: auto;
-    padding: 1.25rem;
-    background-color: var(--background);
-    background-image: linear-gradient(var(--booth-panel-deep), var(--booth-panel-deep));
-    animation: booth-panel-in 380ms var(--booth-ease);
+    border-left: 1px solid var(--lv-rule);
+    background: var(--lv-paper);
+    animation: lv-panel-in 320ms var(--lv-drawer);
 }
 
 #page-social .social-info-panel.is-closing {
-    animation: booth-panel-out 240ms var(--booth-ease) forwards;
+    animation: lv-panel-out 200ms var(--lv-ease) forwards;
 }
 
-@keyframes booth-panel-in {
+@keyframes lv-panel-in {
     from {
         opacity: 0;
-        transform: translateX(18px);
+        transform: translateX(16px);
     }
 }
 
-@keyframes booth-panel-out {
+@keyframes lv-panel-out {
     to {
         opacity: 0;
-        transform: translateX(18px);
+        transform: translateX(16px);
     }
 }
 
 #page-social .social-info-close {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    display: grid;
-    place-items: center;
-    width: 34px;
-    height: 34px;
-    margin: 0 0 -34px auto;
-    padding: 0;
-    color: var(--muted-foreground);
-    border: 1px solid var(--booth-rule-soft);
-    border-radius: 50%;
-    background: var(--booth-panel);
-    cursor: pointer;
-}
-
-#page-social .social-info-close:hover {
-    color: var(--background);
-    background: var(--foreground);
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
+    z-index: 1;
+    width: 36px;
+    height: 36px;
 }
 
 #page-social .social-info-hero {
@@ -3495,103 +3618,65 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.5rem 0 1.25rem;
+    gap: 0.2rem;
+    padding: 0.8rem 0 1rem;
     text-align: center;
 }
 
-#page-social .social-info-hero > img,
-#page-social .social-group-avatar-editor {
-    width: 88px;
-    height: 88px;
-    margin-bottom: 0.6rem;
-    border-radius: 50%;
-    object-fit: cover;
-    box-shadow:
-        0 0 0 4px var(--background),
-        0 0 0 5px var(--booth-rule);
+#page-social .social-info-face,
+#page-social .social-info-hero > .social-group-avatar-editor {
+    width: 76px;
+    height: 76px;
+    margin-bottom: 0.5rem;
 }
 
-#page-social .social-info-hero strong {
-    position: relative;
-    font-family: var(--booth-display);
+#page-social .social-info-face {
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+#page-social .social-info-hero > strong {
+    font-family: var(--lv-display) !important;
     font-size: 1.25rem;
     font-weight: 700;
+    letter-spacing: -0.01em;
 }
 
-#page-social .social-info-hero small {
-    color: var(--muted-foreground);
-    font-size: 0.86rem;
+#page-social .social-info-hero > small {
+    color: var(--lv-ink-soft);
+    font-size: 0.84rem;
 }
 
-#page-social .social-info-hero p {
+#page-social .social-info-about {
     max-width: 30ch;
-    margin: 0.4rem 0 0;
-    color: var(--muted-foreground);
-    font-size: 0.88rem;
-    line-height: 1.45;
+    margin: 0.5rem 0 0;
+    color: var(--lv-note-ink);
+    font-family: var(--lv-notes) !important;
+    font-size: 0.92rem;
+    line-height: 1.5;
 }
 
-#page-social .social-info-hero.is-struck strong::after {
+#page-social .social-info-hero.is-struck::after {
     content: '';
     position: absolute;
-    top: 52%;
-    left: -4px;
-    right: -4px;
+    top: 46px;
+    left: 10%;
+    width: 80%;
     height: 2px;
-    background: currentcolor;
-    transform-origin: left;
-    animation: booth-strike 420ms var(--booth-ease) both;
+    background: var(--lv-ink);
+    transform-origin: left center;
+    animation: lv-strike 460ms var(--lv-ease) forwards;
 }
 
-#page-social .social-info-hero.is-struck > img {
+#page-social .social-info-hero.is-struck .social-info-face {
     filter: grayscale(1);
-    transition: filter 400ms ease;
+    transition: filter 300ms ease;
 }
 
-@keyframes booth-strike {
+@keyframes lv-strike {
     from {
         transform: scaleX(0);
     }
-}
-
-#page-social .social-info-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.4rem;
-    margin-top: 0.9rem;
-}
-
-#page-social .social-info-actions :is(a, button) {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    height: 34px;
-    padding: 0 0.8rem;
-    color: var(--foreground);
-    border: 1px solid var(--booth-rule);
-    border-radius: 999px;
-    background: none;
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.82rem;
-    font-weight: 600;
-    text-decoration: none;
-    transition:
-        background-color 160ms ease,
-        transform 260ms var(--booth-ease);
-}
-
-#page-social .social-info-actions :is(a, button):hover {
-    background: var(--booth-wash-strong);
-    transform: translateY(-1px);
-}
-
-#page-social .social-info-actions .is-following {
-    color: var(--background);
-    border-color: transparent;
-    background: var(--foreground);
 }
 
 #page-social .social-group-avatar-editor {
@@ -3600,60 +3685,120 @@
     cursor: pointer;
 }
 
+#page-social .social-group-avatar-editor .social-group-avatar,
+#page-social .social-group-avatar-editor .social-group-collage,
+#page-social .social-group-avatar-editor .social-group-tile {
+    width: 100%;
+    height: 100%;
+}
+
 #page-social .social-group-avatar-action {
     position: absolute;
     right: -2px;
     bottom: -2px;
     display: grid;
     place-items: center;
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     color: var(--background);
-    border: 2px solid var(--background);
+    border: 2px solid var(--lv-paper);
     border-radius: 50%;
-    background: var(--foreground);
+    background: var(--lv-ink);
+    transition: transform 200ms var(--lv-ease);
+}
+
+#page-social .social-group-avatar-editor:hover .social-group-avatar-action {
+    transform: scale(1.1);
+}
+
+#page-social .social-info-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.35rem;
+    margin-top: 0.9rem;
+}
+
+#page-social .social-info-actions :is(a, button) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    height: 32px;
+    padding: 0 0.7rem;
+    color: var(--lv-ink);
+    border: 1px solid var(--lv-rule-strong);
+    border-radius: 999px;
+    background: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition:
+        background-color 160ms ease,
+        color 160ms ease,
+        transform 140ms var(--lv-ease);
+}
+
+#page-social .social-info-actions :is(a, button):hover {
+    background: var(--lv-wash-strong);
+}
+
+#page-social .social-info-actions :is(a, button):active {
+    transform: scale(0.95);
+}
+
+#page-social .social-info-actions .is-following {
+    color: var(--background);
+    border-color: transparent;
+    background: var(--lv-ink);
+}
+
+#page-social .social-info-actions .is-following:hover {
+    background: color-mix(in oklab, var(--lv-ink) 85%, transparent);
+}
+
+#page-social .social-info-actions button:disabled {
+    opacity: 0.5;
+    cursor: default;
 }
 
 #page-social .social-info-section {
-    padding: 1rem 0;
-    border-top: 1px solid var(--booth-rule-soft);
+    padding: 0.95rem 0 0.2rem;
+    border-top: 1px solid var(--lv-rule);
 }
 
 #page-social .social-info-section h3 {
-    margin: 0 0 0.7rem;
+    margin: 0 0 0.6rem;
+    color: var(--lv-ink);
     font-size: 0.86rem;
     font-weight: 650;
 }
 
 #page-social .social-info-hint {
-    margin: 0;
-    color: var(--muted-foreground);
-    font-size: 0.84rem;
-    line-height: 1.45;
+    margin: 0 0 0.6rem;
+    color: var(--lv-ink-soft);
+    font-size: 0.83rem;
+    line-height: 1.5;
 }
 
 #page-social .social-info-deck {
-    --tint: var(--foreground);
-
     display: grid;
-    grid-template-columns: 56px minmax(0, 1fr) auto;
+    grid-template-columns: 52px minmax(0, 1fr) 36px;
     align-items: center;
-    gap: 0.8rem;
-    padding: 0.6rem;
-    border: 1px solid color-mix(in srgb, var(--tint) 22%, var(--booth-rule-soft));
-    border-radius: 12px;
-    background: radial-gradient(120% 160% at 0% 50%, color-mix(in srgb, var(--tint) 14%, transparent), transparent 70%);
+    gap: 0.7rem;
+    padding: 0.45rem;
+    border-radius: 10px;
+    background: color-mix(in oklab, var(--spot) 15%, var(--lv-paper-deep));
 }
 
 #page-social .social-info-disc {
     display: grid;
     place-items: center;
-    width: 56px;
-    height: 56px;
+    width: 52px;
+    height: 52px;
     overflow: hidden;
-    color: var(--muted-foreground);
-    border-radius: 50%;
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tint) 60%, transparent);
+    color: var(--spot-ink);
+    border-radius: 4px;
+    box-shadow: 0 4px 10px var(--lv-shade);
 }
 
 #page-social .social-info-disc img {
@@ -3662,100 +3807,96 @@
     object-fit: cover;
 }
 
-#page-social .social-info-deck.is-live .social-info-disc img {
-    animation: booth-spin 7.2s linear infinite;
-}
-
 #page-social .social-info-track-copy {
     display: flex;
     flex-direction: column;
     min-width: 0;
 }
 
-#page-social .social-info-track-copy a {
-    color: var(--foreground);
-    text-decoration: none;
-}
-
-#page-social :is(.social-info-track-copy, .social-info-row-copy, .social-info-member-copy) :is(strong, small) {
+#page-social .social-info-track-copy strong {
+    display: block;
     overflow: hidden;
+    font-size: 0.88rem;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-#page-social :is(.social-info-track-copy, .social-info-row-copy, .social-info-member-copy) strong {
-    font-size: 0.88rem;
-    font-weight: 650;
+#page-social .social-info-track-copy a:hover strong {
+    text-decoration: underline;
+    text-underline-offset: 3px;
 }
 
-#page-social :is(.social-info-track-copy, .social-info-row-copy, .social-info-member-copy) small {
-    color: var(--muted-foreground);
+#page-social .social-info-track-copy small {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    overflow: hidden;
+    color: var(--lv-ink-soft);
     font-size: 0.78rem;
+    white-space: nowrap;
 }
 
 #page-social .social-info-deck > button {
     display: grid;
     place-items: center;
-    width: 34px;
-    height: 34px;
-    color: var(--foreground);
-    border: 1px solid var(--booth-rule);
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    color: var(--background);
+    border: 0;
     border-radius: 50%;
-    background: none;
+    background: var(--lv-ink);
     cursor: pointer;
+    transition: transform 160ms var(--lv-ease);
+}
+
+#page-social .social-info-deck > button svg {
+    fill: currentcolor;
 }
 
 #page-social .social-info-deck > button:hover {
-    color: var(--background);
-    background: var(--foreground);
+    transform: scale(1.07);
 }
 
-#page-social .social-info-row,
-#page-social .social-info-member {
-    position: relative;
+#page-social .social-info-tracklist {
     display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    margin: 0 0 0.6rem;
+    padding: 0;
+    list-style: none;
+}
+
+#page-social .social-info-row {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
     align-items: center;
-    gap: 0.7rem;
+    gap: 0.65rem;
     width: 100%;
-    padding: 0.45rem;
-    overflow: clip;
-    color: inherit;
+    padding: 0.35rem;
+    color: var(--lv-ink);
     border: 0;
-    border-radius: 10px;
+    border-radius: 8px;
     background: none;
-    cursor: pointer;
-    font: inherit;
     text-align: left;
-    text-decoration: none;
+    transition: background-color 160ms ease;
 }
 
-#page-social .social-info-row:hover,
-#page-social .social-info-member:hover {
-    background: color-mix(in srgb, var(--foreground) 4%, transparent);
+#page-social button.social-info-row {
+    cursor: pointer;
 }
 
-#page-social .social-info-row .social-track-backdrop,
-#page-social .social-info-row .social-track-shade {
-    display: none;
+#page-social .social-info-row:hover {
+    background: var(--lv-wash);
 }
 
-#page-social .social-info-index {
-    width: 1.1rem;
-    color: var(--muted-foreground);
-    font-size: 0.78rem;
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-}
-
-#page-social .social-info-art,
-#page-social .social-info-row > img {
+#page-social .social-info-art {
     position: relative;
+    display: block;
     width: 40px;
     height: 40px;
-    flex: none;
     overflow: hidden;
-    border-radius: 6px;
-    object-fit: cover;
+    border-radius: 3px;
 }
 
 #page-social .social-info-art img {
@@ -3769,8 +3910,8 @@
     place-items: center;
     width: 100%;
     height: 100%;
-    color: var(--muted-foreground);
-    background: var(--booth-wash);
+    color: var(--lv-ink-soft);
+    background: var(--lv-wash-strong);
 }
 
 #page-social .social-info-art-play {
@@ -3778,88 +3919,78 @@
     inset: 0;
     display: grid;
     place-items: center;
-    padding: 0;
     color: #fff;
-    border: 0;
-    background: rgb(0 0 0 / 0.42);
-    cursor: pointer;
+    background: rgb(0 0 0 / 0.5);
     opacity: 0;
     transition: opacity 160ms ease;
 }
 
-#page-social .social-info-row:hover .social-info-art-play,
-#page-social .social-info-art-play:focus-visible {
+#page-social .social-info-art-play svg {
+    fill: currentcolor;
+}
+
+#page-social .social-info-row:is(:hover, :focus-visible) .social-info-art-play {
     opacity: 1;
 }
 
-#page-social .social-info-row-copy,
-#page-social .social-info-member-copy {
+#page-social .social-info-row-copy {
     display: flex;
-    flex: 1;
     flex-direction: column;
     min-width: 0;
 }
 
-#page-social .social-info-member .social-avatar-wrap {
+#page-social .social-info-row-copy :is(strong, small) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#page-social .social-info-row-copy strong {
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+#page-social .social-info-row-copy small {
+    color: var(--lv-ink-soft);
+    font-size: 0.77rem;
+}
+
+#page-social .social-info-when {
+    color: var(--lv-ink-soft);
+    font-size: 0.74rem;
+    font-variant-numeric: tabular-nums;
+}
+
+#page-social .social-info-row.is-conversation {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    cursor: pointer;
+}
+
+#page-social .social-info-row.is-conversation > :first-child {
     width: 34px;
     height: 34px;
 }
 
-#page-social .social-info-mutual {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    margin-bottom: 0.4rem;
-    color: var(--muted-foreground);
-    font-size: 0.84rem;
-}
-
-#page-social .social-info-mutual-person {
-    margin-left: -10px;
-}
-
-#page-social .social-info-mutual-person:first-child {
-    margin-left: 0;
-}
-
-#page-social .social-info-mutual-person img {
-    display: block;
-    width: 30px;
-    height: 30px;
-    border: 2px solid var(--background);
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-#page-social .social-info-row.is-conversation .social-avatar-wrap,
-#page-social .social-info-row.is-conversation > :is(img, .social-group-collage, .social-group-tile) {
-    width: 36px;
-    height: 36px;
-    flex: none;
-}
-
 #page-social .social-info-row.is-conversation > svg {
-    color: var(--muted-foreground);
-    transform: rotate(180deg);
+    color: var(--lv-ink-soft);
+}
+
+#page-social .social-info-row.is-pin {
+    grid-template-columns: 22px minmax(0, 1fr) auto;
 }
 
 #page-social .social-info-pin-icon {
     display: grid;
-    place-items: center;
-    width: 30px;
-    height: 30px;
-    flex: none;
-    color: var(--muted-foreground);
-    border-radius: 50%;
-    background: var(--booth-wash);
+    color: var(--lv-ink-soft);
 }
 
 #page-social .social-info-row.is-pin button {
     display: grid;
     place-items: center;
-    width: 30px;
-    height: 30px;
-    color: var(--muted-foreground);
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: var(--lv-ink-soft);
     border: 0;
     border-radius: 50%;
     background: none;
@@ -3867,11 +3998,127 @@
 }
 
 #page-social .social-info-row.is-pin button:hover {
-    color: var(--foreground);
-    background: var(--booth-wash-strong);
+    color: var(--lv-ink);
+    background: var(--lv-wash-strong);
 }
 
-/* ----------------------------- group modal ------------------------------- */
+#page-social .social-info-sleeves {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.6rem 0.5rem;
+    margin-bottom: 0.7rem;
+}
+
+#page-social .social-info-sleeve {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+#page-social .social-info-sleeve-art {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    overflow: hidden;
+    color: var(--lv-ink-soft);
+    border-radius: 4px;
+    background: var(--lv-wash);
+    box-shadow: 0 4px 10px var(--lv-shade);
+    transition: transform 260ms var(--lv-ease);
+}
+
+#page-social .social-info-sleeve-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#page-social .social-info-sleeve:is(:hover, :focus-visible) .social-info-sleeve-art {
+    transform: translateY(-3px) rotate(-2deg);
+}
+
+#page-social .social-info-sleeve-title {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.74rem;
+    font-weight: 600;
+    line-height: 1.3;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+#page-social .social-info-mutual {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+    color: var(--lv-ink-soft);
+    font-size: 0.82rem;
+}
+
+#page-social .social-info-mutual-person {
+    display: block;
+    width: 28px;
+    height: 28px;
+    margin-right: -0.85rem;
+    border: 2px solid var(--lv-paper);
+    border-radius: 50%;
+    transition: transform 200ms var(--lv-ease);
+}
+
+#page-social .social-info-mutual-person:last-of-type {
+    margin-right: 0.2rem;
+}
+
+#page-social .social-info-mutual-person:hover {
+    z-index: 1;
+    transform: translateY(-3px);
+}
+
+#page-social .social-info-mutual-person img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+#page-social .social-info-member {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem;
+    border-radius: 8px;
+    transition: background-color 160ms ease;
+}
+
+#page-social .social-info-member:hover {
+    background: var(--lv-wash);
+}
+
+#page-social .social-info-member-copy {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+#page-social .social-info-member-copy :is(strong, small) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#page-social .social-info-member-copy strong {
+    font-size: 0.86rem;
+}
+
+#page-social .social-info-member-copy small {
+    color: var(--lv-ink-soft);
+    font-size: 0.77rem;
+}
+
+/* -------------------------------- group modal -------------------------------- */
 
 .social-group-modal {
     position: fixed;
@@ -3881,13 +4128,7 @@
     place-items: center;
     padding: 1rem;
     background: rgb(0 0 0 / 0.55);
-    animation: booth-scrim-in 200ms ease;
-}
-
-@keyframes booth-scrim-in {
-    from {
-        opacity: 0;
-    }
+    animation: lv-fade 200ms ease;
 }
 
 .social-group-modal-card {
@@ -3896,24 +4137,21 @@
     gap: 0.85rem;
     width: min(420px, 100%);
     max-height: 86vh;
-    padding: 1.25rem;
+    padding: 1.2rem;
     overflow: hidden;
     color: var(--foreground);
-    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-    border-radius: 18px;
+    border: 1px solid var(--lv-rule);
+    border-radius: 16px;
     background-color: var(--background);
-    background-image: linear-gradient(
-        color-mix(in srgb, var(--card) 40%, var(--background)),
-        color-mix(in srgb, var(--card) 40%, var(--background))
-    );
+    background-image: linear-gradient(var(--lv-paper), var(--lv-paper));
     box-shadow: 0 30px 90px rgb(0 0 0 / 0.45);
-    animation: booth-card-rise 380ms cubic-bezier(0.22, 1, 0.36, 1);
+    animation: lv-card-rise 340ms var(--lv-ease);
 }
 
-@keyframes booth-card-rise {
+@keyframes lv-card-rise {
     from {
         opacity: 0;
-        transform: translateY(16px) scale(0.98);
+        transform: translateY(14px) scale(0.98);
     }
 }
 
@@ -3924,7 +4162,7 @@
 }
 
 .social-group-modal-card header strong {
-    font-family: var(--font-family-key);
+    font-family: var(--lv-display) !important;
     font-size: 1.2rem;
     font-weight: 700;
 }
@@ -3938,13 +4176,18 @@
     align-items: center;
     gap: 0.8rem;
     padding: 0.55rem;
-    border: 1px dashed color-mix(in srgb, var(--border) 80%, transparent);
+    border: 1px dashed var(--lv-rule-strong);
     border-radius: 12px;
     cursor: pointer;
+    transition:
+        border-color 160ms ease,
+        background-color 160ms ease;
 }
 
-.social-group-picture-picker:hover {
+.social-group-picture-picker:hover,
+.social-group-picture-picker:focus-within {
     border-style: solid;
+    background: var(--lv-wash);
 }
 
 .social-group-picture-preview {
@@ -3956,14 +4199,14 @@
     overflow: hidden;
     color: var(--muted-foreground);
     border-radius: 50%;
-    background: color-mix(in srgb, var(--foreground) 6%, transparent);
+    background: var(--lv-wash-strong);
 }
 
 .social-group-picture-image {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    animation: booth-stamp 420ms cubic-bezier(0.34, 1.45, 0.64, 1);
+    animation: lv-pop 380ms var(--lv-spring);
 }
 
 .social-group-picture-copy {
@@ -3992,15 +4235,19 @@
     height: 44px;
     padding: 0 0.9rem;
     color: var(--foreground);
-    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-    border-radius: 11px;
+    border: 1px solid var(--lv-rule-strong);
+    border-radius: 10px;
     outline: none;
-    background: color-mix(in srgb, var(--foreground) 4%, transparent);
+    background: var(--lv-wash);
     font: inherit;
+    transition:
+        border-color 160ms ease,
+        box-shadow 200ms ease;
 }
 
-#social-group-name:focus {
-    border-color: color-mix(in srgb, var(--foreground) 30%, var(--border));
+#social-group-name:focus-visible {
+    border-color: color-mix(in oklab, var(--foreground) 40%, transparent);
+    box-shadow: 0 0 0 3px var(--lv-wash-strong);
 }
 
 .social-group-people {
@@ -4018,11 +4265,12 @@
     padding: 0.45rem 0.5rem;
     border-radius: 10px;
     cursor: pointer;
+    transition: background-color 140ms ease;
 }
 
 .social-group-person:hover,
 .social-group-person:has(input:checked) {
-    background: color-mix(in srgb, var(--foreground) 6%, transparent);
+    background: var(--lv-wash-strong);
 }
 
 .social-group-person input {
@@ -4032,14 +4280,19 @@
 }
 
 .social-group-person input:checked {
-    animation: booth-stamp 380ms cubic-bezier(0.34, 1.45, 0.64, 1);
+    animation: lv-stamp 380ms var(--lv-spring);
+}
+
+.social-group-person input:focus-visible {
+    outline: 2px solid var(--lv-focus);
+    outline-offset: 2px;
 }
 
 .social-group-person img {
     width: 34px;
     height: 34px;
-    border-radius: 50%;
     object-fit: cover;
+    border-radius: 50%;
 }
 
 .social-group-hint {
@@ -4058,6 +4311,15 @@
     cursor: pointer;
     font: inherit;
     font-weight: 700;
+    transition: transform 140ms var(--lv-ease);
+}
+
+.social-group-create:hover:enabled {
+    transform: translateY(-1px);
+}
+
+.social-group-create:active:enabled {
+    transform: scale(0.98);
 }
 
 .social-group-create:disabled {
@@ -4065,7 +4327,12 @@
     cursor: default;
 }
 
-/* -------------------------------- lightbox --------------------------------- */
+.social-group-create:focus-visible {
+    outline: 2px solid var(--lv-focus);
+    outline-offset: 2px;
+}
+
+/* --------------------------------- lightbox --------------------------------- */
 
 .social-lightbox {
     position: fixed;
@@ -4089,10 +4356,10 @@
 .social-lightbox img {
     max-width: min(1100px, 100%);
     max-height: 88vh;
-    border-radius: 14px;
+    border-radius: 12px;
     box-shadow: 0 40px 120px rgb(0 0 0 / 0.5);
     transform: scale(0.96);
-    transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 360ms var(--lv-ease);
 }
 
 .social-lightbox.is-open img {
@@ -4105,35 +4372,71 @@
     right: 1.2rem;
     display: grid;
     place-items: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     color: #fff;
     border: 1px solid rgb(255 255 255 / 0.25);
     border-radius: 50%;
     background: rgb(0 0 0 / 0.4);
     cursor: pointer;
+    transition: background-color 160ms ease;
 }
 
-/* ------------------------------- light themes ------------------------------- */
-
-:root:is([data-theme='white'], [data-theme='latte']) #page-social {
-    --booth-panel: color-mix(in srgb, var(--card) 38%, var(--background));
-    --booth-panel-deep: color-mix(in srgb, var(--card) 16%, var(--background));
+.social-lightbox-close:hover {
+    background: rgb(255 255 255 / 0.16);
 }
 
-:root:is([data-theme='white'], [data-theme='latte']) #page-social .booth-disc.has-glow::before {
-    opacity: 0.6;
+.social-lightbox-close:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
 }
 
-:root:is([data-theme='white'], [data-theme='latte']) #page-social .booth-platter {
-    box-shadow:
-        0 0 0 1px color-mix(in srgb, var(--foreground) 10%, transparent),
-        0 12px 28px rgb(0 0 0 / 0.18);
+/* -------------------------------- touch input -------------------------------- */
+
+/* Without hover, actions that wait for a pointer stay in sight. */
+@media (hover: none) {
+    #page-social .social-credit-actions {
+        position: static;
+        grid-column: 2;
+        justify-self: start;
+        margin-top: 0.4rem;
+        padding: 0;
+        background: none;
+        opacity: 1;
+        transform: none;
+        pointer-events: auto;
+    }
+
+    #page-social .social-spread-play,
+    #page-social .social-message-pin button {
+        opacity: 1;
+        transform: none;
+    }
+
+    #page-social .social-message-pin:not(.is-pinned) button {
+        opacity: 0.55;
+    }
 }
 
 /* -------------------------------- responsive -------------------------------- */
 
-@container social (max-width: 1240px) {
+@container social (min-width: 1040px) {
+    #page-social .social-feed-view {
+        grid-template-columns: minmax(0, 1fr) 300px;
+    }
+
+    #page-social .social-desk {
+        position: sticky;
+        top: 0.5rem;
+        display: block;
+        padding: 0.9rem 0.5rem 0.5rem;
+        border: 1px solid var(--lv-rule);
+        border-radius: 14px;
+        background: var(--lv-paper);
+    }
+}
+
+@container social (max-width: 1100px) {
     #page-social .social-messages-view.has-info {
         grid-template-columns: 300px minmax(0, 1fr);
     }
@@ -4143,165 +4446,48 @@
         top: 0;
         right: 0;
         bottom: 0;
-        z-index: 8;
+        z-index: 6;
         width: min(340px, 88%);
         box-shadow: -24px 0 60px rgb(0 0 0 / 0.3);
-    }
-}
-
-@container social (max-width: 1060px) {
-    #page-social .social-booth:not(.is-strip) {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    #page-social .social-booth:not(.is-strip) .booth-shelf {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        padding: 0.9rem 1rem;
-    }
-
-    #page-social .social-booth:not(.is-strip) .booth-shelf > .booth-deck:is(.is-near, .is-far) {
-        flex: 0 0 auto;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.45rem;
-        width: 128px;
-        text-align: center;
-    }
-
-    #page-social .social-booth:not(.is-strip) .booth-shelf > .booth-deck:is(.is-near, .is-far) .booth-plate {
-        align-items: center;
-        width: 100%;
-    }
-
-    #page-social .social-booth:not(.is-strip) .booth-shelf .booth-deck-actions {
-        top: 0;
-        right: 2px;
-        flex-direction: column;
-        gap: 0.25rem;
-        padding-left: 0;
-        background: none;
-        transform: translateX(6px);
-    }
-
-    #page-social .social-booth:not(.is-strip) .booth-deck:is(:hover, :focus-within) > .booth-deck-actions {
-        transform: none;
-    }
-
-    #page-social .social-booth:not(.is-strip) .booth-shelf .booth-icon-action {
-        width: 28px;
-        height: 28px;
-    }
-
-    #page-social .social-booth:not(.is-strip) .booth-edge {
-        display: contents;
-    }
-
-    #page-social .social-booth:not(.is-strip) .booth-shelf .booth-deck.is-edge {
-        flex: 0 0 auto;
-        width: 72px;
     }
 }
 
 @container social (max-width: 820px) {
     #page-social .social-messages-view,
     #page-social .social-messages-view.has-info {
-        grid-template-columns: 250px minmax(0, 1fr);
+        grid-template-columns: 260px minmax(0, 1fr);
     }
 
-    #page-social .social-post {
-        --gutter: 58px;
-        --pad: 1rem;
-        --gap: 0.9rem;
+    #page-social .social-spread {
+        grid-template-columns: minmax(0, 34%) minmax(0, 1fr);
     }
 
-    #page-social .social-strip:is(.is-track, .is-album) {
-        grid-template-columns: 52px minmax(0, 1fr) 38px;
-        grid-template-areas:
-            'art meta play'
-            'wave wave wave';
-        row-gap: 0.4rem;
+    #page-social .social-credits-title {
+        font-size: 1rem;
     }
 
-    #page-social .social-strip:is(.is-track, .is-album) .social-strip-art {
-        grid-area: art;
-        width: 52px;
-        height: 52px;
-    }
-
-    #page-social .social-strip:is(.is-track, .is-album) .social-strip-meta {
-        grid-area: meta;
-    }
-
-    #page-social .social-strip:is(.is-track, .is-album) .social-strip-play {
-        grid-area: play;
-    }
-
-    #page-social .social-strip:is(.is-track, .is-album) :is(.social-strip-wave, .social-strip-tracks) {
-        grid-area: wave;
-    }
-
-    #page-social .social-strip:is(.is-track, .is-album) .social-strip-time {
-        display: none;
+    #page-social .social-spread .social-note {
+        font-size: 1.1rem;
     }
 }
 
 @container social (max-width: 640px) {
-    #page-social .social-top {
-        flex-wrap: wrap;
-        align-items: flex-start;
-    }
-
-    #page-social .social-top-identity {
-        flex-direction: column;
-        gap: 0.35rem;
-    }
-
-    #page-social .booth-feature {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    #page-social .booth-deck.is-featured {
-        --size: 132px;
-
-        justify-self: start;
-    }
-
-
-
-    #page-social .social-post {
-        grid-template-columns: 40px minmax(0, 1fr);
-        row-gap: 0.4rem;
-    }
-
-    #page-social .social-post::before,
-    #page-social .social-post::after {
-        display: none;
-    }
-
-    #page-social .social-post-gutter {
-        display: none;
-    }
-
-
-
-    #page-social .social-post-composer {
-        grid-template-columns: minmax(0, 1fr) auto;
-    }
-
-    #page-social .social-composer-avatar {
-        display: none;
-    }
-
     #page-social .social-messages-view,
     #page-social .social-messages-view.has-info {
         grid-template-columns: minmax(0, 1fr);
-        height: calc(100dvh - 260px);
+        height: clamp(480px, calc(100dvh - 300px), 900px);
     }
 
-    #page-social .social-messages-view.has-thread .social-rail,
+    #page-social .social-messages-view.has-thread .social-rail {
+        display: none;
+    }
+
     #page-social .social-messages-view:not(.has-thread) .social-thread-pane {
         display: none;
+    }
+
+    #page-social .social-rail {
+        border-right: 0;
     }
 
     #page-social .social-thread-back {
@@ -4313,12 +4499,77 @@
     }
 
     #page-social .social-message-stack {
-        max-width: 88%;
+        max-width: 86%;
     }
 }
 
-/* ------------------------------ reduced motion ------------------------------ */
+@container social (max-width: 560px) {
+    #page-social .social-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.9rem;
+    }
 
+    #page-social .social-top h1 {
+        font-size: 1.8rem;
+    }
+
+    #page-social .social-credit {
+        flex-basis: 212px;
+    }
+
+    #page-social .social-post-composer {
+        grid-template-columns: 34px minmax(0, 1fr) auto;
+    }
+
+    #page-social .social-composer-avatar {
+        width: 34px;
+        height: 34px;
+    }
+
+    #page-social .social-composer-tools {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    #page-social .social-post-submit {
+        grid-column: 3;
+        grid-row: 2;
+    }
+
+    #page-social .social-spread {
+        grid-template-columns: 104px minmax(0, 1fr);
+    }
+
+    #page-social .social-spread-page {
+        padding: 0.8rem 0.85rem 0.85rem 1rem;
+    }
+
+    #page-social .social-spread-play {
+        bottom: 0.45rem;
+        left: 0.45rem;
+        width: 38px;
+        height: 38px;
+    }
+
+    #page-social .social-note.is-solo,
+    #page-social .social-comments-inner {
+        padding-left: 0;
+    }
+
+    #page-social .social-post.is-text .social-post-actions {
+        margin-left: -0.55rem;
+    }
+
+    #page-social .social-tracklist-time {
+        display: none;
+    }
+}
+
+/* ------------------------------- reduced motion ------------------------------- */
+
+/* Fewer and gentler: keyframe motion settles at once, color and opacity changes still ease,
+   nothing travels. */
 @media (prefers-reduced-motion: reduce) {
     #page-social *,
     #page-social *::before,
@@ -4327,13 +4578,28 @@
     .social-group-modal *,
     .social-lightbox,
     .social-lightbox * {
-        animation: none !important;
-        transition: none !important;
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        animation-delay: 0ms !important;
+        transition-property: opacity, color, background-color, border-color, box-shadow !important;
     }
 
-    ::view-transition-group(*),
-    ::view-transition-old(*),
-    ::view-transition-new(*) {
-        animation: none !important;
+    #page-social :is(
+            .social-spread-art img,
+            .social-credit-sleeve,
+            .social-credit-face,
+            .social-chat-sleeve,
+            .social-sleeve-art,
+            .social-info-sleeve-art,
+            .social-quiet-face,
+            .social-info-mutual-person,
+            .social-post-photo img,
+            .social-message-image img
+        ) {
+        transform: none !important;
+    }
+
+    .social-lightbox img {
+        transform: none;
     }
 }

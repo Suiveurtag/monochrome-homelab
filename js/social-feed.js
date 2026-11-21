@@ -1,18 +1,29 @@
-// js/social-feed.js — the Feed tab: a composer plus a track log of posts from
-// every account on this Monochrome instance. Music posts ride on strips that
-// draw the track's real waveform once it scrolls into view.
+// js/social-feed.js — the Feed tab: a composer plus the shared booklet of posts from every
+// account on this Monochrome instance. A music post is laid open as a spread: the cover on
+// the left page, the member's note and the record's credits on the right, with the album's
+// tracklist or the track's real running groove printed in the cover's own ink.
 
 import { pb } from './accounts/config.js';
-import { escapeHtml } from './utils.js';
+import { escapeHtml, safeHref } from './utils.js';
 import { showNotification } from './downloads.js';
 import { icon } from './social-icons.js';
 import { splitFeedPosts } from './social-state.js';
 import { canUsePermission } from './access-control.js';
-import { applyTints, drawWave, patchKeyed, pulse, reducedMotion, trackPeaks } from './social-dom.js';
+import {
+    applyTints,
+    cachedCoverColor,
+    drawWave,
+    patchKeyed,
+    pulse,
+    reducedMotion,
+    trackPeaks,
+} from './social-dom.js';
 import {
     avatarFor,
+    dayKey,
     displayName,
     formatClock,
+    formatDayLabel,
     formatDuration,
     handleFor,
     profileHref,
@@ -25,19 +36,13 @@ import {
 const PLAY_ICON =
     '<span class="social-share-play"><svg class="social-share-morph-play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5L19 12L8 18.5Z"></path></svg></span>';
 const COVER_ERROR = `onerror="if(this.crossOrigin){this.removeAttribute('crossorigin');this.src=this.src}else{this.hidden=true}"`;
+const TRACKLIST_ROWS = 5;
+const KIND_LABEL = { track: 'Track', album: 'Album', artist: 'Artist', userplaylist: 'Playlist' };
 
-function dayLabel(dateLike) {
+function fullDate(dateLike) {
     const date = new Date(dateLike);
     if (Number.isNaN(date.getTime())) return '';
-    const today = new Date();
-    if (date.toDateString() === today.toDateString()) return 'Today';
-    const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
-    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return new Intl.DateTimeFormat(undefined, {
-        month: 'short',
-        day: 'numeric',
-        ...(date.getFullYear() === today.getFullYear() ? {} : { year: 'numeric' }),
-    }).format(date);
+    return new Intl.DateTimeFormat(undefined, { dateStyle: 'full', timeStyle: 'short' }).format(date);
 }
 
 export class SocialFeed {
@@ -54,6 +59,9 @@ export class SocialFeed {
         this.peaks = new Map();
         this.albums = new Map();
         this.waveObserver = null;
+        // Records whose running order already printed once; a rebuilt post shows them settled.
+        this.revealed = new Set();
+        this.loaded = false;
         this.bound = false;
     }
 
@@ -127,7 +135,7 @@ export class SocialFeed {
             input.disabled = !canPost;
             input.placeholder = canPost
                 ? 'What are you listening to?'
-                : 'Posting is disabled by the instance administrator';
+                : 'Posting is turned off by the instance administrator';
         }
     }
 
@@ -146,22 +154,24 @@ export class SocialFeed {
             return;
         }
         container.hidden = false;
-        const thumb =
-            this.attachment.type === 'image'
-                ? `<img src="${URL.createObjectURL(this.attachment.file)}" alt="" />`
-                : this.attachment.payload.image
-                  ? `<img src="${escapeHtml(this.attachment.payload.image)}" alt="" />`
-                  : `<span class="social-attachment-placeholder">${icon.music(16)}</span>`;
-        const label =
-            this.attachment.type === 'image'
-                ? '<strong>Image</strong><small>Ready to post</small>'
-                : `<strong>${escapeHtml(this.attachment.payload.title)}</strong><small>${escapeHtml(this.attachment.payload.subtitle || this.attachment.payload.type)}</small>`;
-        container.innerHTML = `<div class="social-attachment-chip">${thumb}<span>${label}</span>
-            <button type="button" class="social-attachment-remove" aria-label="Remove attachment">${icon.x(14)}</button></div>`;
-        container.querySelector('.social-attachment-remove')?.addEventListener('click', () => this.setAttachment(null));
+        const isImage = this.attachment.type === 'image';
+        const thumb = isImage
+            ? `<img src="${URL.createObjectURL(this.attachment.file)}" alt="" />`
+            : this.attachment.payload.image
+              ? `<img src="${escapeHtml(this.attachment.payload.image)}" alt="" />`
+              : `<span class="social-attachment-placeholder">${icon.music(16)}</span>`;
+        const label = isImage
+            ? '<strong>Image</strong><small>Attached to your post</small>'
+            : `<strong>${escapeHtml(this.attachment.payload.title)}</strong><small>${escapeHtml(this.attachment.payload.subtitle || KIND_LABEL[this.attachment.payload.type] || '')}</small>`;
+        container.innerHTML = `<div class="social-attachment-chip${isImage ? ' is-image' : ''}">${thumb}<span class="social-attachment-copy">${label}</span>
+            <button type="button" class="social-attachment-remove" aria-label="Remove attachment" title="Remove">${icon.x(14)}</button></div>`;
+        container.querySelector('.social-attachment-remove')?.addEventListener('click', () => {
+            this.setAttachment(null);
+            document.getElementById('social-post-input')?.focus({ preventScroll: true });
+        });
     }
 
-    /** Your own deck's shortcut: attach what you play and hand focus to the composer. */
+    /** The band's shortcut: attach what you play and hand focus to the composer. */
     postNowPlaying() {
         const current = this.manager.player?.currentTrack;
         if (this.manager.tab !== 'feed') this.manager.setTab('feed');
@@ -185,22 +195,30 @@ export class SocialFeed {
         picker.hidden = false;
         toggle?.setAttribute('aria-expanded', 'true');
         const track = this.manager.player?.currentTrack;
+        const cover = track ? cleanImage(track.album?.cover || track.cover) : '';
         picker.innerHTML = `
-            <div class="social-picker-search">
+            <label class="social-picker-search">
                 ${icon.search(15)}
                 <input type="search" id="social-picker-search" placeholder="Search tracks and albums" autocomplete="off" aria-label="Search tracks and albums" />
-            </div>
+            </label>
             <div class="social-picker-results" id="social-picker-results">
                 ${
                     track
-                        ? `<button class="social-picker-result" type="button" data-picker-nowplaying>${icon.audioLines(16)}<span><em>Now playing</em><strong>${escapeHtml(track.title || '')}</strong></span></button>`
-                        : '<div class="social-picker-hint">Nothing is playing. Search instead.</div>'
+                        ? `<button class="social-picker-result is-now" type="button" data-picker-nowplaying>${cover ? `<img src="${escapeHtml(cover)}" alt="" />` : `<span class="social-picker-art">${icon.audioLines(16)}</span>`}<span class="social-picker-copy"><small>Playing now</small><strong>${escapeHtml(track.title || '')}</strong></span></button>`
+                        : '<p class="social-picker-hint">Nothing is playing. Search the library instead.</p>'
                 }
             </div>`;
         const search = picker.querySelector('#social-picker-search');
         search?.addEventListener('input', () => {
             clearTimeout(this.searchTimer);
             this.searchTimer = setTimeout(() => this.searchMusic(search.value).catch(console.error), 220);
+        });
+        search?.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                event.stopPropagation();
+                this.toggleMusicPicker();
+                toggle?.focus();
+            }
         });
         picker.querySelector('[data-picker-nowplaying]')?.addEventListener('click', () => {
             const current = this.manager.player?.currentTrack;
@@ -222,18 +240,22 @@ export class SocialFeed {
         const results = document.getElementById('social-picker-results');
         if (!results) return;
         if (!query.trim()) {
-            results.innerHTML = '<div class="social-picker-hint">Search tracks and albums.</div>';
+            results.innerHTML = '<p class="social-picker-hint">Search tracks and albums.</p>';
             return;
         }
-        results.innerHTML = '<div class="social-picker-hint">Searching…</div>';
-        const found = await this.manager.api.search(query.trim()).catch(() => null);
+        results.innerHTML = '<p class="social-picker-hint is-busy" role="status">Searching the library</p>';
+        const found = await this.manager.api.search(query.trim()).catch(() => undefined);
+        if (found === undefined) {
+            results.innerHTML = '<p class="social-picker-hint">The search failed. Check the connection and try again.</p>';
+            return;
+        }
         const groups = [
             ['track', found?.tracks?.items || found?.tracks || []],
             ['album', found?.albums?.items || found?.albums || []],
         ];
         const items = groups.flatMap(([kind, list]) => list.slice(0, 4).map((item) => [kind, item]));
         if (!items.length) {
-            results.innerHTML = '<div class="social-picker-hint">Nothing in the library matches that.</div>';
+            results.innerHTML = '<p class="social-picker-hint">Nothing in the library matches that.</p>';
             return;
         }
         results.innerHTML = items
@@ -241,9 +263,10 @@ export class SocialFeed {
                 const key = `${kind}:${item.id}`;
                 this.manager.shareItems.set(key, { kind, item });
                 const image = kind === 'track' ? item.album?.cover || item.cover : item.cover;
+                const by = kind === 'track' ? item.artist?.name || item.artists?.[0]?.name : item.artist?.name;
                 return `<button class="social-picker-result" type="button" data-picker-kind="${kind}" data-picker-key="${escapeHtml(key)}">
-                    ${image ? `<img src="${escapeHtml(cleanImage(image))}" alt="" />` : icon.music(16)}
-                    <span><em>${escapeHtml(kind)}</em><strong>${escapeHtml(item.title || item.name || '')}</strong></span>
+                    ${image ? `<img src="${escapeHtml(cleanImage(image))}" alt="" />` : `<span class="social-picker-art">${icon.music(16)}</span>`}
+                    <span class="social-picker-copy"><small>${escapeHtml(KIND_LABEL[kind] || kind)}${by ? `, ${escapeHtml(by)}` : ''}</small><strong>${escapeHtml(item.title || item.name || '')}</strong></span>
                 </button>`;
             })
             .join('');
@@ -252,7 +275,7 @@ export class SocialFeed {
     async submitPost() {
         if (!this.userId) return;
         if (!canUsePermission('create_social_posts')) {
-            throw new Error('Posting is disabled by the instance administrator.');
+            throw new Error('Posting is turned off by the instance administrator.');
         }
         const input = document.getElementById('social-post-input');
         const button = document.getElementById('social-post-submit');
@@ -262,10 +285,12 @@ export class SocialFeed {
         if (this.attachment?.type === 'image') data.image = this.attachment.file;
         if (this.attachment?.payload) data.payload = this.attachment.payload;
         button?.classList.add('is-sending');
+        button?.setAttribute('aria-busy', 'true');
         try {
             await pb.collection('social_posts').create(data);
         } finally {
             button?.classList.remove('is-sending');
+            button?.removeAttribute('aria-busy');
         }
         this.setAttachment(null);
         if (input) input.value = '';
@@ -278,12 +303,20 @@ export class SocialFeed {
         if (!this.userId) return;
         const container = document.getElementById('social-feed');
         if (!container) return;
-        const [posts, allLikes, myLikes, comments] = await Promise.all([
-            pb.collection('social_posts').getFullList({ sort: '-created' }),
-            pb.collection('social_post_likes').getFullList({ fields: 'post,user' }),
-            pb.collection('social_post_likes').getFullList({ filter: `user="${this.userId}"` }),
-            pb.collection('social_post_comments').getFullList({ sort: 'created' }),
-        ]);
+        let posts, allLikes, myLikes, comments;
+        try {
+            [posts, allLikes, myLikes, comments] = await Promise.all([
+                pb.collection('social_posts').getFullList({ sort: '-created' }),
+                pb.collection('social_post_likes').getFullList({ fields: 'post,user' }),
+                pb.collection('social_post_likes').getFullList({ filter: `user="${this.userId}"` }),
+                pb.collection('social_post_comments').getFullList({ sort: 'created' }),
+            ]);
+        } catch (error) {
+            // Keep what is already on the page; only an empty booklet says it failed.
+            if (!this.loaded) this.renderError();
+            throw error;
+        }
+        this.loaded = true;
         // Reposts were removed from the product. Keep historical records intact
         // in PocketBase, but do not let them leak back into the new feed.
         this.posts = posts.filter((post) => !post.repost_of && !this.manager.isBlocked(post.author));
@@ -307,6 +340,21 @@ export class SocialFeed {
         this.render();
     }
 
+    renderError() {
+        const container = document.getElementById('social-feed');
+        if (!container) return;
+        patchKeyed(container, [
+            {
+                key: 'error',
+                html: `<div class="social-feed-empty is-error" role="alert">
+                    <strong>The feed didn't load</strong>
+                    <span>The instance server didn't answer. Check that it is running, then try again.</span>
+                    <button class="social-quiet-button" type="button" data-feed-retry>Try again</button>
+                </div>`,
+            },
+        ]);
+    }
+
     render() {
         const container = document.getElementById('social-feed');
         if (!container) return;
@@ -315,9 +363,9 @@ export class SocialFeed {
                 {
                     key: 'empty',
                     html: `<div class="social-feed-empty">
-                        <span class="social-feed-empty-mark" aria-hidden="true">${icon.disc(24)}</span>
+                        <span class="social-empty-mark" aria-hidden="true"><span class="social-empty-sleeve"></span><span class="social-empty-sleeve"></span><span class="social-empty-sleeve"></span></span>
                         <strong>Nothing posted yet</strong>
-                        <span>Post what you're playing and it opens the log for everyone here.</span>
+                        <span>Share what you're playing and it becomes the first page everyone here reads.</span>
                     </div>`,
                 },
             ]);
@@ -329,13 +377,13 @@ export class SocialFeed {
                 kind: 'circle',
                 posts: circle,
                 title: 'Your circle',
-                empty: 'Follow a few members from their decks and their posts collect here.',
+                empty: 'Follow a few members from the band above and their posts collect here.',
             },
             {
                 kind: 'instance',
                 posts: instance,
                 title: 'Across Monochrome',
-                empty: 'You are caught up with the rest of the instance.',
+                empty: "You've read everything else posted on this instance.",
             },
         ];
         patchKeyed(
@@ -352,15 +400,29 @@ export class SocialFeed {
         const animateNew = container.dataset.ready === '1';
         for (const { kind, posts, empty } of streams) {
             const section = container.querySelector(`[data-key="stream-${kind}"]`);
-            section.querySelector('[data-stream-count]').textContent = `${posts.length} post${posts.length === 1 ? '' : 's'}`;
+            section.querySelector('[data-stream-count]').textContent =
+                `${posts.length} post${posts.length === 1 ? '' : 's'}`;
+            const items = [];
+            let lastDay = '';
+            for (const post of posts) {
+                const day = dayKey(post.created);
+                if (day && day !== lastDay) {
+                    items.push({
+                        key: `day:${day}`,
+                        html: `<h3 class="social-day"><time datetime="${escapeHtml(post.created)}">${escapeHtml(formatDayLabel(post.created))}</time></h3>`,
+                    });
+                    lastDay = day;
+                }
+                items.push({ key: post.id, html: this.renderPost(post) });
+            }
             patchKeyed(
                 section.querySelector('[data-stream-posts]'),
-                posts.length
-                    ? posts.map((post) => ({ key: post.id, html: this.renderPost(post) }))
+                items.length
+                    ? items
                     : [
                           {
                               key: 'empty',
-                              html: `<div class="social-stream-empty"><span class="social-stream-empty-icon">${icon.audioLines(17)}</span><span>${escapeHtml(empty)}</span></div>`,
+                              html: `<p class="social-stream-empty">${escapeHtml(empty)}</p>`,
                           },
                       ],
                 { animateNew }
@@ -369,29 +431,48 @@ export class SocialFeed {
         container.dataset.ready = '1';
         applyTints(container);
         this.observeWaves(container);
+        this.markNowPlaying();
     }
 
-    stripHTML(payload) {
+    /** The right page of a spread: credits, the member's note, then the running order. */
+    spreadHTML(payload, note) {
         const kind = payload.type || 'track';
         const title = payload.title || 'Shared music';
-        const href = payload.href || `/${kind}/${encodeURIComponent(payload.id || '')}`;
+        const href = safeHref(payload.href, `/${kind}/${encodeURIComponent(payload.id || '')}`);
         const playable = ['track', 'album'].includes(kind) && payload.id;
         const art = payload.image
             ? `<img src="${escapeHtml(payload.image)}" alt="" loading="lazy" crossorigin="anonymous" data-tint ${COVER_ERROR} />`
-            : `<span class="social-strip-placeholder">${icon.music(18)}</span>`;
-        const typeLabel = { track: 'Track', album: 'Album', artist: 'Artist', userplaylist: 'Playlist' }[kind] || kind;
-        const lane = kind === 'track' ? ' is-track' : kind === 'album' ? ' is-album' : '';
-        return `<div class="social-strip${lane}" data-tint-target>
-            <a class="social-strip-art" href="${escapeHtml(href)}" aria-label="Open ${escapeHtml(title)}">${art}</a>
-            <a class="social-strip-meta" href="${escapeHtml(href)}"><strong>${escapeHtml(title)}</strong><small>${escapeHtml([payload.subtitle, kind === 'track' ? '' : typeLabel].filter(Boolean).join(' · '))}</small></a>
-            ${playable ? `<button class="social-strip-play" type="button" data-play-kind="${escapeHtml(kind)}" data-play-id="${escapeHtml(payload.id)}" aria-label="Play ${escapeHtml(title)}">${PLAY_ICON}</button>` : ''}
-            ${
-                kind === 'track' && payload.id
-                    ? `<div class="social-strip-wave is-loading" data-strip-wave="${escapeHtml(payload.id)}" title="Play from here"><canvas aria-hidden="true"></canvas></div><span class="social-strip-time" data-strip-duration="${escapeHtml(payload.id)}"></span>`
-                    : kind === 'album' && payload.id
-                      ? `<div class="social-strip-tracks is-loading" data-strip-album="${escapeHtml(payload.id)}" role="group" aria-label="Tracks of ${escapeHtml(title)}"></div><span class="social-strip-time" data-strip-album-time></span>`
-                      : `<a class="social-strip-open" href="${escapeHtml(href)}" aria-label="Open ${escapeHtml(title)}">${icon.open(16)}</a>`
-            }
+            : `<span class="social-spread-placeholder" aria-hidden="true">${icon.music(28)}</span>`;
+        const lane = kind === 'track' ? ' is-track' : kind === 'album' ? ' is-album' : ' is-other';
+        const byline = [payload.subtitle, kind === 'track' ? '' : KIND_LABEL[kind]].filter(Boolean).join(', ');
+        // A spread rebuilt after its ink is known is printed in it straight away, without a fade.
+        const ink = cachedCoverColor(payload.image);
+        const inkStyle = ink ? ` style="--tint:${escapeHtml(ink)}"` : '';
+        let running = '';
+        if (kind === 'track' && payload.id) {
+            running = `<div class="social-groove">
+                <div class="social-groove-wave is-loading" data-strip-wave="${escapeHtml(payload.id)}" title="Play from here"><canvas aria-hidden="true"></canvas><span class="social-groove-cue" aria-hidden="true"></span></div>
+                <span class="social-groove-time" data-strip-duration="${escapeHtml(payload.id)}"></span>
+            </div>`;
+        } else if (kind === 'album' && payload.id) {
+            running = `<ol class="social-tracklist is-loading" data-strip-album="${escapeHtml(payload.id)}" aria-label="Tracks of ${escapeHtml(title)}"></ol>
+                <a class="social-tracklist-more" href="${escapeHtml(href)}" data-tracklist-more hidden></a>`;
+        } else {
+            running = `<a class="social-spread-open" href="${escapeHtml(href)}">${icon.open(15)}<span>Open ${escapeHtml((KIND_LABEL[kind] || 'page').toLowerCase())}</span></a>`;
+        }
+        return `<div class="social-spread${lane}${note ? ' has-note' : ''}" data-tint-target${inkStyle}>
+            <div class="social-spread-cover">
+                <a class="social-spread-art" href="${escapeHtml(href)}" aria-label="Open ${escapeHtml(title)}" tabindex="-1">${art}</a>
+                ${playable ? `<button class="social-spread-play" type="button" data-play-kind="${escapeHtml(kind)}" data-play-id="${escapeHtml(payload.id)}" aria-label="Play ${escapeHtml(title)}">${PLAY_ICON}</button>` : ''}
+            </div>
+            <div class="social-spread-page">
+                <div class="social-credits">
+                    <a class="social-credits-title" href="${escapeHtml(href)}">${escapeHtml(title)}</a>
+                    ${byline ? `<span class="social-credits-by">${escapeHtml(byline)}</span>` : ''}
+                </div>
+                ${note}
+                ${running}
+            </div>
         </div>`;
     }
 
@@ -400,44 +481,55 @@ export class SocialFeed {
         const name = displayName(author);
         const live = presenceState(this.manager.presence.get(post.author)).playing;
         const payload = post.payload && typeof post.payload === 'object' ? post.payload : null;
-        const imageFile = post.image
-            ? pb.files.getURL(post, post.image, { thumb: '640x0' })
-            : '';
+        const imageFile = post.image ? pb.files.getURL(post, post.image, { thumb: '640x0' }) : '';
+        const imageFull = post.image ? pb.files.getURL(post, post.image) : '';
         const liked = this.myLikes.has(post.id);
         const likeCount = this.likeCounts.get(post.id) || 0;
         const commentCount = this.commentCounts.get(post.id) || 0;
         const expanded = this.expandedComments.has(post.id);
-        const image = imageFile
-            ? `<div class="social-post-image"><img src="${escapeHtml(imageFile)}" alt="" loading="lazy" /></div>`
+        const solo = !payload && !imageFile;
+        const note = post.body
+            ? `<p class="social-note${solo ? ' is-solo' : ''}${solo && post.body.length < 90 ? ' is-short' : ''}">${escapeHtml(post.body)}</p>`
             : '';
-        return `<article class="social-post" data-post-id="${escapeHtml(post.id)}">
-            <div class="social-post-gutter">
-                <time datetime="${escapeHtml(post.created)}">${escapeHtml(formatClock(post.created))}</time>
-                <span>${escapeHtml(dayLabel(post.created))}</span>
-            </div>
-            <a class="social-post-avatar" href="${escapeHtml(profileHref(author))}" aria-label="${escapeHtml(name)}">
-                <img src="${escapeHtml(avatarFor(author))}" alt="" loading="lazy" />
-            </a>
-            <div class="social-post-main">
-                <footer class="social-post-actions">
-                    <button class="social-post-action social-post-like${liked ? ' is-liked' : ''}" type="button" data-post-like aria-pressed="${liked}" aria-label="${liked ? 'Unlike' : 'Like'}${likeCount ? `, ${likeCount}` : ''}">
-                        ${icon.heart(17)}<span class="social-post-count">${likeCount ? formatCount(likeCount) : ''}</span>
-                    </button>
-                    <button class="social-post-action${expanded ? ' is-open' : ''}" type="button" data-post-comment aria-expanded="${expanded}" aria-label="Comments${commentCount ? `, ${commentCount}` : ''}">
-                        ${icon.messageCircle(17)}<span class="social-post-count">${commentCount ? formatCount(commentCount) : ''}</span>
-                    </button>
-                    ${payload ? `<button class="social-post-action" type="button" data-post-share aria-label="Send to a friend" title="Send to a friend">${icon.share(16)}</button>` : ''}
-                </footer>
-                <header class="social-post-head">
-                    <a class="social-post-author" href="${escapeHtml(profileHref(author))}"><strong>${escapeHtml(name)}</strong></a>
-                    ${live ? '<i class="booth-live" title="Listening now" aria-label="Listening now"></i>' : ''}
+
+        let body = '';
+        if (payload) {
+            body = this.spreadHTML(payload, note);
+            if (imageFile) {
+                body += `<button class="social-post-photo is-extra" type="button" data-lightbox="${escapeHtml(imageFull)}" aria-label="Open the image"><img src="${escapeHtml(imageFile)}" alt="" loading="lazy" /></button>`;
+            }
+        } else if (imageFile) {
+            body = `<div class="social-spread is-photo${note ? ' has-note' : ''}">
+                <button class="social-post-photo" type="button" data-lightbox="${escapeHtml(imageFull)}" aria-label="Open the image"><img src="${escapeHtml(imageFile)}" alt="" loading="lazy" /></button>
+                ${note ? `<div class="social-spread-page">${note}</div>` : ''}
+            </div>`;
+        } else {
+            body = note;
+        }
+
+        return `<article class="social-post${solo ? ' is-text' : ''}" data-post-id="${escapeHtml(post.id)}">
+            <header class="social-post-head">
+                <a class="social-post-avatar" href="${escapeHtml(profileHref(author))}" tabindex="-1" aria-hidden="true">
+                    <img src="${escapeHtml(avatarFor(author))}" alt="" loading="lazy" />
+                </a>
+                <span class="social-post-byline">
+                    <a class="social-post-author" href="${escapeHtml(profileHref(author))}">${escapeHtml(name)}</a>
+                    ${live ? '<i class="social-live-dot" title="Listening now"></i><span class="sr-only">, listening now</span>' : ''}
                     <span class="social-post-handle">${escapeHtml(handleFor(author))}</span>
-                </header>
-                ${post.body ? `<p class="social-post-body">${escapeHtml(post.body)}</p>` : ''}
-                ${payload ? this.stripHTML(payload) : ''}
-                ${image}
-                ${expanded ? this.renderComments(post) : ''}
-            </div>
+                </span>
+                <time class="social-post-time" datetime="${escapeHtml(post.created)}" title="${escapeHtml(fullDate(post.created))}">${escapeHtml(formatClock(post.created))}</time>
+            </header>
+            ${body}
+            <footer class="social-post-actions">
+                <button class="social-post-action social-post-like${liked ? ' is-liked' : ''}" type="button" data-post-like aria-pressed="${liked}" aria-label="${liked ? 'Unlike' : 'Like'}${likeCount ? `, ${likeCount} like${likeCount === 1 ? '' : 's'}` : ''}">
+                    <span class="social-heart">${icon.heart(17)}</span><span class="social-post-count">${likeCount ? formatCount(likeCount) : ''}</span>
+                </button>
+                <button class="social-post-action${expanded ? ' is-open' : ''}" type="button" data-post-comment aria-expanded="${expanded}" aria-label="Comments${commentCount ? `, ${commentCount}` : ''}">
+                    ${icon.messageCircle(17)}<span class="social-post-count">${commentCount ? formatCount(commentCount) : ''}</span>
+                </button>
+                ${payload ? `<button class="social-post-action is-send" type="button" data-post-share aria-label="Send to a friend">${icon.share(16)}<span>Send</span></button>` : ''}
+            </footer>
+            ${expanded ? this.renderComments(post) : ''}
         </article>`;
     }
 
@@ -448,20 +540,22 @@ export class SocialFeed {
                 const author = this.manager.profiles.get(comment.author);
                 return `<div class="social-comment" data-comment-id="${escapeHtml(comment.id)}">
                     <img src="${escapeHtml(avatarFor(author))}" alt="" loading="lazy" />
-                    <p class="social-comment-copy"><strong>${escapeHtml(displayName(author))}</strong> ${escapeHtml(comment.body)}</p>
-                    <time>${escapeHtml(formatClock(comment.created))}</time>
+                    <p class="social-comment-copy"><a class="social-comment-author" href="${escapeHtml(profileHref(author))}">${escapeHtml(displayName(author))}</a><span class="social-comment-body">${escapeHtml(comment.body)}</span></p>
+                    <time datetime="${escapeHtml(comment.created)}" title="${escapeHtml(fullDate(comment.created))}">${escapeHtml(formatClock(comment.created))}</time>
                 </div>`;
             })
             .join('');
-        return `<div class="social-post-comments">
+        const me = this.manager.me;
+        return `<div class="social-post-comments"><div class="social-comments-inner">
             ${rows}
-            <div class="social-comment-compose">
-                <input class="social-comment-input" type="text" data-post-id="${escapeHtml(post.id)}" placeholder="Add a comment" aria-label="Add a comment" maxlength="1024" />
-            </div>
-        </div>`;
+            <label class="social-comment-compose">
+                <img src="${escapeHtml(avatarFor(me))}" alt="" />
+                <input class="social-comment-input" type="text" data-post-id="${escapeHtml(post.id)}" placeholder="${rows ? 'Add a comment' : 'Be the first to comment'}" aria-label="Add a comment" maxlength="1024" />
+            </label>
+        </div></div>`;
     }
 
-    /* -------------------------------- waveforms -------------------------------- */
+    /* ------------------------------ running order ------------------------------ */
 
     observeWaves(container) {
         if (!this.waveObserver) {
@@ -474,21 +568,23 @@ export class SocialFeed {
                         else this.loadWave(entry.target);
                     }
                 },
-                { rootMargin: '200px 0px' }
+                // Rooted on the page's scroller: with the viewport as root, the scroller's
+                // clipping cancels the margin and every list loads only once already on screen.
+                { root: container.closest('.main-content'), rootMargin: '240px 0px' }
             );
         }
         container.querySelectorAll('[data-strip-wave]').forEach((wave) => {
             if (this.peaks.has(wave.dataset.stripWave)) this.paintWave(wave);
             else this.waveObserver.observe(wave);
         });
-        container.querySelectorAll('[data-strip-album]').forEach((lane) => {
-            if (this.albums.has(lane.dataset.stripAlbum)) this.paintAlbum(lane);
-            else this.waveObserver.observe(lane);
+        container.querySelectorAll('[data-strip-album]').forEach((list) => {
+            if (this.albums.has(list.dataset.stripAlbum)) this.paintAlbum(list);
+            else this.waveObserver.observe(list);
         });
     }
 
-    loadAlbum(lane) {
-        const albumId = lane.dataset.stripAlbum;
+    loadAlbum(list) {
+        const albumId = list.dataset.stripAlbum;
         void Promise.resolve(this.manager.api.getAlbum(albumId))
             .then((result) => result?.tracks || [])
             .catch(() => [])
@@ -507,33 +603,62 @@ export class SocialFeed {
             });
     }
 
-    /** One segment per track, as long as the track: the album's own running order. */
-    paintAlbum(lane) {
-        const tracks = this.albums.get(lane.dataset.stripAlbum) || [];
-        lane.classList.remove('is-loading');
+    /** The album's own running order, as printed on the back of the sleeve. */
+    paintAlbum(list) {
+        const tracks = this.albums.get(list.dataset.stripAlbum) || [];
+        list.classList.remove('is-loading');
         if (!tracks.length) {
-            lane.classList.add('is-flat');
+            list.classList.add('is-flat');
             return;
         }
-        const total = tracks.reduce((sum, track) => sum + track.duration, 0);
-        const time = lane.closest('.social-strip')?.querySelector('[data-strip-album-time]');
-        if (time && total) time.textContent = formatDuration(total);
-        // A one-track album is that track: draw its real waveform rather than a lone bar.
+        // A one-track album is that track: print its real groove rather than a single line.
         if (tracks.length === 1 && tracks[0].id) {
-            lane.classList.add('social-strip-wave', 'is-loading');
-            lane.dataset.stripWave = tracks[0].id;
-            lane.title = 'Play from here';
-            lane.innerHTML = '<canvas aria-hidden="true"></canvas>';
-            if (this.peaks.has(tracks[0].id)) this.paintWave(lane);
-            else this.loadWave(lane);
+            const groove = document.createElement('div');
+            groove.className = 'social-groove';
+            groove.innerHTML = `<div class="social-groove-wave is-loading" data-strip-wave="${escapeHtml(tracks[0].id)}" title="Play from here"><canvas aria-hidden="true"></canvas><span class="social-groove-cue" aria-hidden="true"></span></div><span class="social-groove-time" data-strip-duration="${escapeHtml(tracks[0].id)}"></span>`;
+            if (list.nextElementSibling?.matches('[data-tracklist-more]')) list.nextElementSibling.remove();
+            list.replaceWith(groove);
+            const wave = groove.querySelector('[data-strip-wave]');
+            if (this.peaks.has(tracks[0].id)) this.paintWave(wave);
+            else this.loadWave(wave);
             return;
         }
-        lane.innerHTML = tracks
+        if (list.dataset.painted === '1') return;
+        list.dataset.painted = '1';
+        const revealKey = `${list.closest('[data-post-id]')?.dataset.postId}:album:${list.dataset.stripAlbum}`;
+        list.classList.toggle('is-settled', this.revealed.has(revealKey));
+        this.revealed.add(revealKey);
+        list.innerHTML = tracks
+            .slice(0, TRACKLIST_ROWS)
             .map(
                 (track, index) =>
-                    `<button class="social-strip-segment" type="button" data-album-index="${index}" style="flex-grow:${Math.max(30, Math.round(track.duration || 180))}" title="${escapeHtml(`${index + 1}. ${track.title} · ${formatDuration(track.duration)}`)}" aria-label="Play ${escapeHtml(track.title)}"><i></i></button>`
+                    `<li style="--row:${index}"><button class="social-tracklist-row" type="button" data-album-index="${index}" data-track-id="${escapeHtml(track.id)}" aria-label="Play ${escapeHtml(track.title)}, track ${index + 1}">
+                        <span class="social-tracklist-no" aria-hidden="true"><span class="social-tracklist-digit">${index + 1}</span>${icon.play(12)}</span>
+                        <span class="social-tracklist-title">${escapeHtml(track.title)}</span>
+                        <span class="social-tracklist-time">${escapeHtml(formatDuration(track.duration))}</span>
+                    </button></li>`
             )
             .join('');
+        const more = list.nextElementSibling?.matches('[data-tracklist-more]') ? list.nextElementSibling : null;
+        if (more) {
+            const total = tracks.reduce((sum, track) => sum + track.duration, 0);
+            more.textContent = `${tracks.length > TRACKLIST_ROWS ? `All ${tracks.length} tracks` : `${tracks.length} tracks`}${total ? `, ${formatDuration(total)}` : ''}`;
+            more.hidden = false;
+        }
+        this.markNowPlaying();
+    }
+
+    /** The row of whatever you are hearing right now carries a small equalizer. */
+    markNowPlaying() {
+        const current = this.manager.player?.currentTrack;
+        const playing = current && !this.manager.player?.activeElement?.paused;
+        const id = current ? String(current.id) : '';
+        document.querySelectorAll('#social-feed .social-tracklist-row').forEach((row) => {
+            const on = Boolean(playing && id && row.dataset.trackId === id);
+            row.classList.toggle('is-current', on);
+            if (on) row.setAttribute('aria-current', 'true');
+            else row.removeAttribute('aria-current');
+        });
     }
 
     async playAlbumFrom(albumId, index) {
@@ -550,8 +675,10 @@ export class SocialFeed {
             });
             player.enableAutoplay();
             await player.playTrackFromQueue();
+            this.markNowPlaying();
         } catch (error) {
             console.warn('[Social] Album playback failed:', error);
+            showNotification('That album could not be played', 'error');
         }
     }
 
@@ -572,14 +699,19 @@ export class SocialFeed {
             wave.classList.add('is-flat');
             return;
         }
-        const strip = wave.closest('.social-strip');
-        const color = (strip && getComputedStyle(strip).getPropertyValue('--tint').trim()) || '#f5f5f5';
-        drawWave(wave.querySelector('canvas'), result.peaks, { color, progress: 1 });
-        wave.dataset.painted = color;
-        const time = strip?.querySelector('[data-strip-duration]');
+        const spread = wave.closest('.social-spread');
+        const color = (spread && getComputedStyle(spread).getPropertyValue('--tint').trim()) || '';
+        drawWave(wave.querySelector('canvas'), result.peaks, { color: color || '#a08f99', progress: 1, flat: true });
+        if (!wave.classList.contains('is-drawn')) {
+            const revealKey = `${wave.closest('[data-post-id]')?.dataset.postId}:wave:${wave.dataset.stripWave}`;
+            wave.classList.toggle('is-settled', this.revealed.has(revealKey));
+            this.revealed.add(revealKey);
+            wave.classList.add('is-drawn');
+        }
+        const time = spread?.querySelector('[data-strip-duration]');
         if (time && result.duration) time.textContent = formatDuration(result.duration);
-        // The tint may land after the first paint; repaint once it does.
-        if (color === '#f5f5f5' && strip && !wave.dataset.awaitingTint) {
+        // The spot ink may land after the first paint; repaint once it does.
+        if (!color && spread && !wave.dataset.awaitingTint) {
             wave.dataset.awaitingTint = '1';
             setTimeout(() => this.paintWave(wave), 600);
         }
@@ -594,6 +726,10 @@ export class SocialFeed {
     /* --------------------------------- actions --------------------------------- */
 
     onFeedClick(event) {
+        if (event.target.closest('[data-feed-retry]')) {
+            this.refresh().catch(() => {});
+            return;
+        }
         const like = event.target.closest('[data-post-like]');
         if (like) {
             this.toggleLike(like.closest('[data-post-id]')?.dataset.postId).catch(console.error);
@@ -611,11 +747,16 @@ export class SocialFeed {
                 this.manager.openShareSheet({ payload: post.payload, item: null, kind: post.payload.type });
             return;
         }
-        const segment = event.target.closest('[data-album-index]');
-        if (segment) {
-            const lane = segment.closest('[data-strip-album]');
-            pulse(segment, 'is-cued');
-            this.playAlbumFrom(lane.dataset.stripAlbum, Number(segment.dataset.albumIndex) || 0).catch(console.error);
+        const photo = event.target.closest('[data-lightbox]');
+        if (photo) {
+            this.manager.openLightbox(photo.dataset.lightbox);
+            return;
+        }
+        const row = event.target.closest('[data-album-index]');
+        if (row) {
+            const list = row.closest('[data-strip-album]');
+            pulse(row, 'is-cued');
+            this.playAlbumFrom(list.dataset.stripAlbum, Number(row.dataset.albumIndex) || 0).catch(console.error);
             return;
         }
         const wave = event.target.closest('[data-strip-wave]');
@@ -623,6 +764,7 @@ export class SocialFeed {
             const rect = wave.getBoundingClientRect();
             const fraction = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
             const duration = this.peaks.get(wave.dataset.stripWave)?.duration || 0;
+            wave.style.setProperty('--cue', fraction.toFixed(4));
             this.manager.playTrackAt(wave.dataset.stripWave, fraction * duration).catch(console.error);
             pulse(wave, 'is-cued');
             return;
@@ -658,7 +800,8 @@ export class SocialFeed {
 
     async toggleLike(postId) {
         if (!postId || !this.userId) return;
-        const button = () => document.querySelector(`#social-feed [data-post-id="${CSS.escape(postId)}"] [data-post-like]`);
+        const button = () =>
+            document.querySelector(`#social-feed [data-post-id="${CSS.escape(postId)}"] [data-post-like]`);
         const existing = this.myLikes.get(postId);
         if (existing) {
             this.myLikes.delete(postId);
@@ -672,8 +815,17 @@ export class SocialFeed {
         this.likeCounts.set(postId, (this.likeCounts.get(postId) || 0) + 1);
         this.render();
         pulse(button(), 'is-popping');
-        const record = await pb.collection('social_post_likes').create({ post: postId, user: this.userId });
-        this.myLikes.set(postId, record.id);
+        try {
+            const record = await pb.collection('social_post_likes').create({ post: postId, user: this.userId });
+            this.myLikes.set(postId, record.id);
+        } catch (error) {
+            // Roll the heart back so the page never claims a like the server refused.
+            this.myLikes.delete(postId);
+            this.likeCounts.set(postId, Math.max(0, (this.likeCounts.get(postId) || 1) - 1));
+            this.render();
+            showNotification('The like did not go through', 'error');
+            throw error;
+        }
     }
 
     async submitComment(postId, input) {
@@ -681,13 +833,18 @@ export class SocialFeed {
         if (!postId || !body || !this.userId) return;
         input.disabled = true;
         try {
-            const record = await pb.collection('social_post_comments').create({ post: postId, author: this.userId, body });
+            const record = await pb
+                .collection('social_post_comments')
+                .create({ post: postId, author: this.userId, body });
             input.value = '';
             await this.refresh();
             pulse(document.querySelector(`#social-feed [data-comment-id="${CSS.escape(record.id)}"]`), 'is-entering');
             document
                 .querySelector(`#social-feed [data-post-id="${CSS.escape(postId)}"] .social-comment-input`)
                 ?.focus({ preventScroll: true });
+        } catch (error) {
+            showNotification('The comment was not posted. Try again.', 'error');
+            throw error;
         } finally {
             input.disabled = false;
         }

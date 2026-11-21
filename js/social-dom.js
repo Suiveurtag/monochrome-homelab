@@ -82,9 +82,27 @@ export function patchKeyed(container, items, { animateNew = false, flip = true }
 
 const colors = new Map();
 
+function absoluteUrl(url) {
+    try {
+        return new URL(url, location.href).href;
+    } catch {
+        return url;
+    }
+}
+
+/** A cover color already read this session, so a rebuilt node can be printed in it at once. */
+export function cachedCoverColor(url) {
+    return url ? colors.get(absoluteUrl(url)) || null : null;
+}
+
 /** Read the cover's vibrant color once per image URL and hand it to `apply`. */
 export function coverColor(img, apply) {
     if (!img) return;
+    const known = img.src && colors.get(img.src);
+    if (known) {
+        apply(known);
+        return;
+    }
     const read = () => {
         let color = colors.get(img.src);
         if (color === undefined) {
@@ -110,11 +128,20 @@ export function applyTints(root) {
     });
 }
 
-function shiftColor(hex, { hue = 0, minLight = 0, lift = 0 } = {}) {
+function shiftColor(hex, { hue = 0, minLight = 0, maxLight = 0.78, lift = 0 } = {}) {
     const match = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex || '');
     if (!match) return hex;
     const [h, s, l] = rgbToHsl(...match.slice(1).map((part) => parseInt(part, 16)));
-    return hslToHex((h + hue) % 1, s, Math.min(0.78, Math.max(minLight, l + lift)));
+    return hslToHex((h + hue) % 1, s, Math.min(maxLight, Math.max(minLight, l + lift)));
+}
+
+/** Whether the theme paints a light ground, read from its `--background` token. */
+function onLightGround(element) {
+    const value = getComputedStyle(element).getPropertyValue('--background').trim();
+    const match = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(value);
+    if (!match) return false;
+    const [r, g, b] = match.slice(1).map((part) => parseInt(part, 16) / 255);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5;
 }
 
 /** A neighbouring hue so a waveform can travel across the cover's palette. */
@@ -186,8 +213,9 @@ export function trackPeaks(trackId, resolveTrack) {
 /**
  * Draw mirrored bars across the canvas. Bars before `progress` (0–1) are lit;
  * a `range` ({ from, to } in 0–1) lights only that slice, like a snippet cue.
+ * `flat` prints the bars in one ink, the cover's own, instead of a hue sweep.
  */
-export function drawWave(canvas, peaks, { color = '#f5f5f5', progress = 1, range = null } = {}) {
+export function drawWave(canvas, peaks, { color = '#f5f5f5', progress = 1, range = null, flat = false } = {}) {
     if (!canvas || !peaks?.length) return;
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
@@ -200,13 +228,18 @@ export function drawWave(canvas, peaks, { color = '#f5f5f5', progress = 1, range
     const ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
-    // Deep cover colors (a navy sky, a black sleeve) still have to read on the dark ground.
-    const base = shiftColor(color, { minLight: 0.56 });
-    const gradient = ctx.createLinearGradient(0, 0, width, 0);
-    gradient.addColorStop(0, base);
-    gradient.addColorStop(1, companionColor(base));
-    const bar = width > 420 ? 2 : 1.5;
-    const gap = width > 420 ? 1.6 : 1.2;
+    // Deep cover colors (a navy sky, a black sleeve) still have to read on a dark ground;
+    // pale ones (a white sleeve) have to read on a light theme's paper.
+    const light = onLightGround(canvas);
+    const base = light ? shiftColor(color, { maxLight: 0.4 }) : shiftColor(color, { minLight: 0.56 });
+    let gradient = base;
+    if (!flat) {
+        gradient = ctx.createLinearGradient(0, 0, width, 0);
+        gradient.addColorStop(0, base);
+        gradient.addColorStop(1, companionColor(base));
+    }
+    const bar = flat ? 2 : width > 420 ? 2 : 1.5;
+    const gap = flat ? 2 : width > 420 ? 1.6 : 1.2;
     const count = Math.max(8, Math.floor(width / (bar + gap)));
     const sampled = downsample(peaks, Math.min(count, peaks.length));
     // Stretch the track's own dynamic range so loud masters keep their shape.

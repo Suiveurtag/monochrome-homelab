@@ -9,6 +9,7 @@ import I_CHECK from '!lucide/check.svg?svg&icon';
 import I_CHECK_CHECK from '!lucide/check-check.svg?svg&icon';
 import I_CLOCK from '!lucide/clock.svg?svg&icon';
 import I_CHEVRON_LEFT from '!lucide/chevron-left.svg?svg&icon';
+import I_CHEVRON_RIGHT from '!lucide/chevron-right.svg?svg&icon';
 import I_DISC from '!lucide/disc.svg?svg&icon';
 import I_DOOR_OPEN from '!lucide/door-open.svg?svg&icon';
 import I_ELLIPSIS from '!lucide/ellipsis.svg?svg&icon';
@@ -44,6 +45,7 @@ export const icon = {
     checkCheck: I_CHECK_CHECK,
     clock: I_CLOCK,
     chevronLeft: I_CHEVRON_LEFT,
+    chevronRight: I_CHEVRON_RIGHT,
     disc: I_DISC,
     doorOpen: I_DOOR_OPEN,
     ellipsis: I_ELLIPSIS,

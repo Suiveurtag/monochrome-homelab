@@ -4,13 +4,13 @@
 
 import { pb } from './accounts/config.js';
 import { authManager } from './accounts/auth.js';
-import { escapeHtml, getTrackArtists } from './utils.js';
+import { escapeHtml, getTrackArtists, safeHref } from './utils.js';
 import { showNotification } from './downloads.js';
-import { playSharedItem, shareCardHTML } from './share.js';
+import { playSharedItem } from './share.js';
 import { icon } from './social-icons.js';
 import { SocialFeed } from './social-feed.js';
-import { SocialBooth } from './social-booth.js';
-import { applyTints, patchKeyed, pulse, reducedMotion } from './social-dom.js';
+import { SocialBand } from './social-band.js';
+import { applyTints, cachedCoverColor, coverColor, patchKeyed, pulse, reducedMotion } from './social-dom.js';
 import { isMutualFriend, reconcileSentMessage } from './social-state.js';
 import { shareSheet, bindShareSheetRecipientClicks } from './social-share-sheet.js';
 import {
@@ -34,6 +34,9 @@ const PRESENCE_HEARTBEAT_MS = 30_000;
 const PRESENCE_PROGRESS_MS = 15_000;
 const SOCIAL_POLL_MS = 15_000;
 const GROUP_MESSAGE_GAP_MS = 4 * 60_000;
+const DESK_ROWS = 5;
+const KIND_LABEL = { track: 'Track', album: 'Album', artist: 'Artist', userplaylist: 'Playlist' };
+const COVER_ERROR = `onerror="if(this.crossOrigin){this.removeAttribute('crossorigin');this.src=this.src}else{this.hidden=true}"`;
 
 function snippetPlayIcon(playing = false) {
     return `<span class="social-share-play"><svg class="social-share-morph-play-icon" viewBox="0 0 24 24" aria-hidden="true">${
@@ -86,11 +89,11 @@ function groupAvatarHTML(conversation, profiles, size = '') {
 }
 
 function previewFor(message) {
-    if (!message) return 'Say hi with a track';
+    if (!message) return 'No messages yet';
     if (message.body) return message.body;
     const kind = message.kind || 'text';
     if (kind === 'image') return 'Photo';
-    if (kind === 'snippet') return `Snippet · ${parseJson(message.payload)?.title || ''}`;
+    if (kind === 'snippet') return `Snippet: ${parseJson(message.payload)?.title || ''}`;
     if (['track', 'album', 'artist'].includes(kind)) {
         const payload = parseJson(message.payload);
         return payload ? `${itemTitle(kind, payload)}` : kind;
@@ -103,7 +106,7 @@ export class SocialManager {
         this.api = null;
         this.player = null;
         this.feed = null;
-        this.booth = null;
+        this.band = null;
         this.tickStates = new Map();
         this.keyAlias = new Map();
         this.renderedThread = null;
@@ -161,7 +164,7 @@ export class SocialManager {
         this.api = api;
         this.player = player;
         this.feed = new SocialFeed(this);
-        this.booth = new SocialBooth(this);
+        this.band = new SocialBand(this);
         if (!this.bound) this.bindUI();
         shareSheet.bind({
             getRecipients: () => this.shareRecipients(),
@@ -308,9 +311,9 @@ export class SocialManager {
     }
 
     paint() {
-        this.renderRail();
+        this.renderRail(document.getElementById('social-conversation-search')?.value || '');
         this.renderPresenceSummary();
-        this.booth?.render();
+        this.band?.render();
         if (this.feed) this.feed.refresh().catch(() => {});
         if (this.activeId) {
             this.renderThread();
@@ -324,40 +327,43 @@ export class SocialManager {
         const next = tab === 'messages' ? 'messages' : 'feed';
         const page = document.getElementById('page-social');
         const isMessages = next === 'messages';
-        const apply = () => {
-            this.tab = next;
-            const feedTab = document.getElementById('social-tab-feed');
-            const messagesTab = document.getElementById('social-tab-messages');
-            document.getElementById('social-feed-view').hidden = isMessages;
-            document.getElementById('social-messages-view').hidden = !isMessages;
-            feedTab?.setAttribute('aria-selected', String(!isMessages));
-            messagesTab?.setAttribute('aria-selected', String(isMessages));
-            page?.classList.toggle('is-messages', isMessages);
-            this.syncTabsThumb(isMessages ? messagesTab : feedTab);
-            this.booth?.setStrip(isMessages);
-        };
         const changing = page?.classList.contains('is-messages') !== isMessages;
-        if (changing && page?.classList.contains('active') && this.booth) {
-            document.documentElement.dataset.socialMotion = isMessages ? 'forward' : 'back';
-            this.booth.morph(apply);
-        } else {
-            apply();
+        this.tab = next;
+        const feedTab = document.getElementById('social-tab-feed');
+        const messagesTab = document.getElementById('social-tab-messages');
+        const feedView = document.getElementById('social-feed-view');
+        const messagesView = document.getElementById('social-messages-view');
+        // The page turns toward Messages and back toward the Feed.
+        if (changing && page?.classList.contains('active')) {
+            page.dataset.turn = isMessages ? 'forward' : 'back';
+            pulse(isMessages ? messagesView : feedView, 'is-turning');
         }
+        feedView.hidden = isMessages;
+        messagesView.hidden = !isMessages;
+        feedTab?.setAttribute('aria-selected', String(!isMessages));
+        messagesTab?.setAttribute('aria-selected', String(isMessages));
+        feedTab?.setAttribute('tabindex', isMessages ? '-1' : '0');
+        messagesTab?.setAttribute('tabindex', isMessages ? '0' : '-1');
+        page?.classList.toggle('is-messages', isMessages);
+        this.syncTabsThumb(isMessages ? messagesTab : feedTab);
         if (isMessages) {
             this.renderRail(document.getElementById('social-conversation-search')?.value || '');
             if (this.activeId) this.scrollMessagesToBottom();
         } else if (this.feed) {
             this.feed.refresh().catch(() => {});
+            this.band?.fadeEdges();
         }
         if (!this.activeId || !isMessages) history.replaceState({}, '', '/social');
     }
 
+    /** The underline is a fixed 100px bar, so it slides and stretches on transform alone. */
     syncTabsThumb(activeTab) {
         const thumb = document.getElementById('social-tabs-thumb');
         if (!thumb || !activeTab) return;
         const place = () => {
-            thumb.style.width = `${activeTab.offsetWidth}px`;
-            thumb.style.transform = `translateX(${activeTab.offsetLeft - 3}px)`;
+            if (!activeTab.offsetWidth) return;
+            thumb.style.transform = `translateX(${activeTab.offsetLeft}px) scaleX(${activeTab.offsetWidth / 100})`;
+            thumb.classList.add('is-placed');
         };
         place();
         if (document.fonts?.ready) document.fonts.ready.then(place).catch(() => {});
@@ -365,15 +371,9 @@ export class SocialManager {
 
     /* ------------------------------- rail render ----------------------------- */
 
-    renderRail(query = '') {
-        const list = document.getElementById('social-conversation-list');
-        if (!list) return;
-        const previousActive = list.querySelector('.social-chat-row.is-active');
-        const previousConversation = previousActive?.dataset.conversation || '';
-        const previousTop = previousActive?.offsetTop ?? 0;
-        const previousHeight = previousActive?.offsetHeight ?? 0;
+    conversationEntries(query = '') {
         const normalized = query.trim().toLowerCase();
-        const entries = [...this.conversations.values()]
+        return [...this.conversations.values()]
             .map((conversation) => {
                 const messages = this.messagesByConversation.get(conversation.id) || [];
                 const last = messages[messages.length - 1];
@@ -386,21 +386,35 @@ export class SocialManager {
                           .includes(normalized)
                     : true
             )
+            // Threads with words in them first, newest first; empty ones wait at the end.
             .sort(
                 (a, b) =>
-                    Date.parse(b.last?.created || b.conversation.updated) -
-                    Date.parse(a.last?.created || a.conversation.updated)
+                    Number(Boolean(b.last)) - Number(Boolean(a.last)) ||
+                    (Date.parse(b.last?.created || b.conversation.updated) || 0) -
+                        (Date.parse(a.last?.created || a.conversation.updated) || 0)
             );
+    }
+
+    renderRail(query = '') {
+        this.renderDesk();
+        const list = document.getElementById('social-conversation-list');
+        if (!list) return;
+        const previousActive = list.querySelector('.social-chat-row.is-active');
+        const previousConversation = previousActive?.dataset.conversation || '';
+        const previousTop = previousActive?.offsetTop ?? 0;
+        const previousHeight = previousActive?.offsetHeight ?? 0;
+        const normalized = query.trim().toLowerCase();
+        const entries = this.conversationEntries(query);
 
         if (!entries.length) {
             patchKeyed(list, [
                 {
                     key: normalized ? 'empty-search' : 'empty',
-                    html: `<div class="social-rail-empty">${
+                    html: `<p class="social-rail-empty">${
                         normalized
                             ? 'No conversation matches that name.'
-                            : 'No conversations yet. Follow a friend back from their deck above, then say hi.'
-                    }</div>`,
+                            : 'No conversations yet. Once you and a friend follow each other, start one from the people below.'
+                    }</p>`,
                 },
             ]);
         } else {
@@ -439,7 +453,7 @@ export class SocialManager {
                                 transform: `translateY(${nextActive.offsetTop}px)`,
                             },
                         ],
-                        { duration: 240, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }
+                        { duration: 260, easing: 'cubic-bezier(0.77, 0, 0.175, 1)' }
                     );
                 }
             }
@@ -447,30 +461,56 @@ export class SocialManager {
         this.renderPeople(query);
     }
 
-    renderConversationRow({ conversation, last, unread }) {
+    renderConversationRow({ conversation, last, unread }, { compact = false } = {}) {
         const isGroup = conversation.type === 'group';
-        const active = conversation.id === this.activeId;
+        const active = !compact && conversation.id === this.activeId;
         const muted = this.muted.has(conversation.id);
         const title = conversationTitle(conversation, this.profiles, this.userId);
         const avatar = conversationAvatar(conversation, this.profiles, this.userId);
         const state = isGroup ? { online: false, playing: false } : this.presenceStateFor(conversation);
-        const tint = this.conversationTint(conversation);
+        const sleeve = this.conversationTint(conversation);
         const art = isGroup
             ? groupAvatarHTML(conversation, this.profiles)
             : `<img src="${escapeHtml(avatar)}" alt="" loading="lazy" />`;
         const mine = last && last.sender === this.userId;
-        const prefix = mine ? 'You: ' : '';
-        return `<button class="social-chat-row${active ? ' is-active' : ''}${muted ? ' is-muted' : ''}${unread && !muted ? ' is-unread' : ''}" type="button" data-conversation="${escapeHtml(conversation.id)}" data-tint-target>
-            ${tint ? `<img class="social-chat-wash" src="${escapeHtml(tint)}" alt="" aria-hidden="true" crossorigin="anonymous" data-tint onerror="if(this.crossOrigin){this.removeAttribute('crossorigin');this.src=this.src}else{this.hidden=true}" />` : ''}
-            <span class="social-avatar-wrap${state.playing ? ' is-live' : ''}">${art}${isGroup ? '' : `<span class="social-presence-dot${state.online ? ' is-online' : ''}${state.playing ? ' is-listening' : ''}"></span>`}</span>
+        // With nothing new to read, a friend who is playing shows what they are playing.
+        const preview =
+            !unread && !isGroup && state.playing && state.track?.title
+                ? `Listening to ${state.track.title}`
+                : `${mine ? 'You: ' : ''}${previewFor(last)}`;
+        const unreadLabel = unread > 99 ? '99+' : String(unread);
+        return `<button class="social-chat-row${compact ? ' is-compact' : ''}${active ? ' is-active' : ''}${muted ? ' is-muted' : ''}${unread && !muted ? ' is-unread' : ''}" type="button" data-conversation="${escapeHtml(conversation.id)}"${active ? ' aria-current="true"' : ''}>
+            <span class="social-chat-face${sleeve ? ' has-sleeve' : ''}">${sleeve ? `<span class="social-chat-sleeve" aria-hidden="true"><img src="${escapeHtml(sleeve)}" alt="" loading="lazy" /></span>` : ''}<span class="social-avatar-wrap${state.playing ? ' is-live' : ''}">${art}${isGroup ? '' : `<span class="social-presence-dot${state.online ? ' is-online' : ''}${state.playing ? ' is-listening' : ''}"></span>`}</span></span>
             <span class="social-chat-copy">
-                <span class="social-chat-top"><strong>${escapeHtml(title)}</strong><time>${escapeHtml(last ? formatListTime(last.created) : '')}</time></span>
-                <span class="social-chat-bottom"><small>${escapeHtml(prefix + previewFor(last))}</small>
-                ${muted ? `<span class="social-chat-muted" title="Muted">${icon.bellOff(13)}</span>` : ''}
-                ${unread && !muted ? `<span class="social-chat-unread">${unread > 99 ? '99+' : unread}</span>` : ''}
-                </span>
+                <span class="social-chat-top"><strong>${escapeHtml(title)}</strong>${muted ? `<span class="social-chat-muted" title="Muted" aria-label="Muted">${icon.bellOff(13)}</span>` : ''}${unread && !muted ? `<span class="social-chat-unread" aria-label="${unreadLabel} unread">${unreadLabel}</span>` : ''}</span>
+                <span class="social-chat-bottom"><small>${escapeHtml(preview)}</small>${last ? `<time datetime="${escapeHtml(last.created)}">${escapeHtml(formatListTime(last.created))}</time>` : ''}</span>
             </span>
         </button>`;
+    }
+
+    /** At wide sizes the feed keeps your latest conversations at hand beside the booklet. */
+    renderDesk() {
+        const desk = document.getElementById('social-desk');
+        if (!desk) return;
+        if (!this.userId) {
+            desk.hidden = true;
+            return;
+        }
+        desk.hidden = false;
+        // The desk shows live correspondence; empty threads appear only when nothing else exists.
+        const all = this.conversationEntries('');
+        const spoken = all.filter((entry) => entry.last);
+        const entries = (spoken.length ? spoken : all).slice(0, DESK_ROWS);
+        let total = 0;
+        for (const conversation of this.conversations.values()) {
+            if (!this.muted.has(conversation.id)) total += this.unreadCount(conversation);
+        }
+        const head = `<header class="social-desk-head"><h2>Messages</h2>${total ? `<span class="social-desk-unread">${total > 99 ? '99+' : total} unread</span>` : ''}</header>`;
+        const body = entries.length
+            ? `<div class="social-desk-list">${entries.map((entry) => this.renderConversationRow(entry, { compact: true })).join('')}</div>`
+            : '<p class="social-desk-empty">No conversations yet. Follow a friend back and say hi.</p>';
+        const html = `${head}${body}<button class="social-desk-all" type="button" data-desk-all>All messages${icon.chevronRight(15)}</button>`;
+        if (desk.innerHTML !== html) desk.innerHTML = html;
     }
 
     /** The cover a conversation wears: its last shared music, else what the contact plays. */
@@ -514,13 +554,13 @@ export class SocialManager {
             `${profile.display_name || ''} ${profile.username || ''}`.toLowerCase().includes(normalized)
         );
         if (!filtered.length) {
-            container.innerHTML = `<div class="social-rail-empty">${
+            container.innerHTML = `<p class="social-rail-empty">${
                 others.length
-                    ? 'No people match.'
+                    ? 'Nobody here matches that name.'
                     : this.profiles.size > 1
-                      ? 'Everyone you already chat with is listed above.'
+                      ? 'Everyone you already talk with is listed above.'
                       : 'Invite people to your instance to see them here.'
-            }</div>`;
+            }</p>`;
             return;
         }
         const sorted = filtered.sort((a, b) => {
@@ -537,21 +577,21 @@ export class SocialManager {
                 const isFollowing = this.following.has(profile.user);
                 const isFriend = this.canChatWith(profile.user);
                 const status = state.track
-                    ? `${state.playing ? 'Listening' : 'Paused'} · ${state.track.title}`
+                    ? `${state.playing ? 'Listening to' : 'Paused on'} ${state.track.title}`
                     : state.online
                       ? 'Online'
                       : 'Offline';
+                const relation = isFriend ? 'Friends' : this.followers.has(profile.user) ? 'Follows you' : '';
                 return `<div class="social-person${isFollowing ? ' is-followed' : ''}${isFriend ? ' is-friend' : ''}" data-person="${escapeHtml(profile.user)}">
-                    <button class="social-person-main" type="button" data-open-person="${escapeHtml(profile.user)}" title="${escapeHtml(displayName(profile))}">
-                        <span class="social-avatar-wrap social-live-avatar"><img src="${escapeHtml(avatarFor(profile))}" alt="" loading="lazy" /><span class="social-presence-dot${state.online ? ' is-online' : ''}${state.playing ? ' is-listening' : ''}"></span></span>
+                    <button class="social-person-main" type="button" data-open-person="${escapeHtml(profile.user)}" title="${escapeHtml(isFriend ? `Message ${displayName(profile)}` : `Open ${displayName(profile)}`)}">
+                        <span class="social-avatar-wrap${state.playing ? ' is-live' : ''}"><img src="${escapeHtml(avatarFor(profile))}" alt="" loading="lazy" /><span class="social-presence-dot${state.online ? ' is-online' : ''}${state.playing ? ' is-listening' : ''}"></span></span>
                         <span class="social-person-copy">
-                            <span><strong>${escapeHtml(displayName(profile))}</strong>${isFriend ? '<em>Friend</em>' : ''}</span>
-                            <small>${escapeHtml(status)}</small>
+                            <span class="social-person-name"><strong>${escapeHtml(displayName(profile))}</strong>${relation ? `<em>${relation}</em>` : ''}</span>
+                            <small>${state.playing ? '<span class="social-eq" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}${escapeHtml(status)}</small>
                         </span>
-                        ${state.playing ? `<span class="social-equalizer" aria-label="Listening now"><i></i><i></i><i></i></span>` : ''}
                     </button>
-                    <button class="social-person-follow${isFollowing ? ' is-following' : ''}" type="button" data-follow-user="${escapeHtml(profile.user)}" aria-pressed="${isFollowing}" title="${isFollowing ? 'Following' : 'Follow'}">
-                        ${isFollowing ? icon.check(14) : icon.userPlus(14)}
+                    <button class="social-person-follow${isFollowing ? ' is-following' : ''}" type="button" data-follow-user="${escapeHtml(profile.user)}" aria-pressed="${isFollowing}" aria-label="${isFollowing ? 'Unfollow' : 'Follow'} ${escapeHtml(displayName(profile))}" title="${isFollowing ? 'Following' : 'Follow'}">
+                        ${isFollowing ? icon.check(15) : icon.userPlus(15)}
                     </button>
                 </div>`;
             })
@@ -569,7 +609,7 @@ export class SocialManager {
             states.length <= 1
                 ? 'Just you here for now'
                 : online
-                  ? `${listening ? `${listening} listening · ` : ''}${online} online`
+                  ? `${listening ? `${listening} listening, ` : ''}${online} online`
                   : 'Everyone is offline';
         const html = `${online ? '<span class="social-presence-pulse" aria-hidden="true"></span>' : ''}<span>${escapeHtml(label)}</span>`;
         if (summary.innerHTML !== html) summary.innerHTML = html;
@@ -773,27 +813,41 @@ export class SocialManager {
             if (avatar) avatar.src = avatarFor(otherProfile);
             if (name) name.textContent = displayName(otherProfile);
             if (status) {
-                status.textContent = state.track
-                    ? `${state.playing ? 'Listening to' : 'Paused'} · ${state.track.title}`
+                const text = state.track
+                    ? `${state.playing ? 'Listening to' : 'Paused on'} ${state.track.title}`
                     : state.online
                       ? 'Online now'
                       : 'Offline';
+                const html = `${state.playing ? '<span class="social-eq" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}${escapeHtml(text)}`;
+                if (status.innerHTML !== html) status.innerHTML = html;
             }
             if (dot) {
                 dot.hidden = false;
                 dot.classList.toggle('is-online', state.online);
                 dot.classList.toggle('is-listening', state.playing);
             }
-            if (status && state.playing) {
-                status.innerHTML = `<span class="booth-eq" aria-hidden="true"><i></i><i></i><i></i></span>${escapeHtml(status.textContent)}`;
-            }
         }
         document.getElementById('social-thread-avatar-wrap')?.classList.toggle('is-live', Boolean(state.playing));
+        // The thread is printed in the ink of the last record shared in it.
+        const thread = document.getElementById('social-thread');
         const tint = document.getElementById('social-thread-tint');
         const tintSource = this.conversationTint(conversation);
-        if (tint) {
-            if (tintSource && tint.getAttribute('src') !== tintSource) tint.src = tintSource;
-            tint.hidden = !tintSource;
+        if (tint && thread) {
+            if (!tintSource) {
+                tint.removeAttribute('src');
+                thread.style.removeProperty('--tint');
+            } else if (tint.getAttribute('src') !== tintSource) {
+                thread.style.removeProperty('--tint');
+                tint.crossOrigin = 'anonymous';
+                tint.onerror = () => {
+                    if (tint.crossOrigin) {
+                        tint.removeAttribute('crossorigin');
+                        tint.src = tintSource;
+                    }
+                };
+                tint.src = tintSource;
+            }
+            if (tintSource) coverColor(tint, (color) => thread.style.setProperty('--tint', color));
         }
 
         const muteButton = document.getElementById('social-thread-mute');
@@ -858,7 +912,7 @@ export class SocialManager {
             patchKeyed(container, [
                 {
                     key: 'new-thread',
-                    html: `<div class="social-new-thread"><span class="social-new-thread-mark" aria-hidden="true">${icon.disc(22)}</span><strong>Start with a track</strong><span>Send a song or a snippet. It sets the color of this conversation.</span></div>`,
+                    html: `<div class="social-new-thread"><span class="social-empty-mark" aria-hidden="true"><span class="social-empty-sleeve"></span><span class="social-empty-sleeve"></span><span class="social-empty-sleeve"></span></span><strong>Start with a record</strong><span>Send a track or a snippet with the music button below. The last record shared here sets the ink of this conversation.</span></div>`,
                 },
             ]);
             return;
@@ -872,7 +926,7 @@ export class SocialManager {
             if (key && key !== lastDay) {
                 items.push({
                     key: `day:${key}`,
-                    html: `<div class="social-day-spacer" role="separator"><span>${escapeHtml(formatDayLabel(message.created))}</span></div>`,
+                    html: `<div class="social-day-spacer" role="separator" aria-label="${escapeHtml(formatDayLabel(message.created))}"><span>${escapeHtml(formatDayLabel(message.created))}</span></div>`,
                 });
                 lastDay = key;
                 previous = null;
@@ -920,17 +974,15 @@ export class SocialManager {
             const full = messageFileUrl(message, message.image);
             content += `<button class="social-message-image" type="button" data-lightbox="${escapeHtml(full)}"><img src="${escapeHtml(url)}" alt="${escapeHtml(message.body || 'Shared image')}" loading="lazy" /></button>`;
         }
-        if (['track', 'album', 'artist', 'userplaylist'].includes(kind) && payload) {
-            content += shareCardHTML(payload);
-        }
-        if (kind === 'snippet' && payload?.snippet) {
-            content += this.renderSnippetCard(payload);
-        }
+        const isMusic = ['track', 'album', 'artist', 'userplaylist'].includes(kind) && payload;
+        const isSnippet = kind === 'snippet' && payload?.snippet;
+        if (isMusic) content += this.renderSleeveCard(payload);
+        if (isSnippet) content += this.renderSnippetCard(payload);
 
         const ticks = own ? this.renderTicks(message) : '';
         const pinRecord = this.pins.find((pin) => pin.ref === message.id);
         const pinned = Boolean(pinRecord);
-        const hasCard = content.includes('social-message-share') || content.includes('social-snippet');
+        const hasCard = Boolean(isMusic || isSnippet);
         const foot =
             own || grouped
                 ? `<span class="social-message-foot"><time>${escapeHtml(formatClock(message.created))}</time>${ticks}</span>`
@@ -945,6 +997,31 @@ export class SocialManager {
                 </div>
             </div>
             <span class="social-message-pin${pinned ? ' is-pinned' : ''}">${message.id.startsWith('tmp') ? '' : `<button type="button" data-pin-message="${escapeHtml(message.id)}" title="${pinned ? 'Unpin' : 'Pin'}" aria-label="${pinned ? 'Unpin message' : 'Pin message'}" aria-pressed="${pinned}">${icon.pin(14)}</button>`}</span>
+        </div>`;
+    }
+
+    /** A shared record inside a conversation: its sleeve, its credits, and a way to play it. */
+    renderSleeveCard(payload) {
+        const kind = payload.type || 'track';
+        const title = payload.title || 'Shared music';
+        const href = safeHref(payload.href, `/${kind}/${encodeURIComponent(payload.id || '')}`);
+        const playable = ['track', 'album'].includes(kind) && payload.id;
+        const art = payload.image
+            ? `<img src="${escapeHtml(payload.image)}" alt="" loading="lazy" crossorigin="anonymous" data-tint ${COVER_ERROR} />`
+            : `<span class="social-sleeve-placeholder">${icon.music(20)}</span>`;
+        const byline = [KIND_LABEL[kind] || '', payload.subtitle || ''].filter(Boolean).join(', ');
+        const ink = cachedCoverColor(payload.image);
+        return `<div class="social-sleeve-card" data-tint-target${ink ? ` style="--tint:${escapeHtml(ink)}"` : ''}>
+            <a class="social-sleeve-art" href="${escapeHtml(href)}" tabindex="-1" aria-hidden="true">${art}</a>
+            <span class="social-sleeve-copy">
+                <a class="social-sleeve-title" href="${escapeHtml(href)}">${escapeHtml(title)}</a>
+                <small>${escapeHtml(byline)}</small>
+            </span>
+            ${
+                playable
+                    ? `<button class="social-sleeve-play" type="button" data-play-kind="${escapeHtml(kind)}" data-play-id="${escapeHtml(payload.id)}" aria-label="Play ${escapeHtml(title)}">${snippetPlayIcon()}</button>`
+                    : `<a class="social-sleeve-open" href="${escapeHtml(href)}" aria-label="Open ${escapeHtml(title)}">${icon.open(16)}</a>`
+            }
         </div>`;
     }
 
@@ -973,11 +1050,12 @@ export class SocialManager {
         const rawPeaks = Array.isArray(snippet.peaks) ? snippet.peaks : [];
         const maxBars = 56;
         const sampleSize = Math.max(1, Math.ceil(rawPeaks.length / maxBars));
+        // Without stored peaks the excerpt draws as a flat line, never as invented bars.
         const peaks = rawPeaks.length
             ? Array.from({ length: Math.ceil(rawPeaks.length / sampleSize) }, (_, index) =>
                   Math.max(...rawPeaks.slice(index * sampleSize, (index + 1) * sampleSize))
               )
-            : Array.from({ length: 40 }, (_, index) => 0.18 + Math.abs(Math.sin(index * 0.62)) * 0.35);
+            : Array.from({ length: 40 }, () => 0);
         const duration = Number(snippet.duration) || 1;
         const selectionStart = Math.max(0, Math.min(100, ((Number(snippet.start) || 0) / duration) * 100));
         const selectionEnd = Math.max(
@@ -989,10 +1067,12 @@ export class SocialManager {
             .join('');
         const playable = Boolean(payload.id);
         const cover = payload.image
-            ? `<img src="${escapeHtml(payload.image)}" alt="" crossorigin="anonymous" data-tint onerror="if(this.crossOrigin){this.removeAttribute('crossorigin');this.src=this.src}else{this.hidden=true}" />`
-            : icon.disc(22);
+            ? `<img src="${escapeHtml(payload.image)}" alt="" crossorigin="anonymous" data-tint ${COVER_ERROR} />`
+            : icon.music(22);
+        const from = formatDuration(snippet.start || 0);
+        const to = formatDuration(snippet.end || 0);
         return `<div class="social-snippet" data-snippet-id="${escapeHtml(payload.id || '')}" data-tint-target>
-            <span class="social-snippet-disc" aria-hidden="true"><span class="social-snippet-platter">${cover}</span></span>
+            <span class="social-snippet-art" aria-hidden="true">${cover}<span class="social-snippet-live"><span class="social-eq"><i></i><i></i><i></i></span></span></span>
             <div class="social-snippet-content">
                 <div class="social-snippet-copy">
                     <strong>${escapeHtml(payload.title || 'Snippet')}</strong>
@@ -1003,10 +1083,10 @@ export class SocialManager {
                     <div class="social-snippet-wave-wrap" style="--selection-start:${selectionStart}%;--selection-end:${selectionEnd}%">
                         <div class="social-snippet-wave" aria-hidden="true">${bars}</div>
                         <div class="social-snippet-wave is-selected" aria-hidden="true">${bars}</div>
-                        <span class="social-snippet-selection" role="img" aria-label="Excerpt from ${escapeHtml(formatDuration(snippet.start || 0))} to ${escapeHtml(formatDuration(snippet.end || 0))}"></span>
-                        <span class="social-snippet-range">${escapeHtml(formatDuration(snippet.start || 0))} – ${escapeHtml(formatDuration(snippet.end || 0))}</span>
+                        <span class="social-snippet-selection" role="img" aria-label="Excerpt from ${escapeHtml(from)} to ${escapeHtml(to)}"></span>
                     </div>
                 </div>
+                <span class="social-snippet-range"><span class="sr-only">Excerpt </span>${escapeHtml(from)} to ${escapeHtml(to)}</span>
             </div>
         </div>`;
     }
@@ -1216,10 +1296,10 @@ export class SocialManager {
         const isMuted = this.muted.has(conversation.id);
         const about = profile.about || profile.status || '';
         return `<header class="social-info-hero">
-            <img src="${escapeHtml(avatarFor(profile))}" alt="" />
+            <img class="social-info-face" src="${escapeHtml(avatarFor(profile))}" alt="" />
             <strong>${escapeHtml(displayName(profile))}</strong>
             <small>${escapeHtml(handleFor(profile))}</small>
-            ${about ? `<p>${escapeHtml(about)}</p>` : ''}
+            ${about ? `<p class="social-info-about">${escapeHtml(about)}</p>` : ''}
             <div class="social-info-actions">
                 <a href="${escapeHtml(profileHref(profile))}">${icon.user(15)}<span>Profile</span></a>
                 <button type="button" data-toggle-mute="${escapeHtml(conversation.id)}">${isMuted ? icon.bell(15) : icon.bellOff(15)}<span>${isMuted ? 'Unmute' : 'Mute'}</span></button>
@@ -1236,10 +1316,10 @@ export class SocialManager {
         return `<section class="social-info-section">
             <h3>${state.playing ? 'Listening now' : 'Paused on'}</h3>
             <div class="social-info-deck${state.playing ? ' is-live' : ''}" data-tint-target>
-                <span class="social-info-disc" aria-hidden="true">${track.image ? `<img src="${escapeHtml(track.image)}" alt="" crossorigin="anonymous" data-tint onerror="if(this.crossOrigin){this.removeAttribute('crossorigin');this.src=this.src}else{this.hidden=true}" />` : icon.disc(20)}</span>
+                <span class="social-info-disc" aria-hidden="true">${track.image ? `<img src="${escapeHtml(track.image)}" alt="" crossorigin="anonymous" data-tint ${COVER_ERROR} />` : icon.music(20)}</span>
                 <div class="social-info-track-copy">
-                    <a href="${escapeHtml(track.href || '#')}"><strong>${escapeHtml(track.title || '')}</strong></a>
-                    <small>${escapeHtml(track.subtitle || '')}</small>
+                    <a href="${escapeHtml(safeHref(track.href))}"><strong>${escapeHtml(track.title || '')}</strong></a>
+                    <small>${state.playing ? '<span class="social-eq" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}${escapeHtml(track.subtitle || '')}</small>
                 </div>
                 <button type="button" data-play-share="${escapeHtml(track.id || '')}" data-play-kind="track" aria-label="Play ${escapeHtml(track.title || 'this track')}" title="Play">${icon.play(15)}</button>
             </div>
@@ -1264,37 +1344,30 @@ export class SocialManager {
         const tracks = this.sharedFromMessages(messages, 'track');
         const rows = tracks
             .map(
-                (
-                    entry,
-                    index
-                ) => `<div class="social-info-row is-shared-track${entry.payload.image ? ' has-track-backdrop' : ''}">
-                ${entry.payload.image ? `<img class="social-track-backdrop" src="${escapeHtml(entry.payload.image)}" alt="" loading="lazy" /><span class="social-track-shade" aria-hidden="true"></span>` : ''}
-                <span class="social-info-index">${index + 1}</span>
+                (entry) => `<li><button class="social-info-row is-shared-track" type="button" data-play-share="${escapeHtml(entry.payload.id)}" data-play-kind="track" aria-label="Play ${escapeHtml(entry.payload.title || 'track')}">
                 <span class="social-info-art">
-                    ${entry.payload.image ? `<img src="${escapeHtml(entry.payload.image)}" alt="" />` : '<span class="social-info-art-placeholder" aria-hidden="true">T</span>'}
-                    <button class="social-info-art-play" type="button" data-play-share="${escapeHtml(entry.payload.id)}" data-play-kind="track" aria-label="Play ${escapeHtml(entry.payload.title || 'track')}"><span class="social-share-play"><svg class="social-share-morph-play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5L19 12L8 18.5Z"></path></svg></span></button>
+                    ${entry.payload.image ? `<img src="${escapeHtml(entry.payload.image)}" alt="" loading="lazy" />` : `<span class="social-info-art-placeholder" aria-hidden="true">${icon.music(14)}</span>`}
+                    <span class="social-info-art-play" aria-hidden="true">${icon.play(13)}</span>
                 </span>
                 <span class="social-info-row-copy"><strong>${escapeHtml(entry.payload.title || '')}</strong><small>${escapeHtml(entry.payload.subtitle || '')}</small></span>
-            </div>`
+                <time class="social-info-when" datetime="${escapeHtml(entry.created || '')}">${escapeHtml(formatRelativeTime(entry.created))}</time>
+            </button></li>`
             )
             .join('');
-        return `<section class="social-info-section is-shared-tracks"><h3>Shared tracks</h3>${rows || '<p class="social-info-hint">Nothing shared yet — drop a track in the chat.</p>'}</section>`;
+        return `<section class="social-info-section is-shared-tracks"><h3>Shared tracks</h3>${rows ? `<ol class="social-info-tracklist">${rows}</ol>` : '<p class="social-info-hint">Nothing shared yet. Send a track with the music button.</p>'}</section>`;
     }
 
     renderSharedAlbums(messages) {
         const albums = this.sharedFromMessages(messages, 'album');
-        const rows = albums
+        const sleeves = albums
             .map(
-                (
-                    entry
-                ) => `<a class="social-info-row is-shared-album${entry.payload.image ? ' has-track-backdrop' : ''}" href="${escapeHtml(entry.payload.href || '#')}">
-                ${entry.payload.image ? `<img class="social-track-backdrop" src="${escapeHtml(entry.payload.image)}" alt="" loading="lazy" /><span class="social-track-shade" aria-hidden="true"></span>` : ''}
-                ${entry.payload.image ? `<img src="${escapeHtml(entry.payload.image)}" alt="" />` : ''}
-                <span class="social-info-row-copy"><strong>${escapeHtml(entry.payload.title || '')}</strong><small>${escapeHtml(entry.payload.subtitle || '')}</small></span>
+                (entry) => `<a class="social-info-sleeve" href="${escapeHtml(safeHref(entry.payload.href))}" title="${escapeHtml([entry.payload.title, entry.payload.subtitle].filter(Boolean).join(', '))}">
+                <span class="social-info-sleeve-art">${entry.payload.image ? `<img src="${escapeHtml(entry.payload.image)}" alt="" loading="lazy" />` : icon.music(18)}</span>
+                <span class="social-info-sleeve-title">${escapeHtml(entry.payload.title || '')}</span>
             </a>`
             )
             .join('');
-        return `<section class="social-info-section is-shared-albums"><h3>Shared albums</h3>${rows || '<p class="social-info-hint">No albums shared yet.</p>'}</section>`;
+        return `<section class="social-info-section is-shared-albums"><h3>Shared albums</h3>${sleeves ? `<div class="social-info-sleeves">${sleeves}</div>` : '<p class="social-info-hint">No albums shared yet.</p>'}</section>`;
     }
 
     renderMutual(other) {
@@ -1324,7 +1397,7 @@ export class SocialManager {
                 (
                     entry
                 ) => `<button class="social-info-row is-conversation" type="button" data-info-conversation="${escapeHtml(entry.id)}">${groupAvatarHTML(entry, this.profiles, 'small')}
-                <span class="social-info-row-copy"><strong>${escapeHtml(conversationTitle(entry, this.profiles, this.userId))}</strong><small>${(entry.members || []).length} members</small></span>${icon.chevronLeft(14)}</button>`
+                <span class="social-info-row-copy"><strong>${escapeHtml(conversationTitle(entry, this.profiles, this.userId))}</strong><small>${(entry.members || []).length} members</small></span>${icon.chevronRight(15)}</button>`
             )
             .join('');
         const label = mutualFriends.length
@@ -1339,21 +1412,22 @@ export class SocialManager {
     renderPinned(conversation) {
         const pins = this.pins.filter((pin) => parseJson(pin.payload)?.conversationId === conversation.id);
         if (!pins.length) {
-            return `<section class="social-info-section"><h3>Pinned</h3><p class="social-info-hint">Hover a message and hit the pin to keep it here.</p></section>`;
+            return `<section class="social-info-section"><h3>Pinned</h3><p class="social-info-hint">Point at a message and use its pin to keep it here.</p></section>`;
         }
         const rows = pins
             .map((pin) => {
                 const payload = parseJson(pin.payload) || {};
                 const preview =
                     payload.kind === 'snippet'
-                        ? `Snippet · ${payload.title || ''}`
+                        ? `Snippet: ${payload.title || ''}`
                         : payload.kind === 'image'
                           ? 'Photo'
                           : payload.body || payload.title || 'Pinned message';
+                const meta = [payload.senderName || '', formatRelativeTime(payload.created)].filter(Boolean).join(', ');
                 return `<div class="social-info-row is-pin">
-                <span class="social-info-pin-icon">${icon.pin(13)}</span>
-                <span class="social-info-row-copy"><strong>${escapeHtml(String(preview).slice(0, 90))}</strong><small>${escapeHtml(payload.senderName || '')} · ${escapeHtml(formatRelativeTime(payload.created))}</small></span>
-                <button type="button" data-unpin="${escapeHtml(pin.id)}" aria-label="Unpin">${icon.pinOff(14)}</button>
+                <span class="social-info-pin-icon" aria-hidden="true">${icon.pin(13)}</span>
+                <span class="social-info-row-copy"><strong>${escapeHtml(String(preview).slice(0, 90))}</strong><small>${escapeHtml(meta)}</small></span>
+                <button type="button" data-unpin="${escapeHtml(pin.id)}" aria-label="Unpin" title="Unpin">${icon.pinOff(14)}</button>
             </div>`;
             })
             .join('');
@@ -1446,7 +1520,7 @@ export class SocialManager {
         overlay.className = 'social-group-modal';
         overlay.innerHTML = `<div class="social-group-modal-card" role="dialog" aria-modal="true" aria-label="New group">
             <header><strong>New group</strong>
-                <button type="button" class="btn-icon" data-group-close aria-label="Close">${icon.x(18)}</button>
+                <button type="button" class="btn-icon" data-group-close data-dismiss="modal" aria-label="Close">${icon.x(18)}</button>
             </header>
             <label class="social-group-picture-picker">
                 <span class="social-group-picture-preview" data-group-picture-preview>${icon.imagePlus(20)}</span>
@@ -1467,14 +1541,14 @@ export class SocialManager {
                 </label>`
                               )
                               .join('')
-                        : '<p class="social-group-hint">Groups are for friends — you both need to follow each other first.</p>'
+                        : '<p class="social-group-hint">Groups are for friends: you and each person need to follow each other first.</p>'
                 }
             </div>
             <button id="social-group-create" class="social-group-create" ${friends.length ? '' : 'disabled'}>Create group</button>
         </div>`;
         document.body.appendChild(overlay);
         overlay.addEventListener('click', (event) => {
-            if (event.target === overlay || event.target.closest('[data-group-close]')) overlay.remove();
+            if (event.target === overlay || event.target.closest('[data-group-close]')) this.closeGroupModal();
         });
         overlay.querySelector('#social-group-avatar')?.addEventListener('change', (event) => {
             const file = event.target.files?.[0];
@@ -1495,6 +1569,15 @@ export class SocialManager {
                 .catch((error) => showNotification(error.message, 'error'));
         });
         overlay.querySelector('#social-group-name')?.focus();
+    }
+
+    /** Dismiss the new-group dialog and hand focus back to the button that opened it. */
+    closeGroupModal() {
+        const overlay = document.getElementById('social-group-modal');
+        if (!overlay) return false;
+        overlay.remove();
+        document.getElementById('social-new-group')?.focus();
+        return true;
     }
 
     async createGroup(name, memberIds, avatar = null) {
@@ -1579,8 +1662,8 @@ export class SocialManager {
         this.renderRail(document.getElementById('social-conversation-search')?.value || '');
         this.renderThread();
         if (this.infoOpen) this.renderInfoPanel();
-        this.booth?.render();
-        const selector = ['data-deck-follow', 'data-toggle-follow', 'data-follow-user']
+        this.band?.render();
+        const selector = ['data-band-follow', 'data-toggle-follow', 'data-follow-user']
             .map((attribute) => `[${attribute}="${CSS.escape(userId)}"]`)
             .join(',');
         document.querySelectorAll(selector).forEach((button) => pulse(button, 'is-stamping'));
@@ -1776,9 +1859,21 @@ export class SocialManager {
     attachPlayerPresence() {
         if (!this.player || this.player.__socialPresenceAttached) return;
         this.player.__socialPresenceAttached = true;
+        // What you hear changes the page too: the tracklist row you play, the friend you joined.
+        const reflect = () => {
+            if (!document.getElementById('page-social')?.classList.contains('active')) return;
+            this.feed?.markNowPlaying();
+            this.band?.render();
+        };
         for (const element of [...this.player.getAudioElements(), this.player.video].filter(Boolean)) {
-            element.addEventListener('play', () => this.publishPresence().catch(console.error));
-            element.addEventListener('pause', () => this.publishPresence().catch(console.error));
+            element.addEventListener('play', () => {
+                this.publishPresence().catch(console.error);
+                reflect();
+            });
+            element.addEventListener('pause', () => {
+                this.publishPresence().catch(console.error);
+                reflect();
+            });
             element.addEventListener('ended', () => this.publishPresence(null).catch(console.error));
             element.addEventListener('timeupdate', () => {
                 if (Date.now() - this.lastPresenceProgress < PRESENCE_PROGRESS_MS) return;
@@ -1922,7 +2017,7 @@ export class SocialManager {
             .catch(() => null);
         const state = presenceState(presence);
         if (!state.track) return;
-        container.innerHTML = `<span class="social-equalizer"><i></i><i></i><i></i></span><span><em>${state.playing ? 'LISTENING NOW' : 'PAUSED'}</em><strong>${escapeHtml(state.track.title)}</strong><small>${escapeHtml(state.track.subtitle || '')}</small></span><a href="${escapeHtml(state.track.href || '#')}">Open</a>`;
+        container.innerHTML = `<span class="social-equalizer"><i></i><i></i><i></i></span><span><em>${state.playing ? 'LISTENING NOW' : 'PAUSED'}</em><strong>${escapeHtml(state.track.title)}</strong><small>${escapeHtml(state.track.subtitle || '')}</small></span><a href="${escapeHtml(safeHref(state.track.href))}">Open</a>`;
         container.style.display = 'flex';
     }
 
@@ -2002,17 +2097,19 @@ export class SocialManager {
         const feed = document.getElementById('social-feed');
         const list = document.getElementById('social-conversation-list');
         if (list) {
-            list.innerHTML = `<div class="social-rail-empty"><strong>Sign in to use Social</strong><span>Your homelab conversations are private to signed-in members.</span></div>`;
+            list.innerHTML = `<div class="social-rail-empty"><strong>Sign in to use Social</strong><span>Conversations on this instance are private to signed-in members.</span></div>`;
         }
         if (feed) {
-            feed.innerHTML = `<div class="social-feed-empty"><strong>Sign in to join in</strong><span>The feed and chats are for instance members.</span></div>`;
+            feed.innerHTML = `<div class="social-feed-empty"><strong>Sign in to join in</strong><span>The feed and conversations are for members of this instance.</span></div>`;
         }
         const composer = document.getElementById('social-post-composer');
         if (composer) composer.hidden = true;
         const count = document.getElementById('social-people-count');
         if (count) count.textContent = '0';
-        const booth = document.getElementById('social-booth');
-        if (booth) booth.hidden = true;
+        const band = document.getElementById('social-band');
+        if (band) band.hidden = true;
+        const desk = document.getElementById('social-desk');
+        if (desk) desk.hidden = true;
     }
 
     /* --------------------------------- bind ---------------------------------- */
@@ -2022,6 +2119,34 @@ export class SocialManager {
         document.getElementById('social-tabs')?.addEventListener('click', (event) => {
             const tab = event.target.closest('.social-tab');
             if (tab) this.setTab(tab.id === 'social-tab-messages' ? 'messages' : 'feed');
+        });
+        // Arrow keys move between the two tabs, as a tablist should.
+        document.getElementById('social-tabs')?.addEventListener('keydown', (event) => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            // Two tabs that wrap: either arrow moves to the tab that does not have focus.
+            const focused = event.target.closest('.social-tab')?.id === 'social-tab-messages' ? 'messages' : 'feed';
+            const next =
+                event.key === 'Home'
+                    ? 'feed'
+                    : event.key === 'End'
+                      ? 'messages'
+                      : focused === 'feed'
+                        ? 'messages'
+                        : 'feed';
+            this.setTab(next);
+            document.getElementById(next === 'messages' ? 'social-tab-messages' : 'social-tab-feed')?.focus();
+        });
+        document.getElementById('social-desk')?.addEventListener('click', (event) => {
+            const row = event.target.closest('[data-conversation]');
+            if (row) {
+                this.openConversation(row.dataset.conversation).catch(console.error);
+                return;
+            }
+            if (event.target.closest('[data-desk-all]')) {
+                this.setTab('messages');
+                document.getElementById('social-tab-messages')?.focus({ preventScroll: true });
+            }
         });
         document.getElementById('social-conversation-search')?.addEventListener('input', (event) => {
             this.renderRail(event.target.value);
@@ -2079,16 +2204,8 @@ export class SocialManager {
             const play = event.target.closest('[data-play-kind][data-play-id]');
             if (play) {
                 event.preventDefault();
+                pulse(play, 'is-pressed');
                 this.playSnippetAware(play);
-                return;
-            }
-            const card = event.target.closest('.social-message-share');
-            if (!card) return;
-            const kind = card.dataset.shareKind;
-            const id = card.dataset.shareId;
-            if (kind && id) {
-                event.preventDefault();
-                void import('./router.js').then(({ navigate }) => navigate(`/${kind}/${encodeURIComponent(id)}`));
             }
         });
 
