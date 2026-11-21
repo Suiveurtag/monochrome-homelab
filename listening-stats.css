@@ -116,7 +116,7 @@
     mask-composite: intersect;
 }
 
-#page-stats:has(.stats-scene) .stats-ambience {
+#page-stats:has(.stats-scene):not(:has(.stats-first-listen)) .stats-ambience {
     opacity: 1;
 }
 
