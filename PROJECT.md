@@ -51,7 +51,7 @@ Browser (Vite dev on :5173 / nginx static on :3000)
 | `js/selfhost-server-api.js`                                               | PocketBase ⇄ internal track model bridge + upload/import/update/delete API                          |
 | `js/player.js`, `js/player-bar-*.js`, `js/audio-context.js`               | Audio engine, gapless playback, custom player UI                                                    |
 | `js/now-playing-panel.js` (+ `-model`, `.test.js`)                        | Custom "Now Playing" fullscreen panel (prototype)                                                   |
-| `js/spicy-lyrics-renderer.js`, `spicy-lyrics-ttml.js`                     | Line-synced lyrics renderer (replaces stock lyrics UI)                                              |
+| `js/spicy-lyrics-renderer.js`, `spicy-lyrics-ttml.js`                     | Central Spicy Lyrics system for all lyrics: synced rendering, visual backgrounds in the Now Playing panel, and fullscreen lyrics experience |
 | `js/track-versions.js`, `track-version-picker.js`                         | Grouping alternative versions of the same track                                                     |
 | `js/upload-gallery.js`, `selfhost-upload-batch.js`                        | Batch file uploads to the self-hosted library                                                       |
 | `js/accounts/config.js`, `auth.js`, `pocketbase.js`                       | PocketBase auth/sync                                                                                |
@@ -68,8 +68,8 @@ Browser (Vite dev on :5173 / nginx static on :3000)
 ## Custom features (fork work, per git log)
 
 - Gapless playback with adaptive preloading; custom resizable floating player panel; playback fades; quality selector
-- **Now Playing panel** prototype (Spotify-style fullscreen view with lyrics + queue + canvas)
-- **Spicy Lyrics**: animated line-synced lyrics renderer
+- **Now Playing panel** with a fullscreen experience; Spicy Lyrics provides the lyrics throughout and its rendering engine is extensively reused for the panel background and fullscreen visuals, alongside queue and canvas.
+- **Spicy Lyrics**: the single system responsible for all lyrics across the app. Its engine renders synchronized lyrics and is also heavily used as the visual background layer in the Now Playing panel and fullscreen experience.
 - **Track versions**: alternative-version grouping + picker
 - **Upload gallery** (self-hosted library management)
 - **Easter eggs**: `soggy-easter-egg.*`, `metallic-logo-easter-egg.*`
