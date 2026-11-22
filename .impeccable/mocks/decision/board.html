@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Monochrome Social: three directions</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0a;color:#ededed;font:15px/1.55 Inter,'Segoe UI',system-ui,sans-serif;padding:56px 56px 96px}
+::selection{background:#f5f5f5;color:#0a0a0a}
+a{color:#f5f5f5;text-underline-offset:3px}
+.wrap{max-width:1500px;margin:0 auto}
+h1{font:800 52px/1 'Inter Tight','Segoe UI',sans-serif;letter-spacing:-.035em}
+.lede{max-width:760px;color:#a8a8a8;font-size:17px;margin-top:16px}
+.note{margin-top:14px;color:#8a8a8a;font-size:13.5px;max-width:860px}
+nav{display:flex;gap:10px;margin:28px 0 8px;flex-wrap:wrap}
+nav a{text-decoration:none;border:1px solid #2a2a2a;border-radius:99px;padding:8px 16px;font-weight:500}
+nav a.rec{background:#f5f5f5;color:#0a0a0a;border-color:#f5f5f5}
+section{padding-top:72px}
+.dh{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+h2{font:800 40px/1.05 'Inter Tight','Segoe UI',sans-serif;letter-spacing:-.03em}
+.chip{font-size:12px;font-weight:600;border:1px solid #3a3a3a;border-radius:99px;padding:3px 10px;color:#cfcfcf}
+.chip.w{background:#f5f5f5;color:#0a0a0a;border-color:#f5f5f5}
+.thesis{font-size:19px;color:#d8d8d8;max-width:900px;margin-top:12px}
+.figs{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;margin-top:28px;align-items:start}
+figure{background:#111;border:1px solid #1f1f1f;border-radius:12px;overflow:hidden}
+figure img{display:block;width:100%;height:auto;min-height:120px;background:#141414}
+figcaption{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;color:#8a8a8a;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 48px;margin-top:30px}
+.grid h3{font:700 15px Inter;color:#f5f5f5;margin-bottom:4px}
+.grid p{color:#ababab}
+.pm{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-top:26px;padding-top:22px;border-top:1px solid #1f1f1f}
+.pm h3{font:700 15px Inter;margin-bottom:6px}.pm ul{padding-left:18px;color:#ababab}.pm li{margin:3px 0}
+.shared,.rec-box{margin-top:84px;border-top:1px solid #222;padding-top:40px}
+.shared ul{columns:2;column-gap:56px;padding-left:18px;color:#b3b3b3;margin-top:14px}.shared li{margin:0 0 8px;break-inside:avoid}
+.rec-box p{max-width:900px;color:#c8c8c8;margin-top:12px;font-size:16.5px}
+@media (max-width:900px){body{padding:28px 20px 64px}.figs,.grid,.pm{grid-template-columns:1fr}.shared ul{columns:1}h1{font-size:38px}}
+</style></head><body><div class="wrap">
+<h1>Monochrome Social</h1>
+<p class="lede">Three structures for the new Social page. All three keep Monochrome's existing look (near-black ground, Switzer display type, white pill controls, album art as the only colour); they differ in how the instance's listening is composed.</p>
+<p class="note">All names, songs and covers are invented sample data. Comps are generated images that show direction, not final pixels; the HTML sketch for each is the buildable composition. Pick on the decision page or just reply in chat.</p>
+<nav><a href="#crate">The Crate</a><a href="#gatherings">Gatherings</a><a href="#setlist">The Setlist</a><a href="#recommendation" class="rec">Recommendation</a></nav>
+
+<section id="crate">
+<div class="dh"><h2>The Crate</h2><span class="chip">Drawn first by the roll</span></div>
+<p class="thesis">The instance's whole day is one record shelf. Everything members played is filed in time as spines; what's playing right now is pulled out face-forward at the shelf's right end.</p>
+<div class="figs"><figure><img src="crate.png" alt="The Crate, desktop comp"><figcaption><span>Desktop comp. The wood ledge is the image model's; the build keeps Monochrome charcoal.</span><a href="crate.html">Open HTML sketch</a></figcaption></figure>
+<figure><img src="crate-mobile.png" alt="The Crate, mobile comp"><figcaption><span>Mobile comp</span></figcaption></figure></div>
+<div class="grid">
+<div><h3>Composition</h3><p>Header (title, live summary, visibility, Ghost, Messages, Leave a note), then a full-width shelf: hour-marked spines lead into a Now marker and the face-out sleeves. Below it, three quiet columns: this week on the shelf, kindred listeners, an open poll.</p></div>
+<div><h3>Live listening</h3><p>Each live listener gets a face-out sleeve with their avatar on its corner and live progress along its lower edge. Members on the same album share one stacked slot. A track change swaps the sleeve in place; when someone stops, their sleeve slides back into the shelf as the newest spine. Nothing reorders.</p></div>
+<div><h3>Recent activity</h3><p>The spines are the history: today's plays by visible members, newest nearest Now. Hover or focus lifts and labels a spine; clicking pulls it out to play, save, react or open the album, artist or profile. Earlier days page to the left.</p></div>
+<div><h3>Interactions and messaging</h3><p>React from any sleeve or pulled-out spine (a quick row of six emoji, plus a full picker). Notes are shelf-talker cards tucked in front of the record they mention. Messages opens as a side drawer from the header, and every record offers "Message Mara about this".</p></div>
+<div><h3>With very few members</h3><p>One listener gets one large face-out beside their own spines, and the shelf shortens. If nobody is live, the newest record stays face-out, marked "Last played 40 min ago". A brand-new instance shows an empty shelf with the privacy choice and "Your listening starts the shelf".</p></div>
+<div><h3>Mobile</h3><p>The face-outs become a swipeable row of sleeves (one full, the next peeking), and the spines become a horizontal strip under "Earlier today". Everything else stacks below.</p></div>
+</div>
+<div class="pm"><div><h3>Strengths</h3><ul><li>One collective object instead of a card per person</li><li>Art-first, so it looks like Monochrome</li><li>Liveness and the day's history read in one glance</li><li>History keeps small or quiet instances full</li><li>Shelf-talker notes give it a signature of its own</li></ul></div>
+<div><h3>Risks</h3><ul><li>Sideways spine titles read slowly, so spines need hover and focus labels</li><li>Sideways history needs keyboard paging</li><li>Busy evenings need the face-out zone to wrap gracefully</li></ul></div></div>
+</section>
+
+<section id="gatherings">
+<div class="dh"><h2>Gatherings</h2></div>
+<p class="thesis">The page shows where the room is rather than who is online. Live listening is grouped by the music people share (same track, then album, then artist), not by person.</p>
+<div class="figs"><figure><img src="gatherings.png" alt="Gatherings, desktop comp"><figcaption><span>Desktop comp</span><a href="gatherings.html">Open HTML sketch</a></figcaption></figure>
+<figure><img src="gatherings-mobile.png" alt="Gatherings, mobile comp"><figcaption><span>Mobile comp</span></figcaption></figure></div>
+<div class="grid">
+<div><h3>Composition</h3><p>Header, then a wide floor of gatherings on one baseline: the largest sits in the centre, washed in its cover's colour. Below: earlier gatherings, a "quiet now" row (members who aren't listening, with their notes) and this week's chart.</p></div>
+<div><h3>Live listening</h3><p>Each gathering is one cover sized by how many people are in it, with their avatars seated along its lower edge and a caption saying who is on which track. "Join in" plays the same track in your own player. Gatherings keep stable positions, and people move between them instead of the floor reshuffling.</p></div>
+<div><h3>Recent activity</h3><p>"Earlier gatherings" keeps the moments when people overlapped today. Solo listening feeds the weekly chart and the kindred-listener matches rather than a feed.</p></div>
+<div><h3>Interactions and messaging</h3><p>Notes are bubbles over a member's avatar wherever that member appears, the way Instagram Notes work. You can react to a gathering or to a person. Messages opens from the header and from avatar popovers.</p></div>
+<div><h3>With very few members</h3><p>One listener gets a single large centred gathering with "Join Inez". With nobody live, the last gathering shows dimmed beside the "quiet now" row. A new instance shows an empty floor and the privacy setup.</p></div>
+<div><h3>Mobile</h3><p>A notes row sits on top, the biggest gathering runs full width, and the others stack below it.</p></div>
+</div>
+<div class="pm"><div><h3>Strengths</h3><ul><li>States the shared-taste idea most directly</li><li>Notes sit naturally above heads</li><li>"Join in" is a real social action that works today</li></ul></div>
+<div><h3>Risks</h3><ul><li>With no overlap, every gathering is a gathering of one and the floor reads as separate cards</li><li>The grouping rule has to be obvious to people</li><li>Covers resizing as people join can feel restless</li></ul></div></div>
+</section>
+
+<section id="setlist">
+<div class="dh"><h2>The Setlist</h2></div>
+<p class="thesis">The instance's night reads as one running order: what's playing now heads the setlist, earlier songs follow in sets, and one button plays the room.</p>
+<div class="figs"><figure><img src="setlist.png" alt="The Setlist, desktop comp"><figcaption><span>Desktop comp</span><a href="setlist.html">Open HTML sketch</a></figcaption></figure>
+<figure><img src="setlist-mobile.png" alt="The Setlist, mobile comp"><figcaption><span>Mobile comp</span></figcaption></figure></div>
+<div class="grid">
+<div><h3>Composition</h3><p>Two columns. The setlist holds a Now block of large rows with big running numbers, then hour-based set breaks and compact earlier rows. An encore column holds the Messages entry, this week's chart, kindred listeners and a poll.</p></div>
+<div><h3>Live listening</h3><p>Large rows show the cover, track, listeners, reactions and a live progress hairline. Members on a shared album merge into one row. "Play the room" queues everything currently playing.</p></div>
+<div><h3>Recent activity</h3><p>Compact rows grouped by hour, with times. Notes appear as margin annotations under the row they're about.</p></div>
+<div><h3>Interactions and messaging</h3><p>Hovering or focusing any row reveals a reaction row and its actions. Messages is the first item in the encore column and opens a drawer.</p></div>
+<div><h3>With very few members</h3><p>A two-song setlist still reads as complete, and "Play the room" becomes "Listen with Mara". With nobody live, Now collapses to one line and the last set leads.</p></div>
+<div><h3>Mobile</h3><p>The most natural of the three: one column, a sticky "Play the room" button, and the encore content after Now.</p></div>
+</div>
+<div class="pm"><div><h3>Strengths</h3><ul><li>Clearest hierarchy</li><li>Best mobile and small-instance behaviour</li><li>Simplest to make reliable</li><li>"Play the room" is a functional signature</li></ul></div>
+<div><h3>Risks</h3><ul><li>Closest of the three to a feed</li><li>The least visually spectacular</li><li>Its character depends entirely on type scale</li></ul></div></div>
+</section>
+
+<div class="shared"><h2 style="font-size:28px">Shared backbone (any direction)</h2>
+<ul>
+<li>Visibility (Private, Friends, Instance) chosen explicitly on first entry, defaulting to non-public and enforced in PocketBase rules and hooks, not just hidden in the page.</li>
+<li>Ghost Mode as a server-side flag: presence stops publishing, and sessions recorded while it's on stay private afterwards.</li>
+<li>Real emoji reactions stored in the backend, with counts and the ability to change or remove yours.</li>
+<li>Musical notes that last 24 hours and can attach a track, album or artist, with the same visibility rules.</li>
+<li>Community charts and compatibility computed on the server from authorized listening only, with minimum-listener thresholds so a small instance can't single anyone out.</li>
+<li>Polls built on library tracks and albums, one vote per member, with an end date.</li>
+<li>Messages reuse the existing conversations and messages collections, in a drawer rather than a page.</li>
+<li>Listening Parties don't appear until their Homelab rework lands; there's a component slot ready for them.</li>
+</ul></div>
+
+<div class="rec-box" id="recommendation"><h2 style="font-size:28px">Recommendation: The Crate</h2>
+<p>It answers the brief's hardest requirement best: the instance reads as one collective object, not a grid of people. Liveness and history sit in the same structure, so a four-person instance at 2 a.m. still has a full, beautiful shelf instead of an empty state. Its signature (records pulled out face-forward, shelf-talker notes) belongs to music culture rather than to social-media templates. I'd borrow two things: the Setlist's "Play the room" as a shelf action ("Play what's face-out"), and Gatherings' rule that shared albums stack into one slot (already in the sketch). Its main risk, readable spines, is solvable with hover and focus labels plus keyboard paging. Pick a different one, or ask for a mix, and I'll adjust before building.</p></div>
+</div></body></html>

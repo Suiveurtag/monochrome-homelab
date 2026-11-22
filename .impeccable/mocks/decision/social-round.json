@@ -1,0 +1,85 @@
+{
+  "title": "Monochrome Social: choose the structure",
+  "question": "Three structures for the new Social page, all in Monochrome's existing world. Pick one to build, steer it, or re-roll. Desktop + mobile comps and the full write-up: http://localhost:5173/.impeccable/mocks/decision/board.html (sample data throughout).",
+  "options": [
+    {
+      "id": "crate",
+      "kind": "assigned",
+      "kicker": "THE ROLL",
+      "label": "The Crate",
+      "lineage": "A record-store shelf: spines filed in time, the records playing now pulled out face-forward, shelf-talker cards for notes.",
+      "thesis": "The whole instance's day is one shelf, and what's playing right now is pulled out face-forward at its right end.",
+      "palette": [
+        "#0a0a0a",
+        "#141414",
+        "#f5f5f5",
+        "#a0a0a0",
+        "#e8e2d6"
+      ],
+      "materials": [
+        "cover-art spines",
+        "face-out sleeves",
+        "white shelf-talker cards",
+        "art-tinted ambience"
+      ],
+      "viewport": "A full-width shelf: hour-marked spines of today's plays lead left to right into large face-out sleeves of the live listeners, avatars on the sleeve corners and progress along each sleeve; shelf-talker notes clipped in front; the week's chart and kindred listeners below. Mobile comp: crate-mobile.png.",
+      "risk": "Sideways spine titles read slowly and history scrolls sideways; spines need hover/focus labels and keyboard paging. (The comp's wood ledge is the image model's; the build keeps Monochrome charcoal.)",
+      "html": ".impeccable/mocks/decision/crate.html",
+      "comp": ".impeccable/mocks/decision/crate.png"
+    },
+    {
+      "id": "gatherings",
+      "kind": "dealt",
+      "label": "Gatherings",
+      "lineage": "People clustering around a record at a party: live listening grouped by the music it shares, not by person.",
+      "thesis": "Live listening is grouped into gatherings around a shared track, album or artist, so the page shows where the room is, not who is online.",
+      "palette": [
+        "#0a0a0a",
+        "#141414",
+        "#f5f5f5",
+        "#a0a0a0",
+        "#2b2b2b"
+      ],
+      "materials": [
+        "covers scaled by crowd size",
+        "seated avatar arcs",
+        "note bubbles over heads",
+        "floor washed by the largest cover"
+      ],
+      "viewport": "A wide floor of gatherings: the largest shared cover centred with every listener's avatar seated along its edge, solo listeners smaller around it; a notes strip of avatars with thought bubbles above; earlier gatherings and the week's chart below. Mobile comp: gatherings-mobile.png.",
+      "risk": "When nobody overlaps, every gathering is a gathering of one and the floor reads as separate cards; resizing as people join must not churn.",
+      "html": ".impeccable/mocks/decision/gatherings.html",
+      "comp": ".impeccable/mocks/decision/gatherings.png"
+    },
+    {
+      "id": "setlist",
+      "kind": "dealt",
+      "label": "The Setlist",
+      "lineage": "A gig's running order taped to the stage: numbered songs, set breaks, margin notes, an encore.",
+      "thesis": "The instance's night reads as one running order: now playing at the top, earlier sets below, and one button plays the room.",
+      "palette": [
+        "#0a0a0a",
+        "#141414",
+        "#f5f5f5",
+        "#a0a0a0",
+        "#1f1f1f"
+      ],
+      "materials": [
+        "giant Switzer running numbers",
+        "set-break rules",
+        "margin annotations",
+        "encore column"
+      ],
+      "viewport": "Two columns: a setlist with a Now block of large-art rows (live progress, numbered, Play the room) followed by hour-grouped earlier sets with margin notes; an encore column with the week's chart, kindred listeners and a poll. Mobile comp: setlist-mobile.png.",
+      "risk": "It is the closest of the three to a feed and the least spectacular; it lives or dies on typographic scale.",
+      "html": ".impeccable/mocks/decision/setlist.html",
+      "comp": ".impeccable/mocks/decision/setlist.png"
+    }
+  ],
+  "reroll": true,
+  "steer": true,
+  "buildPath": {
+    "value": "code",
+    "toggle": true
+  }
+}
