@@ -1648,19 +1648,16 @@ body.now-playing-panel-resizing .app-container {
     min-height: 72px;
     padding: 14px 16px 24px;
     pointer-events: none;
-    background: linear-gradient(180deg, rgb(5 7 12 / 0.74), rgb(5 7 12 / 0.36) 62%, transparent);
+    justify-content: center;
+    background: transparent;
 }
 
 .now-playing-panel.lyrics-expanded .now-playing-panel-lyrics > header h3 {
-    color: rgb(255 255 255 / 0.92);
-    font-size: 1rem;
-    font-weight: 750;
-    font-family: var(--font-family-key);
-    letter-spacing: -0.01em;
-    text-transform: none;
+    display: none;
 }
 
 .now-playing-panel.lyrics-expanded .now-playing-panel-lyrics-actions {
+    justify-content: center;
     pointer-events: auto;
 }
 
