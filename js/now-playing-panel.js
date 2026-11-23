@@ -549,6 +549,7 @@ export class NowPlayingPanel {
         this.root.setAttribute('aria-hidden', String(!this.isOpen));
         this.content.inert = !this.isOpen;
         this.resizer.inert = !this.isOpen;
+        this.syncLyricsButtonState();
         this.syncQueueLayerState();
         this.reopenButton?.classList.toggle('is-visible', desktopAvailable && !this.isOpen && !queueAvailable);
         this.reopenButton?.setAttribute('aria-expanded', String(this.isOpen));
@@ -3093,8 +3094,17 @@ export class NowPlayingPanel {
         }, { signal });
     }
 
+    syncLyricsButtonState() {
+        const button = document.getElementById('toggle-lyrics-btn');
+        const active = this.isOpen && this.activeView !== 'queue' && this.expandedLyrics;
+        button?.classList.toggle('active', active);
+        button?.setAttribute('aria-pressed', String(active));
+        button?.setAttribute('aria-label', active ? 'Close lyrics in Now Playing' : 'Open lyrics in Now Playing');
+    }
+
     applyLyricsMode() {
         this.root.classList.toggle('lyrics-expanded', this.expandedLyrics);
+        this.syncLyricsButtonState();
         this.root.querySelector('.now-playing-panel-lyrics')?.classList.toggle('is-collapsed', this.collapsedLyrics);
         const lyricsHost = this.root.querySelector('.now-playing-panel-lyrics-host');
         lyricsHost?.setAttribute('aria-hidden', String(this.collapsedLyrics));

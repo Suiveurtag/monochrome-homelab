@@ -2109,6 +2109,14 @@ html:not(.popover-backdrop-blur) .quality-floating-backdrop.is-open {
     color: var(--active-highlight);
 }
 
+.now-playing-bar .sleep-timer-button[aria-expanded='true'] {
+    color: var(--active-highlight);
+}
+
+.now-playing-bar .sleep-timer-button[aria-expanded='true'] .sleep-timer-icon {
+    filter: drop-shadow(0 0 4px rgb(var(--highlight-rgb), 0.48));
+}
+
 .now-playing-bar .sleep-timer-button.is-sleep-active .sleep-timer-icon {
     transform: scale(0.76);
 }
@@ -3546,6 +3554,14 @@ html:not(.popover-backdrop-blur) .quality-floating-backdrop.is-open {
 
 .now-playing-bar #toggle-lyrics-btn .m-mic-head {
     transform-origin: 16px 7px;
+}
+
+.now-playing-bar #toggle-lyrics-btn.active {
+    color: var(--active-highlight);
+}
+
+.now-playing-bar #toggle-lyrics-btn.active .lucide-mic-vocal {
+    filter: drop-shadow(0 0 4px rgb(var(--highlight-rgb), 0.48));
 }
 
 .now-playing-bar #toggle-lyrics-btn.is-posed:not(.is-clicking) .m-mic {
