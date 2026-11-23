@@ -747,7 +747,7 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 .now-playing-panel-card {
     overflow: hidden;
     border-radius: 14px;
-    background: color-mix(in srgb, rgb(var(--highlight-rgb)) 7%, transparent);
+    background-color: var(--background-tinted-base, rgb(255 255 255 / 0.07));
     backdrop-filter: blur(6px);
 }
 
@@ -787,7 +787,7 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     height: 300px;
     display: flex;
     flex-direction: column;
-    background: color-mix(in srgb, rgb(var(--highlight-rgb)) 7%, transparent);
+    background-color: var(--background-tinted-base, rgb(255 255 255 / 0.07));
     backdrop-filter: blur(6px);
     transition:
         height 360ms cubic-bezier(0.22, 1, 0.36, 1),
