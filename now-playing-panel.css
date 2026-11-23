@@ -767,6 +767,11 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     padding: 10px 16px 6px;
 }
 
+.now-playing-panel-lyrics > header {
+    min-height: 46px;
+    padding: 8px 16px 0;
+}
+
 .now-playing-panel-card > header h3 {
     margin: 0;
     font-size: inherit;
@@ -778,8 +783,8 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 }
 
 .now-playing-panel-lyrics {
-    min-height: 270px;
-    height: 270px;
+    min-height: 300px;
+    height: 300px;
     display: flex;
     flex-direction: column;
     background: color-mix(in srgb, rgb(var(--highlight-rgb)) 7%, transparent);
