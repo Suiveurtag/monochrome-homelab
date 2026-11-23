@@ -6,12 +6,26 @@ const GLYPH_PLUS = 'M8 5.1L8 10.9M5.1 8L10.9 8';
 // Drawn left to right in one stroke (short leg, then long), so the check can be drawn in.
 const GLYPH_CHECK = 'M4.75 8.25L7.05 10.5L11.3 5.75';
 
-// Burst on save: a halo leaves the disc edge while sparks fly out, mostly over the top and the
-// sides. A few are four-point twinkles, the rest square flecks in accent, mint and white.
-const BURST_SPAN = 44; // overlay viewBox width, icon units; the disc ends at 7.25
-const BURST_LIFETIME = 900;
-const BURST_PARTICLES = 14;
-const BURST_TONES = ['accent', 'accent', 'mint', 'mint', 'white'];
+// Burst variants on save, picked by the Like Effect setting. Most rotate or jitter by a random
+// step each time so two saves never look the same.
+// Pulse (default): the disc's ring echoes outward once as a soft pulse while sparks fly off the rim.
+const BURST_DOTS = 8;
+const BURST_INNER = 8.6; // icon units; the disc ends at 7.25
+const BURST_TRAVEL = 6.5; // icon units each spark flies outward
+const BURST_SPAN = 44; // overlay viewBox width, icon units
+const BURST_LIFETIME = 550;
+// Dots: the quiet variant, a handful of small dots leaving the rim together.
+const DOTS_COUNT = 6;
+const DOTS_TRAVEL = 5.2;
+const DOTS_LIFETIME = 500;
+// Spectrum: equaliser bars around the disc, a few tall peaks among shorter ones.
+const SPECTRUM = [1, 0.5, 0.78, 0.42, 0.92, 0.58, 0.84, 0.46, 0.96, 0.54, 0.72, 0.62];
+const SPECTRUM_INNER = 9.2; // icon units; the disc ends at 7.25
+const SPECTRUM_LIFETIME = 900;
+const CONFETTI_SPAN = 44; // overlay viewBox width, icon units; the disc ends at 7.25
+const CONFETTI_LIFETIME = 900;
+const CONFETTI_PARTICLES = 14;
+const CONFETTI_TONES = ['accent', 'accent', 'mint', 'mint', 'white'];
 const ENTER_DURATION = 200; // ring tint pass (mint, then accent)
 const LEAVE_DURATION = 340; // check fade + hold + ring hollowing back out
 
@@ -47,8 +61,9 @@ function isOnTop(button, x, y) {
     return !hit || hit === button || button.contains(hit);
 }
 
-function spawnBurst(button) {
-    if (!button.isConnected) return;
+// Every variant shares one overlay: a body-level fixed SVG centred on the icon, so no row clips it.
+function createBurstOverlay(button, className) {
+    if (!button.isConnected) return null;
     const icon = button.querySelector('.track-save-icon') || button;
     const rect = icon.getBoundingClientRect();
     if (!rect.width) return null;
@@ -59,8 +74,131 @@ function spawnBurst(button) {
     const size = (rect.width / 16) * BURST_SPAN;
     const half = BURST_SPAN / 2;
     const svg = document.createElementNS(SVG_NS, 'svg');
-    svg.setAttribute('class', 'track-save-burst');
+    svg.setAttribute('class', className);
     svg.setAttribute('viewBox', `${-half} ${-half} ${BURST_SPAN} ${BURST_SPAN}`);
+    svg.setAttribute('aria-hidden', 'true');
+    svg.style.left = `${cx - size / 2}px`;
+    svg.style.top = `${cy - size / 2}px`;
+    svg.style.width = `${size}px`;
+    svg.style.height = `${size}px`;
+    const accent = getComputedStyle(button).getPropertyValue('--track-save-accent').trim();
+    if (accent) svg.style.color = accent;
+    return svg;
+}
+
+function mountBurstOverlay(svg, lifetime) {
+    document.body.append(svg);
+    window.setTimeout(() => svg.remove(), lifetime);
+}
+
+// One keyframe handles every direction; each spark carries its own outward vector.
+function appendSpark(svg, angle, radius, travel) {
+    const ux = Math.cos(angle);
+    const uy = Math.sin(angle);
+    const dot = document.createElementNS(SVG_NS, 'circle');
+    dot.setAttribute('class', 'track-save-burst-dot');
+    dot.setAttribute('cx', (ux * BURST_INNER).toFixed(2));
+    dot.setAttribute('cy', (uy * BURST_INNER).toFixed(2));
+    dot.setAttribute('r', String(radius));
+    dot.style.setProperty('--burst-x', `${(ux * travel).toFixed(2)}px`);
+    dot.style.setProperty('--burst-y', `${(uy * travel).toFixed(2)}px`);
+    svg.append(dot);
+}
+
+function spawnPulse(button) {
+    const svg = createBurstOverlay(button, 'track-save-burst');
+    if (!svg) return;
+
+    // The echo starts exactly on the disc's edge, so the pulse reads as the icon's own ring.
+    const ring = document.createElementNS(SVG_NS, 'circle');
+    ring.setAttribute('class', 'track-save-burst-ring');
+    ring.setAttribute('r', '7.25');
+    svg.append(ring);
+
+    const offset = Math.random() * ((Math.PI * 2) / BURST_DOTS);
+    for (let index = 0; index < BURST_DOTS; index++) {
+        const angle = offset + (index / BURST_DOTS) * Math.PI * 2 - Math.PI / 2;
+        appendSpark(svg, angle, index % 2 === 0 ? 1.35 : 0.95, BURST_TRAVEL);
+    }
+
+    mountBurstOverlay(svg, BURST_LIFETIME);
+}
+
+function spawnDots(button) {
+    const svg = createBurstOverlay(button, 'track-save-burst');
+    if (!svg) return;
+
+    const offset = Math.random() * ((Math.PI * 2) / DOTS_COUNT);
+    for (let index = 0; index < DOTS_COUNT; index++) {
+        const angle = offset + (index / DOTS_COUNT) * Math.PI * 2 - Math.PI / 2;
+        appendSpark(svg, angle, 1.05, DOTS_TRAVEL);
+    }
+
+    mountBurstOverlay(svg, DOTS_LIFETIME);
+}
+
+function spawnSpectrum(button) {
+    const svg = createBurstOverlay(button, 'track-save-spectrum');
+    if (!svg) return;
+
+    const shift = Math.floor(Math.random() * SPECTRUM.length);
+    SPECTRUM.forEach((_, index) => {
+        const level = SPECTRUM[(index + shift) % SPECTRUM.length] * (0.85 + Math.random() * 0.3);
+        const angle = (index / SPECTRUM.length) * Math.PI * 2 - Math.PI / 2;
+        const outer = SPECTRUM_INNER + 0.6 + level * 3;
+        const bar = document.createElementNS(SVG_NS, 'path');
+        const point = (radius) => `${(Math.cos(angle) * radius).toFixed(2)} ${(Math.sin(angle) * radius).toFixed(2)}`;
+        bar.setAttribute('d', `M${point(SPECTRUM_INNER)}L${point(outer)}`);
+        bar.setAttribute('pathLength', '1');
+        // Clockwise sweep from twelve o'clock.
+        bar.style.setProperty('--i', String(index));
+        svg.append(bar);
+    });
+
+    mountBurstOverlay(svg, SPECTRUM_LIFETIME);
+}
+
+// Shockwave (legacy): the big hollow ring from the pre-spectrum era, thin and slow enough to read
+// as a halo around the button.
+function spawnShockwave(button) {
+    if (!button.isConnected) return;
+    const rect = button.getBoundingClientRect();
+    if (!rect.width) return;
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    if (!isOnTop(button, cx, cy)) return;
+
+    const ring = document.createElement('span');
+    ring.className = 'track-save-shockwave';
+    ring.setAttribute('aria-hidden', 'true');
+    ring.style.left = `${cx}px`;
+    ring.style.top = `${cy}px`;
+    const base = Math.max(rect.width, rect.height);
+    const size = base * 2.45;
+    ring.style.width = `${size}px`;
+    ring.style.height = `${size}px`;
+    ring.style.marginLeft = `${-size / 2}px`;
+    ring.style.marginTop = `${-size / 2}px`;
+    document.body.appendChild(ring);
+    ring.addEventListener('animationend', () => ring.remove(), { once: true });
+    window.setTimeout(() => ring.remove(), 900);
+}
+
+// Confetti: use the recent directional spark burst, which replaced the older confetti designs.
+function spawnConfetti(button) {
+    if (!button.isConnected) return;
+    const icon = button.querySelector('.track-save-icon') || button;
+    const rect = icon.getBoundingClientRect();
+    if (!rect.width) return null;
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    if (!isOnTop(button, cx, cy)) return null;
+
+    const size = (rect.width / 16) * CONFETTI_SPAN;
+    const half = CONFETTI_SPAN / 2;
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('class', 'track-save-burst');
+    svg.setAttribute('viewBox', `${-half} ${-half} ${CONFETTI_SPAN} ${CONFETTI_SPAN}`);
     svg.setAttribute('aria-hidden', 'true');
     svg.style.left = `${cx - size / 2}px`;
     svg.style.top = `${cy - size / 2}px`;
@@ -74,10 +212,10 @@ function spawnBurst(button) {
     halo.setAttribute('class', 'track-save-burst-halo');
     svg.append(halo);
 
-    const twinkles = new Set([0, 5, 10].map((n) => (n + Math.floor(Math.random() * 5)) % BURST_PARTICLES));
-    for (let index = 0; index < BURST_PARTICLES; index++) {
+    const twinkles = new Set([0, 5, 10].map((n) => (n + Math.floor(Math.random() * 5)) % CONFETTI_PARTICLES));
+    for (let index = 0; index < CONFETTI_PARTICLES; index++) {
         // Spread from just below the left side, over the top, to just below the right side.
-        const slot = (index + 0.2 + Math.random() * 0.6) / BURST_PARTICLES;
+        const slot = (index + 0.2 + Math.random() * 0.6) / CONFETTI_PARTICLES;
         const angle = (-200 + slot * 220) * (Math.PI / 180);
         const from = 7.6 + Math.random() * 0.8;
         const to = 9.6 + Math.random() * 6.2;
@@ -93,7 +231,7 @@ function spawnBurst(button) {
         );
         spark.setAttribute(
             'class',
-            `track-save-burst-spark track-save-burst-spark--${twinkle ? 'white' : BURST_TONES[Math.floor(Math.random() * BURST_TONES.length)]}`
+            `track-save-burst-spark track-save-burst-spark--${twinkle ? 'white' : CONFETTI_TONES[Math.floor(Math.random() * CONFETTI_TONES.length)]}`
         );
         spark.style.setProperty('--x0', `${(Math.cos(angle) * from).toFixed(2)}px`);
         spark.style.setProperty('--y0', `${(Math.sin(angle) * from).toFixed(2)}px`);
@@ -107,7 +245,29 @@ function spawnBurst(button) {
     }
 
     document.body.append(svg);
-    window.setTimeout(() => svg.remove(), BURST_LIFETIME);
+    window.setTimeout(() => svg.remove(), CONFETTI_LIFETIME);
+}
+
+// The setting only picks the effect around the button; the icon's own fill and morph always play.
+function spawnBurst(button) {
+    switch (likeBurstSettings.getEffect()) {
+        case 'dots':
+            spawnDots(button);
+            break;
+        case 'spectrum':
+            spawnSpectrum(button);
+            break;
+        case 'confetti':
+            spawnConfetti(button);
+            break;
+        case 'shockwave':
+            spawnShockwave(button);
+            break;
+        case 'none':
+            break;
+        default:
+            spawnPulse(button);
+    }
 }
 
 // Liked a track that was already saved in a playlist: the state does not change, so the disc

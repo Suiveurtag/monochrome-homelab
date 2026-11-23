@@ -126,9 +126,9 @@ describe('track save button', () => {
             likeBurstSettings.setEffect('confetti');
             unlike();
             like();
-            expect(document.querySelectorAll('.track-save-confetti').length).toBe(16);
-            settle();
+            expect(document.querySelectorAll('.track-save-burst-spark').length).toBe(14);
             expect(document.querySelector('.track-save-confetti-layer')).toBeNull();
+            settle();
 
             likeBurstSettings.setEffect('shockwave');
             unlike();
