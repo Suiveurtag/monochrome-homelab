@@ -1,6 +1,7 @@
 import { getTrackArtists, getTrackTitle, getTrackYearDisplay } from './utils.js';
 import { isVideoArtwork } from './animated-artwork.js';
 import { getArtworkSources } from './artwork-media.js';
+import { getSpicyLyricsSetting } from './spicy-lyrics-settings.js';
 import { getTrackDisplayAlbum, getTrackPlayerArtwork, getTrackPlayerCanvas } from './track-versions.js';
 
 const SOURCE_KINDS = new Set(['playlist', 'album', 'artist', 'liked', 'radio', 'single', 'unknown']);
@@ -17,18 +18,20 @@ export function normalizeSourceContext(value) {
 
 function resolveArtwork(track, api) {
     const albumArtwork = getTrackDisplayAlbum(track) || {};
-    const explicitAnimated =
-        getTrackPlayerCanvas(track) ||
-        (track?.useOriginalTrackAssets === false ? null : albumArtwork.videoCoverUrl) ||
-        null;
+    const canvas = getTrackPlayerCanvas(track);
+    const motion = getSpicyLyricsSetting('motionArtwork') === 'true'
+        ? track?.animatedCover || (track?.useOriginalTrackAssets === false ? null : albumArtwork.videoCoverUrl || albumArtwork.animatedCover)
+        : null;
+    const preferred = getSpicyLyricsSetting('canvasPreference') === 'motion' ? motion || canvas : canvas || motion;
     const coverId = getTrackPlayerArtwork(track);
     const sources = getArtworkSources({
         cover: coverId,
-        animatedCover: explicitAnimated || track?.animatedCover || albumArtwork.animatedCover,
+        animatedCover: preferred,
         coverFallback:
             track?.coverFallback || track?.staticCover || albumArtwork.coverFallback || albumArtwork.staticCover,
     });
-    const animatedSrc = sources.animated || explicitAnimated || null;
+    const animatedSrc = preferred || (getSpicyLyricsSetting('motionArtwork') === 'true' ? sources.animated : null);
+    const isMotion = Boolean(animatedSrc && (!preferred || preferred === motion));
     const staticCover = sources.static;
     const staticSrc = !staticCover
         ? '/assets/appicon.png'
@@ -39,10 +42,9 @@ function resolveArtwork(track, api) {
         staticSrc,
         animatedSrc,
         heroSrc: animatedSrc || staticSrc,
-        isVideo: Boolean(
-            animatedSrc &&
-                (explicitAnimated || isVideoArtwork(animatedSrc) || /\.m3u8(?:$|[?#])/i.test(animatedSrc))
-        ),
+        isVideo: Boolean(animatedSrc && !/\.gif(?:$|[?#])/i.test(animatedSrc) &&
+            (preferred || isVideoArtwork(animatedSrc) || /\.m3u8(?:$|[?#])/i.test(animatedSrc))),
+        isMotion,
     };
 }
 

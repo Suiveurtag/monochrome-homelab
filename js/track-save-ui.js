@@ -1,3 +1,5 @@
+import { likeBurstSettings } from './storage.js';
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 const GLYPH_PLUS = 'M8 5.1L8 10.9M5.1 8L10.9 8';
@@ -49,10 +51,10 @@ function spawnBurst(button) {
     if (!button.isConnected) return;
     const icon = button.querySelector('.track-save-icon') || button;
     const rect = icon.getBoundingClientRect();
-    if (!rect.width) return;
+    if (!rect.width) return null;
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
-    if (!isOnTop(button, cx, cy)) return;
+    if (!isOnTop(button, cx, cy)) return null;
 
     const size = (rect.width / 16) * BURST_SPAN;
     const half = BURST_SPAN / 2;

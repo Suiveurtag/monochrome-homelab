@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
     applyTrackSaveStateToButton,
     buildTrackSaveStateSnapshot,
     getTrackSaveStateFromSnapshot,
 } from '../track-save-ui.js';
+import { likeBurstSettings } from '../storage.js';
 
 describe('track save button', () => {
     let button;
@@ -83,5 +84,68 @@ describe('track save button', () => {
             isSaved: true,
             playlistIds: ['playlist-1'],
         });
+    });
+
+    test('the like effect setting picks which burst plays around the button', () => {
+        vi.useFakeTimers();
+        try {
+            const unsaved = { isFavorite: false, isSaved: false, playlistIds: [] };
+            const saved = { isFavorite: true, isSaved: true, playlistIds: [] };
+            applyTrackSaveStateToButton(button, unsaved);
+            // jsdom reports zero rects; fake them so the overlays spawn. The SVG variants measure
+            // the icon, the legacy ones measure the whole button.
+            const icon = button.querySelector('.track-save-icon');
+            vi.spyOn(icon, 'getBoundingClientRect').mockReturnValue({ width: 22, height: 22, left: 10, top: 10 });
+            vi.spyOn(button, 'getBoundingClientRect').mockReturnValue({ width: 30, height: 30, left: 6, top: 6 });
+            const like = () => {
+                button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                applyTrackSaveStateToButton(button, saved, { animate: true });
+            };
+            const unlike = () => applyTrackSaveStateToButton(button, unsaved);
+            const settle = () => vi.advanceTimersByTime(1000);
+
+            like();
+            expect(document.querySelector('.track-save-burst-ring')).toBeTruthy();
+            expect(document.querySelectorAll('.track-save-burst-dot').length).toBe(8);
+            settle();
+            expect(document.querySelector('.track-save-burst')).toBeNull();
+
+            likeBurstSettings.setEffect('dots');
+            unlike();
+            like();
+            expect(document.querySelector('.track-save-burst-ring')).toBeNull();
+            expect(document.querySelectorAll('.track-save-burst-dot').length).toBe(6);
+            settle();
+
+            likeBurstSettings.setEffect('spectrum');
+            unlike();
+            like();
+            expect(document.querySelector('.track-save-spectrum')).toBeTruthy();
+            settle();
+
+            likeBurstSettings.setEffect('confetti');
+            unlike();
+            like();
+            expect(document.querySelectorAll('.track-save-confetti').length).toBe(16);
+            settle();
+            expect(document.querySelector('.track-save-confetti-layer')).toBeNull();
+
+            likeBurstSettings.setEffect('shockwave');
+            unlike();
+            like();
+            expect(document.querySelector('.track-save-shockwave')).toBeTruthy();
+            settle();
+            expect(document.querySelector('.track-save-shockwave')).toBeNull();
+
+            likeBurstSettings.setEffect('none');
+            unlike();
+            like();
+            expect(
+                document.querySelector('.track-save-burst, .track-save-spectrum, .track-save-confetti-layer, .track-save-shockwave')
+            ).toBeNull();
+        } finally {
+            vi.useRealTimers();
+            localStorage.removeItem(likeBurstSettings.STORAGE_KEY);
+        }
     });
 });

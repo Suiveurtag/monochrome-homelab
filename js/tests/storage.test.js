@@ -4,6 +4,7 @@ import {
     themeManager,
     lastFMStorage,
     nowPlayingSettings,
+    likeBurstSettings,
     gaplessPlaybackSettings,
     crossfadeSettings,
     exponentialVolumeSettings,
@@ -78,6 +79,26 @@ describe('storage.js', () => {
             expect(nowPlayingSettings.getMode()).toBe('cover');
             nowPlayingSettings.setMode('visualizer');
             expect(nowPlayingSettings.getMode()).toBe('visualizer');
+        });
+    });
+
+    describe('likeBurstSettings', () => {
+        test('defaults to pulse', () => {
+            expect(likeBurstSettings.getEffect()).toBe('pulse');
+        });
+
+        test('persists each variant', () => {
+            for (const effect of ['dots', 'spectrum', 'confetti', 'shockwave', 'none', 'pulse']) {
+                likeBurstSettings.setEffect(effect);
+                expect(likeBurstSettings.getEffect()).toBe(effect);
+            }
+        });
+
+        test('falls back to pulse for unknown values', () => {
+            likeBurstSettings.setEffect('fireworks');
+            expect(likeBurstSettings.getEffect()).toBe('pulse');
+            localStorage.setItem(likeBurstSettings.STORAGE_KEY, 'garbage');
+            expect(likeBurstSettings.getEffect()).toBe('pulse');
         });
     });
 

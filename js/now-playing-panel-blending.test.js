@@ -52,6 +52,7 @@ function panelFixture({ expanded = false, canvas = true, width = 420, height = 8
         foregroundClassName: 'now-playing-panel-top-bg',
     });
     panel.syncHeader();
+    panel.root.querySelector('.now-playing-panel-lyrics').hidden = false;
     const stage = panel.root.querySelector('.now-playing-panel-media');
     const video = document.createElement('video');
     video.className = 'now-playing-panel-canvas';
@@ -123,6 +124,24 @@ describe('Now Playing Canvas compositing', () => {
         const lyrics = panel.root.querySelector('.now-playing-panel-lyrics');
         expect(metadata.getBoundingClientRect().top).toBeCloseTo(25 + 388 + 16, 1);
         expect(lyrics.getBoundingClientRect().top).toBeCloseTo(25 + 388 + 16 + 56 + 24, 1);
+    });
+
+    test.each([
+        ['red', [255, 0, 0, 255]],
+        ['yellow', [255, 255, 0, 255]],
+        ['purple', [255, 0, 255, 255]],
+    ])('preserves %s when copying the WebGL background to the header', (_name, color) => {
+        const { panel } = panelFixture({ height: 420 });
+        const background = panel.background;
+        background.canvas.width = 420;
+        background.canvas.height = 420;
+        const gl = background.canvas.getContext('webgl', { preserveDrawingBuffer: true });
+        gl.clearColor(color[0] / 255, color[1] / 255, color[2] / 255, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        background.root.classList.add('has-kawarp-background');
+        background.setForegroundActive(true);
+        expect(background.foregroundContext.getContextAttributes().willReadFrequently).toBe(true);
+        expect([...background.foregroundContext.getImageData(20, 20, 1, 1).data]).toEqual(color);
     });
 
     test('keeps the header outside the masked scroll content', () => {
