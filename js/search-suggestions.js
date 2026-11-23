@@ -426,14 +426,14 @@ export function initSearchSuggestions({ input, form, panel, provider = null, onP
     input.addEventListener('input', show);
     input.addEventListener('keydown', (e) => {
         if (e.isComposing || e.keyCode === 229) return;
-        if (e.key === 'Escape' && input.value !== '') {
-            // One press undoes typing, the next leaves.
+        if (e.key === 'Escape') {
             e.preventDefault();
             e.stopPropagation();
             input.value = '';
             input.dispatchEvent(new Event('input', { bubbles: true }));
-        } else if (e.key === 'Escape') hide();
-        else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            hide();
+            input.blur();
+        } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
             if (!open) show();
             else move(e.key === 'ArrowDown' ? 1 : -1);
