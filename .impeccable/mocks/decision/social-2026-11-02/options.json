@@ -1,0 +1,212 @@
+{
+  "title": "Le social de Monochrome, réimaginé",
+  "question": "Deux propositions avant toute modification de l’application. Contenu illustratif.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Chambre noire",
+      "kicker": "Exploration",
+      "lineage": "Planches-contact photographiques",
+      "thesis": "Les écoutes des amis composent une planche vivante.",
+      "palette": [
+        "#101113",
+        "#eeeeef",
+        "#999da5",
+        "#586d91",
+        "#ae7867"
+      ],
+      "materials": [
+        "graphite",
+        "pochettes photographiques",
+        "lumière localisée"
+      ],
+      "viewport": "Une grande écoute à gauche, quatre écoutes à droite, les publications en dessous.",
+      "risk": "Garder les personnes et les messages aussi visibles que les pochettes.",
+      "comp": ".impeccable/mocks/decision/social-2026-11-02/chambre-noire.png",
+      "raised": [
+        {
+          "from": "Datamatics",
+          "raise": "Densité lisible."
+        },
+        {
+          "from": "Édition de référence",
+          "raise": "Détails attachés à leur contexte."
+        },
+        {
+          "from": "Tableau de départs",
+          "raise": "Continuité des nouvelles écoutes."
+        },
+        {
+          "from": "Crouwel",
+          "raise": "Alignements partagés entre les vues."
+        },
+        {
+          "from": "Carte de jardins",
+          "raise": "Un seul foyer visuel."
+        },
+        {
+          "from": "Catalogue de streaming",
+          "raise": "Déploiement au focus sans masquer les voisins."
+        }
+      ]
+    },
+    {
+      "id": "model-pick",
+      "label": "Résonance",
+      "kicker": "Ma préférence",
+      "lineage": "Scène d’écoute en perspective",
+      "thesis": "Le cercle devient une scène musicale, une écoute à rejoindre au premier plan.",
+      "palette": [
+        "#0a0a0c",
+        "#f1f0f3",
+        "#9b99a3",
+        "#6e668c",
+        "#aa775d"
+      ],
+      "materials": [
+        "pochettes en profondeur",
+        "lumière des albums",
+        "interface sobre"
+      ],
+      "viewport": "Le morceau à gauche, trois pochettes et leurs auditeurs à droite, le fil et les messages dessous.",
+      "risk": "Proche de Listening Stats : conserver une composition sociale propre.",
+      "comp": ".impeccable/mocks/decision/social-2026-11-02/resonance.png"
+    },
+    {
+      "id": "ikeda-datamatics",
+      "label": "Partition de données",
+      "verdict": "declined",
+      "lineage": "Partition de données",
+      "thesis": "Une autre structure appliquée aux écoutes du cercle.",
+      "palette": [
+        "#101113",
+        "#eeeeef"
+      ],
+      "materials": [
+        "structure adaptée aux écoutes"
+      ],
+      "viewport": "Une organisation alternative des personnes et des morceaux.",
+      "risk": "Le système visuel prend trop de place face aux échanges.",
+      "case": "Moins juste pour un petit cercle et moins direct pour retrouver une conversation.",
+      "kept": "Densité lisible"
+    },
+    {
+      "id": "rw-centre-rail-reference-setting",
+      "label": "Notes de pochette",
+      "verdict": "declined",
+      "lineage": "Notes de pochette",
+      "thesis": "Une autre structure appliquée aux écoutes du cercle.",
+      "palette": [
+        "#101113",
+        "#eeeeef"
+      ],
+      "materials": [
+        "structure adaptée aux écoutes"
+      ],
+      "viewport": "Une organisation alternative des personnes et des morceaux.",
+      "risk": "Le système visuel prend trop de place face aux échanges.",
+      "case": "Moins juste pour un petit cercle et moins direct pour retrouver une conversation.",
+      "kept": "Détails contextuels"
+    },
+    {
+      "id": "vernacular-ephemera-boarding-pass-and-gate-board",
+      "label": "Fréquences en direct",
+      "verdict": "declined",
+      "lineage": "Fréquences en direct",
+      "thesis": "Une autre structure appliquée aux écoutes du cercle.",
+      "palette": [
+        "#101113",
+        "#eeeeef"
+      ],
+      "materials": [
+        "structure adaptée aux écoutes"
+      ],
+      "viewport": "Une organisation alternative des personnes et des morceaux.",
+      "risk": "Le système visuel prend trop de place face aux échanges.",
+      "case": "Moins juste pour un petit cercle et moins direct pour retrouver une conversation.",
+      "kept": "Continuité des changements"
+    },
+    {
+      "id": "crouwel-grid-specimen",
+      "label": "Grille musicale",
+      "verdict": "declined",
+      "lineage": "Grille musicale",
+      "thesis": "Une autre structure appliquée aux écoutes du cercle.",
+      "palette": [
+        "#101113",
+        "#eeeeef"
+      ],
+      "materials": [
+        "structure adaptée aux écoutes"
+      ],
+      "viewport": "Une organisation alternative des personnes et des morceaux.",
+      "risk": "Le système visuel prend trop de place face aux échanges.",
+      "case": "Moins juste pour un petit cercle et moins direct pour retrouver une conversation.",
+      "kept": "Alignements cohérents"
+    },
+    {
+      "id": "aww2-zoo-gardens-guide-map",
+      "label": "Archipel",
+      "verdict": "declined",
+      "lineage": "Archipel",
+      "thesis": "Une autre structure appliquée aux écoutes du cercle.",
+      "palette": [
+        "#101113",
+        "#eeeeef"
+      ],
+      "materials": [
+        "structure adaptée aux écoutes"
+      ],
+      "viewport": "Une organisation alternative des personnes et des morceaux.",
+      "risk": "Le système visuel prend trop de place face aux échanges.",
+      "case": "Moins juste pour un petit cercle et moins direct pour retrouver une conversation.",
+      "kept": "Un seul foyer visuel"
+    },
+    {
+      "id": "pop-culture-shelf-streaming-title-card-wall",
+      "label": "Collection vivante",
+      "verdict": "declined",
+      "lineage": "Collection vivante",
+      "thesis": "Une autre structure appliquée aux écoutes du cercle.",
+      "palette": [
+        "#101113",
+        "#eeeeef"
+      ],
+      "materials": [
+        "structure adaptée aux écoutes"
+      ],
+      "viewport": "Une organisation alternative des personnes et des morceaux.",
+      "risk": "Le système visuel prend trop de place face aux échanges.",
+      "case": "Moins juste pour un petit cercle et moins direct pour retrouver une conversation.",
+      "kept": "Déploiement au focus"
+    }
+  ],
+  "reroll": {
+    "registers": [
+      "safer",
+      "bolder"
+    ]
+  },
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  },
+  "canon": true,
+  "canonCard": {
+    "label": "Social classique",
+    "thesis": "Un fil central, une colonne de présence et une messagerie familière.",
+    "palette": [
+      "#101113",
+      "#eeeeef",
+      "#999da5"
+    ],
+    "materials": [
+      "panneaux discrets",
+      "pochettes intégrées"
+    ],
+    "viewport": "Fil au centre, membres à droite, navigation et lecteur conservés.",
+    "risk": "Très lisible, mais peu singulier.",
+    "comp": ".impeccable/mocks/decision/social-2026-11-02/classique.png"
+  },
+  "steer": true
+}
