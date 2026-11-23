@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'vitest';
-import { parseSpicyTtml, parseTtmlTime, SpicyLyricsElement, SpicySpring } from './spicy-lyrics-renderer.js';
+import { getScrollLineIndex, parseSpicyTtml, parseTtmlTime, SpicyLyricsElement, SpicySpring } from './spicy-lyrics-renderer.js';
 
 afterEach(() => document.body.replaceChildren());
 
@@ -19,6 +19,14 @@ const LINE_SYNC_TTML = `<?xml version="1.0" encoding="UTF-8"?>
 </tt>`;
 
 describe('Spicy Lyrics renderer', () => {
+    test('does not let a lingering background vocal pull scrolling back to its lead', () => {
+        const lines = [
+            { start: 0, end: 1000 },
+            { start: 0, end: 4000, background: true },
+            { start: 1500, end: 3000 },
+        ];
+        expect(getScrollLineIndex(lines, 2000)).toBe(2);
+    });
     test('parses TTML clock, seconds and milliseconds timing', () => {
         expect(parseTtmlTime('00:01:02.250')).toBe(62250);
         expect(parseTtmlTime('1.5s')).toBe(1500);
@@ -202,7 +210,6 @@ describe('Spicy Lyrics renderer', () => {
         await Promise.resolve();
 
         expect(element._dynamicBackground).toBeNull();
-        expect(element._ownsExternalBackground).toBe(false);
         expect(host.querySelectorAll('[data-spicy-background]')).toHaveLength(1);
         expect(host.querySelectorAll('canvas.spicy-dynamic-bg')).toHaveLength(1);
         expect(element.shadowRoot.querySelector('canvas.spicy-dynamic-bg')).toBeNull();
@@ -214,5 +221,68 @@ describe('Spicy Lyrics renderer', () => {
         const samples = Array.from({ length: 120 }, () => spring.Step(1 / 60));
         expect(samples.every((sample) => sample >= 0 && sample <= 1)).toBe(true);
         expect(samples.at(-1)).toBeCloseTo(1, 4);
+    });
+});
+
+describe('Spicy Lyrics 6.5.10', () => {
+    test('animates independent surfaces and applies Bloom and syllable joining live', async () => {
+        const { setSpicyLyricsSetting } = await import('./spicy-lyrics-settings.js');
+        const card = new SpicyLyricsElement();
+        const fullscreen = new SpicyLyricsElement();
+        const shell = document.createElement('div');
+        shell.id = 'fullscreen-cover-overlay';
+        shell.style.cssText = 'width: 600px; height: 640px;';
+        card.style.cssText = 'width: 360px; height: 520px;';
+        fullscreen.ttml = WORD_SYNC_TTML.replaceAll('Spicy', 'Fire');
+        card.ttml = WORD_SYNC_TTML.replace('>Spicy</span>', '>Spi</span>').replace('> Lyrics</span>', '>cy</span>');
+        shell.append(fullscreen);
+        document.body.append(card, shell);
+
+        try {
+            expect(card.shadowRoot.querySelectorAll('.word-group .word, .word-group .letterGroup')).toHaveLength(2);
+            setSpicyLyricsSetting('style', 'bloom');
+            setSpicyLyricsSetting('joinWords', 'all');
+            card.currentTime = 1750;
+            fullscreen.currentTime = 500;
+            expect(card.shadowRoot.querySelector('.BloomRenderer .line.Active .letterGroup')?.textContent).toBe('Spicy');
+            expect(fullscreen.shadowRoot.querySelector('.line.Active')).toBeNull();
+            fullscreen.currentTime = 2100;
+            expect(fullscreen.shadowRoot.querySelector('.line.Active')?.textContent).toContain('Fire');
+            expect(card.shadowRoot.querySelector('.line.Active')?.textContent).toContain('Spicy');
+        } finally {
+            card.remove();
+            shell.remove();
+            localStorage.removeItem('spicyLyrics.style');
+            localStorage.removeItem('spicyLyrics.joinWords');
+        }
+    });
+
+    test('parses romanization separately from translations, with bounded word timing', () => {
+        const ttml = `<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata" xmlns:itunes="http://music.apple.com/lyric-ttml-internal">
+            <head><metadata><itunes:transliterations><itunes:transliteration>
+                <itunes:text for="L1"><span>Annyeong</span> <span>haseyo</span></itunes:text>
+            </itunes:transliteration></itunes:transliterations><itunes:songwriters>
+                <itunes:songwriter>Writer</itunes:songwriter>
+            </itunes:songwriters></metadata></head>
+            <body><div><p itunes:key="L1" begin="2s" end="5s">
+                <span begin="2s">안녕</span> <span begin="3s">하세요</span>
+                <span ttm:role="x-translation">Hello</span>
+            </p></div></body></tt>`;
+        const lines = parseSpicyTtml(ttml);
+        expect(lines.songwriters).toEqual(['Writer']);
+        expect(lines[0].text).toBe('안녕 하세요');
+        expect(lines[0].romanized).toBe('Annyeong haseyo');
+        expect(lines[0].words.map(({ end, romanized }) => [end, romanized])).toEqual([
+            [3000, 'Annyeong'],
+            [5000, 'haseyo'],
+        ]);
+    });
+
+    test('supports unsynced text and Korean romanization without a network dictionary', async () => {
+        const { romanizeLyrics } = await import('./spicy-lyrics-romanization.js');
+        const ttml = '<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p>사랑해</p></div></body></tt>';
+        const lines = parseSpicyTtml(ttml);
+        expect(lines[0].syncType).toBe('Static');
+        expect((await romanizeLyrics(lines))[0].romanized).toBe('Saranghae');
     });
 });

@@ -56,10 +56,22 @@ export default defineConfig((_options) => {
 
                 events: '/node_modules/events/events.js',
                 pocketbase: '/node_modules/pocketbase/dist/pocketbase.es.js',
+                path: 'path-browserify', // Kuromoji joins dictionary paths in the browser.
                 stream: path.resolve(__dirname, 'stream-stub.js'), // Stub for stream module
             },
         },
         optimizeDeps: {
+            include: [
+                'cyrillic-romanization',
+                'franc-all',
+                'kuroshiro',
+                'kuroshiro/src/util.js',
+                'kuromoji/src/loader/BrowserDictionaryLoader.js',
+                'kuromoji/src/Tokenizer.js',
+                'langs',
+                'pinyin-pro',
+                'transliteration',
+            ],
             exclude: ['pocketbase', '@ffmpeg/ffmpeg', '@ffmpeg/util'],
         },
         server: {

@@ -521,16 +521,6 @@
                         <use svg="!lucide/mic-vocal.svg" size="20" />
                     </button>
                     <button
-                        id="fullscreen-lyrics-renderer-btn"
-                        class="fullscreen-lyrics-renderer-toggle"
-                        type="button"
-                        title="Switch lyrics renderer. Current: AMLL"
-                        aria-label="Switch lyrics renderer. Current: AMLL"
-                        data-renderer-label="AMLL"
-                    >
-                        <use svg="!lucide/waves.svg" size="20" />
-                    </button>
-                    <button
                         id="fs-background-btn"
                         class="fs-background-btn"
                         type="button"
@@ -593,10 +583,6 @@
                                         <use svg="!lucide/list.svg" size="24" />
                                     </button>
                                 </div>
-                                <div id="fullscreen-next-track" style="display: none">
-                                    <span class="label">Up Next</span>
-                                    <span class="value"></span>
-                                </div>
                             </div>
 
                             <div class="fullscreen-controls">
@@ -654,6 +640,22 @@
                             <div class="fullscreen-lyrics-shell">
                                 <div id="fullscreen-lyrics-content" class="fullscreen-lyrics-content">
                                     <div class="fullscreen-lyrics-empty">Lyrics appear here.</div>
+                                </div>
+                                <section id="fullscreen-queue-content" class="fullscreen-queue-content" aria-label="Play queue" hidden>
+                                    <h2>Queue</h2>
+                                    <ol></ol>
+                                </section>
+                                <div class="fullscreen-lyrics-footer">
+                                    <div id="fullscreen-next-track" class="fullscreen-next-track" hidden>
+                                        <img alt="" />
+                                        <div><span class="label">Up next</span><strong></strong><small></small></div>
+                                    </div>
+                                    <div class="fullscreen-lyrics-view-controls" role="group" aria-label="Now playing view">
+                                        <button type="button" id="fs-lyrics-view" aria-controls="fullscreen-lyrics-content" aria-pressed="true">Lyrics</button>
+                                        <button type="button" id="fs-queue-view" aria-controls="fullscreen-queue-content" aria-pressed="false">Queue</button>
+                                        <button type="button" id="fs-lyrics-resync" aria-label="Scroll to active lyric" title="Scroll to active lyric" hidden><use svg="!lucide/locate-fixed.svg" size="18" /></button>
+                                        <button type="button" id="fs-lyrics-popup" aria-label="Open floating lyrics" title="Open floating lyrics" hidden><use svg="!lucide/picture-in-picture.svg" size="18" /></button>
+                                    </div>
                                 </div>
                             </div>
                         </aside>
@@ -3755,6 +3757,7 @@
                         <button class="settings-tab active" data-tab="appearance">Appearance</button>
                         <button class="settings-tab" data-tab="player">Player</button>
                         <button class="settings-tab" data-tab="canvas">Canvas</button>
+                        <button class="settings-tab" data-tab="spicy-lyrics">Spicy Lyrics</button>
                         <button class="settings-tab" data-tab="interface">Interface</button>
                         <button class="settings-tab" data-tab="scrobbling">Scrobbling</button>
                         <button class="settings-tab" data-tab="audio">Audio</button>
@@ -4226,14 +4229,47 @@
                                 <div class="setting-item">
                                     <div class="info">
                                         <span class="label">Lyrics While Seeking</span>
+                                        <span class="label">Animated Background</span>
                                         <span class="description"
-                                            >Preview synced lyrics above the progress bar while you drag it</span
+                                            >Effect displayed inside the player while music is playing</span
+                                        >
+                                    </div>
+                                    <select id="player-bar-effect-select">
+                                        <option value="none">None</option>
+                                        <option value="soft-aurora">Soft Aurora</option>
+                                        <option value="side-rays">Side Rays</option>
+                                        <option value="silk">Silk</option>
+                                        <option value="strands">Strands</option>
+                                        <option value="dark-veil">Blur</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="info">
+                                        <span class="label">Echo Rings</span>
+                                        <span class="description"
+                                            >Show responsive rings whenever audio starts playing</span
                                         >
                                     </div>
                                     <label class="toggle-switch">
-                                        <input type="checkbox" id="player-scrub-lyrics-toggle" checked />
+                                        <input type="checkbox" id="player-magic-rings-toggle" checked />
                                         <span class="slider"></span>
                                     </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="info">
+                                        <span class="label">Like Effect</span>
+                                        <span class="description"
+                                            >Animation around the like button when you save a track</span
+                                        >
+                                    </div>
+                                    <select id="like-burst-effect-select">
+                                        <option value="pulse">Pulse</option>
+                                        <option value="dots">Dots</option>
+                                        <option value="spectrum">Spectrum</option>
+                                        <option value="confetti">Confetti</option>
+                                        <option value="shockwave">Shockwave</option>
+                                        <option value="none">None</option>
+                                    </select>
                                 </div>
                             </div>
                             <div class="settings-group player-layout-settings-group">
@@ -4279,6 +4315,177 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="info">
+                                        <span class="label">When Paused</span>
+                                        <span class="description">What Canvas does while the music is paused</span>
+                                    </div>
+                                    <select id="canvas-pause-behavior-select">
+                                        <option value="pause">Pause the Canvas</option>
+                                        <option value="cover">Back to the cover</option>
+                                        <option value="play">Keep the Canvas playing</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-tab-content" id="settings-tab-spicy-lyrics">
+                        <div class="settings-list">
+                            <div class="settings-group">
+                                <h3>Lyrics rendering</h3>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Renderer visual style</span></span>
+                                    <select data-spicy-setting="style"><option value="spring">Spring</option><option value="bloom">Bloom</option></select>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Lyrics font</span></span>
+                                    <select data-spicy-setting="font"><option value="spicy">Spicy Lyrics</option><option value="system">System</option></select>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Lyrics size (%)</span></span>
+                                    <input type="number" min="60" max="200" value="100" data-spicy-setting="size" />
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Romanization</span></span>
+                                    <select data-spicy-setting="romanization"><option value="off">Off</option><option value="underLine">Under each line</option><option value="replace">Replace each line</option></select>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Romaji as written</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="romajiAsWritten" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Join split words</span></span>
+                                    <select data-spicy-setting="joinWords"><option value="off">Off</option><option value="all">All words</option><option value="steady">Steadily sung</option><option value="held">Held words</option></select>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Keep syllable pace when joining words</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="keepSyllablePace" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Pinned credits</span></span>
+                                    <select data-spicy-setting="credits"><option value="off">Off</option><option value="source">Lyrics provider</option><option value="full">Provider and songwriters</option></select>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Fade away previous lines in fullscreen</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="fadePrevious" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Increased line spacing in Spring</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="springLineSpacing" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Background vocal pop-out in Bloom</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="backgroundLinePop" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Keep overlapping vocals visible</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="keepOverlappingLines" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Larger fullscreen lyrics in Bloom</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="largerCinemaLyrics" /><span class="slider"></span></span>
+                                </label>
+                            </div>
+                            <div class="settings-group">
+                                <h3>Lyrics playback</h3>
+                                <div class="setting-item">
+                                    <div class="info"><span class="label">Playback offset</span><span class="description">Positive values delay lyrics. The two offsets add together.</span></div>
+                                    <div class="spicy-offset-controls">
+                                        <select id="spicy-offset-scope" aria-label="Offset scope"><option value="global">All songs</option><option value="track">This song</option></select>
+                                        <div>
+                                            <button type="button" data-spicy-offset="-100">−100</button>
+                                            <button type="button" data-spicy-offset="-10">−10</button>
+                                            <input type="number" min="-10000" max="10000" id="spicy-offset-value" aria-label="Offset in milliseconds" />
+                                            <button type="button" data-spicy-offset="10">+10</button>
+                                            <button type="button" data-spicy-offset="100">+100</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Start slightly before a lyric when seeking</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="seekCompensation" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Smooth lyrics scrolling</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="smoothScrolling" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Show the scroll-to-active button</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="scrollToActive" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Auto-scroll unsynced lyrics</span></span>
+                                    <select data-spicy-setting="staticScroll"><option value="off">Off</option><option value="basic">Basic</option><option value="advanced">Advanced (Basic fallback)</option></select>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">TTML reviewer mode</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="reviewer" /><span class="slider"></span></span>
+                                </label>
+                            </div>
+                            <div class="settings-group">
+                                <h3>Diagnostics</h3>
+                                <div class="setting-item">
+                                    <div class="info">
+                                        <span class="label">Copy Spicy Lyrics report</span>
+                                        <span class="description" id="spicy-lyrics-report-status" role="status">Includes the engine version, browser and lyrics preferences.</span>
+                                    </div>
+                                    <button type="button" class="secondary-btn" id="spicy-lyrics-report">Copy report</button>
+                                </div>
+                            </div>
+                            <div class="settings-group">
+                                <h3>Now Playing and fullscreen</h3>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Show the queue when a song has no lyrics</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="showQueueWithoutLyrics" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Show the next track in the final 30 seconds</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="upNext" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Animate album artwork</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="motionArtwork" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Prefer when both are available</span></span>
+                                    <select data-spicy-setting="canvasPreference"><option value="motion">Animated album artwork</option><option value="canvas">Canvas</option></select>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Use animated artwork on the Canvas stage</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="motionOnStage" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Music-reactive background</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="reactiveBackground" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Compact portrait fullscreen layout</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="portraitFullscreen" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Keep the fullscreen player under the cover</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="playerBelowCover" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Group fullscreen and lyrics card controls</span></span>
+                                    <span class="toggle-switch"><input type="checkbox" data-spicy-setting="groupedControls" /><span class="slider"></span></span>
+                                </label>
+                                <label class="setting-item">
+                                    <span class="info"><span class="label">Show release year</span></span>
+                                    <select data-spicy-setting="releaseYear"><option value="off">Off</option><option value="before">Before artists</option><option value="after">After artists</option></select>
+                                </label>
+                                <div class="setting-item">
+                                    <div class="info">
+                                        <span class="label">Lyrics While Seeking</span>
+                                        <span class="description"
+                                            >Preview synced lyrics above the progress bar while you drag it</span
+                                        >
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="player-scrub-lyrics-toggle" checked />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="info">
                                         <span class="label">Spicy Lyrics Background Color</span>
                                         <span class="description">Artwork the fluid lyrics background takes its colors from</span>
                                     </div>
@@ -4289,14 +4496,15 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="info">
-                                        <span class="label">When Paused</span>
-                                        <span class="description">What Canvas does while the music is paused</span>
+                                        <span class="label">Romaji Lyrics</span>
+                                        <span class="description"
+                                            >Convert Japanese lyrics to Romaji (Latin characters)</span
+                                        >
                                     </div>
-                                    <select id="canvas-pause-behavior-select">
-                                        <option value="pause">Pause the Canvas</option>
-                                        <option value="cover">Back to the cover</option>
-                                        <option value="play">Keep the Canvas playing</option>
-                                    </select>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="romaji-lyrics-toggle" />
+                                        <span class="slider"></span>
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -6374,18 +6582,6 @@
                                     </div>
                                     <label class="toggle-switch">
                                         <input type="checkbox" id="download-lyrics-toggle" />
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
-                                <div class="setting-item">
-                                    <div class="info">
-                                        <span class="label">Romaji Lyrics</span>
-                                        <span class="description"
-                                            >Convert Japanese lyrics to Romaji (Latin characters)</span
-                                        >
-                                    </div>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="romaji-lyrics-toggle" />
                                         <span class="slider"></span>
                                     </label>
                                 </div>

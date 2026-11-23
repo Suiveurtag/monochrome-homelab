@@ -1,8 +1,11 @@
+import { openSpicyLyricsPopup } from './spicy-lyrics-popup.js';
 import { mountSpicyDynamicBackground } from './spicy-dynamic-background.js';
 import { loadEdgeLight } from './edge-light.js';
 import { buildNowPlayingPanelModel, normalizeSourceContext } from './now-playing-panel-model.js';
 import { clearLyricsContainerSync, renderLyricsInContainer, renderLyricsInNowPanel } from './lyrics.js';
 import { bindIconMotion } from './player-icon-motion.js';
+import { getSpicyLyricsSetting } from './spicy-lyrics-settings.js';
+import { setArtworkSource } from './artwork-media.js';
 import { createTrackSaveIconHTML } from './track-save-ui.js';
 import { escapeHtml, getTrackArtists, getTrackTitle, REPEAT_MODE } from './utils.js';
 import { copyShareLink } from './share.js';
@@ -24,6 +27,7 @@ import ICON_HEART from '!lucide/heart.svg?svg&icon';
 import ICON_HISTORY from '!lucide/history.svg?svg&icon';
 import ICON_INFINITY from '!lucide/infinity.svg?svg&icon';
 import ICON_LIST_MUSIC from '!lucide/list-music.svg?svg&icon';
+import ICON_PICTURE_IN_PICTURE from '!lucide/picture-in-picture.svg?svg&icon';
 import ICON_PAUSE from '!lucide/pause.svg?svg&icon';
 import ICON_PLAY from '!lucide/play.svg?svg&icon';
 import ICON_REPEAT from '!lucide/repeat.svg?svg&icon';
@@ -117,6 +121,7 @@ function icon(name, size = 20) {
         'lyrics-card-expand': ICON_LYRICS_CARD_EXPAND,
         'lyrics-card-toggle': ICON_LYRICS_CARD_TOGGLE,
         'lyrics-sync': ICON_LYRICS_SYNC,
+        'lyrics-popup': ICON_PICTURE_IN_PICTURE,
     };
     return icons[name]?.(size) || '';
 }
@@ -251,6 +256,13 @@ export class NowPlayingPanel {
             getElement: () => this.player?.activeElement,
             getAnalyser: () => audioContextManager.getAnalyser(),
         });
+        this.boundSpicySettingsChanged = (event) => {
+            if (['motionArtwork', 'canvasPreference', 'motionOnStage', 'releaseYear', 'groupedControls'].includes(event.detail?.key)) {
+                if (this.isOpen) void this.render({ preserveScroll: true });
+                else this.nowPlayingNeedsRender = true;
+            }
+        };
+        window.addEventListener('spicy-lyrics-settings-changed', this.boundSpicySettingsChanged);
         this.boundTrackChanged = (event) => {
             const nextTrack = event.detail?.track || null;
             const nextQueueIndex = Number(this.player?.currentQueueIndex ?? -1);
@@ -432,7 +444,8 @@ export class NowPlayingPanel {
                 void this.background?.setSource(this.model.artwork.staticSrc, {
                     deferToVideo:
                         this.canvasBackgroundSource === 'canvas' && this.canvasEnabled &&
-                        this.model.artwork.isVideo && !this.expandedLyrics && !this.reducedMotionMedia.matches,
+                        this.model.artwork.isVideo && (!this.model.artwork.isMotion || getSpicyLyricsSetting('motionOnStage') === 'true') &&
+                        !this.expandedLyrics && !this.reducedMotionMedia.matches,
                 });
             }
             this.syncCanvasPlayback();
@@ -1277,9 +1290,8 @@ export class NowPlayingPanel {
             if (shouldRenderNowPlaying) {
                 void this.background?.setSource(model.empty ? '' : model.artwork.staticSrc, {
                     deferToVideo:
-                        this.canvasEnabled && model.artwork.isVideo &&
-                        this.canvasBackgroundSource === 'canvas' && !this.expandedLyrics &&
-                        !this.reducedMotionMedia.matches,
+                        this.usesCanvasStage(model.artwork) &&
+                        this.canvasBackgroundSource === 'canvas' && !this.expandedLyrics,
                 });
             }
             await fadeOut;
@@ -1433,7 +1445,10 @@ export class NowPlayingPanel {
 
     renderNowPlayingMarkup(model) {
         const context = escapeHtml(model.source.label);
-        const canvasLayout = this.canvasEnabled && model.artwork.isVideo && !this.reducedMotionMedia.matches;
+        const canvasLayout = this.usesCanvasStage(model.artwork);
+        const placement = getSpicyLyricsSetting('releaseYear');
+        const releaseYear = model.releaseYear && placement !== 'off'
+            ? `<span class="now-playing-release-year">${escapeHtml(model.releaseYear)}</span>` : '';
         const artistLinks = model.artists
             .map((artist) =>
                 artist.id
@@ -1460,18 +1475,19 @@ export class NowPlayingPanel {
                 <section class="now-playing-panel-metadata" aria-label="Current track">
                     <div class="now-playing-panel-track-copy">
                         <h2>${getTrackDisplayAlbum(this.currentTrack)?.id ? `<button type="button" class="now-playing-panel-track-title" data-album-id="${escapeHtml(getTrackDisplayAlbum(this.currentTrack).id)}" aria-label="Open ${escapeHtml(getTrackDisplayAlbum(this.currentTrack).title || model.title)} album">${escapeHtml(model.title)}</button>` : escapeHtml(model.title)}</h2>
-                        <p>${artistLinks || escapeHtml(model.artistLine)}${model.explicit ? '<span class="now-playing-panel-explicit" aria-label="Explicit">E</span>' : ''}</p>
+                        <p>${placement === 'before' && releaseYear ? `${releaseYear} · ` : ''}${artistLinks || escapeHtml(model.artistLine)}${placement === 'after' && releaseYear ? ` · ${releaseYear}` : ''}${model.explicit ? '<span class="now-playing-panel-explicit" aria-label="Explicit">E</span>' : ''}</p>
                     </div>
                     <div class="now-playing-panel-track-actions">
                         <button type="button" class="now-playing-panel-icon now-playing-panel-share panel-hover-action" aria-label="Share current track">${icon('share-2')}</button>
                         <button type="button" class="now-playing-panel-icon now-playing-panel-save track-save-btn" data-action="toggle-like" data-track-save-id="${escapeHtml(String(this.currentTrack?.id || ''))}" aria-label="Add to playlist" title="Add to playlist">${createTrackSaveIconHTML(false)}</button>
                     </div>
                 </section>
-                <section class="now-playing-panel-card now-playing-panel-lyrics" aria-labelledby="now-playing-panel-lyrics-title">
+                <section class="now-playing-panel-card now-playing-panel-lyrics" aria-labelledby="now-playing-panel-lyrics-title" hidden>
                     <header>
                         <h3 id="now-playing-panel-lyrics-title">Lyrics</h3>
-                        <div class="now-playing-panel-lyrics-actions">
-                            <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-fullscreen" aria-label="Open fullscreen lyrics">${icon('lyrics-open-page')}</button>
+                        <div class="now-playing-panel-lyrics-actions${getSpicyLyricsSetting('groupedControls') === 'true' ? ' is-grouped' : ''}" role="group" aria-label="Lyrics view">
+                            ${window.documentPictureInPicture ? `<button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-popup" aria-label="Open floating lyrics" title="Open floating lyrics">${icon('lyrics-popup', 18)}</button>` : ''}
+                            <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-fullscreen" aria-label="Open fullscreen lyrics" title="Open fullscreen lyrics">${icon('lyrics-open-page')}</button>
                             <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-expand" aria-label="Expand lyrics in panel">${icon('lyrics-card-expand')}</button>
                             <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-collapse" aria-label="Collapse lyrics preview">${icon('lyrics-card-toggle')}</button>
                         </div>
@@ -2748,8 +2764,31 @@ export class NowPlayingPanel {
         });
     }
 
+    usesCanvasStage(artwork) {
+        return this.canvasEnabled && artwork.isVideo && !this.reducedMotionMedia.matches &&
+            (!artwork.isMotion || getSpicyLyricsSetting('motionOnStage') === 'true');
+    }
+
     async mountMedia(model, signal, { crossfade = false } = {}) {
-        if (!this.canvasEnabled || !model.artwork.isVideo || !model.artwork.animatedSrc) return;
+        if (signal.aborted || this.reducedMotionMedia.matches || !model.artwork.animatedSrc) return;
+        if (!this.usesCanvasStage(model.artwork)) {
+            if (!model.artwork.isMotion) return;
+            const cover = this.content.querySelector('.now-playing-panel-cover');
+            if (!cover) return;
+            const isHls = /\.m3u8(?:$|[?#])/i.test(model.artwork.animatedSrc);
+            const media = setArtworkSource(cover, model.artwork.animatedSrc, isHls ? 'video/mp4' : '');
+            if (media.tagName === 'VIDEO') {
+                media.poster = model.artwork.staticSrc;
+                media.classList.add('cover');
+                if (this.player.activeElement.paused) media.pause();
+                if (isHls) {
+                    await this.ui?.setupHlsVideo?.(media, { hlsUrl: model.artwork.animatedSrc }, cover, {
+                        autoplay: !this.player.activeElement.paused,
+                    });
+                }
+            }
+            return;
+        }
         const stage = this.content.querySelector('.now-playing-panel-media');
         if (!stage || signal.aborted || this.reducedMotionMedia.matches) return;
 
@@ -2964,7 +3003,8 @@ export class NowPlayingPanel {
     syncCanvasBackground() {
         const video = this.canvasMedia;
         const shown = Boolean(this.canvasStage?.classList.contains('is-canvas-playing'));
-        const follow = shown && !this.expandedLyrics && this.canvasBackgroundSource === 'canvas';
+        const stageAllowed = !this.model?.artwork.isMotion || getSpicyLyricsSetting('motionOnStage') === 'true';
+        const follow = shown && stageAllowed && !this.expandedLyrics && this.canvasBackgroundSource === 'canvas';
         // Back on the cover, the fluid background follows the cover instead of the frozen Canvas.
         const coverBackground =
             !shown && this.canvasPauseBehavior === 'cover' && this.canvasBackgroundSource === 'canvas' &&
@@ -3024,26 +3064,21 @@ export class NowPlayingPanel {
     }
 
     async mountLyrics(model, signal) {
-        const host = this.content.querySelector('.now-playing-panel-lyrics-host');
-        if (!host || model.empty) return;
-        const renderLyrics = this.expandedLyrics ? renderLyricsInNowPanel : renderLyricsInContainer;
-        const element = await renderLyrics(this.currentTrack, this.player.activeElement, this.lyricsManager, host, {
-            signal,
-        });
-        if (!element && !signal.aborted)
-            host.innerHTML = '<p class="now-playing-panel-lyrics-empty">Lyrics are not available.</p>';
-        if (element?.isOffSync) this.watchLyricsSync(element);
-    }
-
-    // Polled: the lyric players expose no scroll event, and 250ms is plenty for a button.
-    watchLyricsSync(element) {
-        window.clearInterval(this.lyricsSyncTimer);
-        this.lyricsSyncTimer = window.setInterval(() => {
-            const button = this.root.querySelector('.now-playing-panel-lyrics-sync');
-            if (!element.isConnected || !button) return window.clearInterval(this.lyricsSyncTimer);
-            button.hidden = this.collapsedLyrics || !element.isOffSync();
-        }, 250);
+        const card = this.content.querySelector('.now-playing-panel-lyrics');
+        const host = card?.querySelector('.now-playing-panel-lyrics-host');
+        if (!host || model.empty || this.currentTrack?.type === 'video') return;
+        card.hidden = false;
+        const element = await renderLyricsInContainer(this.currentTrack, this.player.activeElement, this.lyricsManager, host, { signal });
+        if (signal.aborted) return;
+        if (!element) {
+            card.hidden = true;
+            return;
+        }
         this.lyricsSyncElement = element;
+        const sync = card.querySelector('.now-playing-panel-lyrics-sync');
+        element.addEventListener('lyrics-sync-change', (event) => {
+            sync.hidden = this.collapsedLyrics || !event.detail.offSync;
+        }, { signal });
     }
 
     applyLyricsMode() {
@@ -3052,6 +3087,8 @@ export class NowPlayingPanel {
         const lyricsHost = this.root.querySelector('.now-playing-panel-lyrics-host');
         lyricsHost?.setAttribute('aria-hidden', String(this.collapsedLyrics));
         if (lyricsHost) lyricsHost.inert = this.collapsedLyrics;
+        const sync = this.root.querySelector('.now-playing-panel-lyrics-sync');
+        if (sync) sync.hidden = this.collapsedLyrics || !this.lyricsSyncElement?.isOffSync?.();
         const expand = this.root.querySelector('.now-playing-panel-lyrics-expand');
         expand?.setAttribute('aria-expanded', String(this.expandedLyrics));
         expand?.setAttribute('aria-label', this.expandedLyrics ? 'Collapse lyrics panel' : 'Expand lyrics in panel');
@@ -3177,10 +3214,16 @@ export class NowPlayingPanel {
             button.hidden = true;
             return;
         }
+        if (button.matches('.now-playing-panel-lyrics-popup')) {
+            void openSpicyLyricsPopup(this.player, this.lyricsManager).catch((error) => showNotification(error.message));
+            return;
+        }
         if (button.matches('.now-playing-panel-lyrics-fullscreen')) {
             void Promise.resolve(this.ui?.openCurrentTrackFullscreen?.()).then(() => {
                 const overlay = document.getElementById('fullscreen-cover-overlay');
-                if (overlay && !this.ui.fullscreenLyricsVisible) this.ui.toggleFullscreenLyrics(overlay);
+                if (overlay && (!this.ui.fullscreenLyricsVisible || this.ui.fullscreenQueueVisible)) {
+                    this.ui.toggleFullscreenLyrics(overlay);
+                }
             });
             return;
         }
@@ -3188,10 +3231,9 @@ export class NowPlayingPanel {
             this.expandedLyrics = true;
             this.collapsedLyrics = false;
             const transitionToken = this.beginLyricsTransition('expand');
-            void this.render({ preserveScroll: true }).then(() => {
-                this.finishLyricsTransition(transitionToken);
-                this.root.querySelector('.now-playing-panel-lyrics-collapse')?.focus();
-            });
+            this.applyLyricsMode();
+            this.finishLyricsTransition(transitionToken);
+            this.root.querySelector('.now-playing-panel-lyrics-collapse')?.focus({ preventScroll: true });
             return;
         }
         if (button.matches('.now-playing-panel-lyrics-collapse')) {
@@ -3199,10 +3241,9 @@ export class NowPlayingPanel {
                 this.expandedLyrics = false;
                 this.collapsedLyrics = false;
                 const transitionToken = this.beginLyricsTransition('collapse');
-                void this.render({ preserveScroll: true }).then(() => {
-                    this.finishLyricsTransition(transitionToken);
-                    this.root.querySelector('.now-playing-panel-lyrics-expand')?.focus();
-                });
+                this.applyLyricsMode();
+                this.finishLyricsTransition(transitionToken);
+                this.root.querySelector('.now-playing-panel-lyrics-expand')?.focus({ preventScroll: true });
             } else {
                 this.collapsedLyrics = !this.collapsedLyrics;
                 this.applyLyricsMode();
@@ -3527,7 +3568,8 @@ export class NowPlayingPanel {
                 this.expandedLyrics = false;
                 this.collapsedLyrics = false;
                 const transitionToken = this.beginLyricsTransition('collapse');
-                void this.render({ preserveScroll: true }).then(() => this.finishLyricsTransition(transitionToken));
+                this.applyLyricsMode();
+                this.finishLyricsTransition(transitionToken);
             } else {
                 this.setOpen(false);
             }
@@ -3537,6 +3579,7 @@ export class NowPlayingPanel {
 
     destroy() {
         this.renderController?.abort();
+        window.removeEventListener('spicy-lyrics-settings-changed', this.boundSpicySettingsChanged);
         window.clearTimeout(this.queueViewTimer);
         window.clearTimeout(this.queueTransitionCloseTimer);
         window.clearTimeout(this.queueTransitionChangeTimer);

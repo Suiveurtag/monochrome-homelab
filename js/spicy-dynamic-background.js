@@ -1,3 +1,4 @@
+import { getSpicyLyricsSetting } from './spicy-lyrics-settings.js';
 import Kawarp from '@kawarp/core';
 
 const KAWARP_OPTIONS = {
@@ -28,7 +29,8 @@ export class SpicyDynamicBackground {
         this.root = root;
         this.canvas = canvas;
         this.foreground = foreground;
-        this.foregroundContext = foreground?.getContext('2d');
+        // Avoid Firefox's accelerated WebGL-to-2D copy swapping red and blue on Linux.
+        this.foregroundContext = foreground?.getContext('2d', { willReadFrequently: true });
         this.foregroundFrame = 0;
         this.foregroundActive = false;
         this.foregroundUntil = 0;
@@ -228,7 +230,7 @@ export class SpicyDynamicBackground {
             }
 
             if (time - this.lastAnalysisTime >= ANALYSIS_INTERVAL) {
-                const analyser = this.getAnalyser?.();
+                const analyser = getSpicyLyricsSetting('reactiveBackground') === 'true' ? this.getAnalyser?.() : null;
                 if (analyser?.frequencyBinCount && typeof analyser.getByteTimeDomainData === 'function') {
                     if (this.timeDomainData?.length !== analyser.frequencyBinCount) {
                         this.timeDomainData = new Uint8Array(analyser.frequencyBinCount);

@@ -1,7 +1,10 @@
+import { openSpicyLyricsPopup } from './spicy-lyrics-popup.js';
 //js/ui.js
 import { showNotification } from './downloads.js';
 import {
     formatTime,
+    REPEAT_MODE,
+    getTrackYearDisplay,
     createPlaceholder,
     trackDataStore,
     hasExplicitContent,
@@ -18,6 +21,7 @@ import {
 import { copyShareLink, updateShareMeta } from './share.js';
 import {
     renderLyricsInFullscreen,
+    openLyricsPanel,
     renderSpicyLyricsInFullscreen,
     clearFullscreenLyricsSync,
 } from './lyrics.js';
@@ -57,6 +61,8 @@ import { shuffleTracks } from './recommendation-settings.js';
 import { realRandom } from './recommendation-engine.js';
 import { AlbumCoverInspector } from './album-cover-inspector.js';
 import { getTrackDisplayAlbum, getTrackPlayerCanvas } from './track-versions.js';
+import { getSpicyLyricsSetting } from './spicy-lyrics-settings.js';
+import { canvasSettings } from './canvas-settings.js';
 import { renderSidebarLibrary } from './sidebar.js';
 import {
     applyTrackSaveStateToButton,
@@ -276,7 +282,7 @@ export class UIRenderer {
         this.fullscreenDismissHandleCleanup = null;
         this.fullscreenLyricsToggleCleanup = null;
         this.fullscreenLyricsRendererToggleCleanup = null;
-        this.fullscreenLyricsRenderer = 'amll';
+        this.fullscreenLyricsRenderer = 'spicy';
         this.fullscreenLyricsManager = null;
         this.fullscreenOpenGeneration = 0;
         this.fullscreenBackgroundMode = visualizerSettings.getBackgroundMode();
@@ -1469,14 +1475,12 @@ export class UIRenderer {
         return createQualityBadgeHTML(track);
     }
 
-    async updateFullscreenMetadata(track, nextTrack) {
+    async updateFullscreenMetadata(track, _nextTrack) {
         if (!track) return;
         const overlay = document.getElementById('fullscreen-cover-overlay');
         const image = document.getElementById('fullscreen-cover-image');
         const videoContainer = document.getElementById('fullscreen-video-container');
-        const title = document.getElementById('fullscreen-track-title');
         const artist = document.getElementById('fullscreen-track-artist');
-        const nextTrackEl = document.getElementById('fullscreen-next-track');
 
         const isRealVideo = track.type === 'video';
         const visualizerContainer = document.getElementById('visualizer-container');
@@ -1526,32 +1530,36 @@ export class UIRenderer {
             if (qualityBtn) qualityBtn.style.display = 'none';
             if (qualityMenu) qualityMenu.style.display = 'none';
 
+            const album = getTrackDisplayAlbum(track);
+            const motion = getSpicyLyricsSetting('motionArtwork') === 'true'
+                ? track.animatedCover || album?.videoCoverUrl || album?.animatedCover : null;
+            const canvas = canvasSettings.isEnabled() ? getTrackPlayerCanvas(track) : null;
+            const preferredArtwork = getSpicyLyricsSetting('canvasPreference') === 'motion'
+                ? motion || canvas : canvas || motion;
             const artworkSources = getArtworkSources({
                 cover: track.image || track.cover || track.album?.cover,
-                animatedCover:
-                    getTrackPlayerCanvas(track) ||
-                    track.animatedCover ||
-                    track.album?.videoCoverUrl ||
-                    track.album?.animatedCover,
+                animatedCover: preferredArtwork,
                 coverFallback:
                     track.coverFallback || track.staticCover || track.album?.coverFallback || track.album?.staticCover,
             });
             const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
             // An animated GIF is an image, so it lives in the cover slot; only video sources take the video path.
-            const gifCover = /(?:\.gif(?:$|[?#])|^data:image\/gif)/i.test(artworkSources.animated || '')
-                ? artworkSources.animated
+            const animated = preferredArtwork || (getSpicyLyricsSetting('motionArtwork') === 'true' ? artworkSources.animated : null);
+            const gifCover = !reducedMotion && /(?:\.gif(?:$|[?#])|^data:image\/gif)/i.test(animated || '')
+                ? animated
                 : '';
             const videoCoverUrl = reducedMotion
                 ? null
-                : getTrackPlayerCanvas(track) || (gifCover ? null : artworkSources.animated) || null;
+                : (gifCover ? null : animated) || null;
             const staticCover = gifCover || artworkSources.static || '/assets/appicon.png';
             const coverUrl = /^(?:data:|blob:|https?:|\/)/i.test(String(staticCover))
                 ? staticCover
                 : this.api.getCoverUrl(staticCover, '1280');
             this.fullscreenBackgroundCoverUrl = coverUrl;
-            if (this.fullscreenSpicyBackground) {
-                void this.fullscreenSpicyBackground.setSource(coverUrl);
-            }
+            this.fullscreenVideoBackground = Boolean(videoCoverUrl && canvasSettings.isEnabled() &&
+                canvasSettings.getBackgroundSource() === 'canvas' &&
+                (preferredArtwork === canvas || getSpicyLyricsSetting('motionOnStage') === 'true'));
+            overlay.classList.toggle('has-fullscreen-canvas', this.fullscreenVideoBackground);
 
             const fsLikeBtn = document.getElementById('fs-like-btn');
             if (fsLikeBtn) {
@@ -1633,18 +1641,30 @@ export class UIRenderer {
                     currentImage.src = coverUrl;
                 }
             }
+            if (this.fullscreenSpicyBackground) this.syncFullscreenSpicyArtwork();
             await this.applyTrackThemeColor(track, '80');
         }
 
         this.updateFullscreenQualityBadgePlacement(track, overlay);
-        artist.textContent = getTrackArtists(track);
-
-        if (nextTrack) {
-            nextTrackEl.style.display = 'flex';
-            nextTrackEl.querySelector('.value').textContent = `${nextTrack.title} • ${getTrackArtists(nextTrack)}`;
-        } else {
-            nextTrackEl.style.display = 'none';
+        if (artist) {
+            const artists = getTrackArtists(track);
+            const year = getTrackYearDisplay(track).match(/\b\d{4}\b/)?.[0];
+            const placement = getSpicyLyricsSetting('releaseYear');
+            const label = document.createElement('span');
+            label.className = 'fullscreen-marquee-text';
+            label.textContent = year && placement === 'before' ? `${year} · ${artists}`
+                : year && placement === 'after' ? `${artists} · ${year}` : artists;
+            artist.replaceChildren(label);
         }
+    }
+
+    syncFullscreenSpicyArtwork() {
+        const background = this.fullscreenSpicyBackground;
+        if (!background) return;
+        const video = document.getElementById('fullscreen-cover-image');
+        const follow = this.fullscreenVideoBackground && video?.tagName === 'VIDEO';
+        void background.setSource(this.fullscreenBackgroundCoverUrl, { deferToVideo: follow });
+        background.followVideo(follow ? video : null);
     }
 
     updateFullscreenBackgroundButton(mode = this.fullscreenBackgroundMode, isVideoTrack = false) {
@@ -1669,6 +1689,10 @@ export class UIRenderer {
                 .then(({ mountSpicyDynamicBackground }) => {
                     const controller = mountSpicyDynamicBackground(overlay, {
                         className: 'spicy-lyrics-fullscreen-bg',
+                    });
+                    controller.connectPlayback({
+                        getElement: () => this.player?.activeElement,
+                        getAnalyser: () => audioContextManager.getAnalyser(),
                     });
                     this.fullscreenSpicyBackground = controller;
                     return controller;
@@ -1734,7 +1758,7 @@ export class UIRenderer {
                     return false;
                 }
                 commitMode();
-                await background.setSource(this.fullscreenBackgroundCoverUrl);
+                this.syncFullscreenSpicyArtwork();
                 if (requestId !== this.fullscreenBackgroundRequestId) {
                     background.setActive?.(false);
                     return false;
@@ -1804,7 +1828,6 @@ export class UIRenderer {
         const isCurrentRequest = () => this.fullscreenOpenGeneration === generation && !renderController.signal.aborted;
 
         const isAlreadyOpen = this.isFullscreenCoverOpen(overlay);
-        const nextTrackEl = document.getElementById('fullscreen-next-track');
         const lyricsPane = document.getElementById('fullscreen-lyrics-pane');
         const lyricsContent = document.getElementById('fullscreen-lyrics-content');
         const lyricsToggleBtn = document.getElementById('toggle-fullscreen-lyrics-btn');
@@ -1848,31 +1871,20 @@ export class UIRenderer {
             await this.updateFullscreenMetadata(track, nextTrack);
             if (!isCurrentRequest()) return false;
 
-            if (nextTrackEl) {
-                if (nextTrack) {
-                    nextTrackEl.classList.remove('animate-in');
-                    void nextTrackEl.offsetWidth;
-                    nextTrackEl.classList.add('animate-in');
-                } else {
-                    nextTrackEl.classList.remove('animate-in');
-                }
-            }
-
             const canRenderLyrics = Boolean(
                 lyricsManager && fullscreenAudioElement && lyricsPane && lyricsContent && track.type !== 'video'
             );
             this.fullscreenLyricsManager = lyricsManager || null;
+            const restoreQueueView = isAlreadyOpen && Boolean(this.fullscreenQueueVisible);
+            let lyricsElement = null;
+            const showQueueOnEmpty = getSpicyLyricsSetting('showQueueWithoutLyrics') === 'true';
             if (canRenderLyrics) {
-                this.fullscreenLyricsVisible = true;
+                this.fullscreenLyricsVisible = !isAlreadyOpen || this.fullscreenLyricsVisible;
                 if (lyricsToggleBtn) lyricsToggleBtn.style.removeProperty('display');
                 if (lyricsRendererBtn) lyricsRendererBtn.style.removeProperty('display');
                 overlay.classList.remove('lyrics-unavailable');
                 clearFullscreenLyricsSync(lyricsContent);
-                const renderFullscreenLyrics =
-                    this.fullscreenLyricsRenderer === 'spicy'
-                        ? renderSpicyLyricsInFullscreen
-                        : renderLyricsInFullscreen;
-                const lyricsElement = await renderFullscreenLyrics(
+                lyricsElement = await renderSpicyLyricsInFullscreen(
                     track,
                     fullscreenAudioElement,
                     lyricsManager,
@@ -1881,7 +1893,7 @@ export class UIRenderer {
                 );
                 if (!isCurrentRequest()) return false;
                 if (!lyricsElement) {
-                    this.fullscreenLyricsVisible = false;
+                    this.fullscreenLyricsVisible = restoreQueueView || showQueueOnEmpty;
                     if (lyricsToggleBtn) lyricsToggleBtn.style.display = 'none';
                     if (lyricsRendererBtn) lyricsRendererBtn.style.display = 'none';
                     overlay.classList.add('lyrics-unavailable');
@@ -1898,6 +1910,9 @@ export class UIRenderer {
                         '<div class="fullscreen-lyrics-empty">Lyrics are not available for this track.</div>';
                 }
             }
+            this.setupFullscreenSpicyViews(overlay, lyricsElement, fullscreenAudioElement, {
+                showQueue: track.type !== 'video' && (restoreQueueView || !lyricsElement && showQueueOnEmpty),
+            });
             this.updateFullscreenLyricsVisibility(overlay);
 
             this.setupFullscreenControls();
@@ -1907,7 +1922,6 @@ export class UIRenderer {
             this.setupControlsAutoHide(overlay);
             this.setupFullscreenDismissHandle(overlay);
             this.setupFullscreenLyricsToggle(overlay);
-            this.setupFullscreenLyricsRendererToggle(overlay);
 
             // Commit URL state only after the fullscreen shell and its lyrics
             // result are known to be mounted successfully.
@@ -1943,6 +1957,176 @@ export class UIRenderer {
         }
     }
 
+    setupFullscreenSpicyViews(overlay, lyrics, audio, { showQueue }) {
+        this.fullscreenSpicyViews?.abort();
+        const controller = new AbortController();
+        this.fullscreenSpicyViews = controller;
+        const { signal } = controller;
+        const lyricsContent = overlay.querySelector('#fullscreen-lyrics-content');
+        const queueContent = overlay.querySelector('#fullscreen-queue-content');
+        if (!lyricsContent || !queueContent || !audio) return;
+        this.setupFullscreenTitleMotion(overlay.querySelector('.fullscreen-track-text'), signal);
+        const list = queueContent.querySelector('ol');
+        const lyricsButton = overlay.querySelector('#fs-lyrics-view');
+        const queueButton = overlay.querySelector('#fs-queue-view');
+        const syncButton = overlay.querySelector('#fs-lyrics-resync');
+        const popupButton = overlay.querySelector('#fs-lyrics-popup');
+        const next = overlay.querySelector('#fullscreen-next-track');
+        const footer = overlay.querySelector('.fullscreen-lyrics-footer');
+
+        const coverFor = (track) => {
+            const source = getArtworkSources({ cover: getTrackDisplayAlbum(track)?.cover || track.cover || track.image }).static;
+            if (!source) return '/assets/appicon.png';
+            return /^(?:data:|blob:|https?:|\/)/i.test(source) ? source : this.api.getCoverUrl(source, '160');
+        };
+        const updateNext = () => {
+            const track = this.player.repeatMode === REPEAT_MODE.ONE ? null : this.player.getNextTrack?.();
+            const remaining = audio.duration - audio.currentTime;
+            const visible = Boolean(track && lyrics && !this.fullscreenQueueVisible && remaining > 0 && remaining <= 30 &&
+                getSpicyLyricsSetting('upNext') === 'true');
+            if (visible && next.dataset.trackId !== String(track.id)) {
+                next.dataset.trackId = String(track.id);
+                next.querySelector('img').src = coverFor(track);
+                next.querySelector('strong').textContent = getTrackTitle(track);
+                next.querySelector('small').textContent = getTrackArtists(track);
+            }
+            next.hidden = !visible;
+            lyrics?.toggleAttribute('data-next-up', visible);
+        };
+        const updateQueue = () => {
+            const queue = this.player.getCurrentQueue?.() ?? [];
+            const start = Math.max(0, (this.player.currentQueueIndex ?? -1) + 1);
+            const rows = queue.slice(start).map((track, index) => {
+                const row = document.createElement('li');
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.dataset.index = String(start + index);
+                const cover = document.createElement('img');
+                cover.src = coverFor(track);
+                cover.alt = '';
+                cover.loading = 'lazy';
+                const copy = document.createElement('span');
+                const title = document.createElement('strong');
+                title.textContent = getTrackTitle(track);
+                const artist = document.createElement('small');
+                artist.textContent = getTrackArtists(track);
+                copy.append(title, artist);
+                button.append(cover, copy);
+                row.append(button);
+                return row;
+            });
+            if (!rows.length) {
+                const empty = document.createElement('li');
+                empty.textContent = 'Nothing is queued.';
+                rows.push(empty);
+            }
+            list.replaceChildren(...rows);
+        };
+        const updateSettings = () => {
+            for (const [setting, className] of [
+                ['portraitFullscreen', 'spicy-portrait'],
+                ['playerBelowCover', 'spicy-player-below-cover'],
+                ['groupedControls', 'spicy-group-controls'],
+            ]) {
+                overlay.classList.toggle(className, getSpicyLyricsSetting(setting) === 'true');
+            }
+            updateNext();
+        };
+        const updateResync = () => { syncButton.hidden = this.fullscreenQueueVisible || !lyrics?.isOffSync(); };
+        const showView = (queue) => {
+            this.fullscreenQueueVisible = queue;
+            this.fullscreenLyricsVisible = true;
+            overlay.classList.toggle('show-fullscreen-queue', queue);
+            lyricsContent.hidden = queue;
+            queueContent.hidden = !queue;
+            footer.hidden = !lyrics && !queue;
+            lyricsButton.setAttribute('aria-pressed', String(!queue));
+            queueButton.setAttribute('aria-pressed', String(queue));
+            lyricsButton.disabled = !lyrics;
+            if (queue) updateQueue();
+            updateNext();
+            updateResync();
+            this.updateFullscreenLyricsVisibility(overlay);
+        };
+        this.showFullscreenQueue = () => showView(!lyrics || !this.fullscreenQueueVisible);
+        popupButton.hidden = !lyrics || !window.documentPictureInPicture;
+        lyricsButton.addEventListener('click', () => showView(false), { signal });
+        queueButton.addEventListener('click', () => showView(true), { signal });
+        syncButton.addEventListener('click', () => lyrics?.resync(), { signal });
+        popupButton.addEventListener('click', () => {
+            void openSpicyLyricsPopup(this.player, this.fullscreenLyricsManager)
+                .catch((error) => showNotification(error.message));
+        }, { signal });
+        lyrics?.addEventListener('lyrics-sync-change', updateResync, { signal });
+        list.addEventListener('click', (event) => {
+            const button = event.target.closest('button[data-index]');
+            if (button) void this.player.playAtIndex(Number(button.dataset.index));
+        }, { signal });
+        audio.addEventListener('timeupdate', updateNext, { signal });
+        window.addEventListener('player-queue-changed', () => {
+            if (this.fullscreenQueueVisible) updateQueue();
+            updateNext();
+        }, { signal });
+        window.addEventListener('player-repeat-changed', updateNext, { signal });
+        window.addEventListener('spicy-lyrics-settings-changed', (event) => {
+            updateSettings();
+            if (event.detail?.key === 'showQueueWithoutLyrics' && !lyrics && !overlay.classList.contains('is-video-mode')) {
+                const queueOn = getSpicyLyricsSetting('showQueueWithoutLyrics') === 'true';
+                showView(queueOn);
+                if (!queueOn) {
+                    this.fullscreenLyricsVisible = false;
+                    this.updateFullscreenLyricsVisibility(overlay);
+                }
+            }
+            if (['motionArtwork', 'canvasPreference', 'motionOnStage', 'releaseYear'].includes(event.detail?.key)) {
+                void this.updateFullscreenMetadata(this.player.currentTrack);
+            }
+        }, { signal });
+        const visible = this.fullscreenLyricsVisible;
+        showView(showQueue);
+        this.fullscreenLyricsVisible = visible;
+        updateSettings();
+    }
+
+    setupFullscreenTitleMotion(container, signal) {
+        if (!container) return;
+        const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        let animations = [];
+        const refresh = () => {
+            animations.forEach((animation) => animation.cancel());
+            animations = [];
+            if (motion.matches || signal.aborted) return;
+            const rows = [...container.querySelectorAll('.fullscreen-marquee-text')].map((text) => ({
+                text,
+                overflow: Math.ceil(text.scrollWidth - text.parentElement.clientWidth),
+            })).filter(({ overflow }) => overflow > 1);
+            if (!rows.length) return;
+            const pixelsPerSecond = 32;
+            const hold = 1200;
+            const duration = 2 * hold + Math.max(...rows.map(({ overflow }) => overflow)) * 1000 / pixelsPerSecond;
+            animations = rows.map(({ text, overflow }) => {
+                const end = `translateX(${-overflow}px)`;
+                return text.animate([
+                    { transform: 'translateX(0)', offset: 0 },
+                    { transform: 'translateX(0)', offset: hold / duration },
+                    { transform: end, offset: (hold + overflow * 1000 / pixelsPerSecond) / duration },
+                    { transform: end, offset: 1 },
+                ], { duration, iterations: Infinity });
+            });
+        };
+        const resize = new ResizeObserver(refresh);
+        resize.observe(container);
+        const mutation = new MutationObserver(refresh);
+        mutation.observe(container, { childList: true, subtree: true });
+        motion.addEventListener('change', refresh, { signal });
+        signal.addEventListener('abort', () => {
+            resize.disconnect();
+            mutation.disconnect();
+            animations.forEach((animation) => animation.cancel());
+        }, { once: true });
+        document.fonts?.ready.then(refresh);
+    }
+
     updateFullscreenLyricsVisibility(overlay = document.getElementById('fullscreen-cover-overlay')) {
         if (!overlay) return;
 
@@ -1951,7 +2135,8 @@ export class UIRenderer {
             document.getElementById('toggle-fullscreen-lyrics-mobile-btn'),
         ].filter(Boolean);
         const lyricsUnavailable = overlay.classList.contains('lyrics-unavailable');
-        const shouldShowLyrics = this.fullscreenLyricsVisible && !lyricsUnavailable;
+        const shouldShowLyrics = this.fullscreenLyricsVisible && (!lyricsUnavailable || this.fullscreenQueueVisible);
+        overlay.querySelector('.fullscreen-lyrics-pane')?.toggleAttribute('inert', !shouldShowLyrics);
 
         overlay.classList.toggle('lyrics-hidden', !shouldShowLyrics);
         this.updateFullscreenQualityBadgePlacement(this.player?.currentTrack, overlay);
@@ -1970,7 +2155,10 @@ export class UIRenderer {
 
     toggleFullscreenLyrics(overlay = document.getElementById('fullscreen-cover-overlay')) {
         if (!overlay || overlay.classList.contains('lyrics-unavailable')) return false;
-
+        if (this.fullscreenQueueVisible) {
+            overlay.querySelector('#fs-lyrics-view')?.click();
+            return true;
+        }
         this.fullscreenLyricsVisible = !this.fullscreenLyricsVisible;
         this.updateFullscreenLyricsVisibility(overlay);
         return true;
@@ -1987,7 +2175,8 @@ export class UIRenderer {
         const useMobileBadgeOnly =
             window.matchMedia('(max-width: 768px)').matches && overlay.classList.contains('lyrics-hidden');
 
-        title.innerHTML = useMobileBadgeOnly ? escapeHtml(track.title) : `${escapeHtml(track.title)} ${qualityBadge}`;
+        const label = `<span class="fullscreen-marquee-window"><span class="fullscreen-marquee-text">${escapeHtml(track.title)}</span></span>`;
+        title.innerHTML = useMobileBadgeOnly ? label : `${label} ${qualityBadge}`;
         if (mobileQuality) {
             mobileQuality.innerHTML = useMobileBadgeOnly ? qualityBadge : '';
         }
@@ -2042,6 +2231,11 @@ export class UIRenderer {
         this.fullscreenOpenGeneration += 1;
         this.fullscreenRenderController?.abort();
         this.fullscreenRenderController = null;
+        this.fullscreenSpicyViews?.abort();
+        this.fullscreenSpicyViews = null;
+        this.showFullscreenQueue = null;
+        this.fullscreenQueueVisible = false;
+        overlay.classList.remove('show-fullscreen-queue', 'has-fullscreen-canvas');
         const coverImage = document.getElementById('fullscreen-cover-image');
         const lyricsContent = document.getElementById('fullscreen-lyrics-content');
         if (coverImage && coverImage.vanillaTilt) {
@@ -2415,85 +2609,6 @@ export class UIRenderer {
         };
     }
 
-    updateFullscreenLyricsRendererButton(overlay = document.getElementById('fullscreen-cover-overlay')) {
-        const button = document.getElementById('fullscreen-lyrics-renderer-btn');
-        if (!button) return;
-
-        const current = this.fullscreenLyricsRenderer === 'spicy' ? 'Spicy' : 'AMLL';
-        const next = current === 'AMLL' ? 'Spicy' : 'AMLL';
-        button.innerHTML = current === 'AMLL' ? SVG_WAVES(20) : SVG_SPICY(21);
-        button.dataset.rendererLabel = current;
-        button.dataset.renderer = current.toLowerCase();
-        button.title = `Switch lyrics renderer. Current: ${current} · Next: ${next}`;
-        button.setAttribute('aria-label', `Switch lyrics renderer. Current: ${current}. Next: ${next}`);
-        button.style.display = overlay?.classList.contains('is-video-mode') ? 'none' : 'flex';
-    }
-
-    async switchFullscreenLyricsRenderer() {
-        const overlay = document.getElementById('fullscreen-cover-overlay');
-        const lyricsContent = document.getElementById('fullscreen-lyrics-content');
-        const track = this.player?.currentTrack;
-        const audioPlayer = this.player?.activeElement;
-        const lyricsManager = this.fullscreenLyricsManager;
-        if (!overlay || !lyricsContent || !track || !audioPlayer || !lyricsManager) return false;
-
-        const nextRenderer = this.fullscreenLyricsRenderer === 'amll' ? 'spicy' : 'amll';
-        this.fullscreenLyricsRenderer = nextRenderer;
-        this.fullscreenRenderController?.abort();
-        const renderController = new AbortController();
-        const generation = ++this.fullscreenOpenGeneration;
-        this.fullscreenRenderController = renderController;
-        const isCurrentRequest = () => this.fullscreenOpenGeneration === generation && !renderController.signal.aborted;
-
-        clearFullscreenLyricsSync(lyricsContent);
-        lyricsContent.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
-
-        try {
-            const render = nextRenderer === 'spicy' ? renderSpicyLyricsInFullscreen : renderLyricsInFullscreen;
-            const lyricsElement = await render(track, audioPlayer, lyricsManager, lyricsContent, {
-                signal: renderController.signal,
-            });
-            if (!isCurrentRequest()) return false;
-            if (!lyricsElement) throw new Error(`Failed to mount ${nextRenderer} fullscreen lyrics`);
-            this.updateFullscreenLyricsRendererButton(overlay);
-            this.updateFullscreenLyricsVisibility(overlay);
-            const currentBackgroundMode = getFullscreenBackgroundMode(this.fullscreenBackgroundMode);
-            if (!isExplicitFullscreenBackgroundMode(currentBackgroundMode)) {
-                await this.applyFullscreenBackgroundMode(getFullscreenLyricsBackgroundMode(nextRenderer));
-            }
-            return true;
-        } catch (error) {
-            if (renderController.signal.aborted) return false;
-            console.error(`Failed to switch fullscreen lyrics to ${nextRenderer}:`, error);
-            this.fullscreenLyricsRenderer = nextRenderer === 'spicy' ? 'amll' : 'spicy';
-            this.updateFullscreenLyricsRendererButton(overlay);
-            lyricsContent.innerHTML = '<div class="lyrics-error">Failed to load lyrics</div>';
-            return false;
-        } finally {
-            if (this.fullscreenRenderController === renderController) this.fullscreenRenderController = null;
-        }
-    }
-
-    setupFullscreenLyricsRendererToggle(overlay) {
-        if (this.fullscreenLyricsRendererToggleCleanup) {
-            this.fullscreenLyricsRendererToggleCleanup();
-            this.fullscreenLyricsRendererToggleCleanup = null;
-        }
-
-        const button = document.getElementById('fullscreen-lyrics-renderer-btn');
-        if (!button || button.style.display === 'none') return;
-
-        const handleToggle = (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            void this.switchFullscreenLyricsRenderer();
-        };
-
-        button.addEventListener('click', handleToggle);
-        this.updateFullscreenLyricsRendererButton(overlay);
-        this.fullscreenLyricsRendererToggleCleanup = () => button.removeEventListener('click', handleToggle);
-    }
-
     setupFullscreenControls() {
         const playBtn = document.getElementById('fs-play-pause-btn');
         const prevBtn = document.getElementById('fs-prev-btn');
@@ -2673,7 +2788,7 @@ export class UIRenderer {
         }
         if (fsQueueBtn) {
             fsQueueBtn.onclick = () => {
-                document.getElementById('queue-btn')?.click();
+                this.showFullscreenQueue?.();
             };
         }
 

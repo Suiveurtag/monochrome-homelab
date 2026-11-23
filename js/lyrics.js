@@ -1,25 +1,20 @@
 //js/lyrics.js
-import { getTrackTitle, getTrackArtists, buildTrackFilename } from './utils.js';
+import { getTrackTitle, getTrackArtists, buildTrackFilename, escapeHtml } from './utils.js';
+import {
+    SVG_CLOSE,
+    SVG_GENIUS_ACTIVE,
+    SVG_GENIUS_INACTIVE,
+    SVG_MINUS,
+    SVG_PLUS,
+    SVG_RESET,
+    SVG_GLOBE,
+} from './icons.js';
+import { sidePanelManager } from './side-panel.js';
 import { isLineOnlyLyrics, isTtml, lyricsToTtml, parseLrc } from './lyrics-format.js';
 import { Player } from './player.js';
-
-// Check if text contains Japanese, Chinese, or Korean characters
-function containsAsianText(text) {
-    if (!text) return false;
-    // Japanese: Hiragana (3040-309F), Katakana (30A0-30FF), Kanji (4E00-9FFF, 3400-4DBF)
-    // Chinese: CJK Unified Ideographs (4E00-9FFF, 3400-4DBF)
-    // Korean: Hangul (AC00-D7AF, 1100-11FF, 3130-318F)
-    const asianRegex = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3400-\u4DBF\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/;
-    return asianRegex.test(text);
-}
-
-// Check if track has Asian text in title or artist names
-function trackHasAsianText(track) {
-    if (!track) return false;
-    const title = track.title || '';
-    const artist = getTrackArtists(track) || '';
-    return containsAsianText(title) || containsAsianText(artist);
-}
+import { getSpicyLyricsSetting, normalizeSpicyLyricsOffset, setSpicyLyricsSetting } from './spicy-lyrics-settings.js';
+import { parseSpicyTtml } from './spicy-lyrics-ttml.js';
+import { audioContextManager } from './audio-context.js';
 
 // Hiragana (3040-309F) or Katakana (30A0-30FF) = unambiguously Japanese
 function containsJapaneseKana(text) {
@@ -160,20 +155,8 @@ export class LyricsManager {
         this.lyricsCache = new Map();
         this.componentLoaded = false;
         this.componentLoadPromise = null;
-        this.amLyricsElement = null;
-        this.animationFrameId = null;
-        this.currentTrackId = null;
-        this.mutationObserver = null;
-        this.romajiObserver = null;
-        this.isRomajiMode = false;
-        this.originalLyricsData = null;
-        this.kuroshiroLoaded = false;
-        this.kuroshiroLoading = false;
-        this.romajiTextCache = new Map(); // Cache: originalText -> convertedRomaji
-        this.convertedTracksCache = new Set(); // Track IDs that have been fully converted
         this.geniusManager = new GeniusManager();
         this.isGeniusMode = false;
-        this.currentGeniusData = null;
         this.timingOffset = 0; // Offset in milliseconds (positive = delay lyrics, negative = advance lyrics)
         window.addEventListener('track-metadata-updated', (event) => {
             if (event.detail?.trackId != null) this.lyricsCache.delete(event.detail.trackId);
@@ -192,17 +175,23 @@ export class LyricsManager {
         try {
             const key = `lyrics-offset-${trackId}`;
             const stored = localStorage.getItem(key);
-            return stored ? parseInt(stored, 10) : 0;
+            return normalizeSpicyLyricsOffset(stored);
         } catch {
             return 0;
         }
+    }
+
+    getPlaybackOffset(trackId) {
+        if (getSpicyLyricsSetting('reviewer') === 'true') return 0;
+        return Number(getSpicyLyricsSetting('offset')) + this.getTimingOffset(trackId);
     }
 
     // Set timing offset for current track
     setTimingOffset(trackId, offsetMs) {
         try {
             const key = `lyrics-offset-${trackId}`;
-            localStorage.setItem(key, offsetMs.toString());
+            localStorage.setItem(key, String(normalizeSpicyLyricsOffset(offsetMs)));
+            window.dispatchEvent(new CustomEvent('spicy-lyrics-offset-changed', { detail: { trackId } }));
         } catch (e) {
             console.warn('Failed to save lyrics timing offset:', e);
         }
@@ -218,181 +207,6 @@ export class LyricsManager {
         const sign = offsetMs >= 0 ? '+' : '';
         const seconds = Math.abs(offsetMs) / 1000;
         return `${sign}${seconds.toFixed(1)}s`;
-    }
-
-    // Load Kuroshiro from CDN (npm package uses Node.js path which doesn't work in browser)
-    async loadKuroshiro() {
-        if (this.kuroshiroLoaded) return true;
-        if (this.kuroshiroLoading) {
-            // Wait for existing load to complete
-            return new Promise((resolve) => {
-                const checkLoad = setInterval(() => {
-                    if (!this.kuroshiroLoading) {
-                        clearInterval(checkLoad);
-                        resolve(this.kuroshiroLoaded);
-                    }
-                }, 100);
-            });
-        }
-
-        this.kuroshiroLoading = true;
-        try {
-            // Bug on kuromoji@0.1.2 where it mangles absolute URLs
-            // Using self-hosted dict files is failed, so we use CDN with monkey-patch
-            // Monkey-patch XMLHttpRequest to redirect dictionary requests to CDN
-            // Kuromoji uses XHR, not fetch, for loading dictionary files
-            if (!window._originalXHROpen) {
-                // eslint-disable-next-line @typescript-eslint/unbound-method
-                window._originalXHROpen = XMLHttpRequest.prototype.open;
-                XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-                    const urlStr = url.toString();
-                    if (urlStr.includes('/dict/') && urlStr.includes('.dat.gz')) {
-                        // Extract just the filename
-                        const filename = urlStr.split('/').pop();
-                        // Redirect to CDN
-                        const cdnUrl = `https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/${filename}`;
-                        return window._originalXHROpen.call(this, method, cdnUrl, ...rest);
-                    }
-                    return window._originalXHROpen.call(this, method, url, ...rest);
-                };
-            }
-
-            // Also patch fetch just in case
-            if (!window._originalFetch) {
-                window._originalFetch = window.fetch;
-                window.fetch = async (url, options) => {
-                    const urlStr = url instanceof URL ? url.toString() : url.url;
-                    if (urlStr.includes('/dict/') && urlStr.includes('.dat.gz')) {
-                        const filename = urlStr.split('/').pop();
-                        const cdnUrl = `https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/${filename}`;
-                        console.log(`Redirecting dict fetch: ${filename} -> CDN`);
-                        return window._originalFetch(cdnUrl, options);
-                    }
-                    return window._originalFetch(url, options);
-                };
-            }
-
-            // Load Kuroshiro from CDN
-            if (!window.Kuroshiro) {
-                await this.loadScript('https://cdn.jsdelivr.net/npm/kuroshiro@1.2.0/dist/kuroshiro.min.js');
-            }
-
-            // Load Kuromoji analyzer from CDN
-            if (!window.KuromojiAnalyzer) {
-                await this.loadScript(
-                    'https://cdn.jsdelivr.net/npm/kuroshiro-analyzer-kuromoji@1.1.0/dist/kuroshiro-analyzer-kuromoji.min.js'
-                );
-            }
-
-            // Initialize Kuroshiro (CDN version exports as .default)
-            const Kuroshiro = window.Kuroshiro.default || window.Kuroshiro;
-            const KuromojiAnalyzer = window.KuromojiAnalyzer.default || window.KuromojiAnalyzer;
-
-            this.kuroshiro = new Kuroshiro();
-
-            // Initialize with a dummy path - our fetch interceptor will redirect to CDN
-            await this.kuroshiro.init(
-                new KuromojiAnalyzer({
-                    dictPath: '/dict/', // This gets mangled but our interceptor fixes it
-                })
-            );
-
-            this.kuroshiroLoaded = true;
-            this.kuroshiroLoading = false;
-            console.log('✓ Kuroshiro loaded and initialized successfully');
-            return true;
-        } catch (error) {
-            console.error('✗ Failed to load Kuroshiro:', error);
-            this.kuroshiroLoaded = false;
-            this.kuroshiroLoading = false;
-            return false;
-        }
-    }
-
-    // Helper to load external scripts
-    loadScript(src) {
-        return new Promise((resolve, reject) => {
-            // Check if script already exists
-            if (document.querySelector(`script[src="${src}"]`)) {
-                resolve();
-                return;
-            }
-            const script = document.createElement('script');
-            script.src = src;
-            script.onload = resolve;
-            script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
-            document.head.appendChild(script);
-        });
-    }
-
-    // Check if text contains Japanese characters
-    containsJapanese(text) {
-        if (!text) return false;
-        // Match any Japanese character (Hiragana, Katakana, Kanji)
-        return /[\u3040-\u30FF\u31F0-\u9FFF]/.test(text);
-    }
-
-    // Convert Japanese text to Romaji (including Kanji) with caching
-    async convertToRomaji(text) {
-        if (!text) return text;
-
-        // Check cache first
-        if (this.romajiTextCache.has(text)) {
-            return this.romajiTextCache.get(text);
-        }
-
-        // Only process if text contains Asian characters
-        if (!containsAsianText(text)) {
-            return text;
-        }
-
-        // Make sure Kuroshiro is loaded
-        if (!this.kuroshiroLoaded) {
-            const success = await this.loadKuroshiro();
-            if (!success) {
-                console.warn('Kuroshiro not available, skipping conversion');
-                return text;
-            }
-        }
-
-        if (!this.kuroshiro) {
-            console.warn('Kuroshiro not available, skipping conversion');
-            return text;
-        }
-
-        try {
-            // Convert to Romaji using Kuroshiro (handles Kanji, Hiragana, Katakana)
-            const result = await this.kuroshiro.convert(text, {
-                to: 'romaji',
-                mode: 'spaced',
-                romajiSystem: 'hepburn',
-            });
-            // Cache the result
-            this.romajiTextCache.set(text, result);
-            return result;
-        } catch (error) {
-            console.warn('Romaji conversion failed for text:', text.substring(0, 30), error);
-            return text;
-        }
-    }
-
-    // Set Romaji mode and save preference
-    setRomajiMode(enabled) {
-        this.isRomajiMode = enabled;
-        try {
-            localStorage.setItem('lyricsRomajiMode', enabled ? 'true' : 'false');
-        } catch (e) {
-            console.warn('Failed to save Romaji mode preference:', e);
-        }
-    }
-
-    // Get saved Romaji mode preference
-    getRomajiMode() {
-        try {
-            return localStorage.getItem('lyricsRomajiMode') === 'true';
-        } catch {
-            return false;
-        }
     }
 
     async ensureComponentLoaded() {
@@ -416,9 +230,10 @@ export class LyricsManager {
 
     async fetchLyrics(trackId, track = null) {
         if (track) {
-            if (isTtml(track.lyrics)) {
+            const source = typeof track.lyrics === 'string' ? track.lyrics.replaceAll('&nbsp;', '&#160;') : '';
+            if (isTtml(source)) {
                 const lyricsData = {
-                    ttml: track.lyrics,
+                    ttml: source,
                     lyricsProvider: 'Local',
                 };
                 this.lyricsCache.set(trackId, lyricsData);
@@ -430,6 +245,12 @@ export class LyricsManager {
                     subtitles: track.lyrics,
                     lyricsProvider: 'Local',
                 };
+                this.lyricsCache.set(trackId, lyricsData);
+                return lyricsData;
+            }
+
+            if (source.trim() && !source.trimStart().startsWith('<')) {
+                const lyricsData = { plain: track.lyrics, lyricsProvider: 'Local' };
                 this.lyricsCache.set(trackId, lyricsData);
                 return lyricsData;
             }
@@ -464,9 +285,10 @@ export class LyricsManager {
                 if (response.ok) {
                     const data = await response.json();
 
-                    if (data.syncedLyrics) {
+                    if (data.syncedLyrics || data.plainLyrics) {
                         const lyricsData = {
                             subtitles: data.syncedLyrics,
+                            plain: data.plainLyrics,
                             lyricsProvider: 'LRCLIB',
                         };
 
@@ -551,206 +373,17 @@ export class LyricsManager {
         return currentIndex;
     }
 
-    // Setup MutationObserver to convert lyrics in am-lyrics component
-    async setupLyricsObserver(amLyricsElement) {
-        this.stopLyricsObserver();
-
-        if (!amLyricsElement) return;
-
-        // Check for shadow DOM
-        const observeRoot = amLyricsElement.shadowRoot || amLyricsElement;
-
-        this.romajiObserver = new MutationObserver((mutations) => {
-            // Check if any relevant mutation occurred
-            const hasRelevantChange = mutations.some((mutation) => {
-                if (mutation.type === 'childList') {
-                    let relevant = false;
-                    if (mutation.addedNodes.length > 0) {
-                        for (const node of mutation.addedNodes) {
-                            if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains('genius-indicator'))
-                                continue;
-                            relevant = true;
-                            break;
-                        }
-                    }
-                    if (!relevant && mutation.removedNodes.length > 0) {
-                        for (const node of mutation.removedNodes) {
-                            if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains('genius-indicator'))
-                                continue;
-                            relevant = true;
-                            break;
-                        }
-                    }
-                    return relevant;
-                }
-                if (mutation.type === 'characterData') return true;
-                return false;
-            });
-
-            if (!hasRelevantChange) {
-                return;
-            }
-
-            // Debounce mutations
-            if (this.observerTimeout) {
-                clearTimeout(this.observerTimeout);
-            }
-            this.observerTimeout = setTimeout(async () => {
-                if (amLyricsElement.getAttribute('lang') !== 'ja') {
-                    const text = (amLyricsElement.shadowRoot || amLyricsElement).textContent || '';
-                    if (containsJapaneseKana(text)) amLyricsElement.setAttribute('lang', 'ja');
-                }
-                if (this.isRomajiMode) {
-                    await this.convertLyricsContent(amLyricsElement);
-                }
-                if (this.isGeniusMode && this.currentGeniusData) {
-                    await this.applyGeniusAnnotations(amLyricsElement, this.currentGeniusData.referents);
-                }
-            }, 100);
-        });
-
-        // Observe all child nodes for changes (in shadow DOM if it exists)
-        // Watch for new nodes AND text content changes to catch when lyrics refresh
-        this.romajiObserver.observe(observeRoot, {
-            childList: true,
-            subtree: true,
-            characterData: true, // Watch text changes to catch lyric refreshes
-            attributes: false, // Don't watch attribute changes (highlight, etc)
-        });
-
-        // Detect kana in pre-conversion text so Romaji mode doesn't strip the signal
-        if (amLyricsElement.getAttribute('lang') !== 'ja') {
-            const text = (amLyricsElement.shadowRoot || amLyricsElement).textContent || '';
-            if (containsJapaneseKana(text)) amLyricsElement.setAttribute('lang', 'ja');
-        }
-
-        // Initial conversion if Romaji mode is enabled - single attempt, no periodic polling
-        if (this.isRomajiMode) {
-            await this.convertLyricsContent(amLyricsElement);
-        }
-        if (this.isGeniusMode && this.currentGeniusData) {
-            await this.applyGeniusAnnotations(amLyricsElement, this.currentGeniusData.referents);
-        }
-    }
-
-    // Convert lyrics content to Romaji
-    async convertLyricsContent(amLyricsElement) {
-        if (!amLyricsElement || !this.isRomajiMode) {
-            return;
-        }
-
-        // Find the root to traverse - check for shadow DOM first
-        const rootToTraverse = amLyricsElement.shadowRoot || amLyricsElement;
-
-        // Make sure Kuroshiro is ready
-        if (!this.kuroshiroLoaded) {
-            const success = await this.loadKuroshiro();
-            if (!success) {
-                console.warn('Cannot convert lyrics - Kuroshiro load failed');
-                return;
-            }
-        }
-
-        // Find all text nodes in the component
-        const textNodes = [];
-        const walker = document.createTreeWalker(rootToTraverse, NodeFilter.SHOW_TEXT, null, false);
-
-        let node;
-        while ((node = walker.nextNode())) {
-            textNodes.push(node);
-        }
-
-        // Convert Japanese text to Romaji (using async/await for Kuroshiro)
-        for (const textNode of textNodes) {
-            if (!textNode.parentElement) {
-                continue;
-            }
-
-            const parentTag = textNode.parentElement.tagName?.toLowerCase();
-            const parentClass = String(textNode.parentElement.className || '');
-
-            // Skip elements that shouldn't be converted
-            const skipTags = ['script', 'style', 'code', 'input', 'textarea', 'time'];
-            if (skipTags.includes(parentTag)) {
-                continue;
-            }
-
-            const originalText = textNode.textContent;
-
-            // Skip progress indicators and timestamps (but NOT progress-text which is the actual lyrics!)
-            if (
-                (parentClass.includes('progress') && !parentClass.includes('progress-text')) ||
-                (parentClass.includes('time') && !parentClass.includes('progress-text')) ||
-                parentClass.includes('timestamp')
-            ) {
-                continue;
-            }
-
-            if (!originalText || originalText.trim().length === 0) {
-                continue;
-            }
-
-            // Check if contains Japanese - convert if we find Japanese
-            if (this.containsJapanese(originalText)) {
-                const romajiText = await this.convertToRomaji(originalText);
-
-                // Only update if conversion produced different text
-                if (romajiText && romajiText !== originalText) {
-                    textNode.textContent = romajiText;
-                }
-            }
-        }
-
-        // Mark this track as converted
-        if (this.currentTrackId) {
-            this.convertedTracksCache.add(this.currentTrackId);
-        }
-    }
-
-    // Stop the observer
-    stopLyricsObserver() {
-        if (this.romajiObserver) {
-            this.romajiObserver.disconnect();
-            this.romajiObserver = null;
-        }
-        if (this.observerTimeout) {
-            clearTimeout(this.observerTimeout);
-            this.observerTimeout = null;
-        }
-    }
-
-    // Toggle Romaji mode
-    async toggleRomajiMode(amLyricsElement) {
-        this.isRomajiMode = !this.isRomajiMode;
-        this.setRomajiMode(this.isRomajiMode);
-
-        if (amLyricsElement) {
-            if (this.isRomajiMode) {
-                // Turning ON: Setup observer and convert immediately
-                await this.setupLyricsObserver(amLyricsElement);
-                await this.convertLyricsContent(amLyricsElement);
-            } else {
-                // Turning OFF: Stop observer
-                // Note: To restore original Japanese, we'd need to reload the component
-                this.stopLyricsObserver();
-            }
-        }
-
-        return this.isRomajiMode;
-    }
-
     async applyGeniusAnnotations(amLyricsElement, referents) {
         if (!amLyricsElement || !referents) return;
 
-        const root = amLyricsElement.shadowRoot || amLyricsElement;
-
-        const lineElements = Array.from(root.querySelectorAll('p, .line, .lyric-line, .lrc-line'));
+        const lineElements = amLyricsElement.lyricElements;
 
         if (lineElements.length === 0) return;
 
         lineElements.forEach((el) => {
             el.classList.remove('genius-annotated', 'genius-multi-start', 'genius-multi-end', 'genius-multi-mid');
             delete el.__geniusAnnotations;
+            el.querySelector('.genius-indicator')?.remove();
         });
 
         const normalize = (str) =>
@@ -773,7 +406,7 @@ export class LyricsManager {
 
                     const lineClone = line.cloneNode(true);
                     lineClone
-                        .querySelectorAll('.time, .timestamp, [class*="time"], .genius-indicator')
+                        .querySelectorAll('.RomanizedRow, .genius-indicator')
                         .forEach((n) => n.remove());
                     const text = normalize(lineClone.textContent || '');
 
@@ -817,6 +450,134 @@ export class LyricsManager {
     }
 }
 
+export function openLyricsPanel(track, audioPlayer, lyricsManager, forceOpen = false, openOrigin = 'player-button') {
+    const manager = lyricsManager || new LyricsManager();
+    sidePanelManager.panel.dataset.lyricsOpenOrigin = openOrigin;
+
+    // Load saved timing offset for this track
+    manager.timingOffset = manager.getTimingOffset(track.id);
+
+    const renderControls = (container) => {
+        const isRomajiMode = getSpicyLyricsSetting('romanization') !== 'off';
+        const isGeniusMode = manager.isGeniusMode;
+        const offsetDisplay = manager.getOffsetDisplayString(manager.timingOffset);
+
+        container.innerHTML = `
+            <div class="lyrics-timing-controls">
+                <button id="lyrics-timing-minus-btn" class="btn-icon" title="Decrease delay (lyrics earlier) -0.5s">
+                    ${SVG_MINUS(18)}
+                </button>
+                <span id="lyrics-timing-display" class="lyrics-timing-display" title="Current timing offset">${offsetDisplay}</span>
+                <button id="lyrics-timing-plus-btn" class="btn-icon" title="Increase delay (lyrics later) +0.5s">
+                    ${SVG_PLUS(18)}
+                </button>
+                <button id="lyrics-timing-reset-btn" class="btn-icon" title="Reset timing offset">
+                    ${SVG_RESET(16)}
+                </button>
+            </div>
+            <button id="romaji-toggle-btn" class="btn-icon" title="Toggle romanization" aria-pressed="${isRomajiMode}" data-enabled="${isRomajiMode}" style="color: ${isRomajiMode ? 'var(--primary)' : ''}">
+                ${SVG_GLOBE(20)}
+            </button>
+            <button id="genius-toggle-btn" class="btn-icon ${isGeniusMode ? 'active-genius' : ''}" title="Genius Mode" style="${isGeniusMode ? 'color: #ffff64;' : ''}">
+                ${isGeniusMode ? SVG_GENIUS_ACTIVE(20) : SVG_GENIUS_INACTIVE(20)}
+            </button>
+            <button id="close-side-panel-btn" class="btn-icon" title="Close">
+                ${SVG_CLOSE(20)}
+            </button>
+        `;
+
+        container.querySelector('#close-side-panel-btn').addEventListener('click', () => {
+            sidePanelManager.close();
+            clearLyricsPanelSync(audioPlayer, sidePanelManager.panel);
+        });
+
+        // Timing adjustment controls
+        const updateTimingDisplay = () => {
+            const display = container.querySelector('#lyrics-timing-display');
+            if (display) {
+                display.textContent = manager.getOffsetDisplayString(manager.timingOffset);
+            }
+        };
+
+        container.querySelector('#lyrics-timing-minus-btn')?.addEventListener('click', () => {
+            manager.timingOffset -= 500; // Decrease by 0.5 seconds
+            manager.setTimingOffset(track.id, manager.timingOffset);
+            updateTimingDisplay();
+        });
+
+        container.querySelector('#lyrics-timing-plus-btn')?.addEventListener('click', () => {
+            manager.timingOffset += 500; // Increase by 0.5 seconds
+            manager.setTimingOffset(track.id, manager.timingOffset);
+            updateTimingDisplay();
+        });
+
+        container.querySelector('#lyrics-timing-reset-btn')?.addEventListener('click', () => {
+            manager.timingOffset = 0;
+            manager.resetTimingOffset(track.id);
+            updateTimingDisplay();
+        });
+
+        const romanizationButton = container.querySelector('#romaji-toggle-btn');
+        romanizationButton?.addEventListener('click', () => {
+            const enabled = getSpicyLyricsSetting('romanization') === 'off';
+            setSpicyLyricsSetting('romanization', enabled ? 'underLine' : 'off');
+            romanizationButton.dataset.enabled = String(enabled);
+            romanizationButton.setAttribute('aria-pressed', String(enabled));
+            romanizationButton.style.color = enabled ? 'var(--primary)' : '';
+        });
+
+        // Genius toggle
+        const geniusBtn = container.querySelector('#genius-toggle-btn');
+        if (geniusBtn) {
+            geniusBtn.addEventListener('click', async () => {
+                manager.isGeniusMode = !manager.isGeniusMode;
+                const enabled = manager.isGeniusMode;
+
+                geniusBtn.classList.toggle('active-genius', enabled);
+                geniusBtn.style.color = enabled ? '#ffff64' : '';
+                geniusBtn.innerHTML = enabled ? SVG_GENIUS_ACTIVE(20) : SVG_GENIUS_INACTIVE(20);
+
+                if (enabled) {
+                    try {
+                        geniusBtn.style.opacity = '0.5';
+                        await manager.geniusManager.getDataForTrack(track);
+                        const amLyrics = sidePanelManager.panel.querySelector('spicy-lyrics');
+                        if (amLyrics)
+                            manager.applyGeniusAnnotations(
+                                amLyrics,
+                                manager.geniusManager.cache.get(track.id)?.referents
+                            );
+                    } catch (e) {
+                        alert(e.message);
+                        manager.isGeniusMode = false;
+                        geniusBtn.classList.remove('active-genius');
+                        geniusBtn.style.color = '';
+                    } finally {
+                        geniusBtn.style.opacity = '1';
+                    }
+                } else {
+                    const lyrics = sidePanelManager.panel.querySelector('spicy-lyrics');
+                    void manager.applyGeniusAnnotations(lyrics, []);
+                    const modal = document.querySelector('.genius-annotation-modal');
+                    if (modal) modal.remove();
+                }
+            });
+        }
+    };
+
+    const renderContent = async (container, renderContext = {}) => {
+        clearLyricsPanelSync(audioPlayer, sidePanelManager.panel);
+        await renderLyricsInSidePanel(track, audioPlayer, manager, container, renderContext);
+        if (renderContext.signal?.aborted || (renderContext.isCurrent && !renderContext.isCurrent())) return;
+        if (container.lyricsCleanup) {
+            sidePanelManager.panel.lyricsCleanup = container.lyricsCleanup;
+            sidePanelManager.panel.lyricsManager = container.lyricsManager;
+        }
+    };
+
+    sidePanelManager.open('lyrics', 'Lyrics', renderControls, renderContent, forceOpen);
+}
+
 function getLyricsHighlightColor() {
     // Check if the current theme is light
     const isLight = getComputedStyle(document.documentElement).colorScheme === 'light';
@@ -846,13 +607,14 @@ async function mountSpicyLyrics(
     audioPlayer,
     lyricsManager,
     localTtml,
-    { signal, lineOnly = false } = {}
+    { signal, lineOnly = false, provider = '' } = {}
 ) {
     await lyricsManager.ensureComponentLoaded();
     if (signal?.aborted) return null;
 
     container.innerHTML = '';
     const amLyrics = document.createElement('spicy-lyrics');
+    amLyrics.provider = provider;
     amLyrics.lineOnly = lineOnly;
     amLyrics.ttml = localTtml;
     amLyrics.style.setProperty('--spicy-lyrics-active-color', getLyricsHighlightColor());
@@ -860,139 +622,147 @@ async function mountSpicyLyrics(
     amLyrics.style.height = '100%';
     amLyrics.style.width = '100%';
 
+    amLyrics.currentTime = audioPlayer.currentTime * 1000;
     container.appendChild(amLyrics);
-    await amLyrics.setTrack(track, lyricsManager.api);
+    amLyrics.connectPlayback(audioPlayer, () => audioContextManager.getAnalyser());
+    void amLyrics.setTrack(track, lyricsManager.api);
     if (signal?.aborted) {
         amLyrics.remove();
         return null;
-    }
-
-    await lyricsManager.setupLyricsObserver(amLyrics);
-    if (signal?.aborted) {
-        amLyrics.remove();
-        return null;
-    }
-
-    // If Romaji mode is enabled and track has Asian text, ensure Kuroshiro is ready
-    if (lyricsManager.isRomajiMode && trackHasAsianText(track) && !lyricsManager.kuroshiroLoaded) {
-        await lyricsManager.loadKuroshiro();
-        if (signal?.aborted) {
-            amLyrics.remove();
-            return null;
-        }
-    }
-
-    if (lyricsManager.isRomajiMode) {
-        await lyricsManager.convertLyricsContent(amLyrics);
-        if (signal?.aborted) {
-            amLyrics.remove();
-            return null;
-        }
-    }
-
-    if (lyricsManager.isGeniusMode && lyricsManager.currentGeniusData) {
-        lyricsManager.applyGeniusAnnotations(amLyrics, lyricsManager.currentGeniusData.referents);
     }
 
     const cleanup = setupSync(track, audioPlayer, amLyrics, lyricsManager);
 
     // Attach cleanup to container for easy access
     container.lyricsCleanup = cleanup;
-    container.lyricsManager = lyricsManager;
+    signal?.addEventListener('abort', cleanup, { once: true });
 
     return amLyrics;
 }
 
+function plainLyricsToTtml(text) {
+    const lines = text?.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    if (!lines?.length) return '';
+    const doc = document.implementation.createDocument('http://www.w3.org/ns/ttml', 'tt');
+    const body = doc.createElementNS(doc.documentElement.namespaceURI, 'body');
+    const div = doc.createElementNS(body.namespaceURI, 'div');
+    for (const line of lines) {
+        const paragraph = doc.createElementNS(body.namespaceURI, 'p');
+        paragraph.textContent = line;
+        div.append(paragraph);
+    }
+    body.append(div);
+    doc.documentElement.append(body);
+    return new XMLSerializer().serializeToString(doc);
+}
+
 async function renderLyricsComponent(container, track, audioPlayer, lyricsManager, { signal } = {}) {
     if (signal?.aborted) return null;
-    container.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
+    clearFullscreenLyricsSync(container);
+    container.innerHTML = '<div class="lyrics-loading" role="status">Loading lyrics…</div>';
 
     try {
-        // Set initial Romaji mode
-        lyricsManager.isRomajiMode = lyricsManager.getRomajiMode();
-        lyricsManager.currentTrackId = track.id;
-
-        const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
+        const data = await lyricsManager.fetchLyrics(track.id, track);
         if (signal?.aborted) return null;
-        const sourceLyrics = track.lyrics || fetchedLyrics?.ttml || fetchedLyrics?.subtitles || '';
-        const lineOnly = isLineOnlyLyrics(sourceLyrics);
-        const localTtml = lyricsToTtml(sourceLyrics, track.duration);
-        if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
-
-        return await mountSpicyLyrics(container, track, audioPlayer, lyricsManager, localTtml, { signal, lineOnly });
+        const source = data?.ttml || data?.subtitles || track.lyrics || '';
+        const lineOnly = isLineOnlyLyrics(source);
+        const sourceIsStatic = isTtml(source) && parseSpicyTtml(source, { lineOnly })[0]?.syncType === 'Static';
+        const ttml = sourceIsStatic ? source : lyricsToTtml(source, track.duration) ||
+            plainLyricsToTtml(data?.plain || source);
+        if (!ttml || !parseSpicyTtml(ttml, { lineOnly }).length) {
+            container.innerHTML = '<div class="lyrics-empty">Lyrics are not available for this track.</div>';
+            return null;
+        }
+        return await mountSpicyLyrics(container, track, audioPlayer, lyricsManager, ttml, {
+            signal,
+            lineOnly,
+            provider: data?.lyricsProvider,
+        });
     } catch (error) {
         if (signal?.aborted || error?.name === 'AbortError') return null;
         console.error('Failed to load lyrics:', error);
-        container.innerHTML = '<div class="lyrics-error">Failed to load lyrics</div>';
+        container.innerHTML = '<div class="lyrics-error" role="status">Failed to load lyrics</div>';
         return null;
     }
 }
 
 function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
-    let baseTimeMs = 0;
-    let lastTimestamp = performance.now();
-    let animationFrameId = null;
+    const view = amLyrics.ownerDocument.defaultView ?? window;
+    let frame = null;
+    let visible = true;
+    let staticPace = null;
+    let lastSample = -Infinity;
+    let waveform;
+    let offset = 0;
 
-    // Get timing offset from lyrics manager (in milliseconds)
-    const getTimingOffset = () => {
-        return lyricsManager?.timingOffset || 0;
+    const updateOffset = () => {
+        offset = lyricsManager.getPlaybackOffset(track.id);
+        updateTime();
     };
-
     const updateTime = () => {
-        const currentMs = audioPlayer.currentTime * 1000;
-        baseTimeMs = currentMs;
-        lastTimestamp = performance.now();
-        // Apply timing offset: positive offset delays lyrics, negative advances them
-        amLyrics.currentTime = currentMs - getTimingOffset();
+        if (!visible) return;
+        const currentTime = audioPlayer.currentTime;
+        amLyrics.currentTime = currentTime * 1000 - offset;
+        if (amLyrics.lyricsType !== 'Static') return;
+        const duration = audioPlayer.duration || track.duration;
+        const mode = getSpicyLyricsSetting('staticScroll');
+        if (mode === 'off' || !(duration > 0)) return;
+        let progress = Math.min(1, Math.max(0, currentTime / duration));
+        if (!staticPace || Math.abs(currentTime - staticPace.time) > 0.5) staticPace = { time: currentTime, progress };
+        if (performance.now() - lastSample >= 100 || currentTime === 0) {
+            const analyser = audioContextManager.getAnalyser();
+            let strength = 1;
+            if (analyser && !audioPlayer.paused) {
+                if (waveform?.length !== analyser.fftSize) waveform = new Uint8Array(analyser.fftSize);
+                analyser.getByteTimeDomainData(waveform);
+                let energy = 0;
+                for (const sample of waveform) energy += ((sample - 128) / 128) ** 2;
+                strength = Math.sqrt(energy / waveform.length) > 0.018 ? 1 : 0;
+            }
+            staticPace.progress = Math.min(1, staticPace.progress +
+                Math.max(0, currentTime - staticPace.time) / Math.max(1, duration - staticPace.time) *
+                (1 - staticPace.progress) * strength);
+            staticPace.time = currentTime;
+            lastSample = performance.now();
+        }
+        progress = Math.max(staticPace.progress, currentTime >= duration - 0.25 ? 1 : 0);
+        amLyrics.setPlaybackProgress(progress);
     };
-
+    const stop = () => {
+        if (frame !== null) view.cancelAnimationFrame(frame);
+        frame = null;
+    };
     const tick = () => {
-        if (!audioPlayer.paused) {
-            const now = performance.now();
-            const elapsed = now - lastTimestamp;
-            const nextMs = baseTimeMs + elapsed;
-            // Apply timing offset: positive offset delays lyrics, negative advances them
-            amLyrics.currentTime = nextMs - getTimingOffset();
-            animationFrameId = requestAnimationFrame(tick);
+        frame = null;
+        if (!visible || audioPlayer.paused || audioPlayer.ended) return;
+        updateTime();
+        frame = view.requestAnimationFrame(tick);
+    };
+    const start = () => {
+        if (frame === null) tick();
+    };
+    const observer = new view.IntersectionObserver(([entry]) => {
+        visible = entry.isIntersecting;
+        if (visible) {
+            updateTime();
+            start();
+        } else {
+            stop();
         }
-    };
-
-    const onPlay = () => {
-        baseTimeMs = audioPlayer.currentTime * 1000;
-        lastTimestamp = performance.now();
-        tick();
-    };
-
-    const onPause = () => {
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-            animationFrameId = null;
-        }
-    };
+    });
+    observer.observe(amLyrics);
 
     const onLineClick = async (e) => {
         if (e.detail && e.detail.timestamp !== undefined) {
-            const manager = lyricsManager;
-            if (manager && manager.isGeniusMode) {
-                const timestampSeconds = e.detail.timestamp / 1000;
-
-                const lyricsData = manager.lyricsCache.get(track.id);
-                if (lyricsData && lyricsData.subtitles) {
-                    const parsed = manager.parseSyncedLyrics(lyricsData.subtitles);
-
-                    const line = parsed.find((l) => Math.abs(l.time - timestampSeconds) < 1.0);
-
-                    if (line && line.text && manager.currentGeniusData) {
-                        const annotations = manager.geniusManager.findAnnotations(
-                            line.text,
-                            manager.currentGeniusData.referents
-                        );
-                        showGeniusAnnotations(annotations, line.text);
-                    }
-                }
+            amLyrics.resync();
+            const genius = lyricsManager.isGeniusMode && lyricsManager.geniusManager.cache.get(track.id);
+            if (genius && e.detail.text) {
+                const annotations = lyricsManager.geniusManager.findAnnotations(e.detail.text, genius.referents);
+                showGeniusAnnotations(annotations, e.detail.text);
             }
 
-            const timestampSeconds = e.detail.timestamp / 1000;
+            const compensation = getSpicyLyricsSetting('seekCompensation') === 'true' ? 0.3 : 0;
+            const timestampSeconds = Math.max(0, (e.detail.timestamp + offset) / 1000 - compensation);
             audioPlayer.currentTime = timestampSeconds;
             updateTime();
 
@@ -1014,29 +784,36 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
         }
     };
 
+    const refreshAnnotations = () => {
+        const genius = lyricsManager.isGeniusMode && lyricsManager.geniusManager.cache.get(track.id);
+        if (genius) void lyricsManager.applyGeniusAnnotations(amLyrics, genius.referents);
+    };
+    amLyrics.addEventListener('lyrics-rendered', refreshAnnotations);
+    refreshAnnotations();
+
     audioPlayer.addEventListener('timeupdate', updateTime);
-    audioPlayer.addEventListener('play', onPlay);
-    audioPlayer.addEventListener('pause', onPause);
+    audioPlayer.addEventListener('playing', start);
+    audioPlayer.addEventListener('pause', stop);
+    audioPlayer.addEventListener('waiting', stop);
     audioPlayer.addEventListener('seeked', updateTime);
     amLyrics.addEventListener('line-click', onLineClick);
-
-    // A paused player does not emit timeupdate when the lyrics view opens.
-    // Initialize immediately so the renderer never starts on the wrong line.
-    updateTime();
-
-    if (!audioPlayer.paused) {
-        tick();
-    }
+    window.addEventListener('spicy-lyrics-settings-changed', updateOffset);
+    window.addEventListener('spicy-lyrics-offset-changed', updateOffset);
+    updateOffset();
+    start();
 
     return () => {
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-        }
+        stop();
+        observer.disconnect();
         audioPlayer.removeEventListener('timeupdate', updateTime);
-        audioPlayer.removeEventListener('play', onPlay);
-        audioPlayer.removeEventListener('pause', onPause);
+        audioPlayer.removeEventListener('playing', start);
+        audioPlayer.removeEventListener('pause', stop);
+        audioPlayer.removeEventListener('waiting', stop);
         audioPlayer.removeEventListener('seeked', updateTime);
         amLyrics.removeEventListener('line-click', onLineClick);
+        amLyrics.removeEventListener('lyrics-rendered', refreshAnnotations);
+        window.removeEventListener('spicy-lyrics-settings-changed', updateOffset);
+        window.removeEventListener('spicy-lyrics-offset-changed', updateOffset);
     };
 }
 
@@ -1067,7 +844,7 @@ function showGeniusAnnotations(annotations, lineText) {
             const body = ann.annotations[0].body.plain;
             contentHtml += `
                 <div class="annotation-item">
-                    <div class="annotation-text">${body.replace(/\n/g, '<br>')}</div>
+                    <div class="annotation-text">${escapeHtml(body).replace(/\n/g, '<br>')}</div>
                 </div>
             `;
         });
@@ -1089,134 +866,23 @@ export async function renderLyricsInContainer(track, audioPlayer, lyricsManager,
     return renderLyricsComponent(container, track, audioPlayer, lyricsManager, options);
 }
 
-export async function renderLyricsInFullscreen(track, audioPlayer, lyricsManager, container, { signal } = {}) {
-    if (signal?.aborted) return null;
-    container.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
-
-    try {
-        lyricsManager.currentTrackId = track.id;
-        const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
-        if (signal?.aborted) return null;
-        const sourceLyrics = track.lyrics || fetchedLyrics?.ttml || fetchedLyrics?.subtitles || '';
-        const lineOnly = isLineOnlyLyrics(sourceLyrics);
-        const localTtml = lyricsToTtml(sourceLyrics, track.duration);
-        if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
-
-        const { mountAmllFullscreen } = await import('./amll-fullscreen-renderer.js');
-        if (signal?.aborted) return null;
-        return await mountAmllFullscreen({
-            container,
-            track,
-            audioPlayer,
-            lyricsManager,
-            ttml: localTtml,
-            lineOnly,
-            signal,
-        });
-    } catch (error) {
-        if (signal?.aborted || error?.name === 'AbortError') return null;
-        console.error('Failed to load AMLL fullscreen lyrics:', error);
-        container.innerHTML = '<div class="lyrics-error">Failed to load lyrics</div>';
-        return null;
-    }
-}
-
-export async function renderSpicyLyricsInFullscreen(track, audioPlayer, lyricsManager, container, { signal } = {}) {
-    if (signal?.aborted) return null;
-    container.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
-
-    try {
-        lyricsManager.isRomajiMode = lyricsManager.getRomajiMode();
-        lyricsManager.currentTrackId = track.id;
-        const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
-        if (signal?.aborted) return null;
-        const sourceLyrics = track.lyrics || fetchedLyrics?.ttml || fetchedLyrics?.subtitles || '';
-        const lineOnly = isLineOnlyLyrics(sourceLyrics);
-        const localTtml = lyricsToTtml(sourceLyrics, track.duration);
-        if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
-
-        return await mountSpicyLyrics(container, track, audioPlayer, lyricsManager, localTtml, { signal, lineOnly });
-    } catch (error) {
-        if (signal?.aborted || error?.name === 'AbortError') return null;
-        console.error('Failed to load Spicy fullscreen lyrics:', error);
-        container.innerHTML = '<div class="lyrics-error">Failed to load lyrics</div>';
-        return null;
-    }
-}
-
-export async function renderLyricsInSidePanel(track, audioPlayer, lyricsManager, container, { signal } = {}) {
-    if (signal?.aborted) return null;
-    container.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
-
-    try {
-        lyricsManager.currentTrackId = track.id;
-        const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
-        if (signal?.aborted) return null;
-        const sourceLyrics = track.lyrics || fetchedLyrics?.ttml || fetchedLyrics?.subtitles || '';
-        const lineOnly = isLineOnlyLyrics(sourceLyrics);
-        const localTtml = lyricsToTtml(sourceLyrics, track.duration);
-        if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
-
-        const { mountAmllSidePanel } = await import('./amll-fullscreen-renderer.js');
-        if (signal?.aborted) return null;
-        return await mountAmllSidePanel({
-            container,
-            track,
-            audioPlayer,
-            lyricsManager,
-            ttml: localTtml,
-            lineOnly,
-            signal,
-        });
-    } catch (error) {
-        if (signal?.aborted || error?.name === 'AbortError') return null;
-        console.error('Failed to load AMLL side-panel lyrics:', error);
-        container.innerHTML = '<div class="lyrics-error">Failed to load lyrics</div>';
-        return null;
-    }
-}
-
-export async function renderLyricsInNowPanel(track, audioPlayer, lyricsManager, container, { signal } = {}) {
-    if (signal?.aborted) return null;
-    container.innerHTML = '<div class="lyrics-loading">Loading lyrics...</div>';
-
-    try {
-        lyricsManager.currentTrackId = track.id;
-        const fetchedLyrics = await lyricsManager.fetchLyrics(track.id, track);
-        if (signal?.aborted) return null;
-        const sourceLyrics = track.lyrics || fetchedLyrics?.ttml || fetchedLyrics?.subtitles || '';
-        const lineOnly = isLineOnlyLyrics(sourceLyrics);
-        const localTtml = lyricsToTtml(sourceLyrics, track.duration);
-        if (!localTtml) throw new Error('No synchronized lyrics are available for this track');
-
-        const { mountAmllLyrics } = await import('./amll-fullscreen-renderer.js');
-        if (signal?.aborted) return null;
-        return await mountAmllLyrics({
-            container,
-            track,
-            audioPlayer,
-            lyricsManager,
-            ttml: localTtml,
-            lineOnly,
-            signal,
-            mode: 'now-panel',
-        });
-    } catch (error) {
-        if (signal?.aborted || error?.name === 'AbortError') return null;
-        console.error('Failed to load AMLL Now Playing lyrics:', error);
-        container.innerHTML = '<div class="lyrics-error">Failed to load lyrics</div>';
-        return null;
-    }
-}
+export const renderLyricsInFullscreen = renderLyricsInContainer;
+export const renderSpicyLyricsInFullscreen = renderLyricsInContainer;
+export const renderLyricsInSidePanel = renderLyricsInContainer;
+export const renderLyricsInNowPanel = renderLyricsInContainer;
 
 export function clearFullscreenLyricsSync(container) {
     if (container && container.lyricsCleanup) {
         container.lyricsCleanup();
         container.lyricsCleanup = null;
     }
-    if (container && container.lyricsManager) {
-        container.lyricsManager.stopLyricsObserver();
-    }
 }
 
 export const clearLyricsContainerSync = clearFullscreenLyricsSync;
+
+export function clearLyricsPanelSync(_audioPlayer, panel) {
+    if (panel && panel.lyricsCleanup) {
+        panel.lyricsCleanup();
+        panel.lyricsCleanup = null;
+    }
+}

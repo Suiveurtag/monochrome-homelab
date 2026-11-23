@@ -94,7 +94,7 @@ function getTimedDescendantRange(element, timingParameters) {
         const start = parseTtmlTime(span.getAttribute('begin'), timingParameters);
         const end =
             parseTtmlTime(span.getAttribute('end'), timingParameters) ??
-            (start == null ? null : start + (parseTtmlTime(span.getAttribute('dur'), timingParameters) ?? 0));
+            (start != null && span.hasAttribute('dur') ? start + (parseTtmlTime(span.getAttribute('dur'), timingParameters) ?? 0) : null);
         if (start != null) starts.push(start);
         if (end != null) ends.push(end);
     });
@@ -131,7 +131,7 @@ function parseWordElements(parent, lineStart, lineEnd, background = false, timin
     const childSpans = Array.from(parent.childNodes).filter(
         (child) => child.nodeType === 1 && child.localName === 'span'
     );
-    const regularSpans = background ? childSpans : childSpans.filter((span) => !isBackgroundElement(span));
+    const regularSpans = childSpans.filter((span) => !isSecondaryText(span) && (background || !isBackgroundElement(span)));
     const timedSpans = regularSpans.filter(
         (span) => span.hasAttribute('begin') || span.hasAttribute('end') || span.hasAttribute('dur')
     );
@@ -139,8 +139,9 @@ function parseWordElements(parent, lineStart, lineEnd, background = false, timin
     if (!sourceSpans.length) return lineTimedWords(parent.textContent || '', lineStart, lineEnd, background);
 
     return sourceSpans.map((span, index) => {
-        const wordTiming = elementTiming(span, lineStart, lineEnd, timingParameters);
-        let text = span.textContent || '';
+        const nextStart = parseTtmlTime(sourceSpans[index + 1]?.getAttribute('begin'), timingParameters);
+        const wordTiming = elementTiming(span, lineStart, nextStart ?? lineEnd, timingParameters);
+        let text = lyricText(span);
         const previousSpan = sourceSpans[index - 1];
         const previousEndsWithSpace = /\s$/u.test(previousSpan?.textContent || '');
         if (previousSpan && (hasWhitespaceBetween(previousSpan, span) || previousEndsWithSpace) && !/^\s/u.test(text)) {
@@ -156,18 +157,46 @@ function parseWordElements(parent, lineStart, lineEnd, background = false, timin
     });
 }
 
+function isSecondaryText(element) {
+    return /(?:^|\s)x-(?:romanization|transliteration|translation)(?:\s|$)/i.test(getAttributeByLocalName(element, 'role') || '');
+}
+
+function lyricText(element) {
+    return Array.from(element.childNodes, (node) => {
+        if (node.nodeType === 3 || node.nodeType === 4) return node.textContent;
+        if (node.nodeType !== 1 || isBackgroundElement(node) || isSecondaryText(node)) return '';
+        return lyricText(node);
+    }).join('');
+}
+
+function getTransliterations(documentNode) {
+    const rows = new Map();
+    for (const block of documentNode.getElementsByTagNameNS('*', 'transliteration')) {
+        for (const line of block.getElementsByTagNameNS('*', 'text')) {
+            const key = getAttributeByLocalName(line, 'for');
+            if (!key || rows.has(key)) continue;
+            rows.set(key, line);
+        }
+    }
+    return rows;
+}
+
 export function parseSpicyTtml(ttml, { lineOnly = false } = {}) {
     if (!ttml || typeof DOMParser === 'undefined') return [];
-    const documentNode = new DOMParser().parseFromString(ttml, 'application/xml');
+    const documentNode = new DOMParser().parseFromString(ttml.replaceAll('&nbsp;', '&#160;'), 'application/xml');
     if (documentNode.getElementsByTagName('parsererror').length) throw new Error('Invalid TTML document');
 
-    const namespacedParagraphs = Array.from(documentNode.getElementsByTagNameNS('*', 'p'));
-    const paragraphs = namespacedParagraphs.length
-        ? namespacedParagraphs
-        : Array.from(documentNode.getElementsByTagName('p'));
+    const body = documentNode.getElementsByTagNameNS('*', 'body')[0];
+    const paragraphs = Array.from(body?.getElementsByTagNameNS('*', 'p') ?? []);
     const timingParameters = getTtmlTimingParameters(documentNode.documentElement);
-    const explicitlyLineTimed =
-        lineOnly || getAttributeByLocalName(documentNode.documentElement, 'timing')?.toLowerCase() === 'line';
+    const timing = getAttributeByLocalName(documentNode.documentElement, 'timing')?.toLowerCase();
+    const explicitlyLineTimed = lineOnly || timing === 'line';
+    const staticLyrics = timing === 'none' || !paragraphs.some((paragraph) =>
+        [paragraph, ...paragraph.getElementsByTagNameNS('*', 'span')].some((node) =>
+            node.hasAttribute('begin') || node.hasAttribute('end') || node.hasAttribute('dur')
+        )
+    );
+    const transliterations = getTransliterations(documentNode);
     const paragraphRanges = paragraphs.map((paragraph) => getTimedDescendantRange(paragraph, timingParameters));
     const parsed = paragraphs
         .map((paragraph, lineIndex) => {
@@ -190,28 +219,41 @@ export function parseSpicyTtml(ttml, { lineOnly = false } = {}) {
                 : Array.from(paragraph.getElementsByTagNameNS('*', 'span')).filter(isBackgroundElement);
             let words;
             if (explicitlyLineTimed) {
-                const textOnly = paragraph.cloneNode(true);
-                Array.from(textOnly.getElementsByTagNameNS('*', 'span'))
-                    .filter(isBackgroundElement)
-                    .forEach((element) => element.remove());
-                words = lineTimedWords(textOnly.textContent || '', timing.start, timing.end, background);
+                words = lineTimedWords(lyricText(paragraph), timing.start, timing.end, background);
             } else {
                 words = parseWordElements(paragraph, timing.start, timing.end, background, timingParameters);
             }
-            const syncType = words.length > 1 ? 'Syllable' : 'Line';
+            const syncType = staticLyrics ? 'Static' : !explicitlyLineTimed &&
+                (words.length > 1 || timing.end > words[0]?.end || childRange.start != null) ? 'Syllable' : 'Line';
+            const romanizationEntry = transliterations.get(getAttributeByLocalName(paragraph, 'key')) ??
+                Array.from(paragraph.children).find((node) =>
+                    /x-(?:romanization|transliteration)/i.test(getAttributeByLocalName(node, 'role') || '')
+                );
+            const romanizedSpans = Array.from(romanizationEntry?.children ?? []).filter((node) =>
+                node.localName === 'span' && !isBackgroundElement(node)
+            );
 
             words.forEach((word, wordIndex) => {
                 const nextWord = words[wordIndex + 1];
                 word.isPartOfWord = Boolean(nextWord && !nextWord.spaceBefore);
+                if (romanizedSpans.length === words.length) {
+                    const span = romanizedSpans[wordIndex];
+                    const next = romanizedSpans[wordIndex + 1];
+                    word.romanized = span.textContent ?? '';
+                    word.romanizedPartOfWord = Boolean(next && !/\s$/.test(span.textContent) &&
+                        !/^\s/.test(next.textContent) && !hasWhitespaceBetween(span, next));
+                }
             });
 
             const text = words.map((word) => word.text).join('');
             return {
                 start: timing.start,
-                end: timing.end,
+                end: Math.max(timing.end, ...words.map((word) => word.end)),
                 text,
                 words,
                 syncType,
+                romanized: romanizationEntry?.textContent?.trim(),
+                leadEnd: Math.max(timing.end, ...words.map((word) => word.end)),
                 // Apple/Spotify duet exports can expose the second vocal lane
                 // as x-translation even when the text is not a translation.
                 // Spicy Lyrics maps that lane to OppositeAligned.
@@ -282,5 +324,9 @@ export function parseSpicyTtml(ttml, { lineOnly = false } = {}) {
         owner.end = Math.max(owner.end, background.end);
     });
 
+    const songwriters = [...documentNode.getElementsByTagNameNS('*', 'songwriter')]
+        .map((node) => node.textContent.trim())
+        .filter(Boolean);
+    if (songwriters.length) Object.defineProperty(leadLines, 'songwriters', { value: songwriters });
     return leadLines;
 }

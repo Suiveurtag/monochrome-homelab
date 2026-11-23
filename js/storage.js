@@ -391,6 +391,26 @@ export const playerBarEffectsSettings = {
     },
 };
 
+const LIKE_BURST_EFFECTS = new Set(['pulse', 'dots', 'spectrum', 'confetti', 'shockwave', 'none']);
+
+export const likeBurstSettings = {
+    STORAGE_KEY: 'like-burst-effect',
+
+    getEffect() {
+        try {
+            const effect = localStorage.getItem(this.STORAGE_KEY) || 'pulse';
+            return LIKE_BURST_EFFECTS.has(effect) ? effect : 'pulse';
+        } catch {
+            return 'pulse';
+        }
+    },
+
+    setEffect(effect) {
+        const safeEffect = LIKE_BURST_EFFECTS.has(effect) ? effect : 'pulse';
+        localStorage.setItem(this.STORAGE_KEY, safeEffect);
+    },
+};
+
 const DEFAULT_PLAYER_ACTION_ORDER = [
     'favorite',
     'mix',

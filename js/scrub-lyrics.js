@@ -191,7 +191,7 @@ export function createScrubLyrics({ anchor, getTrack }) {
     const timeMs = () => {
         let offset = 0;
         try {
-            offset = LyricsManager.instance.timingOffset || 0;
+            offset = LyricsManager.instance.getPlaybackOffset(getTrack()?.id);
         } catch {
             offset = 0;
         }

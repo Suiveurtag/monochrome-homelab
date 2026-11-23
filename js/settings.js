@@ -47,6 +47,7 @@ import {
     devModeSettings,
     serverDisruptionSettings,
     playerBarEffectsSettings,
+    likeBurstSettings,
     statsDesignSettings,
 } from './storage.js';
 import { audioContextManager, getPresetsForBandCount } from './audio-context.js';
@@ -60,6 +61,7 @@ import { syncManager } from './accounts/pocketbase.js';
 import { containerFormats, customFormats } from './ffmpegFormats.ts';
 import { BulkDownloadMethod, modernSettings } from './ModernSettings.js';
 import { canvasSettings } from './canvas-settings.js';
+import { getSpicyLyricsSetting, normalizeSpicyLyricsOffset, setSpicyLyricsSetting, SPICY_LYRICS_VERSION } from './spicy-lyrics-settings.js';
 
 async function getButterchurnPresets(...args) {
     const butterchurnModule = await import('./visualizers/butterchurn.js');
@@ -82,6 +84,73 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         document.getElementById(`settings-tab-${savedTab}`)?.classList.add('active');
     }
 
+    const spicyInputs = [...document.querySelectorAll('[data-spicy-setting]')];
+    const refreshSpicyInputs = () => {
+        for (const input of spicyInputs) {
+            const value = getSpicyLyricsSetting(input.dataset.spicySetting, { saved: true });
+            if (input.type === 'checkbox') input.checked = value === 'true';
+            else input.value = value;
+        }
+    };
+    for (const input of spicyInputs) {
+        input.addEventListener('change', () => {
+            const value = input.type === 'checkbox' ? String(input.checked) : input.value;
+            setSpicyLyricsSetting(input.dataset.spicySetting, value);
+            refreshSpicyInputs();
+        });
+    }
+    refreshSpicyInputs();
+    window.addEventListener('spicy-lyrics-settings-changed', refreshSpicyInputs);
+
+    const offsetScope = document.getElementById('spicy-offset-scope');
+    const offsetInput = document.getElementById('spicy-offset-value');
+    if (offsetScope && offsetInput) {
+        const controls = [...document.querySelectorAll('[data-spicy-offset]')];
+        const refreshOffset = () => {
+            const id = player.currentTrack?.id;
+            offsetScope.options[1].disabled = id == null;
+            if (id == null) offsetScope.value = 'global';
+            offsetInput.value = offsetScope.value === 'track'
+                ? normalizeSpicyLyricsOffset(localStorage.getItem(`lyrics-offset-${id}`))
+                : getSpicyLyricsSetting('offset', { saved: true });
+        };
+        const commitOffset = (value) => {
+            const offset = normalizeSpicyLyricsOffset(value);
+            const id = player.currentTrack?.id;
+            if (offsetScope.value === 'track' && id != null) {
+                localStorage.setItem(`lyrics-offset-${id}`, String(offset));
+                window.dispatchEvent(new CustomEvent('spicy-lyrics-offset-changed', { detail: { trackId: id } }));
+            } else {
+                setSpicyLyricsSetting('offset', String(offset));
+            }
+            refreshOffset();
+        };
+        controls.forEach((button) => button.addEventListener('click', () =>
+            commitOffset(Number(offsetInput.value) + Number(button.dataset.spicyOffset))
+        ));
+        offsetInput.addEventListener('change', () => commitOffset(offsetInput.value));
+        offsetScope.addEventListener('change', refreshOffset);
+        window.addEventListener('player-track-changed', refreshOffset);
+        window.addEventListener('spicy-lyrics-offset-changed', refreshOffset);
+        window.addEventListener('spicy-lyrics-settings-changed', refreshOffset);
+        refreshOffset();
+    }
+
+    document.getElementById('spicy-lyrics-report')?.addEventListener('click', async () => {
+        const status = document.getElementById('spicy-lyrics-report-status');
+        const report = [
+            `Spicy Lyrics ${SPICY_LYRICS_VERSION}`,
+            navigator.userAgent,
+            ...spicyInputs.map(({ dataset }) => `${dataset.spicySetting} = ${getSpicyLyricsSetting(dataset.spicySetting)}`),
+        ].join('\n');
+        try {
+            await navigator.clipboard.writeText(report);
+            status.textContent = 'Report copied.';
+        } catch {
+            status.textContent = 'Could not copy the report.';
+        }
+    });
+
     // Initialize account system UI & Settings
     authManager.updateUI(authManager.user);
 
@@ -89,6 +158,30 @@ export async function initializeSettings(scrobbler, player, api, ui) {
     if (statsDesignSelect) {
         statsDesignSelect.value = statsDesignSettings.getDesign();
         statsDesignSelect.addEventListener('change', (event) => statsDesignSettings.setDesign(event.target.value));
+    }
+
+    const playerBarEffectSelect = document.getElementById('player-bar-effect-select');
+    if (playerBarEffectSelect) {
+        playerBarEffectSelect.value = playerBarEffectsSettings.getEffect();
+        playerBarEffectSelect.addEventListener('change', (event) => {
+            playerBarEffectsSettings.setEffect(event.target.value);
+        });
+    }
+
+    const likeBurstEffectSelect = document.getElementById('like-burst-effect-select');
+    if (likeBurstEffectSelect) {
+        likeBurstEffectSelect.value = likeBurstSettings.getEffect();
+        likeBurstEffectSelect.addEventListener('change', (event) => {
+            likeBurstSettings.setEffect(event.target.value);
+        });
+    }
+
+    const playerMagicRingsToggle = document.getElementById('player-magic-rings-toggle');
+    if (playerMagicRingsToggle) {
+        playerMagicRingsToggle.checked = playerBarEffectsSettings.areMagicRingsEnabled();
+        playerMagicRingsToggle.addEventListener('change', (event) => {
+            playerBarEffectsSettings.setMagicRingsEnabled(event.target.checked);
+        });
     }
 
     const playerScrubLyricsToggle = document.getElementById('player-scrub-lyrics-toggle');
@@ -118,10 +211,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
     }
     initializePlayerLayoutEditor();
 
-    // ========================================
-    // Dev Mode
-    // ========================================
-    const devModeToggle = document.getElementById('dev-mode-toggle');
+    // =================================    // Dev Mode
+    // =================================    const devModeToggle = document.getElementById('dev-mode-toggle');
     const devModeUrlSetting = document.getElementById('dev-mode-url-setting');
     const devModeUrlInput = document.getElementById('dev-mode-url-input');
 
@@ -146,10 +237,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Server Disruption Banner
-    // ========================================
-    const disruptionBanner = document.getElementById('server-disruption-banner');
+    // =================================    // Server Disruption Banner
+    // =================================    const disruptionBanner = document.getElementById('server-disruption-banner');
     const dismissDisruptionBtn = document.getElementById('dismiss-disruption-btn');
 
     if (disruptionBanner && !serverDisruptionSettings.isDismissed()) {
@@ -513,10 +602,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Global Scrobble Settings
-    // ========================================
-    const scrobblePercentageSlider = document.getElementById('scrobble-percentage-slider');
+    // =================================    // Global Scrobble Settings
+    // =================================    const scrobblePercentageSlider = document.getElementById('scrobble-percentage-slider');
     const scrobblePercentageInput = document.getElementById('scrobble-percentage-input');
 
     if (scrobblePercentageSlider && scrobblePercentageInput) {
@@ -547,10 +634,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // ListenBrainz Settings
-    // ========================================
-    const lbToggle = document.getElementById('listenbrainz-enabled-toggle');
+    // =================================    // ListenBrainz Settings
+    // =================================    const lbToggle = document.getElementById('listenbrainz-enabled-toggle');
     const lbTokenSetting = document.getElementById('listenbrainz-token-setting');
     const lbCustomUrlSetting = document.getElementById('listenbrainz-custom-url-setting');
     const lbLoveSetting = document.getElementById('listenbrainz-love-setting');
@@ -597,10 +682,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Maloja Settings
-    // ========================================
-    const malojaToggle = document.getElementById('maloja-enabled-toggle');
+    // =================================    // Maloja Settings
+    // =================================    const malojaToggle = document.getElementById('maloja-enabled-toggle');
     const malojaTokenSetting = document.getElementById('maloja-token-setting');
     const malojaCustomUrlSetting = document.getElementById('maloja-custom-url-setting');
     const malojaTokenInput = document.getElementById('maloja-token-input');
@@ -637,10 +720,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Libre.fm Settings
-    // ========================================
-    const librefmConnectBtn = document.getElementById('librefm-connect-btn');
+    // =================================    // Libre.fm Settings
+    // =================================    const librefmConnectBtn = document.getElementById('librefm-connect-btn');
     const librefmStatus = document.getElementById('librefm-status');
     const librefmToggle = document.getElementById('librefm-toggle');
     const librefmToggleSetting = document.getElementById('librefm-toggle-setting');
@@ -1260,10 +1341,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Binaural / Spatial DSP
-    // ========================================
-    const binauralToggle = document.getElementById('binaural-dsp-toggle');
+    // =================================    // Binaural / Spatial DSP
+    // =================================    const binauralToggle = document.getElementById('binaural-dsp-toggle');
     const binauralContainer = document.getElementById('binaural-dsp-container');
     const binauralAutoSpatialToggle = document.getElementById('binaural-auto-spatial-toggle');
     const binauralCrossfeedToggle = document.getElementById('binaural-crossfeed-toggle');
@@ -1372,10 +1451,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Audio Effects (Playback Speed)
-    // ========================================
-    const playbackSpeedSlider = document.getElementById('playback-speed-slider');
+    // =================================    // Audio Effects (Playback Speed)
+    // =================================    const playbackSpeedSlider = document.getElementById('playback-speed-slider');
     const playbackSpeedInput = document.getElementById('playback-speed-input');
     const playbackSpeedReset = document.getElementById('playback-speed-reset');
 
@@ -1430,10 +1507,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         }
     }
 
-    // ========================================
-    // Preserve Pitch Toggle
-    // ========================================
-    const preservePitchToggle = document.getElementById('preserve-pitch-toggle');
+    // =================================    // Preserve Pitch Toggle
+    // =================================    const preservePitchToggle = document.getElementById('preserve-pitch-toggle');
     if (preservePitchToggle) {
         preservePitchToggle.checked = audioEffectsSettings.isPreservePitchEnabled();
 
@@ -1442,10 +1517,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Graphic Equalizer (Legacy EQ mode) - Configurable Bands
-    // ========================================
-    let geqBandCount = equalizerSettings.getGraphicEqBandCount();
+    // =================================    // Graphic Equalizer (Legacy EQ mode) - Configurable Bands
+    // =================================    let geqBandCount = equalizerSettings.getGraphicEqBandCount();
     let geqFreqRange = equalizerSettings.getGraphicEqFreqRange();
 
     const formatGeqFreq = (freq) => {
@@ -1944,10 +2017,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Precision AutoEQ - Redesigned Equalizer
-    // ========================================
-    const eqToggle = document.getElementById('equalizer-enabled-toggle');
+    // =================================    // Precision AutoEQ - Redesigned Equalizer
+    // =================================    const eqToggle = document.getElementById('equalizer-enabled-toggle');
     const eqContainer = document.getElementById('equalizer-container');
     const eqPreampSlider = document.getElementById('eq-preamp-slider');
 
@@ -2052,10 +2123,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Frequency Response Graph Renderer
-    // ========================================
-    const FREQ_MIN = 20;
+    // =================================    // Frequency Response Graph Renderer
+    // =================================    const FREQ_MIN = 20;
     const FREQ_MAX = 20000;
     const GRAPH_FREQS = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
     const LOG_MIN = Math.log10(FREQ_MIN);
@@ -2591,10 +2660,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         }
     };
 
-    // ========================================
-    // Interactive Graph Mouse/Touch Handlers
-    // ========================================
-    if (autoeqCanvas) {
+    // =================================    // Interactive Graph Mouse/Touch Handlers
+    // =================================    if (autoeqCanvas) {
         autoeqCanvas.addEventListener('mousedown', (e) => {
             hideEqContextMenu();
             hideEmptyContextMenu();
@@ -2714,10 +2781,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
             drawAutoEQGraph();
         });
 
-        // ========================================
-        // EQ Node Right-Click Context Menu
-        // ========================================
-        const eqCtxMenu = document.getElementById('eq-node-context-menu');
+        // =================================        // EQ Node Right-Click Context Menu
+        // =================================        const eqCtxMenu = document.getElementById('eq-node-context-menu');
         let contextMenuNodeIdx = null;
 
         const hideEqContextMenu = () => {
@@ -3113,10 +3178,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         }
     }
 
-    // ========================================
-    // Per-Band Parametric EQ Controls
-    // ========================================
-    const renderBandControls = (bands) => {
+    // =================================    // Per-Band Parametric EQ Controls
+    // =================================    const renderBandControls = (bands) => {
         if (!autoeqBandsList) return;
         autoeqBandsList.innerHTML = '';
         if (!bands || bands.length === 0) return;
@@ -3221,10 +3284,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     };
 
-    // ========================================
-    // EQ Toggle + Container Visibility
-    // ========================================
-    /**
+    // =================================    // EQ Toggle + Container Visibility
+    // =================================    /**
      * Ensure parametric bands exist - creates default 10 log-spaced bands if none
      */
     const ensureParametricBands = () => {
@@ -3262,10 +3323,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         }
     };
 
-    // ========================================
-    // Collapsible Sections
-    // ========================================
-    // Saved Profiles collapse
+    // =================================    // Collapsible Sections
+    // =================================    // Saved Profiles collapse
     if (autoeqSavedCollapse) {
         const savedGrid = document.getElementById('autoeq-saved-grid');
         autoeqSavedCollapse.addEventListener('click', (e) => {
@@ -3301,19 +3360,15 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Set Status Message
-    // ========================================
-    const setAutoEQStatus = (msg, type = '') => {
+    // =================================    // Set Status Message
+    // =================================    const setAutoEQStatus = (msg, type = '') => {
         if (!autoeqStatus) return;
         autoeqStatus.textContent = msg;
         autoeqStatus.className = 'autoeq-status' + (type ? ' ' + type : '');
     };
 
-    // ========================================
-    // Downsample curve for profile storage
-    // ========================================
-    const downsampleCurve = (data, maxPoints = 80) => {
+    // =================================    // Downsample curve for profile storage
+    // =================================    const downsampleCurve = (data, maxPoints = 80) => {
         if (!data || data.length <= maxPoints) return data ? [...data] : [];
         const result = [];
         const step = data.length / maxPoints;
@@ -3323,10 +3378,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         return result;
     };
 
-    // ========================================
-    // Mini-Graph Renderer for Profile Cards
-    // ========================================
-    const drawMiniGraph = (canvas, measurementData, targetData, correctedData) => {
+    // =================================    // Mini-Graph Renderer for Profile Cards
+    // =================================    const drawMiniGraph = (canvas, measurementData, targetData, correctedData) => {
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         const dpr = window.devicePixelRatio || 1;
@@ -3489,10 +3542,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         ctx.stroke();
     };
 
-    // ========================================
-    // Saved Profiles Rendering
-    // ========================================
-    const renderSavedProfiles = () => {
+    // =================================    // Saved Profiles Rendering
+    // =================================    const renderSavedProfiles = () => {
         if (!autoeqSavedGrid) return;
         const profiles = equalizerSettings.getAutoEQProfiles();
         const activeId = equalizerSettings.getActiveAutoEQProfile();
@@ -3547,10 +3598,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     };
 
-    // ========================================
-    // Profile Save/Load
-    // ========================================
-    const saveAutoEQProfile = (name) => {
+    // =================================    // Profile Save/Load
+    // =================================    const saveAutoEQProfile = (name) => {
         if (!autoeqCurrentBands || !autoeqSelectedMeasurement) return;
 
         const targetId = autoeqTargetSelect ? autoeqTargetSelect.value : 'harman_oe_2018';
@@ -3635,12 +3684,9 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-
-    // ========================================
-    // Database Browser
-    // ========================================
-    /**
+    // =================================
+    // =================================    // Database Browser
+    // =================================    /**
      * Load a headphone measurement entry
      */
     const loadHeadphoneEntry = async (entry) => {
@@ -3867,10 +3913,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         }
     }
 
-    // ========================================
-    // AutoEQ Run
-    // ========================================
-    if (autoeqRunBtn) {
+    // =================================    // AutoEQ Run
+    // =================================    if (autoeqRunBtn) {
         autoeqRunBtn.addEventListener('click', () => {
             if (!autoeqSelectedMeasurement) return;
 
@@ -3925,10 +3969,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Import Measurement File
-    // ========================================
-    if (autoeqImportBtn && autoeqImportFile) {
+    // =================================    // Import Measurement File
+    // =================================    if (autoeqImportBtn && autoeqImportFile) {
         autoeqImportBtn.addEventListener('click', () => {
             autoeqImportFile.click();
         });
@@ -3959,10 +4001,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Import Target Button
-    // ========================================
-    const autoeqImportTargetBtn = document.getElementById('autoeq-import-target-btn');
+    // =================================    // Import Target Button
+    // =================================    const autoeqImportTargetBtn = document.getElementById('autoeq-import-target-btn');
     const autoeqImportTargetFile = document.getElementById('autoeq-import-target-file');
 
     if (autoeqImportTargetBtn && autoeqImportTargetFile) {
@@ -4016,10 +4056,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Download/Export Button
-    // ========================================
-    if (autoeqDownloadBtn) {
+    // =================================    // Download/Export Button
+    // =================================    if (autoeqDownloadBtn) {
         autoeqDownloadBtn.addEventListener('click', () => {
             if (!autoeqCurrentBands || autoeqCurrentBands.length === 0) {
                 setAutoEQStatus('No EQ to export', 'error');
@@ -4046,10 +4084,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Auto Preamp Compensation Toggle
-    // ========================================
-    if (autoPreampToggle) {
+    // =================================    // Auto Preamp Compensation Toggle
+    // =================================    if (autoPreampToggle) {
         autoPreampToggle.addEventListener('change', () => {
             autoPreampEnabled = autoPreampToggle.checked;
             if (autoPreampEnabled) {
@@ -4075,10 +4111,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Preamp Slider
-    // ========================================
-    if (eqPreampSlider) {
+    // =================================    // Preamp Slider
+    // =================================    if (eqPreampSlider) {
         eqPreampSlider.value = currentPreamp;
         if (autoeqPreampValue) autoeqPreampValue.textContent = `${currentPreamp} dB`;
 
@@ -4096,10 +4130,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Speaker EQ State
-    // ========================================
-    const SPEAKER_CONFIGS = {
+    // =================================    // Speaker EQ State
+    // =================================    const SPEAKER_CONFIGS = {
         '2.0': ['FL', 'FR'],
         5.1: ['FL', 'FR', 'C', 'LFE', 'SL', 'SR'],
         7.1: ['FL', 'FR', 'C', 'LFE', 'SL', 'SR', 'SBL', 'SBR'],
@@ -4135,10 +4167,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         };
     });
 
-    // ========================================
-    // Mode Toggle: AutoEQ vs Parametric EQ vs Speaker EQ
-    // ========================================
-    const modeButtons = document.querySelectorAll('.autoeq-mode-btn');
+    // =================================    // Mode Toggle: AutoEQ vs Parametric EQ vs Speaker EQ
+    // =================================    const modeButtons = document.querySelectorAll('.autoeq-mode-btn');
     const EQ_MODE_KEY = 'eq-active-mode';
     let currentMode = 'autoeq';
 
@@ -4274,10 +4304,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         btn.addEventListener('click', () => setEQMode(btn.dataset.mode));
     });
 
-    // ========================================
-    // How-To Tutorial Panel
-    // ========================================
-    const howtoBtn = document.getElementById('eq-howto-btn');
+    // =================================    // How-To Tutorial Panel
+    // =================================    const howtoBtn = document.getElementById('eq-howto-btn');
     const howtoPanel = document.getElementById('eq-howto-panel');
     const howtoClose = document.getElementById('eq-howto-close');
     const howtoTabs = {
@@ -4308,10 +4336,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Redraw graph when target/settings change
-    // ========================================
-    if (autoeqTargetSelect) {
+    // =================================    // Redraw graph when target/settings change
+    // =================================    if (autoeqTargetSelect) {
         autoeqTargetSelect.addEventListener('change', () => {
             if (autoeqCurrentBands && autoeqSelectedMeasurement) {
                 computeCorrectedCurve();
@@ -4335,10 +4361,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Parametric EQ Preset Selector
-    // ========================================
-
+    // =================================    // Parametric EQ Preset Selector
+    // =================================
     // Mid/Side presets define complete band arrays with per-band channel modes
     const MS_PRESETS = {
         shelf_warm: {
@@ -4496,10 +4520,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Parametric EQ Profile Save/Load/Render
-    // ========================================
-    const PARAMETRIC_PROFILES_KEY = 'parametric-eq-profiles';
+    // =================================    // Parametric EQ Profile Save/Load/Render
+    // =================================    const PARAMETRIC_PROFILES_KEY = 'parametric-eq-profiles';
     const PARAMETRIC_ACTIVE_KEY = 'parametric-eq-active-profile';
 
     const getParametricProfiles = () => {
@@ -4600,10 +4622,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Parametric EQ Import/Export
-    // ========================================
-    const parametricExportBtn = document.getElementById('parametric-export-btn');
+    // =================================    // Parametric EQ Import/Export
+    // =================================    const parametricExportBtn = document.getElementById('parametric-export-btn');
     const parametricImportBtn = document.getElementById('parametric-import-btn');
     const parametricImportFile = document.getElementById('parametric-import-file');
 
@@ -4689,10 +4709,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Speaker EQ Logic
-    // ========================================
-    const speakerConfigSelect = document.getElementById('speaker-config-select');
+    // =================================    // Speaker EQ Logic
+    // =================================    const speakerConfigSelect = document.getElementById('speaker-config-select');
     const speakerChannelTabsEl = document.getElementById('speaker-channel-tabs');
     const speakerMeasStatus = document.getElementById('speaker-measurement-status');
     const speakerImportMeasBtn = document.getElementById('speaker-import-measurement-btn');
@@ -5330,10 +5348,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Speaker Saved Profiles
-    // ========================================
-    const SPEAKER_PROFILES_IDB_KEY = 'speaker-eq-profiles';
+    // =================================    // Speaker Saved Profiles
+    // =================================    const SPEAKER_PROFILES_IDB_KEY = 'speaker-eq-profiles';
     const SPEAKER_ACTIVE_PROFILE_KEY = 'speaker-eq-active-profile';
     let _speakerProfilesCache = null; // in-memory cache backed by IndexedDB
 
@@ -5539,10 +5555,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // Add/Remove/Reset Band Buttons
-    // ========================================
-    const addBandBtn = document.getElementById('autoeq-add-band-btn');
+    // =================================    // Add/Remove/Reset Band Buttons
+    // =================================    const addBandBtn = document.getElementById('autoeq-add-band-btn');
     const removeBandBtn = document.getElementById('autoeq-remove-band-btn');
     const resetBandsBtn = document.getElementById('autoeq-reset-bands-btn');
 
@@ -5596,10 +5610,8 @@ export async function initializeSettings(scrobbler, player, api, ui) {
         });
     }
 
-    // ========================================
-    // EQ Toggle (enable/disable)
-    // ========================================
-    if (eqToggle) {
+    // =================================    // EQ Toggle (enable/disable)
+    // =================================    if (eqToggle) {
         eqToggle.checked = equalizerSettings.isEnabled();
         updateEQContainerVisibility(eqToggle.checked);
 
