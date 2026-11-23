@@ -1446,6 +1446,7 @@ export class NowPlayingPanel {
     renderNowPlayingMarkup(model) {
         const context = escapeHtml(model.source.label);
         const canvasLayout = this.usesCanvasStage(model.artwork);
+        const groupedControls = getSpicyLyricsSetting('groupedControls') === 'true';
         const placement = getSpicyLyricsSetting('releaseYear');
         const releaseYear = model.releaseYear && placement !== 'off'
             ? `<span class="now-playing-release-year">${escapeHtml(model.releaseYear)}</span>` : '';
@@ -1485,8 +1486,8 @@ export class NowPlayingPanel {
                 <section class="now-playing-panel-card now-playing-panel-lyrics" aria-labelledby="now-playing-panel-lyrics-title" hidden>
                     <header>
                         <h3 id="now-playing-panel-lyrics-title">Lyrics</h3>
-                        <div class="now-playing-panel-lyrics-actions${getSpicyLyricsSetting('groupedControls') === 'true' ? ' is-grouped' : ''}" role="group" aria-label="Lyrics view">
-                            ${window.documentPictureInPicture ? `<button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-popup" aria-label="Open floating lyrics" title="Open floating lyrics">${icon('lyrics-popup', 18)}</button>` : ''}
+                        <div class="now-playing-panel-lyrics-actions${groupedControls ? ' is-grouped' : ''}" role="group" aria-label="Lyrics view">
+                            ${!groupedControls && window.documentPictureInPicture ? `<button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-popup" aria-label="Open floating lyrics" title="Open floating lyrics">${icon('lyrics-popup', 18)}</button>` : ''}
                             <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-fullscreen" aria-label="Open fullscreen lyrics" title="Open fullscreen lyrics">${icon('lyrics-open-page')}</button>
                             <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-expand" aria-label="Expand lyrics in panel">${icon('lyrics-card-expand')}</button>
                             <button type="button" class="now-playing-panel-icon now-playing-panel-lyrics-collapse" aria-label="Collapse lyrics preview">${icon('lyrics-card-toggle')}</button>
@@ -3068,7 +3069,7 @@ export class NowPlayingPanel {
         const host = card?.querySelector('.now-playing-panel-lyrics-host');
         if (!host || model.empty || this.currentTrack?.type === 'video') return;
         card.hidden = false;
-        const element = await renderLyricsInContainer(this.currentTrack, this.player.activeElement, this.lyricsManager, host, { signal });
+        const element = await renderLyricsInContainer(this.currentTrack, this.player.activeElement, this.lyricsManager, host, { signal, skeleton: true });
         if (signal.aborted) return;
         if (!element) {
             card.hidden = true;

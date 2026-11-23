@@ -947,9 +947,125 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 }
 
 .now-playing-panel-lyrics-host {
+    position: relative;
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    container-type: size;
+}
+
+.now-playing-panel-lyrics-host .LyricsSkeleton {
+    --SkeletonLineSize: calc(clamp(1.85rem, calc(1cqw * 6), 2.8rem) * var(--SL-LyricsScale, 1));
+
+    position: absolute;
+    inset: 0;
+    container-type: size;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    display: none;
+    transition:
+        opacity 0.25s ease-out,
+        visibility 0s linear 0.25s,
+        display 0s linear 0.25s allow-discrete;
+}
+
+.now-playing-panel-lyrics-host .LyricsSkeleton.active {
+    display: block;
+    opacity: 1;
+    visibility: visible;
+    transition:
+        opacity 0.2s ease-out,
+        visibility 0s,
+        display 0s allow-discrete;
+}
+
+.now-playing-panel-lyrics-host .LyricsSkeleton .SkeletonLines {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--SkeletonLineSize) * 0.62);
+    box-sizing: border-box;
+    height: 100%;
+    padding: 8cqh 8cqw 0 10cqw;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(180deg, #000 0, #000 72%, transparent 97%);
+    mask-image: linear-gradient(180deg, #000 0, #000 72%, transparent 97%);
+}
+
+.now-playing-panel-lyrics-host .LyricsSkeleton .SkeletonLine {
+    position: relative;
+    flex: 0 0 auto;
+    max-width: 100%;
+    height: calc(var(--SkeletonLineSize) * 0.72);
+    overflow: hidden;
+    border-radius: calc(var(--SkeletonLineSize) * 0.18);
+    background: rgb(255 255 255 / 0.09);
+}
+
+.now-playing-panel-lyrics-host .LyricsSkeleton .SkeletonLine::after {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgb(255 255 255 / 0.1) 45%, rgb(255 255 255 / 0.1) 55%, transparent 100%);
+    content: '';
+    transform: translateX(-100%);
+    animation: spicy-lyrics-skeleton-sweep 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    animation-delay: calc(var(--i, 0) * 0.06s);
+}
+
+.now-playing-panel-lyrics-host .LyricsSkeleton .SkeletonStatus {
+    position: absolute;
+    bottom: 1.1rem;
+    left: 1.25rem;
+    display: flex;
+    align-items: baseline;
+    max-width: calc(100% - 2.5rem);
+    color: rgb(255 255 255 / 0.72);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: 0.01em;
+}
+
+.now-playing-panel-lyrics-host .LyricsSkeleton .SkeletonDots {
+    display: inline-flex;
+    gap: 0.2em;
+    margin-left: 0.3em;
+}
+
+.now-playing-panel-lyrics-host .LyricsSkeleton .SkeletonDots i {
+    display: block;
+    width: 0.3em;
+    height: 0.3em;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.25;
+    animation: spicy-lyrics-skeleton-dot 1.2s ease-in-out infinite;
+}
+
+.now-playing-panel-lyrics-host .LyricsSkeleton .SkeletonDots i:nth-child(2) { animation-delay: 0.16s; }
+.now-playing-panel-lyrics-host .LyricsSkeleton .SkeletonDots i:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes spicy-lyrics-skeleton-sweep {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+}
+
+@keyframes spicy-lyrics-skeleton-dot {
+    0%, 100% { opacity: 0.25; transform: translateY(0); }
+    40% { opacity: 1; transform: translateY(-0.18em); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .now-playing-panel-lyrics-host .LyricsSkeleton .SkeletonLine::after {
+        animation: none;
+        opacity: 0;
+    }
+
+    .now-playing-panel-lyrics-host .LyricsSkeleton .SkeletonDots i {
+        animation: none;
+        opacity: 0.6;
+    }
 }
 
 .now-playing-panel-lyrics-host spicy-lyrics {
@@ -3339,59 +3455,7 @@ body .now-playing-panel.is-queue-view.is-queue-closing {
     }
 }
 
-/* Spicy Lyrics GroupedViewControls.css: frosted capsule and bare controls. */
+/* Spicy Lyrics compact view controls: standalone frosted circles, no capsule. */
 .now-playing-panel-lyrics-actions.is-grouped {
-    --view-control-size: 40px;
-
-    padding: calc(var(--view-control-size) * 0.11);
-    gap: calc(var(--view-control-size) * 0.2);
-    border-radius: 100rem;
-    background: rgb(255 255 255 / 0.08);
-    backdrop-filter: blur(24px) contrast(0.6) brightness(0.8) saturate(1.8);
-    box-shadow:
-        0 12px 28px -12px rgb(8 10 18 / 0.45),
-        inset 0 1px 0 rgb(255 255 255 / 0.22),
-        inset 0 0 0 1px rgb(255 255 255 / 0.1);
-}
-
-.now-playing-panel-lyrics-actions.is-grouped .now-playing-panel-icon {
-    position: relative;
-    padding: 0;
-    background: transparent;
-    backdrop-filter: none;
-    box-shadow: none;
-    color: rgb(255 255 255 / 0.92);
-    transition:
-        scale 0.14s cubic-bezier(0.23, 1, 0.32, 1),
-        color 0.2s ease,
-        background-color 0.2s ease;
-}
-
-.now-playing-panel-lyrics-actions.is-grouped .now-playing-panel-icon:active {
-    scale: 0.95;
-}
-
-.now-playing-panel-lyrics-actions.is-grouped .now-playing-panel-icon:is(:hover, :focus-visible) {
-    background: rgb(255 255 255 / 0.12);
-    box-shadow: none;
-    color: #fff;
-    scale: 1;
-}
-
-.now-playing-panel-lyrics-actions.is-grouped .now-playing-panel-icon:is(:hover, :focus-visible):active {
-    scale: 0.95;
-}
-
-@media (prefers-reduced-transparency: reduce) {
-    .now-playing-panel-lyrics-actions.is-grouped {
-        background: rgb(30 30 34 / 0.92);
-        backdrop-filter: none;
-    }
-}
-
-@media (prefers-contrast: more) {
-    .now-playing-panel-lyrics-actions.is-grouped {
-        background: rgb(20 20 24 / 0.9);
-        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.6);
-    }
+    gap: 4px;
 }

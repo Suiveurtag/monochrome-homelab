@@ -656,10 +656,26 @@ function plainLyricsToTtml(text) {
     return new XMLSerializer().serializeToString(doc);
 }
 
-async function renderLyricsComponent(container, track, audioPlayer, lyricsManager, { signal } = {}) {
+const LYRICS_SKELETON_LINE_WIDTHS = [74, 58, 86, 49, 68, 81, 55, 72, 63, 84, 52, 77, 66, 88, 57, 70];
+
+function createLyricsLoadingSkeleton() {
+    const lines = LYRICS_SKELETON_LINE_WIDTHS
+        .map((width, index) => `<div class="SkeletonLine" style="width: ${width}%; --i: ${index}"></div>`)
+        .join('');
+    return `<div class="LyricsSkeleton active">
+        <div class="SkeletonLines" aria-hidden="true">${lines}</div>
+        <div class="SkeletonStatus" role="status" aria-live="polite">
+            <span class="SkeletonLabel">Loading Lyrics</span><span class="SkeletonDots" aria-hidden="true"><i></i><i></i><i></i></span>
+        </div>
+    </div>`;
+}
+
+async function renderLyricsComponent(container, track, audioPlayer, lyricsManager, { signal, skeleton = false } = {}) {
     if (signal?.aborted) return null;
     clearFullscreenLyricsSync(container);
-    container.innerHTML = '<div class="lyrics-loading" role="status">Loading lyrics…</div>';
+    container.innerHTML = skeleton
+        ? createLyricsLoadingSkeleton()
+        : '<div class="lyrics-loading" role="status">Loading lyrics…</div>';
 
     try {
         const data = await lyricsManager.fetchLyrics(track.id, track);
