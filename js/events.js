@@ -2718,10 +2718,6 @@ export async function handleTrackAction(
               : `${window.location.origin}/${type}/${item.id || item.uuid}`;
 
         window.open(url, '_blank');
-    } else if (action === 'open-in-harmony') {
-        const albumId = item.id;
-        const harmonyUrl = `https://harmony.pulsewidth.org.uk/release?url=${encodeURIComponent(`https://tidal.com/album/${albumId}`)}&gtin=&region=&musicbrainz=&deezer=&itunes=&spotify=&tidal=&beatport=`;
-        window.open(harmonyUrl, '_blank');
     } else if (action === 'track-info') {
         const displayAlbum = getTrackDisplayAlbum(item);
         const releaseDate = displayAlbum?.releaseDate || item.streamStartDate;

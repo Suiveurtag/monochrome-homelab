@@ -75,4 +75,8 @@ export class Spring {
             this.v = 0;
         }
     }
+
+    Step(dt) { return this.step(dt); }
+    CanSleep() { return this.canSleep(); }
+    SetGoal(goal, replacePosition = false) { this.setGoal(goal, replacePosition); }
 }

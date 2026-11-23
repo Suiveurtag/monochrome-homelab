@@ -751,7 +751,7 @@ describe('Now Playing panel interactions', () => {
         );
 
         expect(renderPanel).not.toHaveBeenCalled();
-        expect(updateBackgroundSource).not.toHaveBeenCalled();
+        expect(updateBackgroundSource).toHaveBeenCalledExactlyOnceWith('/next.jpg', { deferToVideo: false });
         expect(renderQueueLayer).toHaveBeenCalledTimes(1);
         expect(panel.nowPlayingNeedsRender).toBe(true);
         expect(panel.content.querySelector('.now-playing-panel-body')).toBe(nowPlayingBody);

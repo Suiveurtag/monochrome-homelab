@@ -1,7 +1,7 @@
 import { openSpicyLyricsPopup } from './spicy-lyrics-popup.js';
 import { mountSpicyDynamicBackground } from './spicy-dynamic-background.js';
 import { loadEdgeLight } from './edge-light.js';
-import { buildNowPlayingPanelModel, normalizeSourceContext } from './now-playing-panel-model.js';
+import { buildNowPlayingPanelModel, normalizeSourceContext, resolveArtwork } from './now-playing-panel-model.js';
 import { clearLyricsContainerSync, renderLyricsInContainer, renderLyricsInNowPanel } from './lyrics.js';
 import { bindIconMotion } from './player-icon-motion.js';
 import { getSpicyLyricsSetting } from './spicy-lyrics-settings.js';
@@ -283,6 +283,10 @@ export class NowPlayingPanel {
             if (this.activeView === 'queue') this.nowPlayingNeedsRender = true;
             this.queueRenderSignature = this.getQueueRenderSignature();
             if (this.activeView === 'queue') {
+                this.background?.followVideo?.(null);
+                void this.background?.setSource(nextTrack ? resolveArtwork(nextTrack, this.api).staticSrc : '', {
+                    deferToVideo: false,
+                });
                 this.queueMotionReason = 'advance';
                 this.renderQueueControls({ preserveScroll: true });
             }
@@ -2998,7 +3002,9 @@ export class NowPlayingPanel {
         this.canvasVisibilityObserver = null;
         this.background?.followVideo?.(null);
         // Without a Canvas to defer to, the background falls back to the cover.
-        if (this.model) void this.background?.setSource(this.model.artwork.staticSrc, { deferToVideo: false });
+        if (this.model && !(this.activeView === 'queue' && this.nowPlayingNeedsRender)) {
+            void this.background?.setSource(this.model.artwork.staticSrc, { deferToVideo: false });
+        }
         this.releaseCanvasVideo(video);
         video.remove();
         this.canvasMedia = null;
@@ -3056,6 +3062,7 @@ export class NowPlayingPanel {
 
     // The fluid background follows Canvas only while Canvas is what the panel shows.
     syncCanvasBackground() {
+        if (this.activeView === 'queue' && this.nowPlayingNeedsRender) return;
         const video = this.canvasMedia;
         const shown = Boolean(this.canvasStage?.classList.contains('is-canvas-playing'));
         const stageAllowed = !this.model?.artwork.isMotion || getSpicyLyricsSetting('motionOnStage') === 'true';

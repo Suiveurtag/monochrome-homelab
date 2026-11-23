@@ -77,8 +77,8 @@ function createBurstOverlay(button, className) {
     svg.setAttribute('class', className);
     svg.setAttribute('viewBox', `${-half} ${-half} ${BURST_SPAN} ${BURST_SPAN}`);
     svg.setAttribute('aria-hidden', 'true');
-    svg.style.left = `${cx - size / 2}px`;
-    svg.style.top = `${cy - size / 2}px`;
+    svg.style.left = `${cx}px`;
+    svg.style.top = `${cy}px`;
     svg.style.width = `${size}px`;
     svg.style.height = `${size}px`;
     const accent = getComputedStyle(button).getPropertyValue('--track-save-accent').trim();
@@ -200,8 +200,8 @@ function spawnConfetti(button) {
     svg.setAttribute('class', 'track-save-burst');
     svg.setAttribute('viewBox', `${-half} ${-half} ${CONFETTI_SPAN} ${CONFETTI_SPAN}`);
     svg.setAttribute('aria-hidden', 'true');
-    svg.style.left = `${cx - size / 2}px`;
-    svg.style.top = `${cy - size / 2}px`;
+    svg.style.left = `${cx}px`;
+    svg.style.top = `${cy}px`;
     svg.style.width = `${size}px`;
     svg.style.height = `${size}px`;
     const accent = getComputedStyle(button).getPropertyValue('--track-save-accent').trim();

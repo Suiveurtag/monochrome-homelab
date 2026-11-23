@@ -4042,6 +4042,7 @@ body.multi-select-mode .track-item:hover {
     overflow: visible;
     pointer-events: none;
     z-index: 9999;
+    transform: translate(-50%, -50%);
 }
 
 .track-save-burst-halo {

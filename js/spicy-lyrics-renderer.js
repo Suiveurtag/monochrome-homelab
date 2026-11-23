@@ -13,12 +13,27 @@ import { IsLetterCapable } from './vendor/spicy-lyrics/upstream/IsLetterCapable.
 import Emphasize, { createFlameGroup } from './vendor/spicy-lyrics/upstream/Emphasize.ts';
 import upstreamCreditsCss from './vendor/spicy-lyrics/upstream/PinnedCredits.css?raw';
 import { getSpicyLyricsSetting } from './spicy-lyrics-settings.js';
-import { LyricsVirtualizer } from './vendor/spicy-lyrics/upstream/LyricsVirtualizer.ts';
+import { LyricsVirtualizer, setBloomScrollDuration } from './vendor/spicy-lyrics/upstream/LyricsVirtualizer.ts';
 import { parseSpicyTtml, parseTtmlTime } from './spicy-lyrics-ttml.js';
 import { getArtworkSources } from './artwork-media.js';
 
 export { Spring as SpicySpring };
 export { parseSpicyTtml, parseTtmlTime };
+
+// Spicy Lyrics' GetBloomScroll, adapted to the local line fields.
+function getBloomScroll(lines, position) {
+    const next = lines.findIndex((line) => !line.background && line.start > position);
+    if (next < 0) return { ms: 750, leadMs: 0 };
+    let prevEnd = -Infinity;
+    for (let i = next - 1; i >= 0; i--) {
+        prevEnd = Math.max(prevEnd, lines[i].leadEnd ?? lines[i].end);
+        if (!lines[i].background) break;
+    }
+    const room = lines[next].start - prevEnd;
+    const gap = Math.min(750, Math.max(200, room));
+    const ms = Math.round(480 + (750 - 480) * (gap - 200) / (750 - 200));
+    return { ms, leadMs: Math.min(ms, Math.max(0, room)) };
+}
 
 /*
  * The two lyrics stylesheets above are an unmodified upstream snapshot.  They
@@ -155,7 +170,7 @@ const SHADOW_BRIDGE_CSS = `
 :host([data-next-up]) #SpicyLyricsPage .LyricsContainer .LyricsContent {
     --SL-LyricsContent_MaskBottomPadding: 56px;
 }
-#SpicyLyricsPage .LyricsContainer .LyricsContent .line
+#SpicyLyricsPage.SpicyRenderer .LyricsContainer .LyricsContent .line
     :is(.word, .letterGroup):not(.PartOfWord, .dot, .LastWordInLine)::after {
     margin-right: 0;
 }
@@ -813,12 +828,15 @@ export class SpicyLyricsElement extends HTMLElement {
         if (this._lyricsType === 'Static') return;
         const now = performance.now();
         const activeIndex = getScrollLineIndex(this._lineStates, this._currentTime);
-        const bloomEarly = this._page.classList.contains('CardMode') && getSpicyLyricsSetting('style') === 'bloom';
-        const earlyIndex = bloomEarly ? getScrollLineIndex(this._lineStates, this._currentTime + 420) : -1;
+        const bloomTimed = getSpicyLyricsSetting('style') === 'bloom' &&
+            !(this._page.classList.contains('Fullscreen') && getSpicyLyricsSetting('fadePrevious') === 'true');
+        const bloomEarly = bloomTimed && this._page.classList.contains('CardMode');
+        const bloomScroll = bloomTimed ? getBloomScroll(this._lineStates, this._currentTime) : null;
+        const earlyIndex = bloomEarly ? getScrollLineIndex(this._lineStates, this._currentTime + bloomScroll.leadMs) : -1;
         const scrollIndex = earlyIndex >= 0 ? earlyIndex : activeIndex;
         this._animator?.setEarlySungBefore(earlyIndex);
         this._animator?.animate(this._currentTime);
-        const bloomFocus = bloomEarly ? this._lineStates[scrollIndex]?.element : null;
+        const bloomFocus = bloomTimed ? this._lineStates[scrollIndex]?.element : null;
         if (bloomFocus !== this._bloomFocus) {
             this._bloomFocus?.classList.remove('BloomFocus');
             this._bloomFocus = bloomFocus;
@@ -843,6 +861,7 @@ export class SpicyLyricsElement extends HTMLElement {
         this._lyricsContent.classList.remove('HideLineBlur');
         const instant = shouldForceScroll || reducedMotion();
         const scroll = () => {
+            if (bloomScroll) setBloomScrollDuration(bloomScroll.ms);
             this._virtualizer.scrollToIndex(scrollIndex, 'center', instant, 30);
             if (instant) this._animator?.animate(this._currentTime);
         };

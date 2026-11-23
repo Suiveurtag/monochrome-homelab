@@ -15,6 +15,7 @@ import { Player } from './player.js';
 import { getSpicyLyricsSetting, normalizeSpicyLyricsOffset, setSpicyLyricsSetting } from './spicy-lyrics-settings.js';
 import { parseSpicyTtml } from './spicy-lyrics-ttml.js';
 import { audioContextManager } from './audio-context.js';
+import { pb } from './accounts/config.js';
 
 // Hiragana (3040-309F) or Katakana (30A0-30FF) = unambiguously Japanese
 function containsJapaneseKana(text) {
@@ -253,6 +254,43 @@ export class LyricsManager {
                 const lyricsData = { plain: track.lyrics, lyricsProvider: 'Local' };
                 this.lyricsCache.set(trackId, lyricsData);
                 return lyricsData;
+            }
+
+            // An upload can carry an empty TTML shell while another duplicate
+            // of the same recording has imported lyrics. Resolve that local
+            // copy before asking LRCLIB, without overriding lyrics on this track.
+            if (track.isSelfHosted) {
+                try {
+                    const artist = track.artist?.name || track.artists?.[0]?.name || '';
+                    if (artist && track.title) {
+                        const records = await pb.collection('music_tracks').getFullList({
+                            filter: pb.filter('title = {:title} && artist = {:artist}', {
+                                title: track.title,
+                                artist,
+                            }),
+                            fields: 'id,title,artist,album,duration,lyrics',
+                            requestKey: null,
+                        });
+                        const candidates = records
+                            .filter((record) => String(record.id) !== String(trackId))
+                            .filter((record) => Math.abs(Number(record.duration) - Number(track.duration)) <= 2)
+                            .filter((record) => isTtml(record.lyrics) || parseLrc(record.lyrics).length > 0)
+                            .sort((a, b) => {
+                                const album = track.album?.title || '';
+                                return Number(b.album === album) - Number(a.album === album);
+                            });
+                        if (candidates.length) {
+                            const lyrics = candidates[0].lyrics;
+                            const lyricsData = isTtml(lyrics)
+                                ? { ttml: lyrics, lyricsProvider: 'Local' }
+                                : { subtitles: lyrics, lyricsProvider: 'Local' };
+                            this.lyricsCache.set(trackId, lyricsData);
+                            return lyricsData;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Could not find matching imported lyrics:', error);
+                }
             }
 
             if (this.lyricsCache.has(trackId)) {
@@ -750,7 +788,7 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
     };
     const tick = () => {
         frame = null;
-        if (!visible || audioPlayer.paused || audioPlayer.ended) return;
+        if (!visible) return;
         updateTime();
         frame = view.requestAnimationFrame(tick);
     };
@@ -807,10 +845,7 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
     amLyrics.addEventListener('lyrics-rendered', refreshAnnotations);
     refreshAnnotations();
 
-    audioPlayer.addEventListener('timeupdate', updateTime);
     audioPlayer.addEventListener('playing', start);
-    audioPlayer.addEventListener('pause', stop);
-    audioPlayer.addEventListener('waiting', stop);
     audioPlayer.addEventListener('seeked', updateTime);
     amLyrics.addEventListener('line-click', onLineClick);
     window.addEventListener('spicy-lyrics-settings-changed', updateOffset);
@@ -821,10 +856,7 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
     return () => {
         stop();
         observer.disconnect();
-        audioPlayer.removeEventListener('timeupdate', updateTime);
         audioPlayer.removeEventListener('playing', start);
-        audioPlayer.removeEventListener('pause', stop);
-        audioPlayer.removeEventListener('waiting', stop);
         audioPlayer.removeEventListener('seeked', updateTime);
         amLyrics.removeEventListener('line-click', onLineClick);
         amLyrics.removeEventListener('lyrics-rendered', refreshAnnotations);
