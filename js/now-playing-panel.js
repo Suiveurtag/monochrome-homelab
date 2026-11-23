@@ -572,6 +572,10 @@ export class NowPlayingPanel {
 
     async openLyrics() {
         if (!this.root || !this.currentTrack) return false;
+        if (this.expandedLyrics) {
+            this.setExpandedLyrics(false);
+            return true;
+        }
         if (!this.desktopMedia.matches) {
             await this.ui?.openCurrentTrackFullscreen?.();
             return true;
@@ -596,12 +600,56 @@ export class NowPlayingPanel {
             }
         }
 
+        const lyricsCard = this.root.querySelector('.now-playing-panel-lyrics');
+        if (this.isOpen && lyricsCard && !lyricsCard.hidden) {
+            this.setExpandedLyrics(true);
+            return true;
+        }
+
+        const lyricsButton = document.getElementById('toggle-lyrics-btn');
+        const originRect = lyricsButton?.getBoundingClientRect();
         this.expandedLyrics = true;
         this.collapsedLyrics = false;
         this.setOpen(true, { restoreFocus: false });
         await this.render({ preserveScroll: false });
+        this.animateLyricsExpansion(originRect);
         this.root.querySelector('.now-playing-panel-lyrics-collapse')?.focus({ preventScroll: true });
         return true;
+    }
+
+    animateLyricsExpansion(originRect) {
+        const card = this.root?.querySelector('.now-playing-panel-lyrics');
+        if (!card || card.hidden || typeof card.animate !== 'function') return;
+        const target = card.getBoundingClientRect();
+        if (!target.width || !target.height) return;
+        const reducedMotion = this.reducedMotionMedia?.matches;
+        const source = originRect || this.root.querySelector('.now-playing-panel-lyrics-expand')?.getBoundingClientRect();
+        if (!source || !source.width || !source.height) {
+            card.animate([{ opacity: 0.7 }, { opacity: 1 }], {
+                duration: reducedMotion ? 100 : 220,
+                easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+            });
+            return;
+        }
+        const dx = source.left - target.left;
+        const dy = source.top - target.top;
+        const scaleX = source.width / target.width;
+        const scaleY = source.height / target.height;
+        const animation = card.animate(
+            [
+                {
+                    opacity: 0.55,
+                    transformOrigin: 'top left',
+                    transform: `translate(${dx}px, ${dy}px) scale(${scaleX}, ${scaleY})`,
+                },
+                { opacity: 1, transformOrigin: 'top left', transform: 'translate(0, 0) scale(1, 1)' },
+            ],
+            {
+                duration: reducedMotion ? 120 : 420,
+                easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+            }
+        );
+        animation.onfinish = () => animation.cancel();
     }
 
     syncQueueLayerState() {
@@ -1110,6 +1158,13 @@ export class NowPlayingPanel {
         if (this.activeView === 'queue') {
             this.reopenQueueTransition();
             return;
+        }
+        if (this.expandedLyrics) {
+            this.expandedLyrics = false;
+            this.collapsedLyrics = false;
+            const lyricsTransitionToken = this.beginLyricsTransition('collapse');
+            this.applyLyricsMode();
+            this.finishLyricsTransition(lyricsTransitionToken);
         }
         const source = this.captureQueueCover(this.getNowPlayingCoverElement());
         this.cancelQueueCoverAnimation();
@@ -2319,7 +2374,7 @@ export class NowPlayingPanel {
                 <div class="queue-current-copy"><span class="queue-current-label">Now playing</span><strong class="queue-current-title"><span class="queue-playing-equalizer${isPaused ? ' is-paused' : ''}" aria-hidden="true"></span><span class="queue-current-title-text">${escapeHtml(title)}</span></strong><p>${escapeHtml(artist)}</p></div>
             </div>`
             : '<div class="queue-playing-row queue-playing-row-empty"><div class="queue-current-artwork queue-empty-artwork">—</div><div class="queue-current-copy"><span class="queue-current-label">Now playing</span><strong>Nothing is playing</strong></div></div>';
-        this.queueLayer.innerHTML = `<div class="now-playing-panel-queue-view queue-motion-open" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div id="queue-panel-title" class="queue-header-tabs" role="tablist" aria-label="Queue panel"><button type="button" id="queue-tab-up-next" class="queue-view-switch is-active" role="tab" data-queue-view="up-next" aria-selected="true" aria-controls="queue-panel-body">Queue</button><button type="button" id="queue-tab-history" class="queue-view-switch" role="tab" data-queue-view="history" aria-selected="false" aria-controls="queue-panel-body" tabindex="-1">History</button></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main id="queue-panel-body" class="queue-panel-body" role="tabpanel" aria-labelledby="queue-tab-up-next"><section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${source}</h2><button type="button" class="queue-clear-button" disabled>Clear</button></div>${currentMarkup}</section></main></div>`;
+        this.queueLayer.innerHTML = `<div class="now-playing-panel-queue-view queue-motion-open" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div id="queue-panel-title" class="queue-header-tabs" role="tablist" aria-label="Queue panel"><button type="button" id="queue-tab-up-next" class="queue-view-switch is-active" role="tab" data-queue-view="up-next" aria-selected="true" aria-controls="queue-panel-body">Queue</button><button type="button" id="queue-tab-history" class="queue-view-switch" role="tab" data-queue-view="history" aria-selected="false" aria-controls="queue-panel-body" tabindex="-1">History</button></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main id="queue-panel-body" class="queue-panel-body" role="tabpanel" aria-labelledby="queue-tab-up-next"><section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${source}</h2></div>${currentMarkup}</section></main></div>`;
         this.queueLayer.hidden = false;
     }
 
@@ -2642,7 +2697,6 @@ export class NowPlayingPanel {
         const durationLabel =
             queueDuration > 0 ? this.formatQueueTime(queueDuration) : upNext.length ? 'duration unavailable' : '0 min';
         const repeatMode = this.player?.repeatMode ?? REPEAT_MODE.OFF;
-        const repeatState = this.getQueueRepeatState(repeatMode);
         const isLooping = repeatMode === REPEAT_MODE.ALL;
         const transitionMode = this.getTransitionMode();
         const media = this.player?.activeElement;
@@ -2689,7 +2743,6 @@ export class NowPlayingPanel {
             ? `<div class="queue-playing-row">
                 <div class="queue-current-artwork"><img src="${escapeHtml(imageFor(currentTrack))}" alt="" loading="eager" /></div>
                 <div class="queue-current-copy"><span class="queue-current-label">Now playing</span><strong id="queue-current-title" class="queue-current-title"><span class="queue-playing-equalizer${isPaused ? ' is-paused' : ''}" aria-hidden="true"></span><span class="queue-current-title-text">${escapeHtml(titleFor(currentTrack))}</span></strong><p>${escapeHtml(artistFor(currentTrack))}</p></div>
-                <button type="button" class="queue-current-state" data-queue-playback-toggle aria-label="${isPaused ? 'Play' : 'Pause'}" aria-pressed="${String(!isPaused)}">${icon(isPaused ? 'play' : 'pause', 17)}</button>
             </div>`
             : `<div class="queue-playing-row queue-playing-row-empty"><div class="queue-empty-artwork">${icon('list-music', 20)}</div><div class="queue-current-copy"><span class="queue-current-label">Now playing</span><strong id="queue-current-title">Nothing playing</strong><p>Start a track to build your queue.</p></div></div>`;
         const rows = upNext.length
@@ -2709,10 +2762,10 @@ export class NowPlayingPanel {
                   })
                   .join('')
             : `<div class="queue-list-empty"><span>${icon('list-music', 18)}</span><strong>Nothing else is lined up</strong><p>${escapeHtml(emptyQueueCopy)}</p></div>`;
-        const listMarkup = `<section class="queue-list-section" aria-labelledby="queue-up-next-title"><div class="queue-list-heading"><div><h2 id="queue-up-next-title">Next Up from ${sourceLink}</h2><p>${upNext.length} ${upNext.length === 1 ? 'track' : 'tracks'} <span aria-hidden="true">·</span> ${escapeHtml(durationLabel)} <span class="queue-source-context">· ${escapeHtml(sourceContext)}</span></p></div><button type="button" class="queue-loop-button queue-list-loop-button${repeatState.active ? ' is-active' : ''}${repeatMode === REPEAT_MODE.ONE ? ' repeat-one' : ''}" aria-pressed="${String(repeatState.active)}" aria-label="${repeatState.actionLabel}" title="${repeatState.title}">${icon('repeat', 15)}</button></div><div class="queue-track-list">${rows}</div></section>`;
+        const listMarkup = `<section class="queue-list-section" aria-labelledby="queue-up-next-title"><div class="queue-list-heading"><div><h2 id="queue-up-next-title">Next Up from ${sourceLink}</h2><p>${upNext.length} ${upNext.length === 1 ? 'track' : 'tracks'} <span aria-hidden="true">·</span> ${escapeHtml(durationLabel)} <span class="queue-source-context">· ${escapeHtml(sourceContext)}</span></p></div><button type="button" class="queue-clear-button" data-queue-clear${upNext.length ? '' : ' disabled'}>Clear</button></div><div class="queue-track-list">${rows}</div></section>`;
         const endlessUnavailable = repeatMode !== REPEAT_MODE.OFF;
         const endlessPressed = !!(this.player?.autoplayEnabled || this.player?.radioEnabled) && !endlessUnavailable;
-        const queueBody = `<section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${sourceLink}</h2><button type="button" class="queue-clear-button" data-queue-clear${upNext.length ? '' : ' disabled'}>Clear</button></div>${currentMarkup}</section><div class="queue-quick-actions" aria-label="Queue settings"><button type="button" role="switch" class="queue-quick-action queue-endless-card${endlessPressed ? ' is-enabled' : ''}${endlessUnavailable ? ' is-unavailable' : ''}" data-endless-toggle aria-pressed="${String(endlessPressed)}" aria-checked="${String(endlessPressed)}"><span class="queue-setting-copy"><span class="queue-setting-icon">${icon('infinity', 19)}</span><span><span class="queue-quick-label">Endless playback</span>${endlessUnavailable ? '<span class="queue-quick-status">Paused while repeat is on</span>' : ''}</span></span><span class="queue-switch" aria-hidden="true"><span class="queue-switch-thumb"></span></span></button>${this.renderQueueTransitionCard(transitionMode)}</div>${listMarkup}`;
+        const queueBody = `<section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${sourceLink}</h2></div>${currentMarkup}</section><div class="queue-quick-actions" aria-label="Queue settings"><button type="button" role="switch" class="queue-quick-action queue-endless-card${endlessPressed ? ' is-enabled' : ''}${endlessUnavailable ? ' is-unavailable' : ''}" data-endless-toggle aria-pressed="${String(endlessPressed)}" aria-checked="${String(endlessPressed)}"><span class="queue-setting-copy"><span class="queue-setting-icon">${icon('infinity', 19)}</span><span><span class="queue-quick-label">Endless playback</span>${endlessUnavailable ? '<span class="queue-quick-status">Paused while repeat is on</span>' : ''}</span></span><span class="queue-switch" aria-hidden="true"><span class="queue-switch-thumb"></span></span></button>${this.renderQueueTransitionCard(transitionMode)}</div>${listMarkup}`;
         const isHistory = this.queueView === 'history';
         return `<div class="now-playing-panel-queue-view queue-motion-${motionReason}" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div id="queue-panel-title" class="queue-header-tabs${isHistory ? ' is-history' : ''}" role="tablist" aria-label="Queue panel"><button type="button" id="queue-tab-up-next" class="queue-view-switch${isHistory ? '' : ' is-active'}" role="tab" data-queue-view="up-next" aria-selected="${String(!isHistory)}" aria-controls="queue-panel-body" tabindex="${isHistory ? '-1' : '0'}">Queue</button><button type="button" id="queue-tab-history" class="queue-view-switch${isHistory ? ' is-active' : ''}" role="tab" data-queue-view="history" aria-selected="${String(isHistory)}" aria-controls="queue-panel-body" tabindex="${isHistory ? '0' : '-1'}">History</button></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main id="queue-panel-body" class="queue-panel-body" role="tabpanel" aria-labelledby="queue-tab-${isHistory ? 'history' : 'up-next'}">${isHistory ? this.renderHistoryPanel() : queueBody}</main></div>`;
     }
@@ -3068,12 +3121,24 @@ export class NowPlayingPanel {
     async mountLyrics(model, signal) {
         const card = this.content.querySelector('.now-playing-panel-lyrics');
         const host = card?.querySelector('.now-playing-panel-lyrics-host');
-        if (!host || model.empty || this.currentTrack?.type === 'video') return;
+        if (!host) return;
+        const showUnavailable = () => {
+            if (this.expandedLyrics) {
+                card.hidden = false;
+                host.innerHTML = '<div class="now-playing-panel-lyrics-empty" role="status"><strong>No lyrics available</strong><span>We couldn’t find lyrics for this track.</span></div>';
+            } else {
+                card.hidden = true;
+            }
+        };
+        if (model.empty || this.currentTrack?.type === 'video') {
+            showUnavailable();
+            return;
+        }
         card.hidden = false;
         const element = await renderLyricsInContainer(this.currentTrack, this.player.activeElement, this.lyricsManager, host, { signal, skeleton: true });
         if (signal.aborted) return;
         if (!element) {
-            card.hidden = true;
+            showUnavailable();
             return;
         }
         this.lyricsSyncElement = element;
@@ -3136,6 +3201,42 @@ export class NowPlayingPanel {
         this.syncScrolled();
     }
 
+    setExpandedLyrics(expanded) {
+        this.lyricsViewTransition?.skipTransition();
+        if (expanded) {
+            const panel = this.root.getBoundingClientRect();
+            const card = this.root.querySelector('.now-playing-panel-lyrics')?.getBoundingClientRect();
+            if (card && panel.width && panel.height) {
+                const clamp = (value) => Math.max(0, Math.min(100, value));
+                const top = clamp((card.top - panel.top) / panel.height * 100);
+                const right = clamp((panel.right - card.right) / panel.width * 100);
+                const bottom = clamp((panel.bottom - card.bottom) / panel.height * 100);
+                const left = clamp((card.left - panel.left) / panel.width * 100);
+                document.documentElement.style.setProperty('--lyrics-expand-origin', `inset(${top}% ${right}% ${bottom}% ${left}% round 12px)`);
+            }
+        }
+        const update = () => {
+            this.expandedLyrics = expanded;
+            this.collapsedLyrics = false;
+            this.applyLyricsMode();
+            this.root.querySelector(expanded ? '.now-playing-panel-lyrics-collapse' : '.now-playing-panel-lyrics-expand')
+                ?.focus({ preventScroll: true });
+        };
+        if (!document.startViewTransition) {
+            update();
+            return;
+        }
+        document.documentElement.classList.add('lyrics-view-transition');
+        document.documentElement.classList.toggle('lyrics-view-closing', !expanded);
+        const transition = document.startViewTransition(update);
+        this.lyricsViewTransition = transition;
+        transition.finished.finally(() => {
+            if (this.lyricsViewTransition !== transition) return;
+            this.lyricsViewTransition = null;
+            document.documentElement.classList.remove('lyrics-view-transition', 'lyrics-view-closing');
+        });
+    }
+
     beginLyricsTransition(direction) {
         const token = ++this.lyricsTransitionToken;
         this.root.classList.remove('lyrics-expanding', 'lyrics-collapsing');
@@ -3148,12 +3249,10 @@ export class NowPlayingPanel {
 
     finishLyricsTransition(token) {
         if (token !== this.lyricsTransitionToken) return;
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                if (token !== this.lyricsTransitionToken) return;
-                this.root.classList.remove('lyrics-transitioning', 'lyrics-expanding', 'lyrics-collapsing');
-            });
-        });
+        window.setTimeout(() => {
+            if (token !== this.lyricsTransitionToken) return;
+            this.root.classList.remove('lyrics-transitioning', 'lyrics-expanding', 'lyrics-collapsing');
+        }, this.reducedMotionMedia?.matches ? 20 : 400);
     }
 
     applyCanvasMode() {
@@ -3257,25 +3356,70 @@ export class NowPlayingPanel {
             return;
         }
         if (button.matches('.now-playing-panel-lyrics-expand')) {
-            this.expandedLyrics = true;
-            this.collapsedLyrics = false;
-            const transitionToken = this.beginLyricsTransition('expand');
-            this.applyLyricsMode();
-            this.finishLyricsTransition(transitionToken);
-            this.root.querySelector('.now-playing-panel-lyrics-collapse')?.focus({ preventScroll: true });
+            this.setExpandedLyrics(!this.expandedLyrics);
             return;
         }
         if (button.matches('.now-playing-panel-lyrics-collapse')) {
             if (this.expandedLyrics) {
-                this.expandedLyrics = false;
-                this.collapsedLyrics = false;
-                const transitionToken = this.beginLyricsTransition('collapse');
-                this.applyLyricsMode();
-                this.finishLyricsTransition(transitionToken);
-                this.root.querySelector('.now-playing-panel-lyrics-expand')?.focus({ preventScroll: true });
+                this.setExpandedLyrics(false);
             } else {
+                const card = this.root.querySelector('.now-playing-panel-lyrics');
+                const fromHeight = card?.getBoundingClientRect().height;
+                const collapseButton = card?.querySelector('.now-playing-panel-lyrics-collapse');
+                const buttons = [...(card?.querySelectorAll('.now-playing-panel-lyrics-actions :is(.now-playing-panel-lyrics-fullscreen, .now-playing-panel-lyrics-expand)') || [])];
+                const closing = !this.collapsedLyrics;
+                const buttonRects = closing
+                    ? new Map(buttons.map((item) => [item, item.getBoundingClientRect()]))
+                    : null;
+                card?.classList.add('lyrics-controls-transitioning');
                 this.collapsedLyrics = !this.collapsedLyrics;
                 this.applyLyricsMode();
+                const destinationRects = closing
+                    ? buttonRects
+                    : new Map(buttons.map((item) => [item, item.getBoundingClientRect()]));
+                const buttonAnimations = [];
+                const toHeight = this.collapsedLyrics ? 56 : 300;
+                if (card && fromHeight > 0 && typeof card.animate === 'function') {
+                    const animation = card.animate(
+                        [
+                            { height: `${fromHeight}px`, minHeight: `${fromHeight}px` },
+                            { height: `${toHeight}px`, minHeight: `${toHeight}px` },
+                        ],
+                        {
+                            duration: this.reducedMotionMedia?.matches ? 1 : 360,
+                            easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+                        }
+                    );
+                    animation.onfinish = () => animation.cancel();
+                }
+                const collapseRect = collapseButton?.getBoundingClientRect();
+                if (collapseRect && !this.reducedMotionMedia?.matches) {
+                    for (const button of buttons) {
+                        const rect = destinationRects.get(button);
+                        if (!rect) continue;
+                        const dx = collapseRect.left + collapseRect.width / 2 - (rect.left + rect.width / 2);
+                        const dy = collapseRect.top + collapseRect.height / 2 - (rect.top + rect.height / 2);
+                        const frames = closing
+                            ? [
+                                  { opacity: 1, transform: 'translate(0, 0) scale(1)' },
+                                  { opacity: 0, transform: `translate(${dx}px, ${dy}px) scale(0.65)` },
+                              ]
+                            : [
+                                  { opacity: 0, transform: `translate(${dx}px, ${dy}px) scale(0.65)` },
+                                  { opacity: 1, transform: 'translate(0, 0) scale(1)' },
+                              ];
+                        const animation = button.animate(frames, {
+                            duration: 280,
+                            easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+                            fill: 'forwards',
+                        });
+                        buttonAnimations.push(animation);
+                    }
+                }
+                window.setTimeout(() => {
+                    card?.classList.remove('lyrics-controls-transitioning');
+                    buttonAnimations.forEach((animation) => animation.cancel());
+                }, this.reducedMotionMedia?.matches ? 20 : 380);
             }
             return;
         }
@@ -3594,11 +3738,7 @@ export class NowPlayingPanel {
             if (this.activeView === 'queue') {
                 this.closeQueue();
             } else if (this.expandedLyrics) {
-                this.expandedLyrics = false;
-                this.collapsedLyrics = false;
-                const transitionToken = this.beginLyricsTransition('collapse');
-                this.applyLyricsMode();
-                this.finishLyricsTransition(transitionToken);
+                this.setExpandedLyrics(false);
             } else {
                 this.setOpen(false);
             }

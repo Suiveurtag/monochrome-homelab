@@ -810,6 +810,12 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     display: none;
 }
 
+.now-playing-panel-lyrics.lyrics-controls-transitioning
+    .now-playing-panel-lyrics-actions
+    :is(.now-playing-panel-lyrics-fullscreen, .now-playing-panel-lyrics-expand) {
+    display: inline-grid;
+}
+
 .now-playing-panel-lyrics-collapse svg {
     transition: transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -1097,9 +1103,27 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 }
 
 .now-playing-panel-lyrics-empty {
-    padding: 34px 16px;
-    margin: 0;
-    color: rgb(255 255 255 / 0.66);
+    display: grid;
+    min-height: 100%;
+    align-content: center;
+    justify-items: center;
+    gap: 8px;
+    padding: 48px 28px;
+    color: rgb(255 255 255 / 0.62);
+    text-align: center;
+}
+
+.now-playing-panel-lyrics-empty strong {
+    color: rgb(255 255 255 / 0.94);
+    font-size: 1.2rem;
+    font-weight: 650;
+    letter-spacing: -0.025em;
+}
+
+.now-playing-panel-lyrics-empty span {
+    max-width: 24ch;
+    font-size: 0.9rem;
+    line-height: 1.5;
 }
 
 .now-playing-panel-section {
@@ -1565,6 +1589,69 @@ body.now-playing-panel-resizing .app-container {
     transition: none;
 }
 
+html.lyrics-view-transition .now-playing-panel {
+    view-transition-name: lyrics-panel;
+}
+
+html.lyrics-view-transition::view-transition-old(root),
+html.lyrics-view-transition::view-transition-new(root) {
+    animation: none;
+}
+
+html.lyrics-view-transition::view-transition-image-pair(lyrics-panel) {
+    overflow: hidden;
+    isolation: isolate;
+}
+
+html.lyrics-view-transition::view-transition-old(lyrics-panel) {
+    animation: none;
+}
+
+html.lyrics-view-transition::view-transition-new(lyrics-panel) {
+    animation: lyrics-panel-in 280ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes lyrics-panel-in {
+    from { clip-path: var(--lyrics-expand-origin, inset(20% 8% 20% 8% round 12px)); }
+    to { clip-path: inset(0 round 0); }
+}
+
+html.lyrics-view-closing::view-transition-old(lyrics-panel) {
+    z-index: 2;
+    transform-origin: center bottom;
+    animation: lyrics-panel-close-out 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+html.lyrics-view-closing::view-transition-new(lyrics-panel) {
+    z-index: 1;
+    animation: none;
+}
+
+@keyframes lyrics-panel-close-out {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(35%) scale(0.9); }
+}
+
+@keyframes lyrics-panel-fade-out { to { opacity: 0; } }
+@keyframes lyrics-panel-fade-in { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+    html.lyrics-view-transition::view-transition-old(lyrics-panel),
+    html.lyrics-view-transition::view-transition-new(lyrics-panel) {
+        animation-duration: 120ms;
+        animation-timing-function: ease;
+        animation-fill-mode: both;
+    }
+
+    html.lyrics-view-transition::view-transition-group(lyrics-panel) {
+        animation: none;
+    }
+    html.lyrics-view-transition::view-transition-old(lyrics-panel),
+    html.lyrics-view-closing::view-transition-old(lyrics-panel) { animation-name: lyrics-panel-fade-out; }
+    html.lyrics-view-transition::view-transition-new(lyrics-panel),
+    html.lyrics-view-closing::view-transition-new(lyrics-panel) { animation-name: lyrics-panel-fade-in; }
+}
+
 .now-playing-panel.lyrics-transitioning .now-playing-panel-body > :not(.now-playing-panel-lyrics) {
     opacity: 0;
     transform: translateY(7px) scale(0.985);
@@ -1883,7 +1970,8 @@ body .now-playing-panel.is-queue-view .queue-panel-header {
     gap: 8px;
     padding: 0 8px;
     border-bottom: 1px solid var(--border);
-    background: var(--card);
+    background: rgb(0 0 0 / 0.35);
+    backdrop-filter: blur(24px) brightness(0.7);
 }
 
 body .now-playing-panel.is-queue-view .queue-header-tabs {
@@ -2092,7 +2180,7 @@ body .now-playing-panel.is-queue-view .queue-clear-button:disabled {
 
 body .now-playing-panel.is-queue-view .queue-playing-row {
     display: grid;
-    grid-template-columns: 44px minmax(0, 1fr) 36px;
+    grid-template-columns: 44px minmax(0, 1fr);
     min-width: 0;
     align-items: center;
     gap: 11px;
@@ -2491,7 +2579,7 @@ body .now-playing-panel.is-queue-view .queue-transition-menu {
     padding: 6px;
     border: 1px solid var(--border);
     border-radius: 12px;
-    background: var(--card);
+    background: color-mix(in srgb, rgb(var(--highlight-rgb)) 24%, #33343c);
     box-shadow: 0 18px 44px rgb(0 0 0 / 0.42);
     opacity: 0;
     pointer-events: none;
@@ -2890,7 +2978,8 @@ body .now-playing-panel.is-queue-view .queue-track-row.is-dragging {
     z-index: 2;
     border: 1px solid color-mix(in srgb, var(--primary) 42%, var(--border));
     border-radius: 10px;
-    background: color-mix(in srgb, var(--card) 90%, var(--foreground) 7%);
+    background: rgb(0 0 0 / 0.35);
+    backdrop-filter: blur(24px) brightness(0.7);
     box-shadow: 0 14px 30px rgb(0 0 0 / 0.35);
 }
 
@@ -3041,8 +3130,9 @@ body .now-playing-panel.is-queue-view .queue-history-search-field {
     min-height: 38px;
     padding: 2px 3px 2px 4px;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--input);
+    border-radius: 999px;
+    background: rgb(0 0 0 / 0.35);
+    backdrop-filter: blur(24px) brightness(0.7);
     transition:
         border-color 180ms var(--ease-out),
         background-color 180ms var(--ease-out),
@@ -3051,12 +3141,7 @@ body .now-playing-panel.is-queue-view .queue-history-search-field {
 
 body .now-playing-panel.is-queue-view .queue-history-search-field:focus-within {
     border-color: var(--ring);
-    background: var(--input);
     box-shadow: 0 0 0 3px rgb(var(--highlight-rgb) / 0.16);
-}
-
-body .now-playing-panel.is-queue-view .now-playing-panel-queue-view.is-scrolled .queue-history-search-field:not(:focus-within) {
-    background: var(--input);
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-field input {
