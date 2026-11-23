@@ -1494,7 +1494,7 @@ export class NowPlayingPanel {
                         </div>
                     </header>
                     <div class="now-playing-panel-lyrics-host"></div>
-                    <button type="button" class="now-playing-panel-lyrics-sync" hidden>${icon('lyrics-sync', 18)}<span>Sync lyrics</span></button>
+                    <button type="button" class="now-playing-panel-lyrics-sync ScrollToActive" aria-label="Scroll down to the current line" title="Scroll down to the current line" aria-hidden="true" inert><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
                 </section>
                 ${this.renderRelatedVideos(model)}
                 ${this.renderArtist(model)}
@@ -3078,7 +3078,18 @@ export class NowPlayingPanel {
         this.lyricsSyncElement = element;
         const sync = card.querySelector('.now-playing-panel-lyrics-sync');
         element.addEventListener('lyrics-sync-change', (event) => {
-            sync.hidden = this.collapsedLyrics || !event.detail.offSync;
+            const visible = !this.collapsedLyrics && event.detail.offSync;
+            sync.classList.toggle('Visible', visible);
+            sync.classList.toggle('Above', visible && event.detail.direction === 'Above');
+            sync.inert = !visible;
+            sync.setAttribute('aria-hidden', String(!visible));
+            if (visible) {
+                const label = event.detail.direction === 'Above'
+                    ? 'Scroll up to the current line'
+                    : 'Scroll down to the current line';
+                sync.setAttribute('aria-label', label);
+                sync.title = label;
+            }
         }, { signal });
     }
 
@@ -3089,7 +3100,14 @@ export class NowPlayingPanel {
         lyricsHost?.setAttribute('aria-hidden', String(this.collapsedLyrics));
         if (lyricsHost) lyricsHost.inert = this.collapsedLyrics;
         const sync = this.root.querySelector('.now-playing-panel-lyrics-sync');
-        if (sync) sync.hidden = this.collapsedLyrics || !this.lyricsSyncElement?.isOffSync?.();
+        if (sync) {
+            const direction = this.lyricsSyncElement?.getOffSyncDirection?.();
+            const visible = !this.collapsedLyrics && direction !== null && direction !== undefined;
+            sync.classList.toggle('Visible', visible);
+            sync.classList.toggle('Above', visible && direction === 'Above');
+            sync.inert = !visible;
+            sync.setAttribute('aria-hidden', String(!visible));
+        }
         const expand = this.root.querySelector('.now-playing-panel-lyrics-expand');
         expand?.setAttribute('aria-expanded', String(this.expandedLyrics));
         expand?.setAttribute('aria-label', this.expandedLyrics ? 'Collapse lyrics panel' : 'Expand lyrics in panel');

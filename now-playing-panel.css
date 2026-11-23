@@ -882,63 +882,77 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 .now-playing-panel-lyrics-sync {
     position: absolute;
     z-index: 4;
-    right: 14px;
-    bottom: 14px;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 140px;
-    height: 38px;
-    padding: 0 20px 0 14px;
+    right: 24px;
+    bottom: 24px;
+    display: grid;
+    width: 44px;
+    height: 44px;
+    padding: 0;
     border: 0;
-    border-radius: 999px;
     justify-content: center;
-    background: rgb(255 255 255 / 0.9);
-    color: rgb(14 14 18);
-    font: inherit;
-    font-size: 0.875rem;
-    font-weight: 650;
-    white-space: nowrap;
+    place-items: center;
+    border-radius: 50%;
+    color: #fff;
+    background: rgb(255 255 255 / 0.08);
+    backdrop-filter: blur(24px) contrast(0.6) brightness(0.8) saturate(1.8);
     cursor: pointer;
     box-shadow:
-        0 16px 36px -10px rgb(0 0 0 / 0.55),
-        0 0 0 1px rgb(255 255 255 / 0.5);
-    animation: now-playing-lyrics-sync-in 420ms cubic-bezier(0.16, 1, 0.3, 1);
+        0 10px 24px -8px rgb(8 10 18 / 0.42),
+        inset 0 1px 0 rgb(255 255 255 / 0.36),
+        inset 0 0 0 1px rgb(255 255 255 / 0.16),
+        inset 0 -1px 0 rgb(255 255 255 / 0.18);
+    opacity: 0;
+    scale: 0.92;
+    pointer-events: none;
     transition:
-        scale 240ms cubic-bezier(0.16, 1, 0.3, 1),
-        background 240ms ease;
+        opacity 0.2s,
+        scale 0.16s cubic-bezier(0.34, 1.56, 0.64, 1),
+        background-color 0.2s,
+        box-shadow 0.2s;
 }
 
-.now-playing-panel-lyrics-sync:hover,
+.now-playing-panel-lyrics-sync.Visible {
+    opacity: 1;
+    scale: 1;
+    pointer-events: auto;
+    transition:
+        opacity 180ms ease-out,
+        scale 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.now-playing-panel-lyrics-sync.Visible:hover {
+    background: rgb(255 255 255 / 0.13);
+}
+
+.now-playing-panel-lyrics-sync.Visible:active {
+    scale: 0.94;
+    transition: scale 0.1s ease-out;
+}
+
 .now-playing-panel-lyrics-sync:focus-visible {
-    background: #fff;
-    scale: 1.04;
+    outline: 2px solid #fff;
+    outline-offset: 2px;
 }
 
-.now-playing-panel-lyrics-sync:active {
-    scale: 0.97;
+.now-playing-panel-lyrics-sync svg {
+    width: 20px;
+    height: 20px;
+    transition: rotate 250ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.now-playing-panel.lyrics-expanded .now-playing-panel-lyrics-sync {
-    right: 22px;
-    bottom: calc(var(--now-playing-player-clearance) + 6px);
+.now-playing-panel-lyrics-sync.Above svg {
+    rotate: 180deg;
 }
 
-.now-playing-panel-lyrics-sync[hidden] {
-    display: none;
-}
-
-@keyframes now-playing-lyrics-sync-in {
-    from {
-        opacity: 0;
-        translate: 0 12px;
-        scale: 0.92;
-    }
+.now-playing-panel-lyrics-sync:not(.Visible) svg {
+    transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .now-playing-panel-lyrics-sync {
-        animation: none;
+    .now-playing-panel-lyrics-sync,
+    .now-playing-panel-lyrics-sync.Visible:active {
+        scale: 1;
+        transition-duration: 0s;
     }
 }
 

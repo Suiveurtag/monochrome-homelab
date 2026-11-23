@@ -112,13 +112,25 @@ const SHADOW_BRIDGE_CSS = `
 }
 #SpicyLyricsPage.CardMode .LyricsContainer .LyricsContent {
     --DefaultLyricsSize: calc(clamp(1.85rem, calc(1cqw * 6), 2.8rem) * var(--SL-LyricsScale, 1));
+    --SpicyLyrics-LineSpacing: 1cqw 0;
+    --ImageMask: linear-gradient(
+        180deg,
+        transparent 0,
+        transparent 8px,
+        var(--spice-sidebar) calc(28px + var(--SL-LyricsContent_MaskTopPadding, 0px)),
+        var(--spice-sidebar) calc(100% - 28px),
+        transparent calc(100% - 8px),
+        transparent
+    );
+    -webkit-mask-image: var(--ImageMask);
+    mask-image: var(--ImageMask);
 }
 #SpicyLyricsPage .LyricsContainer .LyricsContent .SpicyLyricsScrollContainer {
     padding-inline: clamp(1rem, 8cqw, 2.25rem);
 }
 #SpicyLyricsPage.CardMode .LyricsContainer .LyricsContent .SpicyLyricsScrollContainer {
     margin-top: 0 !important;
-    padding-top: 26.7cqh !important;
+    padding-top: 24px !important;
 }
 #SpicyLyricsPage.Fullscreen .LyricsContainer .LyricsContent .SpicyLyricsScrollContainer {
     padding-inline: clamp(1.5rem, 7cqw, 6rem);
@@ -458,10 +470,12 @@ export class SpicyLyricsElement extends HTMLElement {
         };
         this._simpleBar = null;
         this._updateSyncState = () => {
-            const offSync = this.isOffSync();
-            if (offSync === this._offSync) return;
+            const direction = this.getOffSyncDirection();
+            const offSync = direction !== null;
+            if (offSync === this._offSync && direction === this._offSyncDirection) return;
             this._offSync = offSync;
-            this.dispatchEvent(new CustomEvent('lyrics-sync-change', { detail: { offSync } }));
+            this._offSyncDirection = direction;
+            this.dispatchEvent(new CustomEvent('lyrics-sync-change', { detail: { offSync, direction } }));
         };
         this._onScrollKey = (event) => {
             if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(event.key)) this._suspendAutoScroll();
@@ -523,13 +537,23 @@ export class SpicyLyricsElement extends HTMLElement {
 
     /** True when the user scrolled away and the playing line is outside the visible area. */
     isOffSync() {
-        if (!this._manualScrollUntil || this._lyricsType === 'Static' || getSpicyLyricsSetting('scrollToActive') !== 'true') return false;
-        const line = this._lineStates[getScrollLineIndex(this._lineStates, this._currentTime)]?.element;
-        if (!line || !this._scrollElement) return false;
-        if (!line.isConnected) return true;
+        return this.getOffSyncDirection() !== null;
+    }
+
+    getOffSyncDirection() {
+        if (!this._manualScrollUntil || this._lyricsType === 'Static' || getSpicyLyricsSetting('scrollToActive') !== 'true') return null;
+        const index = getScrollLineIndex(this._lineStates, this._currentTime);
+        const line = this._lineStates[index]?.element;
+        if (!line || !this._scrollElement) return null;
+        if (!line.isConnected) {
+            const firstMounted = this._lineStates.findIndex((state) => state.element.isConnected);
+            return firstMounted < 0 || index >= firstMounted ? 'Below' : 'Above';
+        }
         const view = this._scrollElement.getBoundingClientRect();
         const rect = line.getBoundingClientRect();
-        return rect.bottom < view.top || rect.top > view.bottom;
+        if (rect.bottom < view.top) return 'Above';
+        if (rect.top > view.bottom) return 'Below';
+        return null;
     }
 
     resync() {

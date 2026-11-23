@@ -374,6 +374,7 @@ export class LyricsVirtualizer {
     if (el?.classList.contains("musical-line") && !isOpenInterlude(el)) return 0;
     const cqw = this._containerWidth / 100;
     if (this._isNextBgLine(index)) return GAP_LINE_TO_BG * cqw;
+    if (this._scrollElement?.closest('#SpicyLyricsPage.CardMode')) return GAP_NORMAL * cqw;
     if (this._gapEm > 0 && this._gapFontPx > 0) return this._gapFontPx * this._gapEm;
     return GAP_NORMAL * cqw;
   }
