@@ -38,16 +38,6 @@
         visibility 0s linear;
 }
 
-body .now-playing-panel.is-queue-view::after {
-    content: '';
-    position: absolute;
-    z-index: 3;
-    inset: 0;
-    pointer-events: none;
-    backdrop-filter: blur(38px) saturate(1.4) brightness(0.76);
-    -webkit-backdrop-filter: blur(38px) saturate(1.4) brightness(0.76);
-}
-
 .now-playing-panel.is-closed {
     opacity: 0.82;
     pointer-events: none;
@@ -1911,6 +1901,8 @@ html.lyrics-view-closing::view-transition-new(lyrics-panel) {
     border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
     border-radius: inherit;
     background: rgb(0 0 0 / 0.1);
+    backdrop-filter: blur(18px) saturate(1.4) brightness(0.82);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4) brightness(0.82);
     box-shadow:
         0 24px 70px rgb(0 0 0 / 0.4),
         0 2px 8px rgb(0 0 0 / 0.24);
