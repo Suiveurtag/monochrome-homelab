@@ -125,11 +125,19 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     filter: brightness(0.6) saturate(2.65);
     mask-image: linear-gradient(to bottom, black 64px, transparent 100%);
     opacity: 0;
-    transition: opacity 500ms ease;
+    clip-path: inset(0 0 100% 0);
+    transition: opacity 500ms ease, clip-path 500ms ease;
 }
 
 .now-playing-panel.is-scrolled:not(.lyrics-expanded):has(> .has-kawarp-background) > .now-playing-panel-top-bg {
     opacity: 1;
+    clip-path: inset(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .now-playing-panel-top-bg {
+        transition: none;
+    }
 }
 
 .now-playing-panel.lyrics-expanded .now-playing-panel-viewport {
