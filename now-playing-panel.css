@@ -2599,9 +2599,9 @@ body .now-playing-panel.is-queue-view .queue-transition-menu {
     border: 1px solid var(--border);
     border-radius: 12px;
     background: color-mix(in srgb, var(--card) 72%, transparent);
-    -webkit-backdrop-filter: blur(32px) saturate(1.45);
-    backdrop-filter: blur(32px) saturate(1.45);
-    --queue-surface-shadow: 0 18px 44px rgb(0 0 0 / 0.42);
+    -webkit-backdrop-filter: blur(48px) brightness(0.7);
+    backdrop-filter: blur(48px) brightness(0.7);
+    box-shadow: 0 18px 44px rgb(0 0 0 / 0.42);
     opacity: 0;
     pointer-events: none;
     transform: translateY(-6px) scale(0.965);

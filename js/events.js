@@ -58,6 +58,7 @@ import { createElasticVolume } from './elastic-volume.js';
 import { initializePlayerActionLayout, PLAYER_ACTIONS } from './player-bar-layout.js';
 import { canvasSettings } from './canvas-settings.js';
 import { setupTrackVersionPicker } from './track-version-picker.js';
+import { setupShuffleModePicker } from './shuffle-mode-picker.js';
 import { getTrackDisplayAlbum } from './track-versions.js';
 import { PLAYBACK_QUALITY_OPTIONS, SANA_QUALITY } from './player-quality.js';
 
@@ -1599,6 +1600,7 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
 
     syncShuffleButton();
     syncRepeatButton();
+    setupShuffleModePicker(player, shuffleBtn);
 
     shuffleBtn.addEventListener('click', async () => {
         await hapticLight();

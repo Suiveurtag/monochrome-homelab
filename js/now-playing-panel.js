@@ -1270,7 +1270,7 @@ export class NowPlayingPanel {
         this.animateQueueCanvasStage(canvasStage, transitionToken, 'closing');
         if (animateCover) this.animateQueueCover(source, target, transitionToken, 'closing');
         else this.clearQueueCoverAnimation();
-        this.animateQueueLayer(layerState.offsetY, layerState.opacity, QUEUE_CLOSE_DURATION, transitionToken, finish, 'closing');
+        this.animateQueueLayer(layerState.offsetY, QUEUE_CLOSE_DURATION, transitionToken, finish, 'closing');
     }
 
     isNowPlayingPanelScrolled() {
@@ -2417,7 +2417,6 @@ export class NowPlayingPanel {
             this.syncQueueLayerState();
             this.animateQueueLayer(
                 this.getQueueLayerHeight(),
-                0,
                 QUEUE_OPEN_DURATION,
                 transition.token,
                 () => this.finishQueueOpening(transition.token),
@@ -2457,7 +2456,6 @@ export class NowPlayingPanel {
                 if (animateCover) this.hideQueueCoverSource({ preserveCanvas: Boolean(this.queueCanvasStage) });
                 this.animateQueueLayer(
                     layerState.offsetY,
-                    layerState.opacity,
                     QUEUE_OPEN_DURATION,
                     transitionToken,
                     () => this.finishQueueOpening(transitionToken),
@@ -2488,14 +2486,14 @@ export class NowPlayingPanel {
         };
     }
 
-    animateQueueLayer(fromY, fromOpacity, duration, token, onfinish, direction) {
+    animateQueueLayer(fromY, duration, token, onfinish, direction) {
         if (!this.queueLayer || token !== this.queueTransitionToken) return;
         const toY = direction === 'closing' ? this.getQueueLayerHeight() : 0;
-        const toOpacity = direction === 'closing' ? 0 : 1;
+        this.queueLayer.style.setProperty('opacity', '1');
         const animation = this.queueLayer.animate(
             [
-                { transform: `translate3d(0, ${fromY}px, 0)`, opacity: fromOpacity },
-                { transform: `translate3d(0, ${toY}px, 0)`, opacity: toOpacity },
+                { transform: `translate3d(0, ${fromY}px, 0)` },
+                { transform: `translate3d(0, ${toY}px, 0)` },
             ],
             {
                 duration,
@@ -2510,7 +2508,6 @@ export class NowPlayingPanel {
         animation.onfinish = () => {
             if (token !== this.queueTransitionToken) return;
             this.queueLayer.style.setProperty('transform', direction === 'opening' ? 'none' : `translateY(${toY}px)`);
-            this.queueLayer.style.setProperty('opacity', String(toOpacity));
             animation.cancel();
             this.queueLayerAnimation = null;
             onfinish?.();
