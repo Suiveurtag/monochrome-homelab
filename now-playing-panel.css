@@ -38,6 +38,16 @@
         visibility 0s linear;
 }
 
+body .now-playing-panel.is-queue-view::after {
+    content: '';
+    position: absolute;
+    z-index: 3;
+    inset: 0;
+    pointer-events: none;
+    backdrop-filter: blur(38px) saturate(1.4) brightness(0.76);
+    -webkit-backdrop-filter: blur(38px) saturate(1.4) brightness(0.76);
+}
+
 .now-playing-panel.is-closed {
     opacity: 0.82;
     pointer-events: none;
@@ -1901,7 +1911,6 @@ html.lyrics-view-closing::view-transition-new(lyrics-panel) {
     border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
     border-radius: inherit;
     background: rgb(0 0 0 / 0.1);
-    backdrop-filter: blur(38px) saturate(1.4) brightness(0.76);
     box-shadow:
         0 24px 70px rgb(0 0 0 / 0.4),
         0 2px 8px rgb(0 0 0 / 0.24);
@@ -1924,6 +1933,9 @@ html.lyrics-view-closing::view-transition-new(lyrics-panel) {
 
 .now-playing-panel-queue-layer.is-visible {
     pointer-events: auto;
+    will-change: auto;
+    contain: none;
+    backface-visibility: visible;
 }
 
 .now-playing-panel-queue-layer.is-closing {
@@ -1962,7 +1974,6 @@ body .now-playing-panel.is-queue-view .queue-panel-header {
     position: sticky;
     z-index: 5;
     top: 0;
-    isolation: isolate;
     display: grid;
     grid-template-columns: 44px minmax(0, 1fr) 44px;
     min-height: 64px;
@@ -1970,8 +1981,18 @@ body .now-playing-panel.is-queue-view .queue-panel-header {
     gap: 8px;
     padding: 0 8px;
     border-bottom: 1px solid var(--border);
-    background: rgb(0 0 0 / 0.35);
-    backdrop-filter: blur(24px) brightness(0.7);
+    background: color-mix(in srgb, var(--card) 24%, transparent);
+}
+
+body .now-playing-panel.is-queue-view .queue-panel-header::before {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    pointer-events: none;
+    background: color-mix(in srgb, var(--card) 16%, transparent);
+    backdrop-filter: blur(32px) saturate(1.55) brightness(1.08);
+    -webkit-backdrop-filter: blur(32px) saturate(1.55) brightness(1.08);
 }
 
 body .now-playing-panel.is-queue-view .queue-header-tabs {
@@ -2579,7 +2600,9 @@ body .now-playing-panel.is-queue-view .queue-transition-menu {
     padding: 6px;
     border: 1px solid var(--border);
     border-radius: 12px;
-    background: color-mix(in srgb, rgb(var(--highlight-rgb)) 24%, #33343c);
+    background: color-mix(in srgb, var(--card) 72%, transparent);
+    -webkit-backdrop-filter: blur(32px) saturate(1.45);
+    backdrop-filter: blur(32px) saturate(1.45);
     box-shadow: 0 18px 44px rgb(0 0 0 / 0.42);
     opacity: 0;
     pointer-events: none;
