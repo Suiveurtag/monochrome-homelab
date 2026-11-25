@@ -16,7 +16,7 @@ export function normalizeSourceContext(value) {
     };
 }
 
-export function resolveArtwork(track, api) {
+function resolveArtwork(track, api) {
     const albumArtwork = getTrackDisplayAlbum(track) || {};
     const canvas = getTrackPlayerCanvas(track);
     const motion = getSpicyLyricsSetting('motionArtwork') === 'true'

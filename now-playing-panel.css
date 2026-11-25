@@ -86,7 +86,7 @@
 
 body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     opacity: 1;
-    background: rgb(0 0 0 / 0.04);
+    background: rgb(0 0 0 / 0.06);
 }
 
 .now-playing-panel-spicy-bg .spicy-dynamic-bg {
@@ -97,10 +97,6 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
 
 .now-playing-panel-spicy-bg.has-kawarp-background .spicy-dynamic-bg {
     opacity: 1;
-}
-
-body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg .spicy-dynamic-bg {
-    filter: brightness(0.92) saturate(1.65);
 }
 
 .now-playing-panel-spicy-bg .spicy-dynamic-bg-shade {
@@ -1893,6 +1889,8 @@ html.lyrics-view-closing::view-transition-new(lyrics-panel) {
 
 }
 
+/* The queue is an in-panel drawer. The parent clips it above the player while
+   the spicy background stays mounted beneath the translucent surface. */
 .now-playing-panel-queue-layer {
     position: absolute;
     z-index: 4;
@@ -1907,10 +1905,8 @@ html.lyrics-view-closing::view-transition-new(lyrics-panel) {
         0 2px 8px rgb(0 0 0 / 0.24);
     opacity: 0;
     pointer-events: none;
-    transform: translate3d(0, 100%, 0);
-    backface-visibility: hidden;
+    transform: translateY(100%);
     contain: paint;
-    will-change: transform;
 }
 
 .now-playing-panel-queue-layer::before {
@@ -1920,7 +1916,8 @@ html.lyrics-view-closing::view-transition-new(lyrics-panel) {
     inset: 0;
     pointer-events: none;
     border-radius: inherit;
-    background: rgb(0 0 0 / 0.06);
+    background: rgb(0 0 0 / 0.1);
+    backdrop-filter: blur(38px) saturate(1.4) brightness(0.76);
 }
 
 .now-playing-panel-queue-layer.is-visible {
@@ -1966,6 +1963,7 @@ body .now-playing-panel.is-queue-view .queue-panel-header {
     position: sticky;
     z-index: 5;
     top: 0;
+    isolation: isolate;
     display: grid;
     grid-template-columns: 44px minmax(0, 1fr) 44px;
     min-height: 64px;
@@ -1973,7 +1971,6 @@ body .now-playing-panel.is-queue-view .queue-panel-header {
     gap: 8px;
     padding: 0 8px;
     border-bottom: 1px solid var(--border);
-<<<<<<< HEAD
     background: color-mix(in srgb, var(--card) 24%, transparent);
 }
 
@@ -1986,9 +1983,6 @@ body .now-playing-panel.is-queue-view .queue-panel-header::before {
     background: color-mix(in srgb, var(--card) 16%, transparent);
     backdrop-filter: blur(32px) saturate(1.55) brightness(1.08);
     -webkit-backdrop-filter: blur(32px) saturate(1.55) brightness(1.08);
-=======
-    background: transparent;
->>>>>>> b6fb5f7 (Refine lyrics playback and player interactions)
 }
 
 body .now-playing-panel.is-queue-view .queue-header-tabs {
@@ -3150,6 +3144,8 @@ body .now-playing-panel.is-queue-view .queue-history-search-field {
     padding: 2px 3px 2px 4px;
     border: 1px solid var(--border);
     border-radius: 999px;
+    background: rgb(0 0 0 / 0.35);
+    backdrop-filter: blur(24px) brightness(0.7);
     transition:
         border-color 180ms var(--ease-out),
         background-color 180ms var(--ease-out),
@@ -3158,7 +3154,7 @@ body .now-playing-panel.is-queue-view .queue-history-search-field {
 
 body .now-playing-panel.is-queue-view .queue-history-search-field:focus-within {
     border-color: var(--ring);
-    --queue-surface-shadow: 0 0 0 3px rgb(var(--highlight-rgb) / 0.16);
+    box-shadow: 0 0 0 3px rgb(var(--highlight-rgb) / 0.16);
 }
 
 body .now-playing-panel.is-queue-view .queue-history-search-field input {
@@ -3369,22 +3365,6 @@ body .now-playing-panel.is-queue-view .queue-list-empty p {
     color: var(--muted-foreground);
     font-size: 0.67rem;
     line-height: 1.4;
-}
-
-body .now-playing-panel.is-queue-view :is(.queue-panel-header, .queue-history-search-field, .queue-transition-menu) {
-    --queue-surface-color: color-mix(in srgb, var(--card) 91%, var(--foreground));
-    background-color: var(--queue-surface-color);
-    box-shadow: inset 0 1px rgb(255 255 255 / 9%), var(--queue-surface-shadow, 0 0 transparent);
-}
-
-@supports (backdrop-filter: blur(1px)) {
-    @media not (prefers-reduced-transparency: reduce) {
-        body .now-playing-panel.is-queue-view :is(.queue-panel-header, .queue-history-search-field, .queue-transition-menu) {
-            background-color: color-mix(in srgb, var(--queue-surface-color) 48%, transparent);
-            background-image: linear-gradient(160deg, rgb(255 255 255 / 7%), transparent 65%);
-            backdrop-filter: blur(28px) saturate(1.6);
-        }
-    }
 }
 
 body .now-playing-panel.is-queue-view.is-queue-closing {
