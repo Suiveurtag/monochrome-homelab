@@ -58,7 +58,9 @@ import { createElasticVolume } from './elastic-volume.js';
 import { initializePlayerActionLayout, PLAYER_ACTIONS } from './player-bar-layout.js';
 import { canvasSettings } from './canvas-settings.js';
 import { setupTrackVersionPicker } from './track-version-picker.js';
+import { getPlayerPopoverFrames, PLAYER_POPOVER_OPEN } from './player-popover-motion.js';
 import { setupShuffleModePicker } from './shuffle-mode-picker.js';
+import { getShuffleMode } from './recommendation-settings.js';
 import { getTrackDisplayAlbum } from './track-versions.js';
 import { PLAYBACK_QUALITY_OPTIONS, SANA_QUALITY } from './player-quality.js';
 
@@ -612,34 +614,8 @@ function setupQualityPopover(player) {
         await selectionTransition.finished.catch(() => {});
     };
 
-    const getFloatingPanelFrames = (triggerRect = lastTriggerRect) => {
-        const panelRect = panel.getBoundingClientRect();
-        const safeTriggerRect = triggerRect || {
-            left: panelRect.left + panelRect.width / 2,
-            top: panelRect.top + panelRect.height,
-            width: 1,
-            height: 1,
-        };
-        return {
-            collapsed: {
-                opacity: 0,
-                borderRadius: '999px',
-                clipPath: 'inset(0 round 999px)',
-                transform: `translate(${safeTriggerRect.left - panelRect.left}px, ${
-                    safeTriggerRect.top - panelRect.top
-                }px) scale(${Math.max(0.08, safeTriggerRect.width / panelRect.width)}, ${Math.max(
-                    0.06,
-                    safeTriggerRect.height / panelRect.height
-                )})`,
-            },
-            expanded: {
-                opacity: 1,
-                borderRadius: '16px',
-                clipPath: 'inset(0 round 16px)',
-                transform: 'translate(0, 0) scale(1)',
-            },
-        };
-    };
+    const getFloatingPanelFrames = (triggerRect = lastTriggerRect) =>
+        getPlayerPopoverFrames(panel.getBoundingClientRect(), triggerRect);
 
     const setPanelFrameStyles = (frame) => {
         panel.style.opacity = String(frame.opacity);
@@ -785,11 +761,7 @@ function setupQualityPopover(player) {
             panel.querySelector('input:checked')?.focus({ preventScroll: true });
             return;
         }
-        panelAnimation = panel.animate([collapsed, expanded], {
-            duration: 380,
-            easing: 'cubic-bezier(0.2, 0.9, 0.24, 1.04)',
-            fill: 'both',
-        });
+        panelAnimation = panel.animate([collapsed, expanded], PLAYER_POPOVER_OPEN);
         void panelAnimation.finished
             .then(() => {
                 if (run !== animationRun) return;
@@ -1575,10 +1547,12 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
 
     const syncShuffleButton = () => {
         const active = Boolean(player.shuffleActive);
+        const real = active && getShuffleMode() === 'real';
         shuffleBtn.classList.toggle('active', active);
+        shuffleBtn.classList.toggle('is-real-shuffle', real);
         shuffleBtn.setAttribute('aria-pressed', String(active));
-        shuffleBtn.title = active ? 'Shuffle on' : 'Shuffle off';
-        shuffleBtn.setAttribute('aria-label', active ? 'Turn shuffle off' : 'Turn shuffle on');
+        shuffleBtn.title = real ? 'Real Random shuffle on' : active ? 'Shuffle on' : 'Shuffle off';
+        shuffleBtn.setAttribute('aria-label', real ? 'Turn off Real Random shuffle' : active ? 'Turn shuffle off' : 'Turn shuffle on');
     };
     const syncRepeatButton = (mode = player.repeatMode) => {
         const active = mode !== REPEAT_MODE.OFF;
@@ -1601,11 +1575,12 @@ export async function initializePlayerEvents(player, _audioPlayer, scrobbler, ui
     syncShuffleButton();
     syncRepeatButton();
     setupShuffleModePicker(player, shuffleBtn);
+    window.addEventListener('player-queue-changed', syncShuffleButton);
+    window.addEventListener('shuffle-mode-changed', syncShuffleButton);
 
     shuffleBtn.addEventListener('click', async () => {
         await hapticLight();
         await player.toggleShuffle();
-        syncShuffleButton();
         if (window.renderQueueFunction) await window.renderQueueFunction();
     });
 

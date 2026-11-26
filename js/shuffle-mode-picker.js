@@ -1,5 +1,22 @@
+import { getPlayerPopoverFrames, PLAYER_POPOVER_OPEN } from './player-popover-motion.js';
 import { getShuffleMode, setShuffleMode, shuffleTracks } from './recommendation-settings.js';
 import { SVG_SHUFFLE } from './icons.js';
+import ICON_CHECK from '!lucide/check.svg?svg&icon';
+import ICON_DICE from '!lucide/dice-5.svg?svg&icon';
+
+function modeOption(mode, title, description, icon) {
+    return `<label>
+        <input type="radio" name="shuffle-picker-mode" value="${mode}"
+            aria-labelledby="shuffle-${mode}-title" aria-describedby="shuffle-${mode}-description">
+        <span class="shuffle-mode-option">
+            <span class="shuffle-mode-glyph" aria-hidden="true">${icon(20)}</span>
+            <span class="shuffle-mode-copy">
+                <span id="shuffle-${mode}-title" class="shuffle-mode-name">${title}</span>
+                <span id="shuffle-${mode}-description" class="shuffle-mode-description">${description}</span>
+            </span>
+        </span>
+    </label>`;
+}
 
 export function setupShuffleModePicker(player, trigger) {
     if (!trigger) return;
@@ -7,12 +24,12 @@ export function setupShuffleModePicker(player, trigger) {
     panel.className = 'shuffle-mode-picker';
     panel.hidden = true;
     panel.id = 'shuffle-mode-picker';
-    panel.innerHTML = `<div class="shuffle-mode-heading"><div class="shuffle-mode-icon" aria-hidden="true">${SVG_SHUFFLE(20)}</div><div><div class="shuffle-mode-title" id="shuffle-mode-title">Shuffle</div><div class="shuffle-mode-caption">Choose how your queue plays</div></div></div>
+    panel.innerHTML = `<h2 class="shuffle-mode-heading" id="shuffle-mode-title">Shuffle mode</h2>
         <div class="shuffle-mode-options" role="radiogroup" aria-labelledby="shuffle-mode-title">
-            <label><input type="radio" name="shuffle-picker-mode" value="smart" aria-describedby="shuffle-mode-description"><span class="shuffle-mode-choice">Smart Random</span></label>
-            <label><input type="radio" name="shuffle-picker-mode" value="real" aria-describedby="shuffle-mode-description"><span class="shuffle-mode-choice">Real Random</span></label>
-        </div>
-        <div class="shuffle-mode-detail"><div class="shuffle-mode-mark" aria-hidden="true"><i></i><i></i><i></i></div><p class="shuffle-mode-description" id="shuffle-mode-description" aria-live="polite"></p></div>`;
+            <span class="shuffle-mode-selection" aria-hidden="true">${ICON_CHECK(16)}</span>
+            ${modeOption('smart', 'Smart Random', 'Spaces out artists and recent plays', SVG_SHUFFLE)}
+            ${modeOption('real', 'Real Random', 'Fully random track order', ICON_DICE)}
+        </div>`;
     document.body.append(panel);
     trigger.setAttribute('aria-controls', panel.id);
     trigger.setAttribute('aria-haspopup', 'dialog');
@@ -20,65 +37,103 @@ export function setupShuffleModePicker(player, trigger) {
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-labelledby', 'shuffle-mode-title');
 
-    let animation;
-    let animationRun = 0;
-    const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const frames = () => {
-        const source = trigger.getBoundingClientRect();
-        const target = panel.getBoundingClientRect();
-        return [
-            { opacity: 0, borderRadius: '999px', clipPath: 'inset(0 round 999px)',
-                transform: `translate(${source.left - target.left}px, ${source.top - target.top}px) scale(${Math.max(0.08, source.width / target.width)}, ${Math.max(0.06, source.height / target.height)})` },
-            { opacity: 1, borderRadius: '16px', clipPath: 'inset(0 round 16px)', transform: 'translate(0, 0) scale(1)' },
-        ];
-    };
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const content = panel.querySelectorAll('.shuffle-mode-options, .shuffle-mode-heading');
+    let panelAnimation;
+    let contentAnimations = [];
+    let docked;
+
     const sync = () => {
-        const mode = getShuffleMode();
-        panel.querySelector(`input[value="${mode}"]`).checked = true;
-        panel.querySelector('.shuffle-mode-description').textContent = mode === 'smart'
-            ? 'Spaces out artists and recently played songs.'
-            : 'Every song has an equal chance, with no adjustments.';
+        panel.querySelector(`input[value="${getShuffleMode()}"]`).checked = true;
     };
-    const close = (restoreFocus = false) => {
-        if (panel.hidden) return;
-        const run = ++animationRun;
-        const [collapsed] = frames();
+    const stopPanelAnimation = () => {
         const style = getComputedStyle(panel);
-        const current = { opacity: style.opacity, borderRadius: style.borderRadius, clipPath: style.clipPath, transform: style.transform };
-        animation?.cancel();
-        panel.classList.remove('is-open');
+        const frame = { opacity: Number(style.opacity), transform: style.transform, borderRadius: style.borderRadius, clipPath: style.clipPath };
+        panelAnimation?.cancel();
+        return frame;
+    };
+    const hide = () => {
+        panel.hidden = true;
+        panelAnimation?.cancel();
+        contentAnimations.forEach((animation) => animation.cancel());
+        trigger.classList.remove('is-shuffle-picker-visible');
+    };
+    const close = (restoreFocus = false, withMotion = true) => {
+        if (panel.hidden || panel.inert) return;
+        const current = stopPanelAnimation();
+        panel.inert = true;
         trigger.setAttribute('aria-expanded', 'false');
-        if (restoreFocus) trigger.focus();
-        if (reducedMotion()) { panel.hidden = true; return; }
-        animation = panel.animate([current, collapsed], { duration: 200, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' });
-        animation.finished.then(() => {
-            if (run !== animationRun) return;
-            panel.hidden = true;
-            animation.cancel();
+        if (restoreFocus) trigger.focus({ preventScroll: true });
+        if (!withMotion || reducedMotion.matches) {
+            hide();
+            return;
+        }
+
+        const easing = getComputedStyle(panel).getPropertyValue('--ease-out').trim() || 'ease-out';
+        const exit = panel.animate([current, { offset: 0.56, opacity: current.opacity * 0.8 }, docked], {
+            duration: 155, easing, fill: 'forwards',
+        });
+        panelAnimation = exit;
+        exit.finished.then(() => {
+            if (panelAnimation === exit) hide();
         }).catch(() => {});
     };
-    const open = () => {
-        ++animationRun;
-        animation?.cancel();
+    const open = (withMotion = true) => {
+        if (!panel.hidden && !panel.inert) return;
+        const current = panel.hidden ? null : stopPanelAnimation();
         sync();
+        panel.inert = false;
         panel.hidden = false;
-        const rect = trigger.getBoundingClientRect();
-        const left = Math.max(8, Math.min(rect.left + rect.width / 2 - panel.offsetWidth / 2, window.innerWidth - panel.offsetWidth - 8));
-        panel.style.left = `${left}px`;
-        panel.style.top = `${Math.max(8, rect.top - panel.offsetHeight - 10)}px`;
-        const [collapsed, expanded] = frames();
-        panel.classList.add('is-open');
-        if (!reducedMotion()) {
-            animation = panel.animate([collapsed, expanded], { duration: 380, easing: 'cubic-bezier(0.2, 0.9, 0.24, 1.04)' });
-        }
         trigger.setAttribute('aria-expanded', 'true');
-        panel.querySelector('input:checked').focus();
+        trigger.classList.add('is-shuffle-picker-visible');
+
+        const rect = trigger.getBoundingClientRect();
+        const inset = 8;
+        const gap = 10;
+        const anchor = rect.left + rect.width / 2;
+        const above = rect.top - gap - panel.offsetHeight;
+        const below = rect.bottom + gap;
+        const opensBelow = above < inset && below + panel.offsetHeight <= window.innerHeight - inset;
+        const left = Math.max(inset, Math.min(anchor - panel.offsetWidth / 2, window.innerWidth - panel.offsetWidth - inset));
+        panel.style.left = `${left}px`;
+        panel.style.top = `${opensBelow ? below : Math.max(inset, above)}px`;
+        panel.style.transformOrigin = 'top left';
+        const direction = opensBelow ? -1 : 1;
+        docked = { opacity: 0, borderRadius: '12px', clipPath: 'inset(0 round 12px)', transform: `translateY(${11 * direction}px) scale(0.94)` };
+
+        if (withMotion && !reducedMotion.matches) {
+            const { collapsed, expanded } = getPlayerPopoverFrames(panel.getBoundingClientRect(), rect, '12px');
+            const opening = panel.animate([current ?? collapsed, expanded], PLAYER_POPOVER_OPEN);
+            panelAnimation = opening;
+            opening.finished.then(() => opening.cancel()).catch(() => {});
+            if (!current) {
+                contentAnimations = Array.from(content).flatMap((element, index) => {
+                    const delay = index === 0 ? 60 : 40;
+                    return [
+                        element.animate([{ opacity: 0 }, { opacity: 1 }], {
+                            duration: 180, delay, easing: 'ease', fill: 'backwards',
+                        }),
+                        element.animate([{ transform: 'translateY(6px)' }, { transform: 'translateY(0)' }], {
+                            duration: 260, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'backwards',
+                        }),
+                    ];
+                });
+            }
+        } else {
+            contentAnimations.forEach((animation) => animation.cancel());
+        }
+        panel.querySelector('input:checked').focus({ preventScroll: true });
     };
-    trigger.addEventListener('contextmenu', (event) => { event.preventDefault(); event.stopPropagation(); open(); });
+
+    trigger.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        open();
+    });
     trigger.addEventListener('keydown', (event) => {
         if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
             event.preventDefault();
-            open();
+            open(false);
         }
     });
     panel.addEventListener('change', async (event) => {
@@ -96,11 +151,19 @@ export function setupShuffleModePicker(player, trigger) {
         }
     });
     panel.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(true); }
+        if (event.key === 'Tab') {
+            close(true, false);
+            return;
+        }
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopPropagation();
+        close(true, false);
     });
     document.addEventListener('pointerdown', (event) => {
-        if (!panel.hidden && !panel.contains(event.target) && event.target !== trigger) close();
+        if (!panel.contains(event.target) && !trigger.contains(event.target)) close();
     });
+    trigger.addEventListener('click', () => close());
     window.addEventListener('shuffle-mode-changed', sync);
-    window.addEventListener('resize', () => { if (!panel.hidden) close(); });
+    window.addEventListener('resize', () => close(panel.contains(document.activeElement), false));
 }

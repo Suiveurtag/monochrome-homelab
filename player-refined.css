@@ -1106,90 +1106,57 @@
 .shuffle-mode-picker {
     position: fixed;
     z-index: 10000;
-    width: min(310px, calc(100vw - 16px));
-    padding: 18px;
+    width: min(288px, calc(100vw - 16px));
+    max-height: calc(100dvh - 16px);
+    overflow: auto;
+    padding: 5px;
     color: var(--foreground);
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
-    clip-path: inset(0 round 16px);
-    transform-origin: top left;
-}
-
-.shuffle-mode-picker .shuffle-mode-heading,
-.shuffle-mode-picker .shuffle-mode-options,
-.shuffle-mode-picker .shuffle-mode-detail {
-    opacity: 0;
-    transform: translateY(6px);
-    transition: opacity 180ms ease, transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.shuffle-mode-picker.is-open .shuffle-mode-heading,
-.shuffle-mode-picker.is-open .shuffle-mode-options,
-.shuffle-mode-picker.is-open .shuffle-mode-detail {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .shuffle-mode-picker .shuffle-mode-heading,
-    .shuffle-mode-picker .shuffle-mode-options,
-    .shuffle-mode-picker .shuffle-mode-detail {
-        transition: none;
-    }
+    border-radius: 12px;
+    box-shadow: 0 16px 36px -14px rgb(0 0 0 / 0.5);
 }
 
 .shuffle-mode-heading {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.shuffle-mode-icon {
-    display: grid;
-    flex: 0 0 42px;
-    height: 42px;
-    place-items: center;
-    border-radius: 12px;
-    color: rgb(var(--highlight-rgb));
-    background: rgb(var(--highlight-rgb) / 0.14);
-}
-
-.shuffle-mode-title {
-    font-size: 17px;
-    font-weight: 700;
-}
-
-.shuffle-mode-caption {
-    margin-top: 3px;
+    margin: 0 8px 4px;
+    padding: 6px 1px 8px;
+    border-bottom: 1px solid var(--border);
     color: var(--muted-foreground);
     font-size: 12px;
+    font-weight: 600;
+    line-height: 1.25;
 }
 
 .shuffle-mode-options {
+    --shuffle-option-gap: 2px;
+
     position: relative;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px;
-    margin-top: 16px;
-    padding: 4px;
-    border-radius: 9px;
-    background: var(--background);
+    grid-auto-rows: 1fr;
+    gap: var(--shuffle-option-gap);
 }
 
-.shuffle-mode-options::before {
-    content: '';
+.shuffle-mode-selection {
     position: absolute;
-    inset: 4px auto 4px 4px;
-    width: calc((100% - 12px) / 2);
-    border-radius: 6px;
-    background: var(--foreground);
-    transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+    inset: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    height: calc((100% - var(--shuffle-option-gap)) / 2);
+    padding-inline: 9px;
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--active-highlight) 10%, transparent);
+    color: var(--active-highlight);
+    pointer-events: none;
+    transition: transform 180ms var(--ease-out);
 }
 
-.shuffle-mode-options:has(input[value='real']:checked)::before {
-    transform: translateX(calc(100% + 4px));
+.shuffle-mode-options:has(input[value='real']:checked) .shuffle-mode-selection {
+    transform: translateY(calc(100% + var(--shuffle-option-gap)));
+}
+
+.shuffle-mode-options:has(input:focus-visible) .shuffle-mode-selection {
+    transition: none;
 }
 
 .shuffle-mode-options label {
@@ -1199,74 +1166,92 @@
 
 .shuffle-mode-options input {
     position: absolute;
+    width: 1px;
+    height: 1px;
     opacity: 0;
 }
 
-.shuffle-mode-options .shuffle-mode-choice {
+.shuffle-mode-option {
     display: grid;
-    min-height: 42px;
+    grid-template-columns: 20px minmax(0, 1fr) 16px;
+    gap: 11px;
+    align-items: center;
+    min-height: 50px;
+    padding: 7px 9px;
+    border-radius: 7px;
+}
+
+.shuffle-mode-glyph {
+    display: grid;
     place-items: center;
-    padding: 6px;
-    border-radius: 6px;
+    color: var(--muted-foreground);
+}
+
+.shuffle-mode-copy {
+    display: grid;
+    gap: 3px;
+}
+
+.shuffle-mode-name {
     font-size: 13px;
     font-weight: 600;
-    text-align: center;
-}
-
-.shuffle-mode-detail {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-height: 62px;
-    margin-top: 14px;
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--foreground) 4%, var(--card));
-}
-
-.shuffle-mode-mark {
-    display: grid;
-    flex: 0 0 27px;
-    gap: 4px;
-}
-
-.shuffle-mode-mark i {
-    height: 3px;
-    border-radius: 4px;
-    background: rgb(var(--highlight-rgb));
-}
-
-.shuffle-mode-mark i:nth-child(2) {
-    width: 65%;
-    opacity: 0.55;
-}
-
-.shuffle-mode-mark i:nth-child(3) {
-    width: 82%;
-    opacity: 0.75;
+    line-height: 1.2;
 }
 
 .shuffle-mode-description {
-    margin: 0;
-    color: var(--foreground);
+    color: var(--muted-foreground);
     font-size: 12px;
-    line-height: 1.4;
+    line-height: 1.25;
 }
 
-.shuffle-mode-options input:checked + span {
-    color: var(--background);
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .shuffle-mode-options::before {
-        transition: none;
+@media (hover: hover) and (pointer: fine) {
+    .shuffle-mode-options label:hover input:not(:checked) + .shuffle-mode-option {
+        background: color-mix(in srgb, var(--foreground) 5%, transparent);
     }
 }
 
-.shuffle-mode-options input:focus-visible + span {
-    outline: 2px solid var(--foreground);
-    outline-offset: 2px;
+.shuffle-mode-options input:checked + .shuffle-mode-option .shuffle-mode-glyph {
+    color: var(--active-highlight);
+}
+
+.shuffle-mode-options input:focus-visible + .shuffle-mode-option {
+    outline: 1px solid var(--active-highlight);
+    outline-offset: -1px;
+}
+
+#shuffle-btn .shuffle-real-indicator {
+    position: absolute;
+    inset: auto -6px -2px auto;
+    display: grid;
+    place-items: center;
+    visibility: hidden;
+    color: var(--active-highlight);
+    opacity: 0;
+    transform: rotate(-36deg) scale(0.86);
+    pointer-events: none;
+    transition:
+        opacity 125ms var(--ease-out),
+        transform 160ms var(--ease-out),
+        visibility 160ms;
+}
+
+#shuffle-btn.is-real-shuffle .shuffle-real-indicator {
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+}
+
+#shuffle-btn .shuffle-real-indicator svg {
+    width: 12px;
+    height: 12px;
+    stroke-width: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .shuffle-mode-selection,
+    #shuffle-btn .shuffle-real-indicator {
+        transition: none;
+    }
 }
 
 .player-floating-panel[hidden] {
@@ -2636,11 +2621,20 @@ html:not(.popover-backdrop-blur) .quality-floating-backdrop.is-open {
     }
 
     .now-playing-bar .player-controls .buttons:has(.play-pause-btn:hover, .play-pause-btn:focus-visible) #shuffle-btn,
-    .now-playing-bar .player-controls .buttons:has(#shuffle-btn:hover, #shuffle-btn:focus-visible) #shuffle-btn {
+    .now-playing-bar .player-controls .buttons:has(#shuffle-btn:is(:hover, :focus-visible, .is-shuffle-picker-visible))
+        #shuffle-btn {
         opacity: 1;
         pointer-events: auto;
         filter: blur(0);
         transform: translate(-118%, -142%) scale(1);
+    }
+
+    .now-playing-bar .player-controls .buttons #shuffle-btn.is-shuffle-picker-visible {
+        transition: none;
+    }
+
+    #shuffle-btn .shuffle-real-indicator {
+        inset: -3px -7px auto auto;
     }
 
     .now-playing-bar .player-controls .buttons:has(.play-pause-btn:hover, .play-pause-btn:focus-visible) #repeat-btn,
@@ -3059,7 +3053,8 @@ html:not(.popover-backdrop-blur) .quality-floating-backdrop.is-open {
     }
 
     .now-playing-bar .player-controls .buttons:has(.play-pause-btn:hover, .play-pause-btn:focus-visible) #shuffle-btn,
-    .now-playing-bar .player-controls .buttons:has(#shuffle-btn:hover, #shuffle-btn:focus-visible) #shuffle-btn {
+    .now-playing-bar .player-controls .buttons:has(#shuffle-btn:is(:hover, :focus-visible, .is-shuffle-picker-visible))
+        #shuffle-btn {
         display: flex;
         opacity: 1;
         pointer-events: auto;
