@@ -16,6 +16,7 @@ import { db } from './db.js';
 import { syncManager } from './accounts/pocketbase.js';
 import { audioContextManager } from './audio-context.js';
 import { listeningTracker } from './listening-tracker.js';
+import { getShuffleMode, setShuffleMode } from './recommendation-settings.js';
 import { canvasSettings } from './canvas-settings.js';
 import { getTrackDisplayAlbum, getTrackPlayerArtwork } from './track-versions.js';
 import { crossfadeSettings, gaplessPlaybackSettings, nowPlayingPanelSettings } from './storage.js';
@@ -33,6 +34,7 @@ import ICON_PLAY from '!lucide/play.svg?svg&icon';
 import ICON_REPEAT from '!lucide/repeat.svg?svg&icon';
 import ICON_SEARCH from '!lucide/search.svg?svg&icon';
 import ICON_SHARE from '!lucide/share-2.svg?svg&icon';
+import ICON_SHUFFLE from '!lucide/shuffle.svg?svg&icon';
 import ICON_SKIP_BACK from '!lucide/skip-back.svg?svg&icon';
 import ICON_SKIP_FORWARD from '!lucide/skip-forward.svg?svg&icon';
 import ICON_SPARKLES from '!lucide/sparkles.svg?svg&icon';
@@ -111,6 +113,7 @@ function icon(name, size = 20) {
         repeat: ICON_REPEAT,
         search: ICON_SEARCH,
         'share-2': ICON_SHARE,
+        shuffle: ICON_SHUFFLE,
         'skip-back': ICON_SKIP_BACK,
         'skip-forward': ICON_SKIP_FORWARD,
         sparkles: ICON_SPARKLES,
@@ -2695,7 +2698,6 @@ export class NowPlayingPanel {
             queueDuration > 0 ? this.formatQueueTime(queueDuration) : upNext.length ? 'duration unavailable' : '0 min';
         const repeatMode = this.player?.repeatMode ?? REPEAT_MODE.OFF;
         const isLooping = repeatMode === REPEAT_MODE.ALL;
-        const transitionMode = this.getTransitionMode();
         const media = this.player?.activeElement;
         const isPaused = media?.paused !== false;
         const motionReason = this.queueMotionReason || 'refresh';
@@ -2762,7 +2764,7 @@ export class NowPlayingPanel {
         const listMarkup = `<section class="queue-list-section" aria-labelledby="queue-up-next-title"><div class="queue-list-heading"><div><h2 id="queue-up-next-title">Next Up from ${sourceLink}</h2><p>${upNext.length} ${upNext.length === 1 ? 'track' : 'tracks'} <span aria-hidden="true">·</span> ${escapeHtml(durationLabel)} <span class="queue-source-context">· ${escapeHtml(sourceContext)}</span></p></div><button type="button" class="queue-clear-button" data-queue-clear${upNext.length ? '' : ' disabled'}>Clear</button></div><div class="queue-track-list">${rows}</div></section>`;
         const endlessUnavailable = repeatMode !== REPEAT_MODE.OFF;
         const endlessPressed = !!(this.player?.autoplayEnabled || this.player?.radioEnabled) && !endlessUnavailable;
-        const queueBody = `<section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${sourceLink}</h2></div>${currentMarkup}</section><div class="queue-quick-actions" aria-label="Queue settings"><button type="button" role="switch" class="queue-quick-action queue-endless-card${endlessPressed ? ' is-enabled' : ''}${endlessUnavailable ? ' is-unavailable' : ''}" data-endless-toggle aria-pressed="${String(endlessPressed)}" aria-checked="${String(endlessPressed)}"><span class="queue-setting-copy"><span class="queue-setting-icon">${icon('infinity', 19)}</span><span><span class="queue-quick-label">Endless playback</span>${endlessUnavailable ? '<span class="queue-quick-status">Paused while repeat is on</span>' : ''}</span></span><span class="queue-switch" aria-hidden="true"><span class="queue-switch-thumb"></span></span></button>${this.renderQueueTransitionCard(transitionMode)}</div>${listMarkup}`;
+        const queueBody = `<section class="queue-playing-section" aria-labelledby="queue-playing-title"><div class="queue-section-heading"><h2 id="queue-playing-title">Playing from: ${sourceLink}</h2></div>${currentMarkup}</section><div class="queue-quick-actions" aria-label="Queue settings"><button type="button" role="switch" class="queue-quick-action queue-endless-card${endlessPressed ? ' is-enabled' : ''}${endlessUnavailable ? ' is-unavailable' : ''}" data-endless-toggle aria-pressed="${String(endlessPressed)}" aria-checked="${String(endlessPressed)}"><span class="queue-setting-copy"><span class="queue-setting-icon">${icon('infinity', 19)}</span><span><span class="queue-quick-label">Endless playback</span>${endlessUnavailable ? '<span class="queue-quick-status">Paused while repeat is on</span>' : ''}</span></span><span class="queue-switch" aria-hidden="true"><span class="queue-switch-thumb"></span></span></button>${this.renderQueueShuffleCard()}</div>${listMarkup}`;
         const isHistory = this.queueView === 'history';
         return `<div class="now-playing-panel-queue-view queue-motion-${motionReason}" aria-labelledby="queue-panel-title"><header class="queue-panel-header"><div id="queue-panel-title" class="queue-header-tabs${isHistory ? ' is-history' : ''}" role="tablist" aria-label="Queue panel"><button type="button" id="queue-tab-up-next" class="queue-view-switch${isHistory ? '' : ' is-active'}" role="tab" data-queue-view="up-next" aria-selected="${String(!isHistory)}" aria-controls="queue-panel-body" tabindex="${isHistory ? '-1' : '0'}">Queue</button><button type="button" id="queue-tab-history" class="queue-view-switch${isHistory ? ' is-active' : ''}" role="tab" data-queue-view="history" aria-selected="${String(isHistory)}" aria-controls="queue-panel-body" tabindex="${isHistory ? '0' : '-1'}">History</button></div><button type="button" class="queue-close-button" aria-label="Close queue">${icon('x', 18)}</button></header><main id="queue-panel-body" class="queue-panel-body" role="tabpanel" aria-labelledby="queue-tab-${isHistory ? 'history' : 'up-next'}">${isHistory ? this.renderHistoryPanel() : queueBody}</main></div>`;
     }
@@ -2788,6 +2790,13 @@ export class NowPlayingPanel {
         if (crossfadeSettings.isEnabled()) return 'crossfade';
         if (gaplessPlaybackSettings.isEnabled()) return 'gapless';
         return 'standard';
+    }
+
+    renderQueueShuffleCard() {
+        const mode = getShuffleMode();
+        const summary = mode === 'smart' ? 'Smart Random' : 'Real Random';
+        const option = (value, label, detail) => `<button type="button" class="queue-transition-option${mode === value ? ' is-selected' : ''}" data-shuffle-mode="${value}" aria-pressed="${String(mode === value)}"><span>${label}</span><small>${detail}</small>${mode === value ? '<span class="queue-option-check" aria-hidden="true"></span>' : ''}</button>`;
+        return `<div class="queue-transition-card${this.transitionMenuOpen ? ' is-open' : ''}"><button type="button" class="queue-quick-action queue-transition-trigger" aria-expanded="${String(this.transitionMenuOpen)}" aria-controls="queue-shuffle-menu"><span class="queue-setting-copy"><span class="queue-setting-icon">${icon('shuffle', 19)}</span><span class="queue-transition-copy"><span class="queue-quick-label">Shuffle mode</span><small class="queue-transition-summary">${summary}</small></span></span>${icon('chevron-right', 15)}</button><div id="queue-shuffle-menu" class="queue-transition-menu"${this.transitionMenuOpen ? '' : ' hidden'}><div class="queue-transition-options">${option('smart', 'Smart Random', 'Spaces artists out')}${option('real', 'Real Random', 'Fully random order')}</div></div></div>`;
     }
 
     getTransitionSummary(mode) {
@@ -3493,8 +3502,8 @@ export class NowPlayingPanel {
             }
             return;
         }
-        if (button.matches('.queue-transition-option')) {
-            await this.setQueueTransition(button.dataset.transitionMode);
+        if (button.matches('[data-shuffle-mode]')) {
+            this.setQueueShuffleMode(button.dataset.shuffleMode);
             return;
         }
         if (button.matches('.queue-loop-button')) {
@@ -3688,6 +3697,23 @@ export class NowPlayingPanel {
         this.queueTransitionChangeTimer = window.setTimeout(() => {
             nextCard?.classList.remove('is-changing');
             nextSelectedOption?.classList.remove('is-changing');
+        }, 280);
+        if (triggerHadFocus) nextCard?.querySelector('.queue-transition-trigger')?.focus({ preventScroll: true });
+    }
+
+    setQueueShuffleMode(mode) {
+        setShuffleMode(mode);
+        const card = this.root?.querySelector('.queue-transition-card');
+        const triggerHadFocus = document.activeElement === card?.querySelector('.queue-transition-trigger');
+        if (!card) return;
+        card.outerHTML = this.renderQueueShuffleCard();
+        const nextCard = this.root?.querySelector('.queue-transition-card');
+        nextCard?.classList.add('is-changing');
+        nextCard?.querySelector(`[data-shuffle-mode="${mode}"]`)?.classList.add('is-changing');
+        window.clearTimeout(this.queueTransitionChangeTimer);
+        this.queueTransitionChangeTimer = window.setTimeout(() => {
+            nextCard?.classList.remove('is-changing');
+            nextCard?.querySelector(`[data-shuffle-mode="${mode}"]`)?.classList.remove('is-changing');
         }, 280);
         if (triggerHadFocus) nextCard?.querySelector('.queue-transition-trigger')?.focus({ preventScroll: true });
     }

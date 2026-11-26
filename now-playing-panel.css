@@ -2538,13 +2538,16 @@ body .now-playing-panel.is-queue-view .queue-transition-card {
 }
 
 body .now-playing-panel.is-queue-view .queue-transition-trigger {
-    display: grid;
+    display: flex;
     width: 100%;
     min-height: 42px;
-    grid-template-columns: 16px minmax(0, 1fr) 14px;
     align-items: center;
-    justify-items: stretch;
+    justify-content: space-between;
     text-align: left;
+}
+
+body .now-playing-panel.is-queue-view .queue-transition-trigger .queue-setting-copy {
+    flex: 1;
 }
 
 body .now-playing-panel.is-queue-view .queue-transition-trigger > svg:last-child {
@@ -2614,6 +2617,12 @@ body .now-playing-panel.is-queue-view .queue-transition-menu {
     visibility: hidden;
     clip-path: inset(0 round 16px);
     will-change: transform, opacity, clip-path;
+}
+
+body .now-playing-panel.is-queue-view #queue-shuffle-menu {
+    background: rgb(38 38 38 / 76%);
+    -webkit-backdrop-filter: blur(48px) brightness(0.7);
+    backdrop-filter: blur(48px) brightness(0.7);
 }
 
 body .now-playing-panel.is-queue-view .queue-transition-card.is-open .queue-transition-menu {
