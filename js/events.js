@@ -1274,7 +1274,7 @@ async function handleSelectionAction(action) {
             break;
         case 'add-to-queue-selected':
             if (selectedTracks.length > 0) {
-                Player.instance.addToQueue(selectedTracks);
+                Player.instance.addToQueue(selectedTracks, { userInitiated: true });
                 if (window.renderQueueFunction) await window.renderQueueFunction();
                 showNotification(`Added ${selectedTracks.length} tracks to queue`);
             }
@@ -2335,7 +2335,7 @@ export async function handleTrackAction(
             tracks = contentBlockingSettings.filterTracks(tracks);
 
             if (action === 'add-to-queue') {
-                player.addToQueue(tracks);
+                player.addToQueue(tracks, { userInitiated: true });
                 if (window.renderQueueFunction) await window.renderQueueFunction();
                 showNotification(`Added ${tracks.length} tracks to queue`);
                 return;
@@ -2404,7 +2404,7 @@ export async function handleTrackAction(
     }
 
     if (action === 'add-to-queue') {
-        player.addToQueue(item);
+        player.addToQueue(item, { userInitiated: true });
         if (window.renderQueueFunction) await window.renderQueueFunction();
         showNotification(`Added to queue: ${item.title}`);
     } else if (action === 'play-next') {
@@ -3703,7 +3703,7 @@ export function initializeTrackInteractions(player, api, mainContent, contextMen
                         clearSelection();
                         break;
                     case 'add-to-queue':
-                        player.addToQueue(selectedTracks);
+                        player.addToQueue(selectedTracks, { userInitiated: true });
                         if (window.renderQueueFunction) await window.renderQueueFunction();
                         showNotification(`Added ${selectedTracks.length} tracks to queue`);
                         clearSelection();

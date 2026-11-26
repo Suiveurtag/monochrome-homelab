@@ -2568,7 +2568,7 @@ export class Player {
         }
     }
 
-    async addToQueue(trackOrTracks, { userInitiated = true } = {}) {
+    async addToQueue(trackOrTracks, { userInitiated = false } = {}) {
         const tracks = Array.isArray(trackOrTracks) ? trackOrTracks : [trackOrTracks];
         const insertionIndex = this.getCurrentQueue().length;
         this.queue.push(...tracks);

@@ -589,7 +589,7 @@ async function initializeSelfHostedUploads() {
             return;
         }
         if (action === 'queue') {
-            await Player.instance.addToQueue(tracks);
+            await Player.instance.addToQueue(tracks, { userInitiated: true });
             if (window.renderQueueFunction) await window.renderQueueFunction();
             showNotification(`Added ${tracks.length} tracks to queue`);
             return;
@@ -814,7 +814,7 @@ function initializeKeyboardShortcuts(player, _audioPlayer) {
             const hoveredTrack = hoveredTrackElement ? trackDataStore.get(hoveredTrackElement) : null;
 
             if (hoveredTrack && !hoveredTrack.isUnavailable && !hoveredTrackElement.matches('.blocked')) {
-                await player.addToQueue(hoveredTrack);
+                await player.addToQueue(hoveredTrack, { userInitiated: true });
                 if (window.renderQueueFunction) await window.renderQueueFunction();
                 showNotification(`Added to queue: ${hoveredTrack.title}`);
                 return;
