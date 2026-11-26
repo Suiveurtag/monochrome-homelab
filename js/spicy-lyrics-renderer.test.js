@@ -225,6 +225,83 @@ describe('Spicy Lyrics renderer', () => {
 });
 
 describe('Spicy Lyrics 6.5.10', () => {
+    test('lifts the letters of a held Bloom word in order at their playback time', () => {
+        localStorage.setItem('spicyLyrics.style', 'bloom');
+        try {
+            const lyrics = new SpicyLyricsElement();
+            lyrics.ttml = WORD_SYNC_TTML;
+            lyrics.style.cssText = 'width: 600px; height: 640px;';
+            document.body.appendChild(lyrics);
+            const letters = lyrics.lyricElements[0].querySelectorAll('.letterGroup .letter');
+            const lift = (letter) => {
+                const { transform } = getComputedStyle(letter);
+                return transform === 'none' ? 0 : new DOMMatrixReadOnly(transform).m42;
+            };
+
+            lyrics.currentTime = 1550;
+            expect(lift(letters[0])).toBe(0);
+            lyrics.currentTime = 1750;
+            expect(lift(letters[0])).toBeLessThan(0);
+            expect(lift(letters[0])).toBeLessThan(lift(letters[letters.length - 1]));
+            lyrics.currentTime = 2500;
+            expect(lift(letters[letters.length - 1])).toBeLessThan(0);
+        } finally {
+            localStorage.removeItem('spicyLyrics.style');
+        }
+    });
+
+    test('resolves the fullscreen Bloom mask and interpolates the line highlight', () => {
+        localStorage.setItem('spicyLyrics.style', 'bloom');
+        const shell = document.createElement('div');
+        shell.id = 'fullscreen-cover-overlay';
+        shell.style.cssText = 'width: 600px; height: 640px;';
+        try {
+            const lyrics = new SpicyLyricsElement();
+            lyrics.ttml = LINE_SYNC_TTML;
+            shell.append(lyrics);
+            document.body.appendChild(shell);
+            const [line] = lyrics.lyricElements;
+            expect(getComputedStyle(lyrics.shadowRoot.querySelector('.LyricsContent')).maskImage).toContain('linear-gradient');
+            expect(getComputedStyle(line).getPropertyValue('--SL-LineLyricsSize')).toMatch(/px$/);
+            expect(Number(getComputedStyle(line).getPropertyValue('--SLR_SungAlpha'))).toBe(0.18);
+
+            lyrics.currentTime = 10000;
+            const fade = line.getAnimations().find((animation) => animation.transitionProperty === '--SLR_SungAlpha');
+            expect(fade).toBeDefined();
+            fade.pause();
+            fade.currentTime = 150;
+            const alpha = Number(getComputedStyle(line).getPropertyValue('--SLR_SungAlpha'));
+            expect(alpha).toBeGreaterThan(0.18);
+            expect(alpha).toBeLessThan(0.94);
+        } finally {
+            localStorage.removeItem('spicyLyrics.style');
+        }
+    });
+
+    test('keeps a Bloom line lit across a short gap and reserves dots for the upstream interlude threshold', () => {
+        localStorage.setItem('spicyLyrics.style', 'bloom');
+        localStorage.setItem('spicyLyrics.fadePrevious', 'true');
+        try {
+            const lyrics = new SpicyLyricsElement();
+            lyrics.style.cssText = 'width: 600px; height: 640px;';
+            lyrics.ttml = WORD_SYNC_TTML.replace('</p>', `</p>
+                <p begin="7s" end="8s">Next line</p>
+                <p begin="13s" end="14s">After the break</p>`);
+            document.body.appendChild(lyrics);
+            lyrics.currentTime = 5500;
+
+            const [first, second, interlude] = lyrics._lineStates;
+            expect(first.element.classList.contains('Active')).toBe(true);
+            expect(first.end).toBe(second.start);
+            expect(first.leadEnd).toBe(3000);
+            expect(interlude.musical).toBe(true);
+            expect(interlude.start).toBe(8000);
+        } finally {
+            localStorage.removeItem('spicyLyrics.style');
+            localStorage.removeItem('spicyLyrics.fadePrevious');
+        }
+    });
+
     test('animates independent surfaces and applies Bloom and syllable joining live', async () => {
         const { setSpicyLyricsSetting } = await import('./spicy-lyrics-settings.js');
         const card = new SpicyLyricsElement();

@@ -10,7 +10,6 @@ import { Spring } from "../Spring.js";
 import Logger from "./runtime/Logger.ts";
 import { $lyricsSize, $rendererVisualStyle, isBloomRenderer, $smoothScrolling } from "./AnimatorCompat.js";
 import { $experiment, isExperimentEnabled } from "./AnimatorCompat.js";
-import { cancelCappedFrame, requestCappedFrame } from "./AnimatorCompat.js";
 import { cubicBezier } from "./CubicBezier.ts";
 
 // Gap scale factors relative to 1cqw (containerWidth / 100).
@@ -96,16 +95,12 @@ const CASCADE_MAX_ELAPSED = 0.1;
 
 // Bloom, except while Fade Away Previous Lines hides sung lines in Fullscreen
 // and Cinema View: rows travel on a timed curve instead of the spring, all for
-// the same time, which the scroll sets per move (setBloomScrollDuration).
+// the same time, which the scroll sets per move.
 // Rows at and above the line go at once; each row below waits a little longer
 // than the one above it, up to the fourth.
 const BLOOM_SCROLL_EASE = cubicBezier(0.4, 0.1, 0, 1);
 const BLOOM_ROW_DELAYS_MS = [25, 44, 56, 63];
-let bloomScrollMs = 750;
-
-export function setBloomScrollDuration(ms: number): void {
-  bloomScrollMs = ms;
-}
+const BLOOM_DEFAULT_SCROLL_MS = 750;
 
 // An interlude row takes space while it plays, and in Bloom also while the
 // scroll is bringing it in ahead of time (BloomFocus), so there is a row to
@@ -178,6 +173,7 @@ const romanizedRowKind = (row: HTMLElement): string =>
       : "lead";
 
 export class LyricsVirtualizer {
+  private _bloomScrollMs = BLOOM_DEFAULT_SCROLL_MS;
   private _virtualizer: Virtualizer<HTMLElement, HTMLElement> | null = null;
   private _allElements: HTMLElement[] = [];
   private _indexByElement = new Map<HTMLElement, number>();
@@ -189,6 +185,7 @@ export class LyricsVirtualizer {
   private _mountedIndices = new Set<number>();
   private _virtualContainer: HTMLElement | null = null;
   private _scrollEl: HTMLElement | null = null;
+  private _view: Window = window;
 
   // Invoked when a new element is mounted. Used by the animator to invalidate its
   // active-line blur cache so newly visible elements get the correct --BlurAmount
@@ -374,7 +371,6 @@ export class LyricsVirtualizer {
     if (el?.classList.contains("musical-line") && !isOpenInterlude(el)) return 0;
     const cqw = this._containerWidth / 100;
     if (this._isNextBgLine(index)) return GAP_LINE_TO_BG * cqw;
-    if (this._scrollElement?.closest('#SpicyLyricsPage.CardMode')) return GAP_NORMAL * cqw;
     if (this._gapEm > 0 && this._gapFontPx > 0) return this._gapFontPx * this._gapEm;
     return GAP_NORMAL * cqw;
   }
@@ -740,7 +736,7 @@ export class LyricsVirtualizer {
       if (Math.abs(moved) >= 1) this._reaimNextFrame(v, target);
     }
     if (toMeasure.length > 0 && this._resizeRAF === null) {
-      this._resizeRAF = requestAnimationFrame(() => {
+      this._resizeRAF = this._view.requestAnimationFrame(() => {
         this._resizeRAF = null;
         if (this._virtualizer === v) {
           virtualizerLogger.debug("Class mutation scheduled virtualizer update");
@@ -1008,10 +1004,11 @@ export class LyricsVirtualizer {
     });
     this.destroy();
     const document = scrollEl.ownerDocument;
+    this._view = document.defaultView ?? window;
     this._maid = new Maid();
     this._maid.Give(() => {
       if (this._scrollEndTimer !== null) { clearTimeout(this._scrollEndTimer); this._scrollEndTimer = null; }
-      if (this._resizeRAF !== null) { cancelAnimationFrame(this._resizeRAF); this._resizeRAF = null; }
+      if (this._resizeRAF !== null) { this._view.cancelAnimationFrame(this._resizeRAF); this._resizeRAF = null; }
     });
     this._allElements = lineElements;
     this._indexByElement = new Map(lineElements.map((el, i) => [el, i]));
@@ -1060,7 +1057,7 @@ export class LyricsVirtualizer {
       }
       this._measureBatch(v, toMeasure);
       if (toMeasure.length > 0 && this._resizeRAF === null) {
-        this._resizeRAF = requestAnimationFrame(() => {
+        this._resizeRAF = this._view.requestAnimationFrame(() => {
           this._resizeRAF = null;
           if (this._virtualizer === v) {
             virtualizerLogger.debug("ResizeObserver scheduled virtualizer update");
@@ -1127,10 +1124,12 @@ export class LyricsVirtualizer {
     this._virtualizer._willUpdate();
     this._flushQueuedChange(this._virtualizer);
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
+    const initialVirtualizer = this._virtualizer;
+    this._view.requestAnimationFrame(() => {
+      if (this._virtualizer !== initialVirtualizer) return;
+      this._view.requestAnimationFrame(() => {
         const v = this._virtualizer;
-        if (!v || !this._scrollEl) return;
+        if (v !== initialVirtualizer || !this._scrollEl) return;
         const settled = this._scrollEl.clientWidth;
         if (settled > 0 && Math.abs(settled - this._containerWidth) >= 1) {
           virtualizerLogger.debug("Post-init width settled to new value", {
@@ -1145,6 +1144,12 @@ export class LyricsVirtualizer {
         // re-mount so the first paint isn't blank when opening the page.
         this._syncScrollRect();
         this._onVirtualizerChange(v);
+        // Mid-song opens can aim at estimated rows. Once the initial layout
+        // has settled, re-aim the snap unless playback or a user scroll took over.
+        const target = this._lastRetryTarget;
+        if (this._refreshed && target?.instant && !this._cascadeChain) {
+          this._reaimNextFrame(v, target);
+        }
       })
     });
 
@@ -1246,7 +1251,7 @@ export class LyricsVirtualizer {
       if (document.hidden) return;
       this._blockLayoutGlide(LAYOUT_GLIDE_BLOCK_MS);
       virtualizerLogger.debug("Visibility restored; forcing remeasure cycle");
-      requestAnimationFrame(() => {
+      this._view.requestAnimationFrame(() => {
         const v = this._virtualizer;
         if (!v || !this._scrollEl) return;
         const w = this._scrollEl.clientWidth;
@@ -1444,7 +1449,7 @@ export class LyricsVirtualizer {
       wrapper.parentElement?.removeChild(wrapper);
     }
     if (unmountWrappers.length > 0 && this._resizeRAF === null) {
-      this._resizeRAF = requestAnimationFrame(() => {
+      this._resizeRAF = this._view.requestAnimationFrame(() => {
         this._resizeRAF = null;
         if (this._virtualizer === v) {
           virtualizerLogger.debug("Unmount pass scheduled virtualizer update");
@@ -1500,7 +1505,7 @@ export class LyricsVirtualizer {
     if (mountedAny) this._onNewElementMounted?.();
     const didMeasure = toMeasure.length > 0;
     if (didMeasure && this._resizeRAF === null) {
-      this._resizeRAF = requestAnimationFrame(() => {
+      this._resizeRAF = this._view.requestAnimationFrame(() => {
         this._resizeRAF = null;
         if (this._virtualizer === v) {
           virtualizerLogger.debug("Mount pass scheduled virtualizer update");
@@ -1628,10 +1633,11 @@ export class LyricsVirtualizer {
     align: "start" | "center" | "end" | "auto" = "center",
     instant: boolean = false,
     padding: number = 0,
-    glide: boolean = false
+    glide: boolean = false,
+    bloomScrollMs: number = BLOOM_DEFAULT_SCROLL_MS
   ): void {
     if (this._scrollVerifyRAF !== null) {
-      cancelAnimationFrame(this._scrollVerifyRAF);
+      this._view.cancelAnimationFrame(this._scrollVerifyRAF);
       this._scrollVerifyRAF = null;
     }
     // A glide whatever the settings and however far: the ripple treats a long
@@ -1646,6 +1652,7 @@ export class LyricsVirtualizer {
     // kind of smooth scroll. The list itself moves instantly; the rows animate.
     this._cascadeChain = !instant && this._refreshed;
     if (this._cascadeChain) {
+      this._bloomScrollMs = bloomScrollMs;
       this._stopSmoothScroll();
       this._setConverging(true);
       this._scrollToIndexWithRetry(index, align, true, padding, 0, null);
@@ -1701,13 +1708,13 @@ export class LyricsVirtualizer {
         const below = target < 0 ? 0 : idx - target;
         row.tweenFrom = row.p;
         row.tweenAt = now + (below > 0 ? BLOOM_ROW_DELAYS_MS[Math.min(below, 4) - 1] : 0);
-        row.tweenDur = bloomScrollMs;
+        row.tweenDur = this._bloomScrollMs;
       }
       this._cascadeScroll = to;
       for (const [idx, row] of this._cascadeRows) this._drawCascadeRow(idx, row);
       if (this._cascadeRAF === null) {
         this._cascadeLastTs = null;
-        this._cascadeRAF = requestCappedFrame(this._cascadeStep);
+        this._cascadeRAF = this._view.requestAnimationFrame(this._cascadeStep);
       }
       return;
     }
@@ -1741,7 +1748,7 @@ export class LyricsVirtualizer {
     for (const [idx, row] of this._cascadeRows) this._drawCascadeRow(idx, row);
     if (this._cascadeRAF === null) {
       this._cascadeLastTs = null;
-      this._cascadeRAF = requestCappedFrame(this._cascadeStep);
+      this._cascadeRAF = this._view.requestAnimationFrame(this._cascadeStep);
     }
   }
 
@@ -1809,14 +1816,14 @@ export class LyricsVirtualizer {
         this._drawCascadeRow(idx, row);
       }
     }
-    if (this._cascadeRows.size > 0) this._cascadeRAF = requestCappedFrame(this._cascadeStep);
+    if (this._cascadeRows.size > 0) this._cascadeRAF = this._view.requestAnimationFrame(this._cascadeStep);
     else this._cascadeLastTs = null;
   };
 
   // Puts every row back where the list has it, at once.
   private _stopCascade(): void {
     if (this._cascadeRAF !== null) {
-      cancelCappedFrame(this._cascadeRAF);
+      this._view.cancelAnimationFrame(this._cascadeRAF);
       this._cascadeRAF = null;
     }
     for (const idx of this._cascadeRows.keys()) {
@@ -1838,9 +1845,9 @@ export class LyricsVirtualizer {
     v: Virtualizer<HTMLElement, HTMLElement>,
     target: NonNullable<LyricsVirtualizer["_lastRetryTarget"]>
   ): void {
-    if (this._scrollVerifyRAF !== null) cancelAnimationFrame(this._scrollVerifyRAF);
+    if (this._scrollVerifyRAF !== null) this._view.cancelAnimationFrame(this._scrollVerifyRAF);
     this._setConverging(true);
-    this._scrollVerifyRAF = requestAnimationFrame(() => {
+    this._scrollVerifyRAF = this._view.requestAnimationFrame(() => {
       this._scrollVerifyRAF = null;
       if (this._virtualizer !== v || this._lastRetryTarget !== target || !this._scrollEl) {
         this._setConverging(false);
@@ -1919,7 +1926,7 @@ export class LyricsVirtualizer {
       this._smoothLastTs = null;
       this._smoothLastPosition = null;
       this._smoothLastWhole = null;
-      this._smoothRAF = requestCappedFrame(this._smoothStep);
+      this._smoothRAF = this._view.requestAnimationFrame(this._smoothStep);
     }
   }
 
@@ -2121,14 +2128,14 @@ export class LyricsVirtualizer {
         this._smoothLastWhole = actual;
         this._smoothLastPosition = null;
         spring.SetGoal(actual, true);
-        this._smoothRAF = requestCappedFrame(this._smoothStep);
+        this._smoothRAF = this._view.requestAnimationFrame(this._smoothStep);
         return;
       }
       this._stopSmoothScroll();
       // Stand-in for the scrollend remeasures skipped during the glide.
       this._remeasureVisible();
     } else {
-      this._smoothRAF = requestCappedFrame(this._smoothStep);
+      this._smoothRAF = this._view.requestAnimationFrame(this._smoothStep);
     }
   };
 
@@ -2156,7 +2163,7 @@ export class LyricsVirtualizer {
   private _stopSmoothScroll(): void {
     const wasActive = this._smoothRAF !== null || this._smoothTarget !== null;
     if (this._smoothRAF !== null) {
-      cancelCappedFrame(this._smoothRAF);
+      this._view.cancelAnimationFrame(this._smoothRAF);
       this._smoothRAF = null;
     }
     this._smoothTarget = null;
@@ -2421,7 +2428,7 @@ export class LyricsVirtualizer {
     }
 
     if (retry < LyricsVirtualizer._MAX_SCROLL_RETRIES) {
-      this._scrollVerifyRAF = requestAnimationFrame(() => {
+      this._scrollVerifyRAF = this._view.requestAnimationFrame(() => {
         this._scrollVerifyRAF = null;
         if (this._virtualizer !== v) {
           this._setConverging(false);
@@ -2470,7 +2477,7 @@ export class LyricsVirtualizer {
       hasVirtualizer: Boolean(this._virtualizer),
     });
     if (this._scrollVerifyRAF !== null) {
-      cancelAnimationFrame(this._scrollVerifyRAF);
+      this._view.cancelAnimationFrame(this._scrollVerifyRAF);
       this._scrollVerifyRAF = null;
     }
     // Torn down anyway; no point re-rendering the window on the way out.
@@ -2487,11 +2494,13 @@ export class LyricsVirtualizer {
     // Reset convergence so the next virtualizer instance doesn't inherit a stale `true`
     // (the hook would then refuse every adjustment for the new instance).
     this._converging = false;
+    this._lastRetryTarget = null;
     this._scrollbarRoot = null;
     this._maid?.Destroy();
     this._maid = null;
     if (this._scrollEl) this._scrollEl.style.overflowAnchor = "";
     this._scrollEl = null;
+    this._view = window;
     this._resizeObserver = null;
     this._widthObserver = null;
     this._containerWidth = 0;

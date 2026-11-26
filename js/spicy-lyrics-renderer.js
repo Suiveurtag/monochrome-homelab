@@ -10,10 +10,12 @@ import { AppendLineRomanization, AppendSyllableRomanization } from './vendor/spi
 import { JoinSplitWords } from './vendor/spicy-lyrics/upstream/JoinSplitWords.ts';
 import { SplitLetters } from './vendor/spicy-lyrics/upstream/SplitLetters.ts';
 import { IsLetterCapable } from './vendor/spicy-lyrics/upstream/IsLetterCapable.ts';
+import { StripZeroWidth } from './vendor/spicy-lyrics/upstream/StripZeroWidth.ts';
+import { ConvertTime } from './vendor/spicy-lyrics/upstream/ConvertTime.ts';
 import Emphasize, { createFlameGroup } from './vendor/spicy-lyrics/upstream/Emphasize.ts';
 import upstreamCreditsCss from './vendor/spicy-lyrics/upstream/PinnedCredits.css?raw';
 import { getSpicyLyricsSetting } from './spicy-lyrics-settings.js';
-import { LyricsVirtualizer, setBloomScrollDuration } from './vendor/spicy-lyrics/upstream/LyricsVirtualizer.ts';
+import { LyricsVirtualizer, fadesAwayPreviousLines } from './vendor/spicy-lyrics/upstream/LyricsVirtualizer.ts';
 import { parseSpicyTtml, parseTtmlTime } from './spicy-lyrics-ttml.js';
 import { getArtworkSources } from './artwork-media.js';
 
@@ -35,16 +37,7 @@ function getBloomScroll(lines, position) {
     return { ms, leadMs: Math.min(ms, Math.max(0, room)) };
 }
 
-/*
- * The two lyrics stylesheets above are an unmodified upstream snapshot.  They
- * intentionally live in this component's shadow tree: Monochrome has global
- * span/transform/font rules which previously changed Spicy's DOM contract and
- * removed the pseudo-element word separators.  This bridge only supplies page
- * primitives normally provided by Spotify/Spicetify. Word spacing is rendered
- * inside each semantic word container below. This preserves Spicy's exact
- * 0.32ch metric without depending on an empty ::after flex item, which Firefox
- * can collapse or cover when independently scaling adjacent words.
- */
+// Spicy's selectors stay inside the shadow tree, isolated from the player's CSS.
 const SHADOW_BRIDGE_CSS = `
 @font-face {
     font-family: SpicyLyrics;
@@ -93,6 +86,7 @@ const SHADOW_BRIDGE_CSS = `
 }
 *, *::before, *::after { box-sizing: border-box; }
 #SpicyLyricsPage {
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
     position: relative;
     width: 100%;
     height: 100%;
@@ -151,9 +145,11 @@ const SHADOW_BRIDGE_CSS = `
     padding-inline: clamp(1.5rem, 7cqw, 6rem);
 }
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line {
-    column-gap: 0.32ch;
     align-self: stretch;
     width: 100%;
+}
+#SpicyLyricsPage:not(.BloomRenderer) .LyricsContainer .LyricsContent .line {
+    column-gap: 0.32ch;
 }
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line .word-group {
     column-gap: 0;
@@ -170,7 +166,8 @@ const SHADOW_BRIDGE_CSS = `
 :host([data-next-up]) #SpicyLyricsPage .LyricsContainer .LyricsContent {
     --SL-LyricsContent_MaskBottomPadding: 56px;
 }
-#SpicyLyricsPage.SpicyRenderer .LyricsContainer .LyricsContent .line
+/* Bloom measures the sung edge across word boxes, including their upstream ::after spacing. */
+#SpicyLyricsPage.SpicyRenderer:not(.BloomRenderer) .LyricsContainer .LyricsContent .line
     :is(.word, .letterGroup):not(.PartOfWord, .dot, .LastWordInLine)::after {
     margin-right: 0;
 }
@@ -197,9 +194,18 @@ const SHADOW_BRIDGE_CSS = `
     font-size: 0.8rem;
 }
 #SpicyLyricsPage.Fullscreen { --spicy-credits-inset: 3.5rem; }
+@supports (-moz-appearance: none) {
+    @media (prefers-reduced-motion: no-preference) {
+        /* Keep WebRender from snapping an axis-aligned lift to whole pixels (Bug 2069657). */
+        #SpicyLyricsPage.BloomRenderer .LyricsContent .line:is(.Active, .Settling)
+            :is(.word:not(.dot), .letter) {
+            rotate: 0.1deg;
+        }
+    }
+}
 @media (prefers-reduced-motion: reduce) {
     #SpicyLyricsPage *, #SpicyLyricsPage *::before { transition-duration: 0s !important; }
-    #SpicyLyricsPage .LyricsContent :is(.line, .word, .letter, .dotGroup) {
+    #SpicyLyricsPage .LyricsContent :is(.line, .word, .letterGroup, .letter, .dotGroup) {
         scale: 1 !important;
         transform: none !important;
     }
@@ -234,6 +240,18 @@ const SHADOW_BRIDGE_CSS = `
 .simplebar-scrollbar::before { background: var(--Simplebar-Scrollbar-Color, rgb(255 255 255 / 0.6)); }
 `;
 
+function installDocumentStyles(doc) {
+    if (doc.getElementById('spicy-lyrics-document-styles')) return;
+    // In the document, Spicy's @property rules enable interpolation and let
+    // container units resolve to pixels once per line.
+    const style = doc.createElement('style');
+    style.id = 'spicy-lyrics-document-styles';
+    style.textContent = [upstreamMainCss, upstreamMixedCss]
+        .flatMap((css) => css.match(/@property\s+--[\w-]+\s*\{[^}]*\}/g) ?? [])
+        .join('\n');
+    doc.head.append(style);
+}
+
 function createMusicalInterlude(start, end, opposite = false) {
     const duration = end - start;
     const dotDuration = duration / 3;
@@ -262,17 +280,24 @@ function createMusicalInterlude(start, end, opposite = false) {
     };
 }
 
-function addMusicalInterludes(lines) {
+function prepareTimedLines(lines, bloom, fadePrevious) {
     if (!lines.length) return lines;
+    const interludeMin = bloom && fadePrevious ? 5000 : 3000;
     const withInterludes = [];
     const firstLine = lines[0];
-    if (firstLine.start >= 3000) withInterludes.push(createMusicalInterlude(0, firstLine.start, firstLine.opposite));
+    if (firstLine.start >= interludeMin) {
+        withInterludes.push(createMusicalInterlude(0, firstLine.start, firstLine.opposite));
+    }
     lines.forEach((line, index) => {
-        withInterludes.push(line);
-        withInterludes.push(...(line.backgrounds || []));
         const nextLine = lines[index + 1];
-        const sungEnd = Math.max(line.end, ...line.words.map((word) => word.end));
-        if (nextLine && nextLine.start - sungEnd >= 3000) {
+        const sungEnd = bloom ? line.leadEnd ?? lineEnd(line) : lineEnd(line);
+        const gap = nextLine ? nextLine.start - sungEnd : 0;
+        // Spicy fills short gaps with the current line, while the lead's real
+        // end still limits how early the next line can scroll into view.
+        const end = gap > 0 && gap < interludeMin ? nextLine.start : sungEnd;
+        withInterludes.push(bloom ? { ...line, end, leadEnd: sungEnd } : line);
+        withInterludes.push(...(line.backgrounds || []));
+        if (gap >= interludeMin) {
             withInterludes.push(createMusicalInterlude(sungEnd, nextLine.start, nextLine.opposite));
         }
     });
@@ -355,20 +380,25 @@ const lineEnd = (line) => Math.max(line.end, ...line.words.map((word) => word.en
 
 function toSyllable(word) {
     return {
-        Text: word.text,
-        StartTime: word.start,
-        EndTime: word.end,
+        Text: word.text.trim(),
+        // Spicy's helpers accept seconds and convert to animation milliseconds.
+        StartTime: word.start / 1000,
+        EndTime: word.end / 1000,
         IsPartOfWord: word.isPartOfWord,
-        TransliteratedText: word.romanized,
+        TransliteratedText: word.romanized?.trim(),
         TransliteratedIsPartOfWord: word.romanizedPartOfWord,
     };
 }
 
 function renderWords(line, element, replaceRomanization) {
     const bloom = getSpicyLyricsSetting('style') === 'bloom';
-    const textOf = (word) => (replaceRomanization ? word.TransliteratedText ?? word.Text : word.Text).trim();
-    const canEmphasize = (word, text) =>
-        !line.musical && !line.rtl && IsLetterCapable(SplitLetters(text).length, word.EndTime - word.StartTime, line.background);
+    const textOf = (word) => StripZeroWidth(replaceRomanization ? word.TransliteratedText ?? word.Text : word.Text).trim();
+    const canEmphasize = (word, letterCount) =>
+        !line.musical && !line.rtl && IsLetterCapable(
+            letterCount,
+            ConvertTime(word.EndTime) - ConvertTime(word.StartTime),
+            line.background
+        );
     const source = line.words.map(toSyllable);
     if (replaceRomanization) {
         source.forEach((word) => { word.IsPartOfWord = word.TransliteratedIsPartOfWord ?? word.IsPartOfWord; });
@@ -376,7 +406,9 @@ function renderWords(line, element, replaceRomanization) {
     const join = getSpicyLyricsSetting('joinWords');
     const words = line.musical || join === 'off'
         ? source
-        : JoinSplitWords(source, join === 'all' ? 'full' : join, (word) => canEmphasize(word, textOf(word)));
+        : JoinSplitWords(source, join === 'all' ? 'full' : join, (word) =>
+            canEmphasize(word, SplitLetters(textOf(word)).length)
+        );
     const dotGroup = line.musical ? document.createElement('div') : null;
     if (dotGroup) {
         dotGroup.className = 'dotGroup';
@@ -388,9 +420,9 @@ function renderWords(line, element, replaceRomanization) {
         let last = start;
         while (words[last].IsPartOfWord && last + 1 < words.length) last += 1;
         const group = words.slice(start, last + 1);
-        const displayText = group.map(textOf).join('');
+        const wordLetters = SplitLetters(group.map(textOf).join('')).length;
         const wholeWord = { StartTime: group[0].StartTime, EndTime: group.at(-1).EndTime };
-        const flame = bloom && group.length > 1 && canEmphasize(wholeWord, displayText)
+        const flame = bloom && group.length > 1 && canEmphasize(wholeWord, wordLetters)
             ? createFlameGroup(wholeWord.StartTime, wholeWord.EndTime)
             : null;
         const token = document.createElement('span');
@@ -406,7 +438,7 @@ function renderWords(line, element, replaceRomanization) {
             const text = textOf(word);
             if (!text) return;
             const letters = SplitLetters(text);
-            const emphasize = flame || canEmphasize(word, text);
+            const emphasize = bloom && group.length > 1 ? Boolean(flame) : canEmphasize(word, letters.length);
             const node = document.createElement(emphasize ? 'div' : 'span');
             node.className = emphasize ? 'letterGroup' : 'word';
             node.classList.toggle('dot', Boolean(dotGroup));
@@ -424,16 +456,18 @@ function renderWords(line, element, replaceRomanization) {
                 state = Emphasize(letters, node, word, line.background, paced ? parts : undefined, flame);
             } else {
                 node.textContent = text;
+                const startTime = ConvertTime(word.StartTime);
+                const endTime = ConvertTime(word.EndTime);
                 state = {
                     HTMLElement: node,
-                    StartTime: word.StartTime,
-                    EndTime: word.EndTime,
-                    TotalTime: word.EndTime - word.StartTime,
+                    StartTime: startTime,
+                    EndTime: endTime,
+                    TotalTime: endTime - startTime,
                     BGWord: line.background,
                     Dot: Boolean(dotGroup),
                 };
             }
-            state.WordLetters = SplitLetters(displayText).length;
+            state.WordLetters = wordLetters;
             states.push(state);
         });
         if (!dotGroup && last < words.length - 1) {
@@ -467,7 +501,10 @@ export class SpicyLyricsElement extends HTMLElement {
         this._connected = false;
         this._applySettings = (event) => {
             const key = event.detail?.key;
-            if (['style', 'joinWords', 'keepSyllablePace', 'romanization', 'credits', 'reviewer', 'staticScroll', 'romajiAsWritten'].includes(key)) {
+            if (
+                ['style', 'joinWords', 'keepSyllablePace', 'romanization', 'credits', 'reviewer', 'staticScroll', 'romajiAsWritten'].includes(key) ||
+                (key === 'fadePrevious' && this._page?.classList.contains('BloomRenderer'))
+            ) {
                 this.render();
                 void this._loadRomanization();
                 return;
@@ -507,6 +544,7 @@ export class SpicyLyricsElement extends HTMLElement {
     connectedCallback() {
         if (this._connected) return;
         this._connected = true;
+        installDocumentStyles(this.ownerDocument);
         window.addEventListener('spicy-lyrics-settings-changed', this._applySettings);
         this.addEventListener('wheel', this._suspendAutoScroll, { passive: true });
         this.addEventListener('touchmove', this._suspendAutoScroll, { passive: true });
@@ -575,8 +613,16 @@ export class SpicyLyricsElement extends HTMLElement {
         this._manualScrollUntil = 0;
         this._lyricsContent?.classList.remove('HideLineBlur');
         const index = getScrollLineIndex(this._lineStates, this._currentTime);
-        if (index >= 0) this._virtualizer.scrollToIndex(index, 'center', true, 30);
+        if (index >= 0) {
+            const glide = this._page.classList.contains('BloomRenderer') && !reducedMotion();
+            this._virtualizer.scrollToIndex(index, 'center', !glide, this._scrollPadding, glide);
+        }
         this._updateSyncState();
+    }
+
+    get _scrollPadding() {
+        // Spicy's fullscreen Bloom anchor sits 80px above the viewport center.
+        return this._page.matches('.Fullscreen.BloomRenderer') ? 80 : 30;
     }
 
     disconnectedCallback() {
@@ -673,7 +719,11 @@ export class SpicyLyricsElement extends HTMLElement {
         this._root.replaceChildren();
         const sourceLines = getSpicyLyricsSetting('romanization') === 'off' ? this._lines : this._romanizedLines ?? this._lines;
         const staticLyrics = sourceLines[0]?.syncType === 'Static';
-        const renderedLines = staticLyrics ? sourceLines : addMusicalInterludes(sourceLines);
+        const renderedLines = staticLyrics ? sourceLines : prepareTimedLines(
+            sourceLines,
+            getSpicyLyricsSetting('style') === 'bloom',
+            getSpicyLyricsSetting('fadePrevious') === 'true'
+        );
 
         const styles = document.createElement('style');
         styles.textContent = `${simplebarCss}\n${upstreamSimplebarCss}\n${upstreamMainCss}\n${upstreamMixedCss}\n${upstreamCreditsCss}\n${SHADOW_BRIDGE_CSS}`;
@@ -828,8 +878,8 @@ export class SpicyLyricsElement extends HTMLElement {
         if (this._lyricsType === 'Static') return;
         const now = performance.now();
         const activeIndex = getScrollLineIndex(this._lineStates, this._currentTime);
-        const bloomTimed = getSpicyLyricsSetting('style') === 'bloom' &&
-            !(this._page.classList.contains('Fullscreen') && getSpicyLyricsSetting('fadePrevious') === 'true');
+        const bloom = this._page.classList.contains('BloomRenderer');
+        const bloomTimed = bloom && !fadesAwayPreviousLines(this._page);
         const bloomEarly = bloomTimed && this._page.classList.contains('CardMode');
         const bloomScroll = bloomTimed ? getBloomScroll(this._lineStates, this._currentTime) : null;
         const earlyIndex = bloomEarly ? getScrollLineIndex(this._lineStates, this._currentTime + bloomScroll.leadMs) : -1;
@@ -861,12 +911,11 @@ export class SpicyLyricsElement extends HTMLElement {
         this._lyricsContent.classList.remove('HideLineBlur');
         const instant = shouldForceScroll || reducedMotion();
         const scroll = () => {
-            if (bloomScroll) setBloomScrollDuration(bloomScroll.ms);
-            this._virtualizer.scrollToIndex(scrollIndex, 'center', instant, 30);
+            this._virtualizer.scrollToIndex(scrollIndex, 'center', instant, this._scrollPadding, false, bloomScroll?.ms);
             if (instant) this._animator?.animate(this._currentTime);
         };
         clearTimeout(this._pendingScrollTimer);
-        if (!instant && !bloomEarly && this._lineStates[scrollIndex - 1]?.musical) {
+        if (!instant && !bloom && getSpicyLyricsSetting('smoothScrolling') !== 'true' && this._lineStates[scrollIndex - 1]?.musical) {
             this._pendingScrollTimer = window.setTimeout(scroll, 240);
         } else {
             scroll();

@@ -14,6 +14,7 @@ import { isLineOnlyLyrics, isTtml, lyricsToTtml, parseLrc } from './lyrics-forma
 import { Player } from './player.js';
 import { getSpicyLyricsSetting, normalizeSpicyLyricsOffset, setSpicyLyricsSetting } from './spicy-lyrics-settings.js';
 import { parseSpicyTtml } from './spicy-lyrics-ttml.js';
+import { createBloomPlaybackClock } from './spicy-lyrics-clock.js';
 import { audioContextManager } from './audio-context.js';
 import { pb } from './accounts/config.js';
 
@@ -742,22 +743,30 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
 
 function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
     const view = amLyrics.ownerDocument.defaultView ?? window;
+    const bloomClock = createBloomPlaybackClock();
     let frame = null;
     let visible = true;
     let staticPace = null;
     let lastSample = -Infinity;
     let waveform;
     let offset = 0;
+    let bloom = false;
 
     const updateOffset = () => {
+        const useBloom = getSpicyLyricsSetting('style') === 'bloom';
+        if (useBloom !== bloom) bloomClock.reset();
+        bloom = useBloom;
         offset = lyricsManager.getPlaybackOffset(track.id);
         updateTime();
     };
     const updateTime = () => {
         if (!visible) return;
-        const currentTime = audioPlayer.currentTime;
+        const staticLyrics = amLyrics.lyricsType === 'Static';
+        const currentTime = bloom && !staticLyrics
+            ? bloomClock.read(audioPlayer, view.performance.now()) / 1000
+            : audioPlayer.currentTime;
         amLyrics.currentTime = currentTime * 1000 - offset;
-        if (amLyrics.lyricsType !== 'Static') return;
+        if (!staticLyrics) return;
         const duration = audioPlayer.duration || track.duration;
         const mode = getSpicyLyricsSetting('staticScroll');
         if (mode === 'off' || !(duration > 0)) return;
@@ -795,8 +804,17 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
     const start = () => {
         if (frame === null) tick();
     };
+    const resetClock = () => {
+        bloomClock.reset();
+        updateTime();
+    };
+    const onPlaying = () => {
+        bloomClock.reset();
+        start();
+    };
     const observer = new view.IntersectionObserver(([entry]) => {
         visible = entry.isIntersecting;
+        bloomClock.reset();
         if (visible) {
             updateTime();
             start();
@@ -845,8 +863,9 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
     amLyrics.addEventListener('lyrics-rendered', refreshAnnotations);
     refreshAnnotations();
 
-    audioPlayer.addEventListener('playing', start);
-    audioPlayer.addEventListener('seeked', updateTime);
+    const clockResetEvents = ['seeking', 'seeked', 'pause', 'waiting', 'ratechange'];
+    audioPlayer.addEventListener('playing', onPlaying);
+    for (const event of clockResetEvents) audioPlayer.addEventListener(event, resetClock);
     amLyrics.addEventListener('line-click', onLineClick);
     window.addEventListener('spicy-lyrics-settings-changed', updateOffset);
     window.addEventListener('spicy-lyrics-offset-changed', updateOffset);
@@ -856,8 +875,8 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
     return () => {
         stop();
         observer.disconnect();
-        audioPlayer.removeEventListener('playing', start);
-        audioPlayer.removeEventListener('seeked', updateTime);
+        audioPlayer.removeEventListener('playing', onPlaying);
+        for (const event of clockResetEvents) audioPlayer.removeEventListener(event, resetClock);
         amLyrics.removeEventListener('line-click', onLineClick);
         amLyrics.removeEventListener('lyrics-rendered', refreshAnnotations);
         window.removeEventListener('spicy-lyrics-settings-changed', updateOffset);

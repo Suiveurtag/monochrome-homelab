@@ -26,8 +26,6 @@ export const $romanizationDisplay = setting('romanization');
 export const $experiment = (key) => setting(key, enabled);
 export const isExperimentEnabled = (key) => $experiment(key).get();
 export const isBloomRenderer = () => $rendererVisualStyle.get() === 'bloom';
-export const requestCappedFrame = (callback) => requestAnimationFrame(callback);
-export const cancelCappedFrame = (id) => cancelAnimationFrame(id);
 export const preHiddenDotLineMs = 500;
 export const BlurMultiplier = 1.25;
 export const timeOffset = 0;
