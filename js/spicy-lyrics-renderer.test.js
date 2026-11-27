@@ -23,6 +23,39 @@ const LINE_SYNC_TTML = `<?xml version="1.0" encoding="UTF-8"?>
 </tt>`;
 
 describe('Spicy Lyrics renderer', () => {
+    test('shows track uploader and editors at the end of lyrics', () => {
+        const element = new SpicyLyricsElement();
+        element.contributors = {
+            uploader: { name: 'Alice', url: '/user/@alice', avatar: '/assets/appicon.png' },
+            editors: [{ name: 'Bob', url: '/user/@bob', avatar: '/assets/appicon.png' }],
+        };
+        element.ttml = LINE_SYNC_TTML;
+        document.body.append(element);
+        const credits = element.shadowRoot.querySelector('.SpicyLyricsScrollContainer > .spicy-attribution');
+        expect(credits.textContent).toContain('Track uploaded by Alice');
+        expect(credits.textContent).toContain('Edited by Bob');
+        expect(credits.querySelectorAll('img')).toHaveLength(2);
+        expect(credits.querySelector('a').getAttribute('href')).toBe('/user/@alice');
+        element.remove();
+    });
+    test('renders community attribution with linked profiles and avatars', () => {
+        const element = new SpicyLyricsElement();
+        element.provider = 'spicy_lyrics';
+        element.attribution = {
+            uploader: { username: 'uploader', url: 'https://spicylyrics.org/uid/1', avatar: 'https://cdn.discordapp.com/avatar.webp' },
+            maker: { username: 'maker', url: 'https://spicylyrics.org/uid/2' },
+        };
+        element.ttml = '<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="0s" end="2s">Hello</p></div></body></tt>';
+        document.body.append(element);
+        const credits = element.shadowRoot.querySelector('.spicy-attribution');
+        expect(credits.textContent).toContain('Spicy Lyrics');
+        expect(credits.textContent).toContain('Uploaded by');
+        expect(credits.textContent).toContain('maker');
+        expect(credits.querySelector('a').href).toBe('https://spicylyrics.org/');
+        expect(credits.querySelectorAll('a')).toHaveLength(3);
+        expect(credits.querySelector('img').src).toBe('https://cdn.discordapp.com/avatar.webp');
+        element.remove();
+    });
     test('repairs cached Spicy API boundaries and renders separate words', () => {
         const ttml = '<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="1s" end="4s"><span begin="1s" end="1.5s">I</span><span begin="1.5s" end="2s">might</span><span begin="2s" end="3s">cra</span><span begin="3s" end="4s">zy</span></p></div></body></tt>';
         const syllables = [{ Text: 'I' }, { Text: 'might' }, { Text: 'cra', IsPartOfWord: true }, { Text: 'zy' }];

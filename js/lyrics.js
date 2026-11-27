@@ -17,6 +17,26 @@ import { parseSpicyTtml, repairCachedSpicyTtml } from './spicy-lyrics-ttml.js';
 import { createBloomPlaybackClock } from './spicy-lyrics-clock.js';
 import { audioContextManager } from './audio-context.js';
 import { pb } from './accounts/config.js';
+import { avatarFor, displayName, profileHref } from './social-utils.js';
+
+async function trackContributors(track) {
+    if (!track?.isSelfHosted || !pb.authStore.isValid) return null;
+    try {
+        const record = await pb.collection('music_tracks').getOne(track.id, { requestKey: null });
+        const ids = [...new Set([record.owner, ...(record.editors || [])].filter(Boolean))];
+        const profiles = await Promise.all(ids.map((id) => pb.collection('social_profiles')
+            .getFirstListItem(`user = "${id}"`, { requestKey: null }).catch(() => null)));
+        const people = new Map(ids.map((id, index) => [id, profiles[index]]));
+        const person = (id) => {
+            const profile = people.get(id);
+            if (!profile) return null;
+            return { name: displayName(profile), avatar: avatarFor(profile), url: profile.username ? profileHref(profile) : '' };
+        };
+        return { uploader: person(record.owner), editors: (record.editors || []).map(person).filter(Boolean) };
+    } catch {
+        return null;
+    }
+}
 
 // Hiragana (3040-309F) or Katakana (30A0-30FF) = unambiguously Japanese
 function containsJapaneseKana(text) {
@@ -362,7 +382,10 @@ export class LyricsManager {
                                     return {
                                         ttml: cached.ttml,
                                         lyricsProvider: cached.provider || 'Spicy Lyrics',
-                                        lyricsAttribution: cached.attribution || null,
+                                        lyricsAttribution: cached.attribution || {
+                                            uploader: cached.rawResponse?.lyrics?.body?.Body?.UploadAttribution?.Uploader,
+                                            maker: cached.rawResponse?.lyrics?.body?.Body?.UploadAttribution?.Maker,
+                                        },
                                         spicyLyricsResponse: cached.rawResponse,
                                     };
                                 }
@@ -721,7 +744,7 @@ async function mountSpicyLyrics(
     playbackSource,
     lyricsManager,
     localTtml,
-    { signal, lineOnly = false, provider = '' } = {}
+    { signal, lineOnly = false, provider = '', attribution = null, contributors = null } = {}
 ) {
     await lyricsManager.ensureComponentLoaded();
     if (signal?.aborted) return null;
@@ -729,6 +752,8 @@ async function mountSpicyLyrics(
     container.innerHTML = '';
     const amLyrics = document.createElement('spicy-lyrics');
     amLyrics.provider = provider;
+    amLyrics.attribution = attribution;
+    amLyrics.contributors = contributors;
     amLyrics.lineOnly = lineOnly;
     amLyrics.ttml = localTtml;
     amLyrics.style.setProperty('--spicy-lyrics-active-color', getLyricsHighlightColor());
@@ -790,7 +815,10 @@ async function renderLyricsComponent(container, track, playbackSource, lyricsMan
         : '<div class="lyrics-loading" role="status">Loading lyrics…</div>';
 
     try {
-        const data = await lyricsManager.fetchLyrics(track.id, track);
+        const [data, contributors] = await Promise.all([
+            lyricsManager.fetchLyrics(track.id, track),
+            trackContributors(track),
+        ]);
         if (signal?.aborted) return null;
         const source = data?.ttml || data?.subtitles || track.lyrics || '';
         const lineOnly = isLineOnlyLyrics(source);
@@ -805,27 +833,9 @@ async function renderLyricsComponent(container, track, playbackSource, lyricsMan
             signal,
             lineOnly,
             provider: data?.lyricsProvider,
+            attribution: data?.lyricsAttribution,
+            contributors,
         });
-        if (element && data?.lyricsAttribution) {
-            const credits = document.createElement('div');
-            credits.className = 'spicy-lyrics-attribution';
-            const appendPerson = (label, person) => {
-                if (!person?.username || !person?.url) return;
-                if (credits.childNodes.length) credits.append(document.createTextNode(' · '));
-                const link = document.createElement('a');
-                link.href = person.url;
-                link.target = '_blank';
-                link.rel = 'noopener noreferrer';
-                link.textContent = `${label}: ${person.username}`;
-                credits.append(link);
-            };
-            const provider = document.createElement('span');
-            provider.textContent = `Lyrics: ${data.lyricsProvider || 'Spicy Lyrics'}`;
-            credits.append(provider);
-            appendPerson('Uploader', data.lyricsAttribution.uploader);
-            appendPerson('Maker', data.lyricsAttribution.maker);
-            container.append(credits);
-        }
         return element;
     } catch (error) {
         if (signal?.aborted || error?.name === 'AbortError') return null;

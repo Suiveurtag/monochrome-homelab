@@ -194,6 +194,12 @@ const SHADOW_BRIDGE_CSS = `
     font-size: 0.8rem;
 }
 #SpicyLyricsPage.Fullscreen { --spicy-credits-inset: 3.5rem; }
+#SpicyLyricsPage .spicy-attribution { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
+#SpicyLyricsPage .spicy-attribution a { color: inherit; text-decoration: none; }
+#SpicyLyricsPage .spicy-attribution a:hover { text-decoration: underline; }
+#SpicyLyricsPage .spicy-attribution a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+#SpicyLyricsPage .spicy-attribution-person { display: inline-flex; align-items: center; gap: .35rem; }
+#SpicyLyricsPage .spicy-attribution-person img { width: 1.5rem; height: 1.5rem; border-radius: 50%; object-fit: cover; }
 @supports (-moz-appearance: none) {
     @media (prefers-reduced-motion: no-preference) {
         /* Keep WebRender from snapping an axis-aligned lift to whole pixels (Bug 2069657). */
@@ -815,6 +821,7 @@ export class SpicyLyricsElement extends HTMLElement {
         lyricsContainer.appendChild(content);
         const creditMode = getSpicyLyricsSetting('credits');
         const songwriters = this._lines.songwriters ?? [];
+        const community = this.provider === 'spicy_lyrics';
         const creditLines = [this.provider, songwriters.length ? `Written by ${songwriters.join(', ')}` : ''];
         if (creditLines.some(Boolean)) {
             const pinned = document.createElement('div');
@@ -826,7 +833,41 @@ export class SpicyLyricsElement extends HTMLElement {
             creditLines.forEach((label, index) => {
                 if (!label) return;
                 const text = document.createElement('div');
-                text.textContent = label;
+                if (index === 0 && community) {
+                    text.className = 'spicy-attribution';
+                    const provider = document.createElement('a');
+                    provider.href = 'https://spicylyrics.org/';
+                    provider.target = '_blank';
+                    provider.rel = 'noopener noreferrer';
+                    provider.textContent = 'Spicy Lyrics';
+                    text.append(provider);
+                    for (const [role, person] of [['Uploaded by', this.attribution?.uploader], ['Made by', this.attribution?.maker]]) {
+                        if (!person?.username) continue;
+                        const group = document.createElement('span');
+                        group.className = 'spicy-attribution-person';
+                        group.append(`${role} `);
+                        let url;
+                        try { url = new URL(person.url); } catch {}
+                        const name = document.createElement(url?.protocol === 'https:' ? 'a' : 'span');
+                        if (name.tagName === 'A') {
+                            name.href = url.href;
+                            name.target = '_blank';
+                            name.rel = 'noopener noreferrer';
+                        }
+                        let avatar;
+                        try { avatar = new URL(person.avatar); } catch {}
+                        if (avatar?.protocol === 'https:') {
+                            const image = document.createElement('img');
+                            image.src = avatar.href;
+                            image.alt = '';
+                            image.loading = 'lazy';
+                            group.append(image);
+                        }
+                        name.textContent = person.username;
+                        group.append(name);
+                        text.append(group);
+                    }
+                } else text.textContent = label;
                 (creditMode === 'full' || creditMode === 'source' && index === 0 ? pinnedCredits : scrolling).append(text);
             });
             if (pinnedCredits.childElementCount) {
@@ -834,6 +875,31 @@ export class SpicyLyricsElement extends HTMLElement {
                 lyricsContainer.append(pinned);
             }
             if (scrolling.childElementCount) scroll.append(scrolling);
+        }
+        if (this.contributors?.uploader || this.contributors?.editors?.length) {
+            const credits = document.createElement('div');
+            credits.className = 'Credits spicy-attribution';
+            const addContributor = (role, person) => {
+                if (!person?.name) return;
+                const group = document.createElement('span');
+                group.className = 'spicy-attribution-person';
+                group.append(`${role} `);
+                if (person.avatar) {
+                    const image = document.createElement('img');
+                    image.src = person.avatar;
+                    image.alt = '';
+                    image.loading = 'lazy';
+                    group.append(image);
+                }
+                const name = document.createElement(person.url?.startsWith('/user/@') ? 'a' : 'span');
+                if (name.tagName === 'A') name.href = person.url;
+                name.textContent = person.name;
+                group.append(name);
+                credits.append(group);
+            };
+            addContributor('Track uploaded by', this.contributors.uploader);
+            for (const editor of this.contributors.editors || []) addContributor('Edited by', editor);
+            scroll.append(credits);
         }
         contentBox.append(nowBar, lyricsContainer);
         const sharedHost = this.closest('[data-spicy-background-host]');
