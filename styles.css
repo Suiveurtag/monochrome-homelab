@@ -20197,3 +20197,43 @@ html[data-can-download='false'] [data-upload-action='download'] {
         max-width: 100%;
     }
 }
+.spicy-lyrics-attribution {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.75rem;
+    color: var(--muted-foreground);
+    font-size: 0.72rem;
+    line-height: 1.4;
+}
+
+.spicy-lyrics-attribution a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+}
+
+.spicy-lyrics-attribution a:hover {
+    color: var(--foreground);
+}
+
+
+.admin-spicy-heading { display: flex; align-items: center; gap: .8rem; }
+.admin-spicy-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border: 1px solid var(--border); border-radius: 10px; background: var(--background); }
+.admin-spicy-icon svg { width: 20px; height: 20px; }
+.admin-spicy-body { display: grid; gap: .9rem; padding: 1rem; }
+.admin-spicy-status { display: flex; align-items: center; gap: .6rem; min-height: 38px; padding: .6rem .75rem; border: 1px solid var(--border); border-radius: 9px; background: color-mix(in srgb, var(--foreground) 4%, var(--background)); font-size: .7rem; line-height: 1.4; }
+.admin-spicy-status-icon { width: 9px; height: 9px; flex: none; border-radius: 50%; background: var(--muted-foreground); transition: background-color 180ms ease, transform 180ms ease; }
+.admin-spicy-status[data-state='success'] .admin-spicy-status-icon { background: #5acb85; }
+.admin-spicy-status[data-state='unsaved'] .admin-spicy-status-icon { background: #e8b95d; }
+.admin-spicy-status[data-state='error'] .admin-spicy-status-icon { background: #ee7777; }
+.admin-spicy-status[data-state='loading'] .admin-spicy-status-icon { border: 2px solid var(--border); border-top-color: var(--foreground); background: transparent; animation: admin-spicy-spin .7s linear infinite; }
+@keyframes admin-spicy-spin { to { transform: rotate(360deg); } }
+.admin-spicy-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.admin-spicy-actions button { min-height: 36px; transition: transform 160ms ease, opacity 160ms ease; }
+.admin-spicy-actions button:not(:disabled):active { transform: scale(.97); }
+.admin-spicy-actions button:disabled { opacity: .55; cursor: wait; }
+.admin-spicy-help { margin: 0; color: var(--muted-foreground); font-size: .68rem; line-height: 1.5; }
+.admin-spicy input:focus-visible, .admin-spicy button:focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .admin-spicy-status-icon, .admin-spicy-actions button { transition: none; } .admin-spicy-status[data-state='loading'] .admin-spicy-status-icon { animation: none; } }

@@ -109,6 +109,7 @@ export function mapPocketBaseTrack(record, client = pb) {
         videoCoverUrl,
         mediaMetadata: { tags: ['Self-hosted', ...(isFlac ? ['FLAC', 'LOSSLESS'] : [])] },
         lyrics: record.lyrics || '',
+        useSpicyLyrics: Boolean(record.use_spicy_lyrics),
         importSource: record.source_provider || null,
     };
 }
@@ -188,6 +189,7 @@ export function createTrackFormData(track, file, ownerId, coverFile = null) {
     formData.set('hide_from_artist_page', String(Boolean(track?.hideFromArtistPage)));
     formData.set('use_original_track_assets', String(track?.useOriginalTrackAssets !== false));
     formData.set('lyrics', track?.lyrics || '');
+    formData.set('use_spicy_lyrics', String(Boolean(track?.useSpicyLyrics)));
     formData.set('audio_codec', track?.audioCodec || file.name?.match(/\.([^.]+)$/)?.[1]?.toUpperCase() || '');
     if (track?.audioBitrate) formData.set('audio_bitrate', String(track.audioBitrate));
     formData.set('audio', file);
@@ -275,6 +277,7 @@ export async function updateSelfHostedTrack(id, track, coverFile = null, clientO
     formData.set('hide_from_artist_page', String(Boolean(track?.hideFromArtistPage)));
     formData.set('use_original_track_assets', String(track?.useOriginalTrackAssets !== false));
     formData.set('lyrics', track?.lyrics || '');
+    formData.set('use_spicy_lyrics', String(Boolean(track?.useSpicyLyrics)));
     if (coverFile) formData.set('cover', coverFile);
     if (canvasFile) formData.set('canvas', canvasFile);
     else if (removeCanvas) formData.set('canvas', '');

@@ -127,6 +127,58 @@ function showFeedback(message, kind = '') {
     feedback.dataset.kind = kind;
 }
 
+async function spicyAdminRequest(path, options = {}) {
+    let response;
+    try {
+        response = await fetch(path, {
+            ...options,
+            headers: {
+                Authorization: `Bearer ${pb.authStore.token}`,
+                ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+                ...options.headers,
+            },
+        });
+    } catch {
+        throw new Error('Could not reach the server. Check your connection and try again.');
+    }
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        const details = Object.values(result.data || {})
+            .map((item) => typeof item === 'object' ? item?.message : item)
+            .filter((item) => typeof item === 'string' && item.trim());
+        const message = typeof result.message === 'string' ? result.message.trim() : '';
+        const generic = !message || /^(something went wrong|an error occurred)\.?$/i.test(message);
+        const fallback = response.status === 401 ? 'Your session has expired. Sign in again.'
+            : response.status === 403 ? 'Administrator access is required.'
+            : response.status === 404 ? 'The Spicy Lyrics endpoint is unavailable. Check the server hooks and migrations.'
+            : response.status >= 500 ? 'The server could not process the request. Check the PocketBase logs for the underlying error.'
+            : 'The server rejected the request. Check the configuration and try again.';
+        throw new Error(`${generic ? fallback : message}${details.length ? ` ${details.join(' ')}` : ''} (HTTP ${response.status})`);
+    }
+    return result;
+}
+
+let spicyKeyConfigured = false;
+function showSpicyKeyStatus(message, state) {
+    const status = document.getElementById('admin-spicy-lyrics-status');
+    const text = document.getElementById('admin-spicy-lyrics-status-text');
+    if (text) text.textContent = message;
+    if (status) status.dataset.state = state;
+}
+
+async function refreshSpicyKeyStatus() {
+    showSpicyKeyStatus('Checking configuration…', 'loading');
+    try {
+        const result = await spicyAdminRequest('/api/monochrome/spicy-lyrics/status');
+        spicyKeyConfigured = result.configured;
+        showSpicyKeyStatus(result.configured ? 'API key configured on this instance.' : 'No API key configured. Add one to enable lyrics.', result.configured ? 'success' : 'empty');
+        const remove = document.getElementById('admin-spicy-lyrics-remove');
+        if (remove) remove.hidden = !result.configured;
+    } catch (error) {
+        showSpicyKeyStatus(error.message || 'Could not check the configuration. Try again.', 'error');
+    }
+}
+
 function setText(id, value) {
     const element = document.getElementById(id);
     if (element) element.textContent = String(value);
@@ -882,6 +934,52 @@ function bindPage() {
         }
     });
 
+    const spicyKeyInput = document.getElementById('admin-spicy-lyrics-key');
+    const spicySave = document.getElementById('admin-spicy-lyrics-save');
+    const spicyRemove = document.getElementById('admin-spicy-lyrics-remove');
+    spicyKeyInput?.addEventListener('input', () => {
+        showSpicyKeyStatus(spicyKeyInput.value.trim() ? 'Key entered. Save to apply it to this instance.' : (spicyKeyConfigured ? 'API key configured on this instance.' : 'No API key configured. Add one to enable lyrics.'), spicyKeyInput.value.trim() ? 'unsaved' : (spicyKeyConfigured ? 'success' : 'empty'));
+    });
+    spicySave?.addEventListener('click', async () => {
+        if (!spicyKeyInput?.value.trim()) {
+            showSpicyKeyStatus('Enter an API key before saving.', 'error');
+            spicyKeyInput?.focus();
+            return;
+        }
+        spicySave.disabled = true;
+        if (spicyRemove) spicyRemove.disabled = true;
+        showSpicyKeyStatus('Saving API key…', 'loading');
+        try {
+            await spicyAdminRequest('/api/monochrome/spicy-lyrics/key', { method: 'POST', body: JSON.stringify({ key: spicyKeyInput.value.trim() }) });
+            spicyKeyInput.value = '';
+            spicyKeyConfigured = true;
+            if (spicyRemove) spicyRemove.hidden = false;
+            showSpicyKeyStatus('API key saved on the server.', 'success');
+        } catch (error) {
+            showSpicyKeyStatus(error.message || 'Could not save the key. Try again.', 'error');
+        } finally {
+            spicySave.disabled = false;
+            if (spicyRemove) spicyRemove.disabled = false;
+        }
+    });
+    spicyRemove?.addEventListener('click', async () => {
+        spicyRemove.disabled = true;
+        if (spicySave) spicySave.disabled = true;
+        showSpicyKeyStatus('Removing API key…', 'loading');
+        try {
+            await spicyAdminRequest('/api/monochrome/spicy-lyrics/key', { method: 'DELETE' });
+            spicyKeyConfigured = false;
+            spicyRemove.hidden = true;
+            if (spicyKeyInput) spicyKeyInput.value = '';
+            showSpicyKeyStatus('API key removed. Add a key to enable lyrics.', 'empty');
+        } catch (error) {
+            showSpicyKeyStatus(error.message || 'Could not remove the key. Try again.', 'error');
+        } finally {
+            spicyRemove.disabled = false;
+            if (spicySave) spicySave.disabled = false;
+        }
+    });
+
     document.querySelectorAll('[data-admin-section]').forEach((link) => {
         link.addEventListener('click', () => {
             document
@@ -917,6 +1015,7 @@ export const adminManager = {
 
         await ui.showPage('admin');
         bindPage();
+        await refreshSpicyKeyStatus();
         setSaveBarVisibility(false, { animate: false });
         showFeedback('Changes are applied to the whole instance.');
         try {

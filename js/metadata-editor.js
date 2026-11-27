@@ -270,6 +270,11 @@ function buildTrackForm(track, availableTracks = []) {
         <div class="metadata-editor-section"><h5>Lyrics</h5><div class="metadata-fields">
             ${lyricsFilePicker()}
             ${textarea('Synced lyrics (LRC or TTML)', 'lyrics', track.lyrics, 'Paste LRC or TTML lyrics here…', 7)}
+            <label class="metadata-switch is-wide">
+                <input type="checkbox" name="useSpicyLyrics" ${track.useSpicyLyrics ? 'checked' : ''} />
+                <span></span>
+                <div><strong>Use Spicy Lyrics</strong><small>use the Spicy Lyrics API to get lyrics (not downloadable)</small></div>
+            </label>
             ${repeatableRows('Credits', 'credits', track.credits, [
                 { name: 'name', label: 'Name', placeholder: 'Contributor name' },
                 { name: 'role', label: 'Role', placeholder: 'Producer, Writer…' },
@@ -402,6 +407,7 @@ async function saveTrack(track, form, availableTracks = []) {
                 : canvasData || track.videoCoverUrl || track.videoUrl || null,
         themeColor: normalizeTrackThemeColor(value(form, 'themeColor')),
         lyrics: String(form.get('lyrics') || ''),
+        useSpicyLyrics: form.get('useSpicyLyrics') === 'on',
         credits: collectRows(form, 'credits', ['name', 'role']),
         versionLabel: value(form, 'versionLabel'),
         hideFromArtistPage,

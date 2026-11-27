@@ -97,7 +97,7 @@ export function pairSelfHostedUploadFiles(files) {
 
 export async function uploadSelfHostedFilesBatch(
     files,
-    { authUser, allowUnauthenticated = false, readTrackMetadata, uploadTrack, notify = () => {} } = {}
+    { authUser, allowUnauthenticated = false, useSpicyLyrics = false, readTrackMetadata, uploadTrack, notify = () => {} } = {}
 ) {
     const selectedFiles = Array.isArray(files) ? files : [];
     const uploadPairs = pairSelfHostedUploadFiles(selectedFiles);
@@ -129,6 +129,7 @@ export async function uploadSelfHostedFilesBatch(
         try {
             notify(`Uploading ${file.name}…`);
             const metadata = await readTrackMetadata(file, { filename: file.name, siblings: selectedFiles });
+            metadata.useSpicyLyrics = Boolean(useSpicyLyrics);
             const coverUrl = metadata?.album?.cover;
             try {
                 if (lyrics) {

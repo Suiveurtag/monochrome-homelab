@@ -2648,8 +2648,12 @@
                                     <p>
                                         MP3, FLAC, M4A, AAC, OGG, Opus and WAV are supported. Add matching
                                         <code>.lrc</code>, <code>.irc</code>, <code>.ttml</code> or <code>.txt</code>
-                                        lyrics to enable Spicy Lyrics.
+                                        files for your own lyrics, or enable Spicy Lyrics below.
                                     </p>
+                                    <label class="admin-control-row" style="margin: 1rem 0" for="upload-use-spicy-lyrics">
+                                        <span><strong>Use Spicy Lyrics</strong><small>Fetch syllable-synced lyrics the first time each listener opens the lyrics panel. Cached in that browser for up to 30 days.</small></span>
+                                        <input id="upload-use-spicy-lyrics" type="checkbox" />
+                                    </label>
                                     <label class="custom-file-upload" for="selfhost-upload-input"
                                         >Choose music + lyrics files</label
                                     >
@@ -3703,6 +3707,20 @@
                                     </div>
                                 </section>
 
+                                <section class="admin-section admin-instance-section admin-spicy" aria-labelledby="admin-spicy-lyrics-title">
+                                    <div class="admin-section-heading">
+                                        <div class="admin-spicy-heading">
+                                            <span class="admin-spicy-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+                                            <div><h2 id="admin-spicy-lyrics-title">Spicy Lyrics</h2><p>Connect the instance to fetch syllable-synced lyrics in the player.</p></div>
+                                        </div>
+                                    </div>
+                                    <div class="admin-spicy-body">
+                                        <div id="admin-spicy-lyrics-status" class="admin-spicy-status" role="status" aria-live="polite" data-state="loading"><span class="admin-spicy-status-icon" aria-hidden="true"></span><span id="admin-spicy-lyrics-status-text">Checking configuration…</span></div>
+                                        <label class="admin-field" for="admin-spicy-lyrics-key"><span>API key</span><input id="admin-spicy-lyrics-key" type="password" autocomplete="new-password" placeholder="Paste a secret key" aria-describedby="admin-spicy-help" /></label>
+                                        <div class="admin-spicy-actions"><button id="admin-spicy-lyrics-save" type="button" class="btn-primary">Save key</button><button id="admin-spicy-lyrics-remove" type="button" class="btn-secondary" hidden>Remove key</button></div>
+                                        <p id="admin-spicy-help" class="admin-spicy-help">The key stays on the server. Lyrics are cached in each browser for up to 30 days. Provider and contributor credits are shown with the lyrics.</p>
+                                    </div>
+                                </section>
                                 <div class="admin-save-bar" hidden>
                                     <p id="admin-feedback" class="admin-feedback" aria-live="polite">
                                         Changes are applied to the whole instance.

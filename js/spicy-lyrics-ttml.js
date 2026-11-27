@@ -38,6 +38,30 @@ export function parseTtmlTime(value, timingParameters = {}) {
     return Number.isFinite(numeric) && source !== '' ? numeric * 1000 : null;
 }
 
+// Restore word boundaries lost by older Spicy API-to-TTML conversions.
+export function repairCachedSpicyTtml(ttml, rawResponse) {
+    const response = rawResponse?.lyrics?.body;
+    const rows = (response?.Body || response)?.Content;
+    if (!Array.isArray(rows)) return null;
+    const documentNode = new DOMParser().parseFromString(ttml, 'application/xml');
+    if (documentNode.getElementsByTagName('parsererror').length) return null;
+    const paragraphs = Array.from(documentNode.getElementsByTagNameNS('*', 'p'));
+    if (paragraphs.length !== rows.length) return null;
+    for (let i = 0; i < rows.length; i++) {
+        const syllables = rows[i].Lead?.Syllables || [];
+        const spans = Array.from(paragraphs[i].children);
+        if (spans.length !== syllables.length) return null;
+        for (let j = 1; j < spans.length; j++) {
+            const previous = syllables[j - 1];
+            if (!previous.IsPartOfWord && !/\s$/u.test(previous.Text || '') && !/^\s/u.test(syllables[j].Text || '') &&
+                !/^\s/u.test(spans[j].previousSibling?.nodeType === 3 ? spans[j].previousSibling.textContent : '')) {
+                spans[j].before(documentNode.createTextNode(' '));
+            }
+        }
+    }
+    return new XMLSerializer().serializeToString(documentNode);
+}
+
 function getTtmlTimingParameters(root) {
     const attribute = (localName) =>
         Array.from(root?.attributes || []).find((item) => item.localName === localName)?.value;

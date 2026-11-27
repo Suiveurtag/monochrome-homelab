@@ -390,6 +390,7 @@ async function initializeSelfHostedUploads() {
         const { readTrackMetadata } = await loadMetadataModule();
         const result = await uploadSelfHostedFilesBatch(files, {
             authUser: authManager.user,
+            useSpicyLyrics: Boolean(document.getElementById('upload-use-spicy-lyrics')?.checked),
             allowUnauthenticated: !authManager.user && document.documentElement.dataset.canUpload === 'true',
             readTrackMetadata,
             uploadTrack: (metadata, file, coverFile) => uploadSelfHostedTrack(metadata, file, coverFile),

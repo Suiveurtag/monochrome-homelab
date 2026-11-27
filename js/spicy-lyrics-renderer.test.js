@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from 'vitest';
 import { getScrollLineIndex, parseSpicyTtml, parseTtmlTime, SpicyLyricsElement, SpicySpring } from './spicy-lyrics-renderer.js';
+import { repairCachedSpicyTtml } from './spicy-lyrics-ttml.js';
 
 afterEach(() => document.body.replaceChildren());
 
@@ -19,6 +20,19 @@ const LINE_SYNC_TTML = `<?xml version="1.0" encoding="UTF-8"?>
 </tt>`;
 
 describe('Spicy Lyrics renderer', () => {
+    test('repairs cached Spicy API boundaries and renders separate words', () => {
+        const ttml = '<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="1s" end="4s"><span begin="1s" end="1.5s">I</span><span begin="1.5s" end="2s">might</span><span begin="2s" end="3s">cra</span><span begin="3s" end="4s">zy</span></p></div></body></tt>';
+        const syllables = [{ Text: 'I' }, { Text: 'might' }, { Text: 'cra', IsPartOfWord: true }, { Text: 'zy' }];
+        const raw = { lyrics: { body: { Body: { Content: [{ Lead: { Syllables: syllables } }] } } } };
+        const repaired = repairCachedSpicyTtml(ttml, raw);
+        expect(parseSpicyTtml(repaired)[0].text).toBe('I might crazy');
+        expect(parseSpicyTtml(repairCachedSpicyTtml(repaired, raw))[0].text).toBe('I might crazy');
+        const element = new SpicyLyricsElement();
+        element.ttml = repaired;
+        document.body.appendChild(element);
+        expect(element._lineStates[0].element.querySelectorAll('.spicy-word-token')).toHaveLength(3);
+        expect(element._lineStates[0].element.querySelectorAll('.spicy-word-space')).toHaveLength(2);
+    });
     test('does not let a lingering background vocal pull scrolling back to its lead', () => {
         const lines = [
             { start: 0, end: 1000 },

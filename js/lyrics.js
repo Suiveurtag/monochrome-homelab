@@ -13,7 +13,7 @@ import { sidePanelManager } from './side-panel.js';
 import { isLineOnlyLyrics, isTtml, lyricsToTtml, parseLrc } from './lyrics-format.js';
 import { Player } from './player.js';
 import { getSpicyLyricsSetting, normalizeSpicyLyricsOffset, setSpicyLyricsSetting } from './spicy-lyrics-settings.js';
-import { parseSpicyTtml } from './spicy-lyrics-ttml.js';
+import { parseSpicyTtml, repairCachedSpicyTtml } from './spicy-lyrics-ttml.js';
 import { createBloomPlaybackClock } from './spicy-lyrics-clock.js';
 import { audioContextManager } from './audio-context.js';
 import { pb } from './accounts/config.js';
@@ -155,11 +155,42 @@ export class LyricsManager {
         this.currentLyrics = null;
         this.syncedLyrics = [];
         this.lyricsCache = new Map();
+        this.spicyLookupPromises = new Map();
+        this.recentTrackChanges = [];
+        this.lastPlayerTrackId = null;
+        this.spicySkipCooldownUntil = 0;
+        try {
+            const currentTrackId = Player.instance.currentTrack?.id;
+            this.lastPlayerTrackId = currentTrackId == null ? null : String(currentTrackId);
+        } catch {}
         this.componentLoaded = false;
         this.componentLoadPromise = null;
         this.geniusManager = new GeniusManager();
         this.isGeniusMode = false;
         this.timingOffset = 0; // Offset in milliseconds (positive = delay lyrics, negative = advance lyrics)
+        try {
+            for (const key of Object.keys(localStorage)) {
+                if (!key.startsWith('spicy-lyrics:')) continue;
+                try {
+                    const item = JSON.parse(localStorage.getItem(key) || 'null');
+                    if (!item?.expiresAt || Date.parse(item.expiresAt) <= Date.now()) localStorage.removeItem(key);
+                } catch {
+                    localStorage.removeItem(key);
+                }
+            }
+        } catch {}
+        window.addEventListener('player-track-changed', (event) => {
+            const id = String(event.detail?.track?.id || '');
+            if (!id || id === this.lastPlayerTrackId) return;
+            const now = Date.now();
+            if (this.lastPlayerTrackId !== null) {
+                this.recentTrackChanges = this.recentTrackChanges.filter((at) => now - at < 20000);
+                this.recentTrackChanges.push(now);
+                if (this.recentTrackChanges.length > 8 || now < this.spicySkipCooldownUntil)
+                    this.spicySkipCooldownUntil = now + 20000;
+            }
+            this.lastPlayerTrackId = id;
+        });
         window.addEventListener('track-metadata-updated', (event) => {
             if (event.detail?.trackId != null) this.lyricsCache.delete(event.detail.trackId);
         });
@@ -230,6 +261,13 @@ export class LyricsManager {
         await this.componentLoadPromise;
     }
 
+    async waitForSpicyPlaybackToSettle(trackId) {
+        while (Date.now() < this.spicySkipCooldownUntil) {
+            await new Promise((resolve) => setTimeout(resolve, this.spicySkipCooldownUntil - Date.now()));
+        }
+        return this.lastPlayerTrackId === null || String(trackId) === this.lastPlayerTrackId;
+    }
+
     async fetchLyrics(trackId, track = null) {
         if (track) {
             const source = typeof track.lyrics === 'string' ? track.lyrics.replaceAll('&nbsp;', '&#160;') : '';
@@ -259,7 +297,7 @@ export class LyricsManager {
 
             // An upload can carry an empty TTML shell while another duplicate
             // of the same recording has imported lyrics. Resolve that local
-            // copy before asking LRCLIB, without overriding lyrics on this track.
+            // copy without overriding lyrics on this track.
             if (track.isSelfHosted) {
                 try {
                     const artist = track.artist?.name || track.artists?.[0]?.name || '';
@@ -298,46 +336,83 @@ export class LyricsManager {
                 return this.lyricsCache.get(trackId);
             }
 
-            try {
-                const artist = Array.isArray(track.artists)
-                    ? track.artists.map((a) => a.name || a).join(', ')
-                    : track.artist?.name || '';
-                const title = track.title || '';
-                const album = track.album?.title || '';
-                const duration = track.duration ? Math.round(track.duration) : null;
+            if (track.useSpicyLyrics) {
+                try {
+                    let lookup = this.spicyLookupPromises.get(trackId);
+                    if (!lookup) {
+                        lookup = (async () => {
+                            const cacheKey = `spicy-lyrics:${trackId}`;
+                            let cached = null;
+                            try {
+                                cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+                            } catch {}
+                            if (
+                                cached?.expiresAt &&
+                                Date.parse(cached.expiresAt) > Date.now() &&
+                                cached.ttml &&
+                                cached.rawResponse
+                            ) {
+                                const ttml = cached.wordBoundariesVersion === 1
+                                    ? cached.ttml
+                                    : repairCachedSpicyTtml(cached.ttml, cached.rawResponse);
+                                if (ttml) {
+                                    cached.ttml = ttml;
+                                    cached.wordBoundariesVersion = 1;
+                                    localStorage.setItem(cacheKey, JSON.stringify(cached));
+                                    return {
+                                        ttml: cached.ttml,
+                                        lyricsProvider: cached.provider || 'Spicy Lyrics',
+                                        lyricsAttribution: cached.attribution || null,
+                                        spicyLyricsResponse: cached.rawResponse,
+                                    };
+                                }
+                            }
+                            if (cached) localStorage.removeItem(cacheKey);
 
-                if (!title || !artist) {
-                    console.warn('Missing required fields for LRCLIB');
-                    return null;
-                }
-
-                const params = new URLSearchParams({
-                    track_name: title,
-                    artist_name: artist,
-                });
-
-                if (album) params.append('album_name', album);
-                if (duration) params.append('duration', duration.toString());
-
-                const response = await fetch(`https://lrclib.net/api/get?${params.toString()}`);
-
-                if (response.ok) {
-                    const data = await response.json();
-
-                    if (data.syncedLyrics || data.plainLyrics) {
-                        const lyricsData = {
-                            subtitles: data.syncedLyrics,
-                            plain: data.plainLyrics,
-                            lyricsProvider: 'LRCLIB',
-                        };
-
+                            // Wait out a rapid-skip burst before spending a shared API request.
+                            if (!(await this.waitForSpicyPlaybackToSettle(trackId))) return null;
+                            const response = await fetch('/api/monochrome/spicy-lyrics/lookup', {
+                                method: 'POST',
+                                headers: {
+                                    Authorization: `Bearer ${pb.authStore.token}`,
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ id: track.id }),
+                            });
+                            if (!response.ok) return null;
+                            const result = await response.json();
+                            const repairedTtml = repairCachedSpicyTtml(result.ttml, result.raw);
+                            const cache = {
+                                ttml: repairedTtml || result.ttml,
+                                provider: result.provider || 'Spicy Lyrics',
+                                attribution: { uploader: result.uploader, maker: result.maker },
+                                // Keep the complete API response, including its key-specific mark.
+                                rawResponse: result.raw,
+                                expiresAt: result.expiresAt,
+                                wordBoundariesVersion: repairedTtml ? 1 : 0,
+                            };
+                            localStorage.setItem(cacheKey, JSON.stringify(cache));
+                            return {
+                                ttml: cache.ttml,
+                                lyricsProvider: cache.provider,
+                                lyricsAttribution: cache.attribution,
+                                spicyLyricsResponse: cache.rawResponse,
+                            };
+                        })();
+                        this.spicyLookupPromises.set(trackId, lookup);
+                    }
+                    const lyricsData = await lookup;
+                    if (lyricsData) {
                         this.lyricsCache.set(trackId, lyricsData);
                         return lyricsData;
                     }
+                } catch (error) {
+                    console.warn('Spicy Lyrics lookup failed:', error);
+                } finally {
+                    this.spicyLookupPromises.delete(trackId);
                 }
-            } catch (error) {
-                console.warn('LRCLIB fetch failed:', error);
             }
+
         }
 
         return null;
@@ -728,11 +803,32 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
             container.innerHTML = '<div class="lyrics-empty">Lyrics are not available for this track.</div>';
             return null;
         }
-        return await mountSpicyLyrics(container, track, audioPlayer, lyricsManager, ttml, {
+        const element = await mountSpicyLyrics(container, track, audioPlayer, lyricsManager, ttml, {
             signal,
             lineOnly,
             provider: data?.lyricsProvider,
         });
+        if (element && data?.lyricsAttribution) {
+            const credits = document.createElement('div');
+            credits.className = 'spicy-lyrics-attribution';
+            const appendPerson = (label, person) => {
+                if (!person?.username || !person?.url) return;
+                if (credits.childNodes.length) credits.append(document.createTextNode(' · '));
+                const link = document.createElement('a');
+                link.href = person.url;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.textContent = `${label}: ${person.username}`;
+                credits.append(link);
+            };
+            const provider = document.createElement('span');
+            provider.textContent = `Lyrics: ${data.lyricsProvider || 'Spicy Lyrics'}`;
+            credits.append(provider);
+            appendPerson('Uploader', data.lyricsAttribution.uploader);
+            appendPerson('Maker', data.lyricsAttribution.maker);
+            container.append(credits);
+        }
+        return element;
     } catch (error) {
         if (signal?.aborted || error?.name === 'AbortError') return null;
         console.error('Failed to load lyrics:', error);
