@@ -70,6 +70,27 @@
     background: #101010;
 }
 
+.now-playing-panel-spicy-bg::before {
+    content: '';
+    position: absolute;
+    z-index: 3;
+    inset: 0;
+    background: rgb(0 0 0 / 0.28);
+    backdrop-filter: blur(38px) saturate(1.35);
+    opacity: 0;
+    transition: opacity 300ms var(--ease-in-out);
+}
+
+.now-playing-panel.lyrics-expanded .now-playing-panel-spicy-bg::before {
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .now-playing-panel-spicy-bg::before {
+        transition-duration: 120ms;
+    }
+}
+
 .now-playing-panel-spicy-bg::after {
     content: '';
     position: absolute;
@@ -196,6 +217,14 @@ body .now-playing-panel.is-queue-view .now-playing-panel-spicy-bg::after {
     top: 0;
     right: var(--now-playing-panel-gutter);
     left: var(--now-playing-panel-gutter);
+    transition: opacity 180ms var(--ease-out), visibility 0s;
+}
+
+.now-playing-panel.lyrics-expanded .now-playing-panel-header-slot {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition-delay: 0s, 180ms;
 }
 
 .now-playing-panel-header {
@@ -1597,115 +1626,117 @@ body.now-playing-panel-resizing .app-container {
     transition: none;
 }
 
-html.lyrics-view-transition .now-playing-panel {
+html[data-lyrics-motion] {
+    --lyrics-contract-easing: cubic-bezier(0.65, 0, 0.35, 1);
+    view-transition-name: none;
+}
+
+/* Keep the background live while the content grows from the preview. */
+html[data-lyrics-motion] .now-playing-panel-viewport {
     view-transition-name: lyrics-panel;
 }
 
-html.lyrics-view-transition::view-transition-old(root),
-html.lyrics-view-transition::view-transition-new(root) {
+html[data-lyrics-motion]::view-transition {
+    pointer-events: none;
+}
+
+html[data-lyrics-motion]::view-transition-group(lyrics-panel) {
     animation: none;
 }
 
-html.lyrics-view-transition::view-transition-image-pair(lyrics-panel) {
+html[data-lyrics-motion]::view-transition-image-pair(lyrics-panel) {
     overflow: hidden;
-    isolation: isolate;
+    border-radius: var(--shell-radius);
 }
 
-html.lyrics-view-transition::view-transition-old(lyrics-panel) {
+html[data-lyrics-motion]::view-transition-old(lyrics-panel),
+html[data-lyrics-motion]::view-transition-new(lyrics-panel) {
+    mix-blend-mode: normal;
     animation: none;
 }
 
-html.lyrics-view-transition::view-transition-new(lyrics-panel) {
-    animation: lyrics-panel-in 280ms cubic-bezier(0.23, 1, 0.32, 1) both;
+/* Snap the live card to its final layout before the browser captures it. */
+html[data-lyrics-motion] .now-playing-panel-lyrics {
+    transition: none;
 }
 
-@keyframes lyrics-panel-in {
-    from { clip-path: var(--lyrics-expand-origin, inset(20% 8% 20% 8% round 12px)); }
-    to { clip-path: inset(0 round 0); }
+html[data-lyrics-motion="opening"]::view-transition-old(lyrics-panel) {
+    animation: lyrics-fade-in 120ms var(--ease-in-out) reverse both;
 }
 
-html.lyrics-view-closing::view-transition-old(lyrics-panel) {
-    z-index: 2;
-    transform-origin: center bottom;
-    animation: lyrics-panel-close-out 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+html[data-lyrics-motion="opening"]::view-transition-new(lyrics-panel) {
+    animation:
+        lyrics-expand 300ms var(--ease-in-out) both,
+        lyrics-focus-in 300ms var(--ease-in-out) both;
 }
 
-html.lyrics-view-closing::view-transition-new(lyrics-panel) {
+html[data-lyrics-motion="closing"]::view-transition-new(lyrics-panel) {
+    animation: lyrics-fade-in 110ms var(--ease-in-out) 180ms both;
+}
+
+html[data-lyrics-motion="closing"]::view-transition-old(lyrics-panel) {
     z-index: 1;
-    animation: none;
+    animation:
+        lyrics-contract 290ms var(--lyrics-contract-easing) both,
+        lyrics-focus-in 290ms var(--ease-in-out) reverse both;
 }
 
-@keyframes lyrics-panel-close-out {
-    from { opacity: 1; transform: translateY(0) scale(1); }
-    to { opacity: 0; transform: translateY(35%) scale(0.9); }
-}
-
-@keyframes lyrics-panel-fade-out { to { opacity: 0; } }
-@keyframes lyrics-panel-fade-in { from { opacity: 0; } }
-
-@media (prefers-reduced-motion: reduce) {
-    html.lyrics-view-transition::view-transition-old(lyrics-panel),
-    html.lyrics-view-transition::view-transition-new(lyrics-panel) {
-        animation-duration: 120ms;
-        animation-timing-function: ease;
-        animation-fill-mode: both;
+@keyframes lyrics-expand {
+    from {
+        clip-path: var(--lyrics-preview-inset, inset(0 16px calc(100% - 56px) round 12px));
+        transform: translateY(var(--lyrics-preview-offset, calc(100% - 56px)));
     }
 
-    html.lyrics-view-transition::view-transition-group(lyrics-panel) {
-        animation: none;
+    to {
+        clip-path: inset(0 round var(--shell-radius));
     }
-    html.lyrics-view-transition::view-transition-old(lyrics-panel),
-    html.lyrics-view-closing::view-transition-old(lyrics-panel) { animation-name: lyrics-panel-fade-out; }
-    html.lyrics-view-transition::view-transition-new(lyrics-panel),
-    html.lyrics-view-closing::view-transition-new(lyrics-panel) { animation-name: lyrics-panel-fade-in; }
 }
 
-.now-playing-panel.lyrics-transitioning .now-playing-panel-body > :not(.now-playing-panel-lyrics) {
-    opacity: 0;
-    transform: translateY(7px) scale(0.985);
-    transition:
-        opacity 180ms ease,
-        transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+@keyframes lyrics-contract {
+    from {
+        clip-path: inset(0 round var(--shell-radius));
+    }
+
+    to {
+        clip-path: var(--lyrics-preview-inset, inset(0 16px calc(100% - 56px) round 12px));
+        transform: translateY(var(--lyrics-preview-offset, calc(100% - 56px)));
+    }
 }
 
-.now-playing-panel.lyrics-transitioning .now-playing-panel-lyrics {
-    opacity: 1;
-    transform: scale(1);
-    transition:
-        opacity 180ms ease,
-        transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
-        height 280ms cubic-bezier(0.22, 1, 0.36, 1),
-        min-height 280ms cubic-bezier(0.22, 1, 0.36, 1);
+@keyframes lyrics-focus-in {
+    from {
+        opacity: 0;
+        filter: blur(3px);
+    }
+
+    16% {
+        opacity: 0;
+    }
+
+    70% {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 1;
+        filter: blur(0);
+    }
 }
 
-.now-playing-panel.lyrics-transitioning.lyrics-expanding .now-playing-panel-lyrics {
-    transform: scale(1.012);
-}
-
-.now-playing-panel.lyrics-transitioning.lyrics-collapsing .now-playing-panel-lyrics,
-.now-playing-panel.lyrics-transitioning.lyrics-expanded .now-playing-panel-lyrics {
-    opacity: 0;
-    transform: scale(0.985);
-}
-
-.now-playing-panel.lyrics-expanded .now-playing-panel-lyrics > header,
-.now-playing-panel.lyrics-expanded .now-playing-panel-lyrics-host {
-    transition:
-        opacity 180ms ease,
-        transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.now-playing-panel.lyrics-transitioning.lyrics-expanded .now-playing-panel-lyrics > header,
-.now-playing-panel.lyrics-transitioning.lyrics-expanded .now-playing-panel-lyrics-host {
-    opacity: 0;
-    transform: translateY(8px);
+@keyframes lyrics-fade-in {
+    from {
+        opacity: 0;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .now-playing-panel.lyrics-transitioning .now-playing-panel-body > :not(.now-playing-panel-lyrics),
-    .now-playing-panel.lyrics-transitioning .now-playing-panel-lyrics {
-        transition-duration: 0.01ms;
-        transform: none;
+    html[data-lyrics-motion]::view-transition-old(lyrics-panel) {
+        z-index: auto;
+        animation: lyrics-fade-in 120ms var(--ease-in-out) reverse both;
+    }
+
+    html[data-lyrics-motion]::view-transition-new(lyrics-panel) {
+        animation: lyrics-fade-in 120ms var(--ease-in-out) both;
     }
 }
 
@@ -1717,8 +1748,7 @@ html.lyrics-view-closing::view-transition-new(lyrics-panel) {
     background: transparent;
 }
 
-.now-playing-panel.lyrics-expanded .now-playing-panel-body > :not(.now-playing-panel-lyrics),
-.now-playing-panel.lyrics-expanded .now-playing-panel-header {
+.now-playing-panel.lyrics-expanded .now-playing-panel-body > :not(.now-playing-panel-lyrics) {
     display: none;
 }
 
@@ -1735,8 +1765,8 @@ html.lyrics-view-closing::view-transition-new(lyrics-panel) {
     height: 100%;
     min-height: 100%;
     border-radius: 0;
-    background: rgb(0 0 0 / 0.06);
-    backdrop-filter: blur(38px) saturate(1.35) brightness(0.76);
+    background: transparent;
+    backdrop-filter: none;
 }
 
 .now-playing-panel.lyrics-expanded .now-playing-panel-lyrics > header {

@@ -718,7 +718,7 @@ themeObserver.observe(document.documentElement, {
 async function mountSpicyLyrics(
     container,
     track,
-    audioPlayer,
+    playbackSource,
     lyricsManager,
     localTtml,
     { signal, lineOnly = false, provider = '' } = {}
@@ -736,16 +736,14 @@ async function mountSpicyLyrics(
     amLyrics.style.height = '100%';
     amLyrics.style.width = '100%';
 
-    amLyrics.currentTime = audioPlayer.currentTime * 1000;
     container.appendChild(amLyrics);
-    amLyrics.connectPlayback(audioPlayer, () => audioContextManager.getAnalyser());
     void amLyrics.setTrack(track, lyricsManager.api);
     if (signal?.aborted) {
         amLyrics.remove();
         return null;
     }
 
-    const cleanup = setupSync(track, audioPlayer, amLyrics, lyricsManager);
+    const cleanup = setupSync(track, playbackSource, amLyrics, lyricsManager);
 
     // Attach cleanup to container for easy access
     container.lyricsCleanup = cleanup;
@@ -784,7 +782,7 @@ function createLyricsLoadingSkeleton() {
     </div>`;
 }
 
-async function renderLyricsComponent(container, track, audioPlayer, lyricsManager, { signal, skeleton = false } = {}) {
+async function renderLyricsComponent(container, track, playbackSource, lyricsManager, { signal, skeleton = false } = {}) {
     if (signal?.aborted) return null;
     clearFullscreenLyricsSync(container);
     container.innerHTML = skeleton
@@ -803,7 +801,7 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
             container.innerHTML = '<div class="lyrics-empty">Lyrics are not available for this track.</div>';
             return null;
         }
-        const element = await mountSpicyLyrics(container, track, audioPlayer, lyricsManager, ttml, {
+        const element = await mountSpicyLyrics(container, track, playbackSource, lyricsManager, ttml, {
             signal,
             lineOnly,
             provider: data?.lyricsProvider,
@@ -837,9 +835,11 @@ async function renderLyricsComponent(container, track, audioPlayer, lyricsManage
     }
 }
 
-function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
+function setupSync(track, playbackSource, amLyrics, lyricsManager) {
     const view = amLyrics.ownerDocument.defaultView ?? window;
     const bloomClock = createBloomPlaybackClock();
+    const getAudioPlayer = typeof playbackSource === 'function' ? playbackSource : () => playbackSource;
+    let currentAudioPlayer;
     let frame = null;
     let visible = true;
     let staticPace = null;
@@ -857,6 +857,8 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
     };
     const updateTime = () => {
         if (!visible) return;
+        const audioPlayer = syncPlaybackSource();
+        if (!audioPlayer) return;
         const staticLyrics = amLyrics.lyricsType === 'Static';
         const currentTime = bloom && !staticLyrics
             ? bloomClock.read(audioPlayer, view.performance.now()) / 1000
@@ -922,6 +924,8 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
 
     const onLineClick = async (e) => {
         if (e.detail && e.detail.timestamp !== undefined) {
+            const audioPlayer = syncPlaybackSource();
+            if (!audioPlayer) return;
             amLyrics.resync();
             const genius = lyricsManager.isGeniusMode && lyricsManager.geniusManager.cache.get(track.id);
             if (genius && e.detail.text) {
@@ -960,8 +964,25 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
     refreshAnnotations();
 
     const clockResetEvents = ['seeking', 'seeked', 'pause', 'waiting', 'ratechange'];
-    audioPlayer.addEventListener('playing', onPlaying);
-    for (const event of clockResetEvents) audioPlayer.addEventListener(event, resetClock);
+    const detachPlayback = () => {
+        currentAudioPlayer?.removeEventListener('playing', onPlaying);
+        for (const event of clockResetEvents) currentAudioPlayer?.removeEventListener(event, resetClock);
+    };
+    const syncPlaybackSource = () => {
+        const next = getAudioPlayer();
+        if (next === currentAudioPlayer) return next;
+        detachPlayback();
+        currentAudioPlayer = next;
+        bloomClock.reset();
+        staticPace = null;
+        lastSample = -Infinity;
+        if (next) {
+            amLyrics.connectPlayback(next, () => audioContextManager.getAnalyser());
+            next.addEventListener('playing', onPlaying);
+            for (const event of clockResetEvents) next.addEventListener(event, resetClock);
+        }
+        return next;
+    };
     amLyrics.addEventListener('line-click', onLineClick);
     window.addEventListener('spicy-lyrics-settings-changed', updateOffset);
     window.addEventListener('spicy-lyrics-offset-changed', updateOffset);
@@ -971,8 +992,7 @@ function setupSync(track, audioPlayer, amLyrics, lyricsManager) {
     return () => {
         stop();
         observer.disconnect();
-        audioPlayer.removeEventListener('playing', onPlaying);
-        for (const event of clockResetEvents) audioPlayer.removeEventListener(event, resetClock);
+        detachPlayback();
         amLyrics.removeEventListener('line-click', onLineClick);
         amLyrics.removeEventListener('lyrics-rendered', refreshAnnotations);
         window.removeEventListener('spicy-lyrics-settings-changed', updateOffset);
@@ -1025,8 +1045,8 @@ function showGeniusAnnotations(annotations, lineText) {
     });
 }
 
-export async function renderLyricsInContainer(track, audioPlayer, lyricsManager, container, options = {}) {
-    return renderLyricsComponent(container, track, audioPlayer, lyricsManager, options);
+export async function renderLyricsInContainer(track, playbackSource, lyricsManager, container, options = {}) {
+    return renderLyricsComponent(container, track, playbackSource, lyricsManager, options);
 }
 
 export const renderLyricsInFullscreen = renderLyricsInContainer;

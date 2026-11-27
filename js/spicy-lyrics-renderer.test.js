@@ -1,6 +1,9 @@
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { getScrollLineIndex, parseSpicyTtml, parseTtmlTime, SpicyLyricsElement, SpicySpring } from './spicy-lyrics-renderer.js';
 import { repairCachedSpicyTtml } from './spicy-lyrics-ttml.js';
+
+vi.mock('./player.js', () => ({ Player: {} }));
+vi.mock('./side-panel.js', () => ({ sidePanelManager: {} }));
 
 afterEach(() => document.body.replaceChildren());
 
@@ -33,6 +36,35 @@ describe('Spicy Lyrics renderer', () => {
         expect(element._lineStates[0].element.querySelectorAll('.spicy-word-token')).toHaveLength(3);
         expect(element._lineStates[0].element.querySelectorAll('.spicy-word-space')).toHaveLength(2);
     });
+    test('keeps a mounted TTML renderer synchronized when the active audio element changes', async () => {
+        const { clearLyricsContainerSync, renderLyricsInContainer } = await import('./lyrics.js');
+        const container = document.createElement('div');
+        container.dataset.spicyBackgroundHost = '';
+        container.style.height = '360px';
+        document.body.append(container);
+        const previousAudio = new Audio();
+        const nextAudio = new Audio();
+        previousAudio.currentTime = 0.25;
+        nextAudio.currentTime = 1.75;
+        let activeAudio = previousAudio;
+        const manager = {
+            fetchLyrics: async () => ({ ttml: WORD_SYNC_TTML }),
+            ensureComponentLoaded: async () => {},
+            getPlaybackOffset: () => 0,
+        };
+
+        try {
+            const lyrics = await renderLyricsInContainer({ id: 'timed-import', duration: 3 }, () => activeAudio, manager, container);
+            expect(lyrics.currentTime).toBe(250);
+            activeAudio = nextAudio;
+            await expect.poll(() => lyrics.currentTime).toBe(1750);
+            const line = lyrics._lineStates.find((state) => !state.musical).element;
+            expect(line.classList.contains('Active')).toBe(true);
+        } finally {
+            clearLyricsContainerSync(container);
+        }
+    });
+
     test('does not let a lingering background vocal pull scrolling back to its lead', () => {
         const lines = [
             { start: 0, end: 1000 },

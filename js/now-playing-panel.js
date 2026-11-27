@@ -173,7 +173,7 @@ export class NowPlayingPanel {
         this.renderController = null;
         this.expandedLyrics = false;
         this.collapsedLyrics = false;
-        this.lyricsTransitionToken = 0;
+        this.lyricsViewTransition = null;
         this.canvasExpanded = false;
         this.canvasEnabled = canvasSettings.isEnabled();
         this.canvasBackgroundSource = canvasSettings.getBackgroundSource();
@@ -399,7 +399,7 @@ export class NowPlayingPanel {
             queueMicrotask(() => this.syncArtistStreamCount());
         };
         this.boundPanelScroll = () => {
-            if (this.currentTrack?.id != null)
+            if (!this.expandedLyrics && this.currentTrack?.id != null)
                 this.scrollByTrack.set(String(this.currentTrack.id), this.content.scrollTop);
             this.syncScrolled();
             this.updateScrollbar();
@@ -540,6 +540,7 @@ export class NowPlayingPanel {
             this.closeQueue();
             return;
         }
+        if (!open) this.cancelLyricsTransition();
         const desktopAvailable = this.desktopMedia.matches;
         const queueAvailable = this.activeView === 'queue';
         const panelAvailable = desktopAvailable || queueAvailable;
@@ -575,7 +576,7 @@ export class NowPlayingPanel {
 
     async openLyrics() {
         if (!this.root || !this.currentTrack) return false;
-        if (this.expandedLyrics) {
+        if (this.lyricsViewTransition?.expanded ?? this.expandedLyrics) {
             this.setExpandedLyrics(false);
             return true;
         }
@@ -603,56 +604,8 @@ export class NowPlayingPanel {
             }
         }
 
-        const lyricsCard = this.root.querySelector('.now-playing-panel-lyrics');
-        if (this.isOpen && lyricsCard && !lyricsCard.hidden) {
-            this.setExpandedLyrics(true);
-            return true;
-        }
-
-        const lyricsButton = document.getElementById('toggle-lyrics-btn');
-        const originRect = lyricsButton?.getBoundingClientRect();
-        this.expandedLyrics = true;
-        this.collapsedLyrics = false;
-        this.setOpen(true, { restoreFocus: false });
-        await this.render({ preserveScroll: false });
-        this.animateLyricsExpansion(originRect);
-        this.root.querySelector('.now-playing-panel-lyrics-collapse')?.focus({ preventScroll: true });
+        this.setExpandedLyrics(true);
         return true;
-    }
-
-    animateLyricsExpansion(originRect) {
-        const card = this.root?.querySelector('.now-playing-panel-lyrics');
-        if (!card || card.hidden || typeof card.animate !== 'function') return;
-        const target = card.getBoundingClientRect();
-        if (!target.width || !target.height) return;
-        const reducedMotion = this.reducedMotionMedia?.matches;
-        const source = originRect || this.root.querySelector('.now-playing-panel-lyrics-expand')?.getBoundingClientRect();
-        if (!source || !source.width || !source.height) {
-            card.animate([{ opacity: 0.7 }, { opacity: 1 }], {
-                duration: reducedMotion ? 100 : 220,
-                easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
-            });
-            return;
-        }
-        const dx = source.left - target.left;
-        const dy = source.top - target.top;
-        const scaleX = source.width / target.width;
-        const scaleY = source.height / target.height;
-        const animation = card.animate(
-            [
-                {
-                    opacity: 0.55,
-                    transformOrigin: 'top left',
-                    transform: `translate(${dx}px, ${dy}px) scale(${scaleX}, ${scaleY})`,
-                },
-                { opacity: 1, transformOrigin: 'top left', transform: 'translate(0, 0) scale(1, 1)' },
-            ],
-            {
-                duration: reducedMotion ? 120 : 420,
-                easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
-            }
-        );
-        animation.onfinish = () => animation.cancel();
     }
 
     syncQueueLayerState() {
@@ -1162,12 +1115,11 @@ export class NowPlayingPanel {
             this.reopenQueueTransition();
             return;
         }
+        this.cancelLyricsTransition();
         if (this.expandedLyrics) {
             this.expandedLyrics = false;
             this.collapsedLyrics = false;
-            const lyricsTransitionToken = this.beginLyricsTransition('collapse');
             this.applyLyricsMode();
-            this.finishLyricsTransition(lyricsTransitionToken);
         }
         const source = this.captureQueueCover(this.getNowPlayingCoverElement());
         this.cancelQueueCoverAnimation();
@@ -3129,19 +3081,16 @@ export class NowPlayingPanel {
         const host = card?.querySelector('.now-playing-panel-lyrics-host');
         if (!host) return;
         const showUnavailable = () => {
-            if (this.expandedLyrics) {
-                card.hidden = false;
-                host.innerHTML = '<div class="now-playing-panel-lyrics-empty" role="status"><strong>No lyrics available</strong><span>We couldn’t find lyrics for this track.</span></div>';
-            } else {
-                card.hidden = true;
-            }
+            card.dataset.lyricsUnavailable = '';
+            card.hidden = !this.expandedLyrics;
+            host.innerHTML = '<div class="now-playing-panel-lyrics-empty" role="status"><strong>No lyrics available</strong><span>We couldn’t find lyrics for this track.</span></div>';
         };
         if (model.empty || this.currentTrack?.type === 'video') {
             showUnavailable();
             return;
         }
         card.hidden = false;
-        const element = await renderLyricsInContainer(this.currentTrack, this.player.activeElement, this.lyricsManager, host, { signal, skeleton: true });
+        const element = await renderLyricsInContainer(this.currentTrack, () => this.player.activeElement, this.lyricsManager, host, { signal, skeleton: true });
         if (signal.aborted) return;
         if (!element) {
             showUnavailable();
@@ -3176,7 +3125,9 @@ export class NowPlayingPanel {
     applyLyricsMode() {
         this.root.classList.toggle('lyrics-expanded', this.expandedLyrics);
         this.syncLyricsButtonState();
-        this.root.querySelector('.now-playing-panel-lyrics')?.classList.toggle('is-collapsed', this.collapsedLyrics);
+        const card = this.root.querySelector('.now-playing-panel-lyrics');
+        card?.classList.toggle('is-collapsed', this.collapsedLyrics);
+        if (card?.hasAttribute('data-lyrics-unavailable')) card.hidden = !this.expandedLyrics;
         const lyricsHost = this.root.querySelector('.now-playing-panel-lyrics-host');
         lyricsHost?.setAttribute('aria-hidden', String(this.collapsedLyrics));
         if (lyricsHost) lyricsHost.inert = this.collapsedLyrics;
@@ -3207,58 +3158,90 @@ export class NowPlayingPanel {
         this.syncScrolled();
     }
 
+    cancelLyricsTransition() {
+        if (!this.lyricsViewTransition) return;
+        this.lyricsViewTransition.transition.skipTransition();
+        this.lyricsViewTransition = null;
+        const root = document.documentElement;
+        delete root.dataset.lyricsMotion;
+        root.style.removeProperty('--lyrics-preview-inset');
+        root.style.removeProperty('--lyrics-preview-offset');
+    }
+
+    setLyricsPreviewInset() {
+        const panel = this.content.parentElement.getBoundingClientRect();
+        const card = this.root.querySelector('.now-playing-panel-lyrics');
+        const preview = card?.getBoundingClientRect();
+        if (!preview || !preview.width || preview.bottom <= panel.top || preview.top >= panel.bottom) return;
+
+        const top = Math.max(0, preview.top - panel.top);
+        const right = Math.max(0, panel.right - preview.right);
+        const height = Math.min(panel.bottom, preview.bottom) - Math.max(panel.top, preview.top);
+        const left = Math.max(0, preview.left - panel.left);
+        const radius = getComputedStyle(card).borderTopLeftRadius;
+        const style = document.documentElement.style;
+        style.setProperty('--lyrics-preview-inset', `inset(0 ${right}px ${panel.height - height}px ${left}px round ${radius})`);
+        style.setProperty('--lyrics-preview-offset', `${top}px`);
+    }
+
     setExpandedLyrics(expanded) {
-        this.lyricsViewTransition?.skipTransition();
-        if (expanded) {
-            const panel = this.root.getBoundingClientRect();
-            const card = this.root.querySelector('.now-playing-panel-lyrics')?.getBoundingClientRect();
-            if (card && panel.width && panel.height) {
-                const clamp = (value) => Math.max(0, Math.min(100, value));
-                const top = clamp((card.top - panel.top) / panel.height * 100);
-                const right = clamp((panel.right - card.right) / panel.width * 100);
-                const bottom = clamp((panel.bottom - card.bottom) / panel.height * 100);
-                const left = clamp((card.left - panel.left) / panel.width * 100);
-                document.documentElement.style.setProperty('--lyrics-expand-origin', `inset(${top}% ${right}% ${bottom}% ${left}% round 12px)`);
-            }
-        }
+        if (this.lyricsViewTransition?.expanded === expanded) return;
+        this.cancelLyricsTransition();
+        if (expanded === this.expandedLyrics) return;
+
         const update = () => {
+            if (expanded) {
+                this.lyricsPreviewScroll = { trackId: this.currentTrack?.id, top: this.content.scrollTop };
+            }
             this.expandedLyrics = expanded;
             this.collapsedLyrics = false;
+            if (expanded && !this.isOpen) this.setOpen(true, { restoreFocus: false });
             this.applyLyricsMode();
-            this.root.querySelector(expanded ? '.now-playing-panel-lyrics-collapse' : '.now-playing-panel-lyrics-expand')
-                ?.focus({ preventScroll: true });
+            if (!expanded && this.lyricsPreviewScroll?.trackId === this.currentTrack?.id) {
+                this.content.scrollTop = this.lyricsPreviewScroll?.top ?? 0;
+                this.syncScrolled();
+                this.updateScrollbar();
+            }
+            if (expanded && !this.root.querySelector('.now-playing-panel-lyrics')) {
+                void this.render({ preserveScroll: false });
+            }
         };
-        if (!document.startViewTransition) {
+        const focus = () => {
+            const control = this.root.querySelector(
+                expanded
+                    ? '.now-playing-panel-lyrics-collapse'
+                    : '.now-playing-panel-lyrics:not([hidden]) .now-playing-panel-lyrics-expand'
+            );
+            (control || document.getElementById('toggle-lyrics-btn'))?.focus({ preventScroll: true });
+        };
+
+        // The side panel already slides in from its collapsed rail.
+        if (!this.isOpen || !document.startViewTransition) {
             update();
+            focus();
             return;
         }
-        document.documentElement.classList.add('lyrics-view-transition');
-        document.documentElement.classList.toggle('lyrics-view-closing', !expanded);
-        const transition = document.startViewTransition(update);
-        this.lyricsViewTransition = transition;
-        transition.finished.finally(() => {
-            if (this.lyricsViewTransition !== transition) return;
-            this.lyricsViewTransition = null;
-            document.documentElement.classList.remove('lyrics-view-transition', 'lyrics-view-closing');
+
+        const root = document.documentElement;
+        root.dataset.lyricsMotion = expanded ? 'opening' : 'closing';
+        if (expanded) this.setLyricsPreviewInset();
+        const transition = document.startViewTransition(() => {
+            if (this.lyricsViewTransition?.transition !== transition || !this.isOpen || this.activeView === 'queue') return;
+            update();
+            if (!expanded) this.setLyricsPreviewInset();
         });
-    }
-
-    beginLyricsTransition(direction) {
-        const token = ++this.lyricsTransitionToken;
-        this.root.classList.remove('lyrics-expanding', 'lyrics-collapsing');
-        this.root.classList.add(
-            'lyrics-transitioning',
-            direction === 'expand' ? 'lyrics-expanding' : 'lyrics-collapsing'
-        );
-        return token;
-    }
-
-    finishLyricsTransition(token) {
-        if (token !== this.lyricsTransitionToken) return;
-        window.setTimeout(() => {
-            if (token !== this.lyricsTransitionToken) return;
-            this.root.classList.remove('lyrics-transitioning', 'lyrics-expanding', 'lyrics-collapsing');
-        }, this.reducedMotionMedia?.matches ? 20 : 400);
+        this.lyricsViewTransition = { expanded, transition };
+        // Skipping before capture rejects ready even when the transition finishes cleanly.
+        void transition.ready.catch(() => undefined);
+        const finish = () => {
+            if (this.lyricsViewTransition?.transition !== transition) return;
+            this.lyricsViewTransition = null;
+            delete root.dataset.lyricsMotion;
+            root.style.removeProperty('--lyrics-preview-inset');
+            root.style.removeProperty('--lyrics-preview-offset');
+            if (this.isOpen && this.activeView !== 'queue') focus();
+        };
+        transition.finished.then(finish, finish);
     }
 
     applyCanvasMode() {
@@ -3362,7 +3345,7 @@ export class NowPlayingPanel {
             return;
         }
         if (button.matches('.now-playing-panel-lyrics-expand')) {
-            this.setExpandedLyrics(!this.expandedLyrics);
+            this.setExpandedLyrics(!(this.lyricsViewTransition?.expanded ?? this.expandedLyrics));
             return;
         }
         if (button.matches('.now-playing-panel-lyrics-collapse')) {
@@ -3760,7 +3743,7 @@ export class NowPlayingPanel {
             }
             if (this.activeView === 'queue') {
                 this.closeQueue();
-            } else if (this.expandedLyrics) {
+            } else if (this.lyricsViewTransition?.expanded ?? this.expandedLyrics) {
                 this.setExpandedLyrics(false);
             } else {
                 this.setOpen(false);
@@ -3770,6 +3753,7 @@ export class NowPlayingPanel {
     }
 
     destroy() {
+        this.cancelLyricsTransition();
         this.renderController?.abort();
         window.removeEventListener('spicy-lyrics-settings-changed', this.boundSpicySettingsChanged);
         window.clearTimeout(this.queueViewTimer);

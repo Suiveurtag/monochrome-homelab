@@ -204,9 +204,9 @@ describe('Now Playing panel interactions', () => {
         const panel = new NowPlayingPanel(dependencies());
         await waitForPanel(panel);
         panel.root.querySelector('.now-playing-panel-lyrics-expand').click();
-        expect(panel.expandedLyrics).toBe(true);
+        await expect.poll(() => panel.expandedLyrics).toBe(true);
         panel.root.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-        expect(panel.expandedLyrics).toBe(false);
+        await expect.poll(() => panel.expandedLyrics).toBe(false);
         expect(panel.isOpen).toBe(true);
         panel.root.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
         expect(panel.isOpen).toBe(false);
